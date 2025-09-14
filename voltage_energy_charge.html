@@ -156,6 +156,19 @@
         .voltage-value { color: #ff8c00; }
         .current-value { color: #4a90ff; }
         .power-value { color: #ffd700; }
+        
+        .instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            max-width: 300px;
+            font-size: 12px;
+            color: #ccc;
+        }
     </style>
 </head>
 <body>
@@ -202,6 +215,14 @@
         <div class="info-item">Bulb Brightness: <span class="power-value" id="bulbBrightness">100%</span></div>
     </div>
 
+    <div class="instructions">
+        <h3 style="margin: 0 0 10px 0; font-size: 14px;">Voltmeter Instructions:</h3>
+        <div>• Drag the voltmeter body to move it</div>
+        <div>• Drag the red (+) and black (-) leads independently</div>
+        <div>• Place lead tips on the wire to measure voltage</div>
+        <div>• Voltage = difference in energy levels between sections</div>
+    </div>
+
     <script>
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
@@ -228,8 +249,11 @@
         let batteries = [];
         let bulbs = [];
         let circuitSections = [];
+        let voltmeter;
         let animationId;
         let time = 0;
+        let isDragging = false;
+        let dragTarget = null;
         
         // Circuit Section class - represents a segment of wire between components
         class CircuitSection {
@@ -579,6 +603,196 @@
             }
         }
         
+        // Voltmeter Lead class
+        class VoltmeterLead {
+            constructor(x, y, color, label) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.label = label;
+                this.radius = 8;
+                this.isDragging = false;
+                this.connectedSection = null;
+            }
+            
+            update() {
+                // Check if lead tip is on the circuit wire
+                this.connectedSection = this.getConnectedSection();
+            }
+            
+            getConnectedSection() {
+                // Check if the lead tip is close enough to the circuit wire
+                const tolerance = 25;
+                
+                // Get circuit path points
+                const { x, y, width, height } = circuitRect;
+                
+                // Check top edge
+                if (Math.abs(this.y - y) < tolerance && this.x >= x && this.x <= x + width) {
+                    const position = (this.x - x) / (2 * (width + height));
+                    return this.getSectionAtPosition(position);
+                }
+                
+                // Check right edge
+                if (Math.abs(this.x - (x + width)) < tolerance && this.y >= y && this.y <= y + height) {
+                    const position = (width + (this.y - y)) / (2 * (width + height));
+                    return this.getSectionAtPosition(position);
+                }
+                
+                // Check bottom edge
+                if (Math.abs(this.y - (y + height)) < tolerance && this.x >= x && this.x <= x + width) {
+                    const position = (width + height + (x + width - this.x)) / (2 * (width + height));
+                    return this.getSectionAtPosition(position);
+                }
+                
+                // Check left edge
+                if (Math.abs(this.x - x) < tolerance && this.y >= y && this.y <= y + height) {
+                    const position = (2 * width + height + (y + height - this.y)) / (2 * (width + height));
+                    return this.getSectionAtPosition(position);
+                }
+                
+                return null;
+            }
+            
+            getSectionAtPosition(position) {
+                // Normalize position to 0-1
+                if (position >= 1) position -= 1;
+                if (position < 0) position += 1;
+                
+                for (let section of circuitSections) {
+                    if (section.contains(position)) {
+                        return section;
+                    }
+                }
+                return null;
+            }
+            
+            draw() {
+                // Draw lead wire to voltmeter
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(voltmeter.x + (this.label === '+' ? 25 : -25), voltmeter.y + 20);
+                ctx.lineTo(this.x, this.y);
+                ctx.stroke();
+                
+                // Draw lead tip
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Draw connection indicator if connected
+                if (this.connectedSection) {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius + 5, 0, Math.PI * 2);
+                    ctx.strokeStyle = '#00FF00';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+                
+                // Draw label
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(this.label, this.x, this.y + 4);
+            }
+            
+            contains(x, y) {
+                const dx = x - this.x;
+                const dy = y - this.y;
+                return dx * dx + dy * dy <= (this.radius + 5) * (this.radius + 5);
+            }
+        }
+        
+        // Voltmeter class
+        class Voltmeter {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = 120;
+                this.height = 80;
+                this.positiveLead = new VoltmeterLead(x + 60, y + 60, '#FF0000', '+');
+                this.negativeLead = new VoltmeterLead(x - 60, y + 60, '#000000', '-');
+            }
+            
+            update() {
+                this.positiveLead.update();
+                this.negativeLead.update();
+            }
+            
+            getVoltageReading() {
+                if (this.positiveLead.connectedSection && this.negativeLead.connectedSection) {
+                    const positiveEnergy = this.positiveLead.connectedSection.energyLevel;
+                    const negativeEnergy = this.negativeLead.connectedSection.energyLevel;
+                    return Math.abs(positiveEnergy - negativeEnergy);
+                }
+                return 0;
+            }
+            
+            draw() {
+                // Draw voltmeter body
+                ctx.fillStyle = '#2a2a2a';
+                ctx.fillRect(this.x - this.width/2, this.y - this.height/2, this.width, this.height);
+                ctx.strokeStyle = '#666';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(this.x - this.width/2, this.y - this.height/2, this.width, this.height);
+                
+                // Draw display screen
+                const screenWidth = 80;
+                const screenHeight = 30;
+                ctx.fillStyle = '#000';
+                ctx.fillRect(this.x - screenWidth/2, this.y - screenHeight/2 - 10, screenWidth, screenHeight);
+                ctx.strokeStyle = '#444';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(this.x - screenWidth/2, this.y - screenHeight/2 - 10, screenWidth, screenHeight);
+                
+                // Draw voltage reading
+                const voltage = this.getVoltageReading();
+                ctx.fillStyle = '#00FF00';
+                ctx.font = 'bold 16px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${voltage.toFixed(1)}V`, this.x, this.y - 5);
+                
+                // Draw "VOLTMETER" label
+                ctx.fillStyle = '#ccc';
+                ctx.font = 'bold 10px Arial';
+                ctx.fillText('VOLTMETER', this.x, this.y + 25);
+                
+                // Draw lead connection points
+                ctx.fillStyle = '#FF0000';
+                ctx.beginPath();
+                ctx.arc(this.x + 25, this.y + 20, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 10px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('+', this.x + 25, this.y + 24);
+                
+                ctx.fillStyle = '#000000';
+                ctx.beginPath();
+                ctx.arc(this.x - 25, this.y + 20, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#666';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                ctx.fillStyle = 'white';
+                ctx.fillText('-', this.x - 25, this.y + 24);
+                
+                // Draw leads
+                this.positiveLead.draw();
+                this.negativeLead.draw();
+            }
+            
+            contains(x, y) {
+                return x >= this.x - this.width/2 && x <= this.x + this.width/2 &&
+                       y >= this.y - this.height/2 && y <= this.y + this.height/2;
+            }
+        }
+        
         function drawCircuit() {
             const { x, y, width, height, cornerRadius, trackWidth } = circuitRect;
             
@@ -667,6 +881,11 @@
             bulbs = [];
             circuitSections = [];
             
+            // Initialize voltmeter if it doesn't exist
+            if (!voltmeter) {
+                voltmeter = new Voltmeter(400, 500);
+            }
+            
             // Create batteries along the top - evenly spaced
             for (let i = 0; i < numBatteries; i++) {
                 const spacing = circuitRect.width / (numBatteries + 1);
@@ -727,6 +946,12 @@
                 return alive;
             });
             
+            // Update and draw voltmeter
+            if (voltmeter) {
+                voltmeter.update();
+                voltmeter.draw();
+            }
+            
             updateInfo();
             
             if (!isPaused) {
@@ -777,6 +1002,68 @@
         document.getElementById('speedSlider').addEventListener('input', (e) => {
             electronSpeed = parseFloat(e.target.value);
             document.getElementById('speedValue').textContent = `${electronSpeed}x`;
+        });
+        
+        // Mouse event handlers for dragging
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            // Check if clicking on voltmeter leads first (they have priority)
+            if (voltmeter.positiveLead.contains(mouseX, mouseY)) {
+                isDragging = true;
+                dragTarget = voltmeter.positiveLead;
+                canvas.style.cursor = 'grabbing';
+            } else if (voltmeter.negativeLead.contains(mouseX, mouseY)) {
+                isDragging = true;
+                dragTarget = voltmeter.negativeLead;
+                canvas.style.cursor = 'grabbing';
+            } else if (voltmeter.contains(mouseX, mouseY)) {
+                isDragging = true;
+                dragTarget = voltmeter;
+                canvas.style.cursor = 'grabbing';
+            }
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            if (isDragging && dragTarget) {
+                if (dragTarget === voltmeter) {
+                    // Move voltmeter body
+                    voltmeter.x = mouseX;
+                    voltmeter.y = mouseY;
+                } else {
+                    // Move individual lead
+                    dragTarget.x = mouseX;
+                    dragTarget.y = mouseY;
+                }
+            } else {
+                // Set cursor based on what's under the mouse
+                if (voltmeter.positiveLead.contains(mouseX, mouseY) || 
+                    voltmeter.negativeLead.contains(mouseX, mouseY) || 
+                    voltmeter.contains(mouseX, mouseY)) {
+                    canvas.style.cursor = 'grab';
+                } else {
+                    canvas.style.cursor = 'default';
+                }
+            }
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            isDragging = false;
+            dragTarget = null;
+            canvas.style.cursor = 'default';
+        });
+        
+        // Handle mouse leave to stop dragging
+        canvas.addEventListener('mouseleave', () => {
+            isDragging = false;
+            dragTarget = null;
+            canvas.style.cursor = 'default';
         });
         
         // Initialize simulation
