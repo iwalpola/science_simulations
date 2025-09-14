@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Circuit Energy Flow Simulation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        .title {
+            font-size: 28px;
+            margin-bottom: 20px;
+            text-align: center;
+            background: linear-gradient(45deg, #4a90ff, #00d4ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        canvas {
+            border: 2px solid #333;
+            border-radius: 12px;
+            box-shadow: 0 0 30px rgba(74, 144, 255, 0.2);
+            background: #0a0a0a;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 30px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .control-group h3 {
+            margin: 0;
+            font-size: 16px;
+            color: #ccc;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 8px 16px;
+            font-size: 14px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+        
+        .battery-btn {
+            background: linear-gradient(45deg, #ff8c00, #ffa500);
+            color: white;
+        }
+        
+        .bulb-btn {
+            background: linear-gradient(45deg, #ffd700, #ffeb3b);
+            color: black;
+        }
+        
+        .play-btn {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        button.active {
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        
+        .speed-control {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .speed-control h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #ccc;
+        }
+        
+        .slider {
+            width: 150px;
+            height: 6px;
+            border-radius: 3px;
+            background: #333;
+            outline: none;
+            appearance: none;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #4a90ff;
+            cursor: pointer;
+        }
+        
+        .info-panel {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            min-width: 200px;
+        }
+        
+        .info-item {
+            margin: 8px 0;
+            font-size: 14px;
+        }
+        
+        .voltage-value { color: #ff8c00; }
+        .current-value { color: #4a90ff; }
+        .power-value { color: #ffd700; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">Circuit Energy Flow Visualization</h1>
+        
+        <canvas id="canvas" width="900" height="600"></canvas>
+        
+        <div class="controls">
+            <div class="control-group">
+                <h3>Batteries (6V each)</h3>
+                <div class="button-group">
+                    <button class="battery-btn active" onclick="setBatteries(1)">1</button>
+                    <button class="battery-btn" onclick="setBatteries(2)">2</button>
+                    <button class="battery-btn" onclick="setBatteries(3)">3</button>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>Light Bulbs</h3>
+                <div class="button-group">
+                    <button class="bulb-btn active" onclick="setBulbs(1)">1</button>
+                    <button class="bulb-btn" onclick="setBulbs(2)">2</button>
+                    <button class="bulb-btn" onclick="setBulbs(3)">3</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="speed-control">
+        <h3>Simulation Control</h3>
+        <button class="play-btn" id="playBtn" onclick="togglePlayPause()">Pause</button>
+        <div style="margin-top: 15px;">
+            <h3>Electron Speed</h3>
+            <input type="range" min="0.5" max="3" value="1.5" step="0.1" class="slider" id="speedSlider">
+            <div id="speedValue">1.5x</div>
+        </div>
+    </div>
+
+    <div class="info-panel">
+        <div class="info-item">Total Voltage: <span class="voltage-value" id="totalVoltage">6V</span></div>
+        <div class="info-item">Energy per Electron: <span class="voltage-value" id="energyPerElectron">6 units</span></div>
+        <div class="info-item">Energy per Bulb: <span class="power-value" id="energyPerBulb">6 units</span></div>
+        <div class="info-item">Bulb Brightness: <span class="power-value" id="bulbBrightness">100%</span></div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Circuit parameters
+        let numBatteries = 1;
+        let numBulbs = 1;
+        let electronSpeed = 1.5;
+        let isPaused = false;
+        
+        // Circuit geometry
+        const circuitRect = {
+            x: 150,
+            y: 150,
+            width: 600,
+            height: 300,
+            cornerRadius: 30,
+            trackWidth: 40
+        };
+        
+        // Simulation objects
+        let electrons = [];
+        let energyBalls = [];
+        let batteries = [];
+        let bulbs = [];
+        let circuitSections = [];
+        let animationId;
+        let time = 0;
+        
+        // Circuit Section class - represents a segment of wire between components
+        class CircuitSection {
+            constructor(startPos, endPos, energyLevel = 0) {
+                this.startPos = startPos; // Position on circuit (0-1)
+                this.endPos = endPos;
+                this.energyLevel = energyLevel; // Energy balls in this section
+            }
+            
+            contains(position) {
+                // Handle wrap-around case
+                if (this.startPos > this.endPos) {
+                    return position >= this.startPos || position <= this.endPos;
+                }
+                return position >= this.startPos && position <= this.endPos;
+            }
+        }
+        
+        // Electron class
+        class Electron {
+            constructor() {
+                this.position = 0; // 0-1 around the circuit
+                this.radius = 12;
+                this.lastSectionTransition = null;
+            }
+            
+            update() {
+                if (isPaused) return;
+                
+                const oldPosition = this.position;
+                this.position += electronSpeed * 0.002;
+                
+                // Handle circuit wrap-around
+                if (this.position >= 1) {
+                    this.position -= 1;
+                }
+                
+                // Check for section transitions
+                this.checkSectionTransition(oldPosition);
+            }
+            
+            checkSectionTransition(oldPosition) {
+                const oldSection = this.getCurrentSection(oldPosition);
+                const newSection = this.getCurrentSection(this.position);
+                
+                // Only process if we've actually changed sections
+                if (oldSection !== newSection && newSection !== this.lastSectionTransition) {
+                    this.lastSectionTransition = newSection;
+                    
+                    // Check if we're passing a battery (entering a section after a battery)
+                    batteries.forEach((battery, index) => {
+                        if (Math.abs(battery.position - oldPosition) < 0.05 && 
+                            this.position > battery.position) {
+                            // Create visual energy transfer from battery
+                            const coords = this.getCoordinates();
+                            for (let i = 0; i < 6; i++) {
+                                setTimeout(() => {
+                                    energyBalls.push(new EnergyBall(
+                                        coords.x - 30, coords.y - 30, 
+                                        coords.x, coords.y, 'receive'
+                                    ));
+                                }, i * 50);
+                            }
+                        }
+                    });
+                    
+                    // Check if we're passing a bulb (entering a section after a bulb)
+                    bulbs.forEach((bulb, index) => {
+                        if (Math.abs(bulb.position - oldPosition) < 0.05 && 
+                            this.position > bulb.position) {
+                            const currentSection = this.getCurrentSection(this.position);
+                            const energyToGive = Math.floor((numBatteries * 6) / numBulbs);
+                            
+                            // Create visual energy transfer to bulb
+                            const coords = this.getCoordinates();
+                            const bulbCoords = bulb.getCoordinates();
+                            for (let i = 0; i < energyToGive; i++) {
+                                setTimeout(() => {
+                                    energyBalls.push(new EnergyBall(
+                                        coords.x, coords.y,
+                                        bulbCoords.x, bulbCoords.y, 'give'
+                                    ));
+                                    bulb.receiveEnergy();
+                                }, i * 50);
+                            }
+                        }
+                    });
+                }
+            }
+            
+            getCurrentSection(position) {
+                for (let section of circuitSections) {
+                    if (section.contains(position)) {
+                        return section;
+                    }
+                }
+                return null;
+            }
+            
+            getEnergyCount() {
+                const section = this.getCurrentSection(this.position);
+                return section ? section.energyLevel : 0;
+            }
+            
+            getCoordinates() {
+                const perimeter = 2 * (circuitRect.width + circuitRect.height);
+                const distance = this.position * perimeter;
+                
+                let x, y;
+                
+                if (distance <= circuitRect.width) {
+                    // Top edge
+                    x = circuitRect.x + distance;
+                    y = circuitRect.y;
+                } else if (distance <= circuitRect.width + circuitRect.height) {
+                    // Right edge
+                    x = circuitRect.x + circuitRect.width;
+                    y = circuitRect.y + (distance - circuitRect.width);
+                } else if (distance <= 2 * circuitRect.width + circuitRect.height) {
+                    // Bottom edge
+                    x = circuitRect.x + circuitRect.width - (distance - circuitRect.width - circuitRect.height);
+                    y = circuitRect.y + circuitRect.height;
+                } else {
+                    // Left edge
+                    x = circuitRect.x;
+                    y = circuitRect.y + circuitRect.height - (distance - 2 * circuitRect.width - circuitRect.height);
+                }
+                
+                return { x, y };
+            }
+            
+            draw() {
+                const coords = this.getCoordinates();
+                const energyCount = this.getEnergyCount();
+                
+                // Draw electron (light blue circle with negative sign)
+                ctx.beginPath();
+                ctx.arc(coords.x, coords.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#87CEEB';
+                ctx.fill();
+                ctx.strokeStyle = '#4682B4';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Draw negative sign
+                ctx.fillStyle = 'black';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('-', coords.x, coords.y + 6);
+                
+                // Draw energy balls around electron based on section energy
+                for (let i = 0; i < energyCount; i++) {
+                    const angle = (i / 18) * Math.PI * 2; // Max 18 energy balls
+                    const orbitalRadius = this.radius + 8;
+                    const energyX = coords.x + Math.cos(angle + time * 0.05) * orbitalRadius;
+                    const energyY = coords.y + Math.sin(angle + time * 0.05) * orbitalRadius;
+                    
+                    ctx.beginPath();
+                    ctx.arc(energyX, energyY, 3, 0, Math.PI * 2);
+                    ctx.fillStyle = '#FF4444';
+                    ctx.fill();
+                }
+            }
+        }
+        
+        // Energy ball animation class
+        class EnergyBall {
+            constructor(startX, startY, endX, endY, type) {
+                this.startX = startX;
+                this.startY = startY;
+                this.endX = endX;
+                this.endY = endY;
+                this.x = startX;
+                this.y = startY;
+                this.progress = 0;
+                this.type = type;
+                this.life = 1.0;
+            }
+            
+            update() {
+                if (isPaused) return true;
+                
+                this.progress += 0.05;
+                
+                const t = Math.min(this.progress, 1);
+                this.x = this.startX + (this.endX - this.startX) * t;
+                this.y = this.startY + (this.endY - this.startY) * t;
+                
+                if (this.progress > 1) {
+                    this.life -= 0.05;
+                }
+                
+                return this.life > 0;
+            }
+            
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 68, 68, ${this.life})`;
+                ctx.fill();
+            }
+        }
+        
+        // Battery class
+        class Battery {
+            constructor(position) {
+                this.position = position;
+                this.width = 40;
+                this.height = 60;
+            }
+            
+            draw() {
+                const coords = this.getCoordinates();
+                
+                // Draw battery body
+                ctx.fillStyle = '#333';
+                ctx.fillRect(coords.x - this.width/2, coords.y - this.height/2, this.width, this.height);
+                
+                // Draw positive terminal (orange half)
+                ctx.fillStyle = '#FF8C00';
+                ctx.fillRect(coords.x - this.width/2, coords.y - this.height/2, this.width/2, this.height);
+                
+                // Draw negative terminal (black half)
+                ctx.fillStyle = '#000';
+                ctx.fillRect(coords.x, coords.y - this.height/2, this.width/2, this.height);
+                
+                // Draw terminals
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 20px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('+', coords.x - this.width/4, coords.y + 7);
+                ctx.fillText('-', coords.x + this.width/4, coords.y + 7);
+                
+                // Draw border
+                ctx.strokeStyle = '#666';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(coords.x - this.width/2, coords.y - this.height/2, this.width, this.height);
+            }
+            
+            getCoordinates() {
+                const perimeter = 2 * (circuitRect.width + circuitRect.height);
+                const distance = this.position * perimeter;
+                
+                return {
+                    x: circuitRect.x + distance,
+                    y: circuitRect.y - 30
+                };
+            }
+        }
+        
+        // Bulb class
+        class Bulb {
+            constructor(position) {
+                this.position = position;
+                this.brightness = 0;
+                this.energyReceived = 0;
+                this.radius = 20;
+            }
+            
+            receiveEnergy() {
+                this.energyReceived++;
+                this.brightness = Math.min(1, this.energyReceived / 10);
+            }
+            
+            update() {
+                if (!isPaused) {
+                    this.energyReceived *= 0.95; // Gradual fade
+                    this.brightness = Math.min(1, this.energyReceived / 5);
+                }
+            }
+            
+            draw() {
+                const coords = this.getCoordinates();
+                
+                // Draw light effect FIRST (so it appears behind the bulb)
+                if (this.brightness > 0) {
+                    // Multiple light layers for better effect
+                    for (let i = 3; i >= 0; i--) {
+                        const lightRadius = this.radius + (i * 15 * this.brightness);
+                        const alpha = Math.max(0, this.brightness - (i * 0.2));
+                        
+                        ctx.beginPath();
+                        ctx.arc(coords.x, coords.y, lightRadius, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(255, 255, 0, ${alpha * 0.3})`;
+                        ctx.fill();
+                    }
+                }
+                
+                // Draw rectangular base
+                const baseWidth = 20;
+                const baseHeight = 15;
+                ctx.fillStyle = '#444';
+                ctx.fillRect(coords.x - baseWidth/2, coords.y + this.radius - 5, baseWidth, baseHeight);
+                ctx.strokeStyle = '#666';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(coords.x - baseWidth/2, coords.y + this.radius - 5, baseWidth, baseHeight);
+                
+                // Draw bulb circle (glass)
+                ctx.beginPath();
+                ctx.arc(coords.x, coords.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.brightness > 0 
+                    ? `rgba(255, 255, 200, ${0.3 + this.brightness * 0.5})` 
+                    : 'rgba(200, 200, 200, 0.3)';
+                ctx.fill();
+                ctx.strokeStyle = '#888';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Draw filament inside
+                ctx.strokeStyle = this.brightness > 0.1 ? '#FFD700' : '#666';
+                ctx.lineWidth = this.brightness > 0.1 ? 2 : 1;
+                ctx.beginPath();
+                // Draw a zigzag filament
+                const filamentPoints = 5;
+                for (let i = 0; i <= filamentPoints; i++) {
+                    const yPos = coords.y - 10 + (20 * i / filamentPoints);
+                    const xPos = coords.x + (i % 2 === 0 ? -5 : 5);
+                    if (i === 0) {
+                        ctx.moveTo(xPos, yPos);
+                    } else {
+                        ctx.lineTo(xPos, yPos);
+                    }
+                }
+                ctx.stroke();
+                
+                // Bright center when very lit
+                if (this.brightness > 0.5) {
+                    ctx.beginPath();
+                    ctx.arc(coords.x, coords.y, this.radius * 0.6, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(255, 255, 255, ${this.brightness * 0.4})`;
+                    ctx.fill();
+                }
+            }
+            
+            getCoordinates() {
+                const perimeter = 2 * (circuitRect.width + circuitRect.height);
+                const bottomStart = (circuitRect.width + circuitRect.height) / perimeter;
+                const bottomEnd = (circuitRect.width + circuitRect.height + circuitRect.width) / perimeter;
+                
+                // Position is already normalized between bottomStart and bottomEnd
+                const distance = this.position * perimeter;
+                
+                return {
+                    x: circuitRect.x + circuitRect.width - (distance - circuitRect.width - circuitRect.height),
+                    y: circuitRect.y + circuitRect.height + 40
+                };
+            }
+        }
+        
+        function drawCircuit() {
+            const { x, y, width, height, cornerRadius, trackWidth } = circuitRect;
+            
+            // Draw wire track
+            ctx.strokeStyle = '#8B4513';
+            ctx.lineWidth = trackWidth;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            ctx.beginPath();
+            ctx.roundRect(x, y, width, height, cornerRadius);
+            ctx.stroke();
+            
+            // Draw inner track
+            ctx.strokeStyle = '#A0522D';
+            ctx.lineWidth = trackWidth - 10;
+            ctx.stroke();
+        }
+        
+        function createCircuitSections() {
+            circuitSections = [];
+            
+            // Collect all component positions and sort them
+            const components = [];
+            
+            // Add batteries (on top edge)
+            batteries.forEach((battery, i) => {
+                components.push({
+                    position: battery.position,
+                    type: 'battery',
+                    index: i
+                });
+            });
+            
+            // Add bulbs (on bottom edge)
+            bulbs.forEach((bulb, i) => {
+                components.push({
+                    position: bulb.position,
+                    type: 'bulb',
+                    index: i
+                });
+            });
+            
+            // Sort components by position
+            components.sort((a, b) => a.position - b.position);
+            
+            // Create sections between components
+            for (let i = 0; i < components.length; i++) {
+                const current = components[i];
+                const next = components[(i + 1) % components.length];
+                
+                let energyLevel = 0;
+                
+                // Determine energy level for this section
+                // Energy accumulates after batteries and depletes after bulbs
+                let batteriesEncountered = 0;
+                let bulbsEncountered = 0;
+                
+                // Count batteries and bulbs before this section
+                for (let j = 0; j <= i; j++) {
+                    if (components[j].type === 'battery') {
+                        batteriesEncountered++;
+                    } else if (components[j].type === 'bulb') {
+                        bulbsEncountered++;
+                    }
+                }
+                
+                // Calculate energy: batteries add 6 each, bulbs consume proportionally
+                energyLevel = batteriesEncountered * 6 - bulbsEncountered * Math.floor((numBatteries * 6) / numBulbs);
+                energyLevel = Math.max(0, energyLevel); // Can't be negative
+                
+                const section = new CircuitSection(
+                    current.position,
+                    next.position,
+                    energyLevel
+                );
+                
+                circuitSections.push(section);
+            }
+        }
+        
+        function setupCircuit() {
+            // Clear existing objects
+            electrons = [];
+            batteries = [];
+            bulbs = [];
+            circuitSections = [];
+            
+            // Create batteries along the top - evenly spaced
+            for (let i = 0; i < numBatteries; i++) {
+                const spacing = circuitRect.width / (numBatteries + 1);
+                const xPosition = spacing * (i + 1);
+                const position = xPosition / (2 * (circuitRect.width + circuitRect.height));
+                batteries.push(new Battery(position));
+            }
+            
+            // Create bulbs along the bottom
+            const perimeter = 2 * (circuitRect.width + circuitRect.height);
+            const bottomStart = (circuitRect.width + circuitRect.height) / perimeter;
+            const bottomLength = circuitRect.width / perimeter;
+            
+            for (let i = 0; i < numBulbs; i++) {
+                const spacing = 1 / (numBulbs + 1);
+                const t = spacing * (i + 1);
+                const position = bottomStart + t * bottomLength;
+                bulbs.push(new Bulb(position));
+            }
+            
+            // Create circuit sections based on component positions
+            createCircuitSections();
+            
+            // Create electrons (spaced around the circuit)
+            const numElectrons = 6;
+            for (let i = 0; i < numElectrons; i++) {
+                const electron = new Electron();
+                electron.position = i / numElectrons;
+                electrons.push(electron);
+            }
+        }
+        
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw circuit
+            drawCircuit();
+            
+            // Update and draw batteries
+            batteries.forEach(battery => battery.draw());
+            
+            // Update and draw bulbs
+            bulbs.forEach(bulb => {
+                bulb.update();
+                bulb.draw();
+            });
+            
+            // Update and draw electrons
+            electrons.forEach(electron => {
+                electron.update();
+                electron.draw();
+            });
+            
+            // Update and draw energy balls
+            energyBalls = energyBalls.filter(ball => {
+                const alive = ball.update();
+                if (alive) ball.draw();
+                return alive;
+            });
+            
+            updateInfo();
+            
+            if (!isPaused) {
+                time++;
+            }
+            
+            animationId = requestAnimationFrame(animate);
+        }
+        
+        function setBatteries(num) {
+            numBatteries = num;
+            setupCircuit();
+            updateButtonStates('battery', num);
+        }
+        
+        function setBulbs(num) {
+            numBulbs = num;
+            setupCircuit();
+            updateButtonStates('bulb', num);
+        }
+        
+        function updateButtonStates(type, activeNum) {
+            const buttons = document.querySelectorAll(type === 'battery' ? '.battery-btn' : '.bulb-btn');
+            buttons.forEach((btn, index) => {
+                btn.classList.toggle('active', index + 1 === activeNum);
+            });
+        }
+        
+        function updateInfo() {
+            const totalVoltage = numBatteries * 6;
+            const energyPerElectron = totalVoltage;
+            const energyPerBulb = totalVoltage / numBulbs;
+            const brightness = Math.min(100, (energyPerBulb / 6) * 100);
+            
+            document.getElementById('totalVoltage').textContent = `${totalVoltage}V`;
+            document.getElementById('energyPerElectron').textContent = `${energyPerElectron} units`;
+            document.getElementById('energyPerBulb').textContent = `${energyPerBulb.toFixed(1)} units`;
+            document.getElementById('bulbBrightness').textContent = `${brightness.toFixed(0)}%`;
+        }
+        
+        function togglePlayPause() {
+            isPaused = !isPaused;
+            const playBtn = document.getElementById('playBtn');
+            playBtn.textContent = isPaused ? 'Play' : 'Pause';
+        }
+        
+        // Speed control
+        document.getElementById('speedSlider').addEventListener('input', (e) => {
+            electronSpeed = parseFloat(e.target.value);
+            document.getElementById('speedValue').textContent = `${electronSpeed}x`;
+        });
+        
+        // Initialize simulation
+        setupCircuit();
+        animate();
+    </script>
+</body>
+</html>
