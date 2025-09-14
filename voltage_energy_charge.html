@@ -38,13 +38,12 @@
             background: #0a0a0a;
         }
         
-        .controls {
+        .top-controls {
+            position: absolute;
+            top: 80px;
+            left: 200px; /* Adjust to position between speed control and info panel */
             display: flex;
-            gap: 30px;
-            margin: 20px 0;
-            flex-wrap: wrap;
-            justify-content: center;
-            align-items: center;
+            gap: 20px;
         }
         
         .control-group {
@@ -165,7 +164,7 @@
             background: rgba(255, 255, 255, 0.1);
             border-radius: 10px;
             backdrop-filter: blur(10px);
-            max-width: 300px;
+            max-width: 250px;
             font-size: 12px;
             color: #ccc;
         }
@@ -176,26 +175,6 @@
         <h1 class="title">Circuit Energy Flow Visualization</h1>
         
         <canvas id="canvas" width="900" height="600"></canvas>
-        
-        <div class="controls">
-            <div class="control-group">
-                <h3>Batteries (6V each)</h3>
-                <div class="button-group">
-                    <button class="battery-btn active" onclick="setBatteries(1)">1</button>
-                    <button class="battery-btn" onclick="setBatteries(2)">2</button>
-                    <button class="battery-btn" onclick="setBatteries(3)">3</button>
-                </div>
-            </div>
-            
-            <div class="control-group">
-                <h3>Light Bulbs</h3>
-                <div class="button-group">
-                    <button class="bulb-btn active" onclick="setBulbs(1)">1</button>
-                    <button class="bulb-btn" onclick="setBulbs(2)">2</button>
-                    <button class="bulb-btn" onclick="setBulbs(3)">3</button>
-                </div>
-            </div>
-        </div>
     </div>
 
     <div class="speed-control">
@@ -205,6 +184,26 @@
             <h3>Electron Speed</h3>
             <input type="range" min="0.5" max="3" value="1.5" step="0.1" class="slider" id="speedSlider">
             <div id="speedValue">1.5x</div>
+        </div>
+    </div>
+
+    <div class="top-controls">
+        <div class="control-group">
+            <h3>Batteries (6V each)</h3>
+            <div class="button-group">
+                <button class="battery-btn active" onclick="setBatteries(1)">1</button>
+                <button class="battery-btn" onclick="setBatteries(2)">2</button>
+                <button class="battery-btn" onclick="setBatteries(3)">3</button>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <h3>Light Bulbs</h3>
+            <div class="button-group">
+                <button class="bulb-btn active" onclick="setBulbs(1)">1</button>
+                <button class="bulb-btn" onclick="setBulbs(2)">2</button>
+                <button class="bulb-btn" onclick="setBulbs(3)">3</button>
+            </div>
         </div>
     </div>
 
@@ -672,19 +671,19 @@
                 ctx.strokeStyle = this.color;
                 ctx.lineWidth = 3;
                 ctx.beginPath();
-                ctx.moveTo(voltmeter.x + (this.label === '+' ? 25 : -25), voltmeter.y + 20);
+                ctx.moveTo(voltmeter.x + (this.label === '+' ? 40 : -40), voltmeter.y + 20);
                 ctx.lineTo(this.x, this.y);
                 ctx.stroke();
                 
                 // Draw lead tip
                 ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = this.color;
+                ctx.arc(this.x, this.y, 5, 0, Math.PI * 2);
+                ctx.fillStyle = '#FFFFFF';
                 ctx.fill();
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 1;
                 ctx.stroke();
-                
+
                 // Draw connection indicator if connected
                 if (this.connectedSection) {
                     ctx.beginPath();
@@ -693,12 +692,6 @@
                     ctx.lineWidth = 2;
                     ctx.stroke();
                 }
-                
-                // Draw label
-                ctx.fillStyle = 'white';
-                ctx.font = 'bold 12px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText(this.label, this.x, this.y + 4);
             }
             
             contains(x, y) {
@@ -765,22 +758,22 @@
                 // Draw lead connection points
                 ctx.fillStyle = '#FF0000';
                 ctx.beginPath();
-                ctx.arc(this.x + 25, this.y + 20, 4, 0, Math.PI * 2);
+                ctx.arc(this.x + 35, this.y + 20, 4, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.fillStyle = 'white';
                 ctx.font = 'bold 10px Arial';
                 ctx.textAlign = 'center';
-                ctx.fillText('+', this.x + 25, this.y + 24);
+                ctx.fillText('+', this.x + 35, this.y + 24);
                 
                 ctx.fillStyle = '#000000';
                 ctx.beginPath();
-                ctx.arc(this.x - 25, this.y + 20, 4, 0, Math.PI * 2);
+                ctx.arc(this.x - 35, this.y + 20, 4, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.strokeStyle = '#666';
                 ctx.lineWidth = 1;
                 ctx.stroke();
                 ctx.fillStyle = 'white';
-                ctx.fillText('-', this.x - 25, this.y + 24);
+                ctx.fillText('-', this.x - 35, this.y + 24);
                 
                 // Draw leads
                 this.positiveLead.draw();
@@ -883,7 +876,7 @@
             
             // Initialize voltmeter if it doesn't exist
             if (!voltmeter) {
-                voltmeter = new Voltmeter(400, 500);
+                voltmeter = new Voltmeter(300, 300);
             }
             
             // Create batteries along the top - evenly spaced
