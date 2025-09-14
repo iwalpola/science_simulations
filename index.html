@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Science Simulations by Mr. Walpola</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            max-width: 800px;
+            width: 100%;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        h1 {
+            color: #4a5568;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .subtitle {
+            color: #718096;
+            font-size: 1.2em;
+            margin-bottom: 30px;
+            font-style: italic;
+        }
+
+        .intro {
+            font-size: 1.1em;
+            margin-bottom: 40px;
+            color: #4a5568;
+            line-height: 1.7;
+        }
+
+        .simulations {
+            background: #f7fafc;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 20px 0;
+            border-left: 5px solid #667eea;
+        }
+
+        .simulation-item {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            border: 1px solid #e2e8f0;
+        }
+
+        .simulation-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .simulation-title {
+            font-size: 1.4em;
+            color: #2d3748;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .simulation-description {
+            color: #4a5568;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .launch-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .launch-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+            filter: brightness(110%);
+        }
+
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+            color: #718096;
+            font-size: 0.9em;
+        }
+
+        .science-icon {
+            font-size: 3em;
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 25px;
+                margin: 10px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+            
+            .simulation-item {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="science-icon">🔬</div>
+        <h1>Science Simulations</h1>
+        <p class="subtitle">by Mr. Walpola</p>
+        
+        <div class="intro">
+            Welcome to an interactive collection of physics simulations designed to help visualize and understand fundamental scientific concepts. Each simulation provides hands-on exploration of key principles in physics.
+        </div>
+
+        <div class="simulations">
+            <h2 style="color: #2d3748; margin-bottom: 25px; font-size: 1.5em;">Available Simulations</h2>
+            
+            <div class="simulation-item">
+                <div class="simulation-title">⚡ Voltage, Energy & Charge</div>
+                <div class="simulation-description">
+                    Explore how energy is added to a charge when it passes through a battery and removed from it when it passes through a bulb. This interactive simulation demonstrates the relationship between voltage, energy transfer, and electric charge in a simple circuit.
+                </div>
+                <a href="https://iwalpola.github.io/science_simulations/voltage_energy_charge.html" class="launch-button">
+                    Launch Simulation →
+                </a>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>More simulations coming soon! Check back regularly for new interactive physics experiences.</p>
+            <p style="margin-top: 10px;">
+                <a href="https://github.com/iwalpola/science_simulations" style="color: #667eea; text-decoration: none;">
+                    View on GitHub 📁
+                </a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
