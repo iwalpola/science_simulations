@@ -195,6 +195,17 @@
         .checkbox-item input[type="checkbox"] {
             margin: 0;
         }
+
+        .magnifying-control {
+            position: absolute;
+            top: 400px;
+            right: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            min-width: 200px;
+        }
         
         .voltage-value { color: #ff8c00; }
         .current-value { color: #4a90ff; }
@@ -276,6 +287,13 @@
         </div>
     </div>
 
+    <div class="magnifying-control">
+        <div class="checkbox-item">
+            <input type="checkbox" id="showMagnifier" onchange="toggleMagnifier()">
+            <label for="showMagnifier">Show Magnifying Glass</label>
+        </div>
+    </div>
+
     <div class="instructions">
         <h3 style="margin: 0 0 10px 0; font-size: 14px;">Voltmeter Instructions:</h3>
         <div>• Drag the voltmeter body to move it</div>
@@ -287,6 +305,12 @@
     <script>
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
+
+        //Magnification feature
+        let showMagnifier = false;
+        let magnifier = null;
+        let microElectrons = [];
+        let latticeAtoms = [];
         
         // Circuit parameters
         let numBatteries = 1;
@@ -868,6 +892,301 @@
                        y >= this.y - this.height/2 && y <= this.y + this.height/2;
             }
         }
+
+        // Micro Electron class for realistic physics
+        class MicroElectron {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 2; // Reduced initial random velocity
+                this.vy = (Math.random() - 0.5) * 2;
+                this.radius = 1.5;
+                this.driftSpeed = 0.2; // Increased drift speed
+            }
+            
+            update(driftDirection) {
+                // Only update if magnifier is over wire
+                if (!magnifier.isOverWire()) {
+                    return;
+                }
+                
+                // Increased drift bias and reduced random motion
+                const driftX = Math.cos(driftDirection) * this.driftSpeed * 3;
+                const driftY = Math.sin(driftDirection) * this.driftSpeed * 3;
+                
+                // Update position with thermal motion + stronger drift
+                this.x += this.vx * 0.7 + driftX;
+                this.y += this.vy * 0.7 + driftY;
+                
+                // Check collision with lattice atoms
+                for (let atom of latticeAtoms) {
+                    const dx = this.x - atom.x;
+                    const dy = this.y - atom.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < atom.radius + this.radius) {
+                        // Collision! Scatter but maintain some drift bias
+                        const angle = Math.random() * Math.PI * 2;
+                        const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy) * 0.8; // Reduce speed on collision
+                        this.vx = Math.cos(angle) * speed + driftX * 0.5; // Keep some drift
+                        this.vy = Math.sin(angle) * speed + driftY * 0.5;
+                        
+                        // Move away from atom
+                        const pushDistance = atom.radius + this.radius + 2;
+                        this.x = atom.x + (dx / distance) * pushDistance;
+                        this.y = atom.y + (dy / distance) * pushDistance;
+                    }
+                }
+                
+                // Wrap around extended boundaries (larger than visible area)
+                const bounds = 100;
+                if (this.x < -bounds) this.x = bounds;
+                if (this.x > bounds) this.x = -bounds;
+                if (this.y < -bounds) this.y = bounds;
+                if (this.y > bounds) this.y = -bounds;
+                
+                // Reduced random velocity changes
+                this.vx += (Math.random() - 0.5) * 0.1; // Reduced from 0.2
+                this.vy += (Math.random() - 0.5) * 0.1;
+                
+                // Add slight bias toward drift direction
+                this.vx += driftX * 0.1;
+                this.vy += driftY * 0.1;
+                
+                // Limit maximum speed
+                const maxSpeed = 3; // Reduced from 6
+                const currentSpeed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+                if (currentSpeed > maxSpeed) {
+                    this.vx = (this.vx / currentSpeed) * maxSpeed;
+                    this.vy = (this.vy / currentSpeed) * maxSpeed;
+                }
+            }
+            
+            draw(centerX, centerY) {
+                ctx.beginPath();
+                ctx.arc(centerX + this.x, centerY + this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#87CEEB';
+                ctx.fill();
+                ctx.strokeStyle = '#4682B4';
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
+            }
+        }
+
+        // Lattice Atom class
+        class LatticeAtom {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 4;
+            }
+            
+            draw(centerX, centerY) {
+                ctx.beginPath();
+                ctx.arc(centerX + this.x, centerY + this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#C0C0C0'; // Silver metallic color
+                ctx.fill();
+                ctx.strokeStyle = '#A0A0A0';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+        }
+
+        // Magnifying Glass class
+        class MagnifyingGlass {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 80;
+                this.handleLength = 40;
+                this.isDragging = false;
+            }
+            
+            initializeLatticeAndElectrons() {
+                latticeAtoms = [];
+                microElectrons = [];
+                
+                // Create extended lattice structure (larger than visible area for smooth transitions)
+                const spacing = 12;
+                for (let x = -120; x <= 120; x += spacing) {
+                    for (let y = -120; y <= 120; y += spacing) {
+                        latticeAtoms.push(new LatticeAtom(x, y));
+                    }
+                }
+                
+                // Create more micro electrons with better distribution
+                for (let i = 0; i < 35; i++) {
+                    const x = (Math.random() - 0.5) * 200;
+                    const y = (Math.random() - 0.5) * 200;
+                    microElectrons.push(new MicroElectron(x, y));
+                }
+            }
+
+            isOverWire() {
+                const tolerance = this.radius + 20; // Extra tolerance for smooth transitions
+                const { x, y, width, height } = circuitRect;
+                
+                // Check if magnifier overlaps with any part of the circuit wire
+                // Top edge
+                if (this.y >= y - tolerance && this.y <= y + tolerance && 
+                    this.x >= x - tolerance && this.x <= x + width + tolerance) {
+                    return true;
+                }
+                
+                // Right edge
+                if (this.x >= x + width - tolerance && this.x <= x + width + tolerance && 
+                    this.y >= y - tolerance && this.y <= y + height + tolerance) {
+                    return true;
+                }
+                
+                // Bottom edge
+                if (this.y >= y + height - tolerance && this.y <= y + height + tolerance && 
+                    this.x >= x - tolerance && this.x <= x + width + tolerance) {
+                    return true;
+                }
+                
+                // Left edge
+                if (this.x >= x - tolerance && this.x <= x + tolerance && 
+                    this.y >= y - tolerance && this.y <= y + height + tolerance) {
+                    return true;
+                }
+                
+                return false;
+            }
+            
+            getCurrentDirection() {
+                if (!this.isOverWire()) {
+                    return 0; // Default direction if not over wire
+                }
+                
+                const { x, y, width, height } = circuitRect;
+                const tolerance = this.radius + 20;
+                
+                // Determine which edge we're closest to and return appropriate direction
+                // Top edge - move right
+                if (this.y >= y - tolerance && this.y <= y + tolerance && 
+                    this.x >= x - tolerance && this.x <= x + width + tolerance) {
+                    return chargeType === 'positive' ? Math.PI : 0; // Right for electrons, left for positive
+                }
+                
+                // Right edge - move down  
+                if (this.x >= x + width - tolerance && this.x <= x + width + tolerance && 
+                    this.y >= y - tolerance && this.y <= y + height + tolerance) {
+                    return chargeType === 'positive' ? -Math.PI/2 : Math.PI/2; // Down for electrons, up for positive
+                }
+                
+                // Bottom edge - move left
+                if (this.y >= y + height - tolerance && this.y <= y + height + tolerance && 
+                    this.x >= x - tolerance && this.x <= x + width + tolerance) {
+                    return chargeType === 'positive' ? 0 : Math.PI; // Left for electrons, right for positive
+                }
+                
+                // Left edge - move up
+                if (this.x >= x - tolerance && this.x <= x + tolerance && 
+                    this.y >= y - tolerance && this.y <= y + height + tolerance) {
+                    return chargeType === 'positive' ? Math.PI/2 : -Math.PI/2; // Up for electrons, down for positive
+                }
+                
+                return 0; // Default fallback
+            }
+            
+            update() {
+                if (!showMagnifier) return;
+                
+                // Check if we need to initialize or clear lattice based on wire position
+                const overWire = this.isOverWire();
+                
+                if (overWire && (latticeAtoms.length === 0 || microElectrons.length === 0)) {
+                    // We're over wire but don't have lattice - initialize it
+                    this.initializeLatticeAndElectrons();
+                } else if (!overWire && (latticeAtoms.length > 0 || microElectrons.length > 0)) {
+                    // We're not over wire but have lattice - clear it
+                    latticeAtoms = [];
+                    microElectrons = [];
+                }
+                
+                // Update micro electrons if they exist
+                if (overWire && microElectrons.length > 0) {
+                    const direction = this.getCurrentDirection();
+                    microElectrons.forEach(electron => {
+                        electron.update(direction);
+                    });
+                }
+            }
+            
+            draw() {
+                if (!showMagnifier) return;
+                
+                // Save context for clipping
+                ctx.save();
+                
+                // Create circular clipping path
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.clip();
+                
+                // Fill magnifier background
+                ctx.fillStyle = '#1a1a1a';
+                ctx.fill();
+                
+                // Only draw lattice and electrons if over wire
+                if (this.isOverWire()) {
+                    // Draw lattice atoms (only those visible in the magnifier)
+                    latticeAtoms.forEach(atom => {
+                        const screenX = this.x + atom.x;
+                        const screenY = this.y + atom.y;
+                        const dx = screenX - this.x;
+                        const dy = screenY - this.y;
+                        if (dx * dx + dy * dy <= this.radius * this.radius) {
+                            atom.draw(this.x, this.y);
+                        }
+                    });
+                    
+                    // Draw micro electrons (only those visible)
+                    microElectrons.forEach(electron => {
+                        const screenX = this.x + electron.x;
+                        const screenY = this.y + electron.y;
+                        const dx = screenX - this.x;
+                        const dy = screenY - this.y;
+                        if (dx * dx + dy * dy <= this.radius * this.radius) {
+                            electron.draw(this.x, this.y);
+                        }
+                    });
+                }
+                
+                // Restore context
+                ctx.restore();
+                
+                // Draw magnifier border and handle
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.strokeStyle = '#666';
+                ctx.lineWidth = 4;
+                ctx.stroke();
+                
+                // Draw handle
+                const handleX = this.x + this.radius * 0.7;
+                const handleY = this.y + this.radius * 0.7;
+                ctx.beginPath();
+                ctx.moveTo(this.x + this.radius * 0.5, this.y + this.radius * 0.5);
+                ctx.lineTo(handleX, handleY);
+                ctx.lineWidth = 6;
+                ctx.strokeStyle = '#444';
+                ctx.stroke();
+                
+                // Draw glass reflection effect
+                ctx.beginPath();
+                ctx.arc(this.x - 20, this.y - 20, 15, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.fill();
+            }
+            
+            contains(x, y) {
+                const dx = x - this.x;
+                const dy = y - this.y;
+                return dx * dx + dy * dy <= this.radius * this.radius;
+            }
+        }
         
         function drawCircuit() {
             const { x, y, width, height, cornerRadius, trackWidth } = circuitRect;
@@ -936,6 +1255,14 @@
 
         function toggleShowPotential() {
             showPotential = document.getElementById('showPotential').checked;
+        }
+
+        function toggleMagnifier() {
+            showMagnifier = document.getElementById('showMagnifier').checked;
+            if (showMagnifier && !magnifier) {
+                magnifier = new MagnifyingGlass(500, 300);
+                magnifier.initializeLatticeAndElectrons();
+            }
         }
         
         function createCircuitSections() {
@@ -1057,6 +1384,12 @@
                 electron.position = i / numElectrons;
                 electrons.push(electron);
             }
+
+            // Initialize magnifier if needed
+            if (showMagnifier && !magnifier) {
+                magnifier = new MagnifyingGlass(300, 300);
+                magnifier.initializeLatticeAndElectrons();
+            }
         }
         
         function animate() {
@@ -1096,6 +1429,12 @@
             if (voltmeter) {
                 voltmeter.update();
                 voltmeter.draw();
+            }
+
+            // Update and draw magnifying glass
+            if (magnifier && showMagnifier) {
+                magnifier.update();
+                magnifier.draw();
             }
             
             updateInfo();
@@ -1177,6 +1516,10 @@
                 isDragging = true;
                 dragTarget = voltmeter;
                 canvas.style.cursor = 'grabbing';
+            } else if (magnifier && magnifier.contains(mouseX, mouseY)) {
+                isDragging = true;
+                dragTarget = magnifier;
+                canvas.style.cursor = 'grabbing';
             }
         });
         
@@ -1190,6 +1533,10 @@
                     // Move voltmeter body
                     voltmeter.x = mouseX;
                     voltmeter.y = mouseY;
+                } else if (dragTarget === magnifier) {
+                    // Move magnifying glass
+                    magnifier.x = mouseX;
+                    magnifier.y = mouseY;
                 } else {
                     // Move individual lead
                     dragTarget.x = mouseX;
@@ -1199,7 +1546,8 @@
                 // Set cursor based on what's under the mouse
                 if (voltmeter.positiveLead.contains(mouseX, mouseY) || 
                     voltmeter.negativeLead.contains(mouseX, mouseY) || 
-                    voltmeter.contains(mouseX, mouseY)) {
+                    voltmeter.contains(mouseX, mouseY) ||
+                    (magnifier && magnifier.contains(mouseX, mouseY))) {
                     canvas.style.cursor = 'grab';
                 } else {
                     canvas.style.cursor = 'default';
