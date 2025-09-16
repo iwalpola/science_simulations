@@ -1067,28 +1067,30 @@
                 const tolerance = this.radius + 20;
                 
                 // Determine which edge we're closest to and return appropriate direction
-                // Top edge - move right
+                // Always show real electron flow regardless of main simulation setting
+                
+                // Top edge - electrons move right
                 if (this.y >= y - tolerance && this.y <= y + tolerance && 
                     this.x >= x - tolerance && this.x <= x + width + tolerance) {
-                    return chargeType === 'positive' ? Math.PI : 0; // Right for electrons, left for positive
+                    return 0; // Always right for electrons
                 }
                 
-                // Right edge - move down  
+                // Right edge - electrons move down  
                 if (this.x >= x + width - tolerance && this.x <= x + width + tolerance && 
                     this.y >= y - tolerance && this.y <= y + height + tolerance) {
-                    return chargeType === 'positive' ? -Math.PI/2 : Math.PI/2; // Down for electrons, up for positive
+                    return Math.PI/2; // Always down for electrons
                 }
                 
-                // Bottom edge - move left
+                // Bottom edge - electrons move left
                 if (this.y >= y + height - tolerance && this.y <= y + height + tolerance && 
                     this.x >= x - tolerance && this.x <= x + width + tolerance) {
-                    return chargeType === 'positive' ? 0 : Math.PI; // Left for electrons, right for positive
+                    return Math.PI; // Always left for electrons
                 }
                 
-                // Left edge - move up
+                // Left edge - electrons move up
                 if (this.x >= x - tolerance && this.x <= x + tolerance && 
                     this.y >= y - tolerance && this.y <= y + height + tolerance) {
-                    return chargeType === 'positive' ? Math.PI/2 : -Math.PI/2; // Up for electrons, down for positive
+                    return -Math.PI/2; // Always up for electrons
                 }
                 
                 return 0; // Default fallback
