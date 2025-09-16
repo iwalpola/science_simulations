@@ -122,7 +122,7 @@
             width: 150px;
             height: 6px;
             border-radius: 3px;
-            background: #333;
+            background: #aaa;
             outline: none;
             appearance: none;
         }
@@ -150,6 +150,50 @@
         .info-item {
             margin: 8px 0;
             font-size: 14px;
+        }
+
+        .charge-control {
+            position: absolute;
+            top: 250px;
+            right: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            min-width: 200px;
+        }
+
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .radio-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #ccc;
+            font-size: 14px;
+        }
+
+        .radio-item input[type="radio"] {
+            margin: 0;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #ccc;
+            font-size: 14px;
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid #555;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            margin: 0;
         }
         
         .voltage-value { color: #ff8c00; }
@@ -214,6 +258,24 @@
         <div class="info-item">Bulb Brightness: <span class="power-value" id="bulbBrightness">100%</span></div>
     </div>
 
+    <div class="charge-control">
+        <h3 style="margin: 0 0 10px 0; font-size: 14px; color: #ccc;">Charge Type:</h3>
+        <div class="radio-group">
+            <label class="radio-item">
+                <input type="radio" name="chargeType" value="electrons" checked onchange="setChargeType('electrons')">
+                Electrons (e⁻)
+            </label>
+            <label class="radio-item">
+                <input type="radio" name="chargeType" value="positive" onchange="setChargeType('positive')">
+                Positive Charges (+)
+            </label>
+        </div>
+        <div class="checkbox-item">
+            <input type="checkbox" id="showPotential" onchange="toggleShowPotential()">
+            <label for="showPotential">Show Potential Values</label>
+        </div>
+    </div>
+
     <div class="instructions">
         <h3 style="margin: 0 0 10px 0; font-size: 14px;">Voltmeter Instructions:</h3>
         <div>• Drag the voltmeter body to move it</div>
@@ -231,6 +293,8 @@
         let numBulbs = 1;
         let electronSpeed = 1.5;
         let isPaused = false;
+        let chargeType = 'electrons'; // 'electrons' or 'positive'
+        let showPotential = false;
         
         // Circuit geometry
         const circuitRect = {
@@ -283,11 +347,15 @@
                 if (isPaused) return;
                 
                 const oldPosition = this.position;
-                this.position += electronSpeed * 0.002;
+                // Reverse direction for positive charges
+                const direction = chargeType === 'positive' ? -1 : 1;
+                this.position += direction * electronSpeed * 0.002;
                 
                 // Handle circuit wrap-around
                 if (this.position >= 1) {
                     this.position -= 1;
+                } else if (this.position < 0) {
+                    this.position += 1;
                 }
                 
                 // Check for section transitions
@@ -302,37 +370,49 @@
                 if (oldSection !== newSection && newSection !== this.lastSectionTransition) {
                     this.lastSectionTransition = newSection;
                     
-                    // Check if we're passing a battery (entering a section after a battery)
+                    const direction = chargeType === 'positive' ? -1 : 1;
+                    
+                    // Check if we're passing a battery
                     batteries.forEach((battery, index) => {
-                        if (Math.abs(battery.position - oldPosition) < 0.05 && 
-                            this.position > battery.position) {
+                        const crossedBattery = (direction > 0) ? 
+                            (oldPosition < battery.position && this.position >= battery.position) || 
+                            (oldPosition > 0.9 && this.position < 0.1 && battery.position < 0.1) :
+                            (oldPosition > battery.position && this.position <= battery.position) ||
+                            (oldPosition < 0.1 && this.position > 0.9 && battery.position > 0.9);
+                            
+                        if (crossedBattery) {
                             // Create visual energy transfer from battery
-                            const coords = this.getCoordinates();
+                            const batteryCoords = battery.getCoordinates();
+                            const chargeCoords = this.getCoordinates();
                             for (let i = 0; i < 6; i++) {
                                 setTimeout(() => {
                                     energyBalls.push(new EnergyBall(
-                                        coords.x - 30, coords.y - 30, 
-                                        coords.x, coords.y, 'receive'
+                                        batteryCoords.x, batteryCoords.y + 30,
+                                        chargeCoords.x, chargeCoords.y, 'receive'
                                     ));
                                 }, i * 50);
                             }
                         }
                     });
                     
-                    // Check if we're passing a bulb (entering a section after a bulb)
+                    // Check if we're passing a bulb
                     bulbs.forEach((bulb, index) => {
-                        if (Math.abs(bulb.position - oldPosition) < 0.05 && 
-                            this.position > bulb.position) {
-                            const currentSection = this.getCurrentSection(this.position);
+                        const crossedBulb = (direction > 0) ? 
+                            (oldPosition < bulb.position && this.position >= bulb.position) ||
+                            (oldPosition > 0.9 && this.position < 0.1 && bulb.position < 0.1) :
+                            (oldPosition > bulb.position && this.position <= bulb.position) ||
+                            (oldPosition < 0.1 && this.position > 0.9 && bulb.position > 0.9);
+                            
+                        if (crossedBulb) {
                             const energyToGive = Math.floor((numBatteries * 6) / numBulbs);
                             
                             // Create visual energy transfer to bulb
-                            const coords = this.getCoordinates();
+                            const chargeCoords = this.getCoordinates();
                             const bulbCoords = bulb.getCoordinates();
                             for (let i = 0; i < energyToGive; i++) {
                                 setTimeout(() => {
                                     energyBalls.push(new EnergyBall(
-                                        coords.x, coords.y,
+                                        chargeCoords.x, chargeCoords.y,
                                         bulbCoords.x, bulbCoords.y, 'give'
                                     ));
                                     bulb.receiveEnergy();
@@ -388,24 +468,27 @@
                 const coords = this.getCoordinates();
                 const energyCount = this.getEnergyCount();
                 
-                // Draw electron (light blue circle with negative sign)
+                // Different colors and symbols based on charge type
+                const isPositive = chargeType === 'positive';
+                
+                // Draw charge particle
                 ctx.beginPath();
                 ctx.arc(coords.x, coords.y, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = '#87CEEB';
+                ctx.fillStyle = isPositive ? '#FF6B6B' : '#87CEEB'; // Red for positive, blue for electrons
                 ctx.fill();
-                ctx.strokeStyle = '#4682B4';
+                ctx.strokeStyle = isPositive ? '#CC0000' : '#4682B4';
                 ctx.lineWidth = 2;
                 ctx.stroke();
                 
-                // Draw negative sign
-                ctx.fillStyle = 'black';
+                // Draw charge sign
+                ctx.fillStyle = 'white';
                 ctx.font = 'bold 16px Arial';
                 ctx.textAlign = 'center';
-                ctx.fillText('-', coords.x, coords.y + 6);
+                ctx.fillText(isPositive ? '+' : '-', coords.x, coords.y + 6);
                 
-                // Draw energy balls around electron based on section energy
+                // Draw energy balls (same for both charge types)
                 for (let i = 0; i < energyCount; i++) {
-                    const angle = (i / 18) * Math.PI * 2; // Max 18 energy balls
+                    const angle = (i / 18) * Math.PI * 2;
                     const orbitalRadius = this.radius + 8;
                     const energyX = coords.x + Math.cos(angle + time * 0.05) * orbitalRadius;
                     const energyY = coords.y + Math.sin(angle + time * 0.05) * orbitalRadius;
@@ -804,6 +887,56 @@
             ctx.lineWidth = trackWidth - 10;
             ctx.stroke();
         }
+
+        function drawSectionEnergyLabels() {
+            if (!circuitSections || circuitSections.length === 0) return;
+            
+            ctx.fillStyle = '#FFFF00'; // Yellow text for visibility
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            
+            circuitSections.forEach((section, index) => {
+                // Calculate midpoint of this section
+                let midPosition = (section.startPos + section.endPos) / 2;
+                
+                // Handle wrap-around case
+                if (section.startPos > section.endPos) {
+                    midPosition = section.startPos + (1 - section.startPos + section.endPos) / 2;
+                    if (midPosition >= 1) midPosition -= 1;
+                }
+                
+                // Convert position to coordinates (same logic as electron coordinates)
+                const perimeter = 2 * (circuitRect.width + circuitRect.height);
+                const distance = midPosition * perimeter;
+                
+                let x, y;
+                
+                if (distance <= circuitRect.width) {
+                    // Top edge
+                    x = circuitRect.x + distance;
+                    y = circuitRect.y - 15; // Above the wire
+                } else if (distance <= circuitRect.width + circuitRect.height) {
+                    // Right edge
+                    x = circuitRect.x + circuitRect.width + 25; // Right of the wire
+                    y = circuitRect.y + (distance - circuitRect.width);
+                } else if (distance <= 2 * circuitRect.width + circuitRect.height) {
+                    // Bottom edge
+                    x = circuitRect.x + circuitRect.width - (distance - circuitRect.width - circuitRect.height);
+                    y = circuitRect.y + circuitRect.height + 25; // Below the wire
+                } else {
+                    // Left edge
+                    x = circuitRect.x - 25; // Left of the wire
+                    y = circuitRect.y + circuitRect.height - (distance - 2 * circuitRect.width - circuitRect.height);
+                }
+                
+                // Draw the energy level
+                ctx.fillText(`${section.energyLevel}V`, x, y);
+            });
+        }
+
+        function toggleShowPotential() {
+            showPotential = document.getElementById('showPotential').checked;
+        }
         
         function createCircuitSections() {
             circuitSections = [];
@@ -839,8 +972,7 @@
                 
                 let energyLevel = 0;
                 
-                // Determine energy level for this section
-                // Energy accumulates after batteries and depletes after bulbs
+                // Calculate energy levels as if for electrons first
                 let batteriesEncountered = 0;
                 let bulbsEncountered = 0;
                 
@@ -864,6 +996,22 @@
                 );
                 
                 circuitSections.push(section);
+            }
+            
+            // If positive charges, reverse and rotate the energy levels
+            if (chargeType !== 'electrons') {
+                const energyLevels = circuitSections.map(section => section.energyLevel);
+                energyLevels.reverse();
+                
+                // Rotate by (numBatteries - 1) positions the other way
+                const rotateBy = numBatteries - 1;
+                for (let i = 0; i < rotateBy; i++) {
+                    energyLevels.unshift(energyLevels.pop());  // Changed from push/shift to unshift/pop
+                }
+                
+                circuitSections.forEach((section, i) => {
+                    section.energyLevel = energyLevels[i];
+                });
             }
         }
         
@@ -916,6 +1064,11 @@
             
             // Draw circuit
             drawCircuit();
+
+            // Draw section energy labels if enabled
+            if (showPotential) {
+                drawSectionEnergyLabels();
+            }
             
             // Update and draw batteries
             batteries.forEach(battery => battery.draw());
@@ -965,6 +1118,12 @@
             setupCircuit();
             updateButtonStates('bulb', num);
         }
+
+        function setChargeType(type) {
+            chargeType = type;
+            // Reset the simulation with new charge type
+            setupCircuit();
+        }
         
         function updateButtonStates(type, activeNum) {
             const buttons = document.querySelectorAll(type === 'battery' ? '.battery-btn' : '.bulb-btn');
@@ -978,6 +1137,8 @@
             const energyPerElectron = totalVoltage;
             const energyPerBulb = totalVoltage / numBulbs;
             const brightness = Math.min(100, (energyPerBulb / 6) * 100);
+            
+            const chargeLabel = chargeType === 'positive' ? 'Positive Charge' : 'Electron';
             
             document.getElementById('totalVoltage').textContent = `${totalVoltage}V`;
             document.getElementById('energyPerElectron').textContent = `${energyPerElectron} units`;
