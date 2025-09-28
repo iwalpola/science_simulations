@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Circuit Diagram Teacher Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .control-group {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .branch-inputs {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        label {
+            font-weight: bold;
+            min-width: 150px;
+        }
+        .branch-label {
+            min-width: 80px;
+        }
+        input, select {
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        input[type="number"] {
+            width: 60px;
+        }
+        input[type="text"] {
+            width: 80px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .diagram-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        svg {
+            border: 1px solid #e0e0e0;
+            background: white;
+        }
+        .current-display {
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .total-current-display {
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            font-weight: bold;
+            fill: #28a745;
+        }
+        .voltage-display {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            font-weight: bold;
+            fill: #6f42c1;
+        }
+        .clickable-value {
+            cursor: pointer;
+        }
+        .clickable-value:hover {
+            opacity: 0.7;
+        }
+        #projectorControls {
+            border-top: 1px solid #ddd;
+            padding-top: 15px;
+        }
+        #revealButton {
+            display: none;
+        }
+        #junctionButton {
+            display: none;
+        }
+        .junction-current {
+            display: none;
+        }
+        .help-section {
+            margin-bottom: 20px;
+        }
+        .help-button {
+            background: #17a2b8;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .help-button:hover {
+            background: #138496;
+        }
+        .help-content {
+            display: none;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 20px;
+            margin-top: 10px;
+        }
+        .help-mode {
+            display: none;
+        }
+        .help-mode.active {
+            display: block;
+        }
+        .help-content h3 {
+            color: #495057;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        .help-content ul {
+            margin-bottom: 15px;
+        }
+        .help-content li {
+            margin-bottom: 5px;
+        }
+        .help-common {
+            border-top: 1px solid #dee2e6;
+            padding-top: 15px;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Circuit Quiz Teacher Tool 
+        <span style="margin-left: 30px; font-size: 16px; font-weight: normal;">
+            <input type="radio" id="projectorMode" name="mode" value="projector" checked onchange="updateMode()">
+            <label for="projectorMode">Projector Mode</label>
+            <input type="radio" id="flexibleMode" name="mode" value="flexible" style="margin-left: 15px;" onchange="updateMode()">
+            <label for="flexibleMode">Flexible Mode</label>
+        </span>
+    </h1>
+    
+    <div class="help-section">
+        <button onclick="toggleHelp()" id="helpToggle" class="help-button">Show Help</button>
+        <div id="helpContent" class="help-content">
+            <div id="projectorHelp" class="help-mode">
+                <h3>Projector Mode - Classroom Teaching</h3>
+                <ul>
+                    <li><strong>Setup:</strong> Configure branches, bulbs per branch, and battery voltage</li>
+                    <li><strong>Hide Values:</strong> Use checkboxes to hide voltages or currents for student exercises</li>
+                    <li><strong>Generate Circuit:</strong> Creates the circuit diagram with specified hidden values</li>
+                    <li><strong>Show Junction Currents:</strong> Reveals detailed current flow at all junctions (great for teaching Kirchhoff's laws)</li>
+                    <li><strong>Reveal Answers:</strong> Shows all hidden values at once for class discussion</li>
+                    <li><strong>Perfect for:</strong> Live demonstrations, structured problem solving, classroom projector use</li>
+                </ul>
+            </div>
+            <div id="flexibleHelp" class="help-mode">
+                <h3>Flexible Mode - Custom Worksheets</h3>
+                <ul>
+                    <li><strong>Setup:</strong> Configure branches, bulbs per branch, and battery voltage</li>
+                    <li><strong>Generate Circuit:</strong> Creates complete circuit diagram with all values visible</li>
+                    <li><strong>Hide Any Value:</strong> Click on any current or voltage value to toggle between actual value and "__?" placeholder</li>
+                    <li><strong>Show Junction Currents:</strong> Toggle detailed current flow visualization on/off</li>
+                    <li><strong>Create Custom Problems:</strong> Hide any combination of values to create unique exercises</li>
+                    <li><strong>Perfect for:</strong> Homework sheets, custom problem sets, individual student work</li>
+                </ul>
+            </div>
+            <div class="help-common">
+                <h3>Physics Concepts Demonstrated</h3>
+                <ul>
+                    <li><strong>Ohm's Law:</strong> V = I × R (each bulb = 10Ω)</li>
+                    <li><strong>Series Voltage Division:</strong> Voltage splits equally across bulbs in each branch</li>
+                    <li><strong>Parallel Current Division:</strong> Current splits across parallel branches</li>
+                    <li><strong>Kirchhoff's Current Law:</strong> Current in = Current out at each junction</li>
+                    <li><strong>Color Coding:</strong> Each branch has unique colors to track current flow</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <div class="control-group">
+            <label for="numBranches">Number of Branches:</label>
+            <select id="numBranches" onchange="updateBranchInputs()">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+            </select>
+            <label for="batteryVoltage" style="margin-left: 30px;">Battery Voltage:</label>
+            <select id="batteryVoltage">
+                <option value="6">6V</option>
+                <option value="12">12V</option>
+                <option value="18">18V</option>
+            </select>
+        </div>
+        
+        <div id="branchInputs">
+            <div class="control-group">
+                <span class="branch-label">Branch 1:</span>
+                <div class="branch-inputs">
+                    <label>Bulbs:</label>
+                    <input type="number" id="branch1-bulbs" value="2" min="1" max="5">
+                </div>
+            </div>
+        </div>
+        
+        <div id="projectorControls" style="margin-top: 20px;">
+            <div class="control-group">
+                <span class="branch-label">Branch 1:</span>
+                <div class="branch-inputs">
+                    <label><input type="checkbox" id="branch1-hide-voltage"> Hide voltages</label>
+                    <label><input type="checkbox" id="branch1-hide-current"> Hide current</label>
+                </div>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <button onclick="generateDiagram()">Generate Circuit</button>
+            <button id="revealButton" onclick="revealAnswers()" style="margin-left: 10px; background: #28a745;">Reveal Answers</button>
+            <button id="junctionButton" onclick="toggleJunctionCurrents()" style="margin-left: 10px; background: #6f42c1;">Show Junction Currents</button>
+        </div>
+    </div>
+    
+    <div class="diagram-container">
+        <div id="diagram"></div>
+    </div>
+
+    <script>
+        function updateBranchInputs() {
+            const numBranches = parseInt(document.getElementById('numBranches').value);
+            const container = document.getElementById('branchInputs');
+            const projectorContainer = document.getElementById('projectorControls');
+            
+            container.innerHTML = '';
+            projectorContainer.innerHTML = '';
+            
+            for (let i = 0; i < numBranches; i++) {
+                // Main branch inputs
+                const div = document.createElement('div');
+                div.className = 'control-group';
+                div.innerHTML = `
+                    <span class="branch-label">Branch ${i + 1}:</span>
+                    <div class="branch-inputs">
+                        <label>Bulbs:</label>
+                        <input type="number" id="branch${i + 1}-bulbs" value="2" min="1" max="5">
+                    </div>
+                `;
+                container.appendChild(div);
+                
+                // Projector mode controls
+                const projDiv = document.createElement('div');
+                projDiv.className = 'control-group';
+                projDiv.innerHTML = `
+                    <span class="branch-label">Branch ${i + 1}:</span>
+                    <div class="branch-inputs">
+                        <label><input type="checkbox" id="branch${i + 1}-hide-voltage"> Hide voltages</label>
+                        <label><input type="checkbox" id="branch${i + 1}-hide-current"> Hide current</label>
+                    </div>
+                `;
+                projectorContainer.appendChild(projDiv);
+            }
+        }
+        
+        function updateMode() {
+            const projectorMode = document.getElementById('projectorMode').checked;
+            const projectorControls = document.getElementById('projectorControls');
+            const revealButton = document.getElementById('revealButton');
+            const junctionButton = document.getElementById('junctionButton');
+            
+            if (projectorMode) {
+                projectorControls.style.display = 'block';
+                revealButton.style.display = 'inline-block';
+                junctionButton.style.display = 'inline-block';
+            } else {
+                projectorControls.style.display = 'none';
+                revealButton.style.display = 'none';
+                junctionButton.style.display = 'inline-block';
+            }
+            
+            updateHelpMode();
+        }
+        
+        let hiddenElements = new Set();
+        let projectorHiddenElements = new Set();
+        
+        function generateDiagram() {
+            const numBranches = parseInt(document.getElementById('numBranches').value);
+            const batteryVoltage = parseInt(document.getElementById('batteryVoltage').value);
+            const projectorMode = document.getElementById('projectorMode').checked;
+            const branchConfigs = [];
+            
+            // Reset hidden elements when generating new diagram
+            if (!projectorMode) {
+                hiddenElements.clear();
+            } else {
+                projectorHiddenElements.clear();
+            }
+            
+            for (let i = 0; i < numBranches; i++) {
+                const bulbs = parseInt(document.getElementById(`branch${i + 1}-bulbs`).value);
+                // Calculate current using Ohm's law: I = V / R
+                // Each bulb has 10 ohms, so total resistance = bulbs * 10
+                const branchCurrent = batteryVoltage / (bulbs * 10);
+                
+                let hideVoltage = false;
+                let hideCurrent = false;
+                
+                if (projectorMode) {
+                    hideVoltage = document.getElementById(`branch${i + 1}-hide-voltage`).checked;
+                    hideCurrent = document.getElementById(`branch${i + 1}-hide-current`).checked;
+                }
+                
+                branchConfigs.push({ 
+                    bulbs, 
+                    current: branchCurrent, 
+                    hideVoltage, 
+                    hideCurrent
+                });
+            }
+            
+            const svg = generateCircuitDiagram(numBranches, branchConfigs, batteryVoltage, projectorMode);
+            document.getElementById('diagram').innerHTML = svg;
+        }
+        
+        function generateCircuitDiagram(numBranches, branchConfigs, batteryVoltage, projectorMode) {
+            const baseWidth = 700;
+            const baseHeight = 450;
+            let svg = '';
+            
+            // Define branch colors
+            const branchColors = ['#d63384', '#fd7e14', '#6f42c1', '#20c997', '#0d6efd'];
+            
+            // Define the main circuit dimensions
+            const leftX = 120;
+            const rightX = baseWidth - 120;
+            const topY = 80;
+            const bottomY = baseHeight - 80;
+            const centerX = baseWidth / 2;
+            
+            // Battery dimensions
+            const batteryHeight = 30;
+            const batteryWidth = 15;
+            
+            // Draw the battery at the top center
+            const batteryY = topY;
+            
+            // Draw battery symbol (vertical lines)
+            // Negative terminal (shorter line on left)
+            svg += `<line x1="${centerX - batteryWidth}" y1="${batteryY - batteryHeight/2 + 5}" 
+                         x2="${centerX - batteryWidth}" y2="${batteryY + batteryHeight/2 - 5}" 
+                         stroke="black" stroke-width="3"/>`;
+            
+            // Positive terminal (longer line on right)
+            svg += `<line x1="${centerX + batteryWidth}" y1="${batteryY - batteryHeight/2}" 
+                         x2="${centerX + batteryWidth}" y2="${batteryY + batteryHeight/2}" 
+                         stroke="black" stroke-width="3"/>`;
+            
+            // Battery labels
+            svg += `<text x="${centerX - batteryWidth}" y="${batteryY - batteryHeight/2 - 5}" 
+                         font-size="14" text-anchor="middle" fill="black">−</text>`;
+            svg += `<text x="${centerX + batteryWidth}" y="${batteryY - batteryHeight/2 - 5}" 
+                         font-size="14" text-anchor="middle" fill="black">+</text>`;
+            
+            // Battery voltage label above the battery
+            svg += `<text x="${centerX}" y="${batteryY - batteryHeight/2 - 15}" 
+                         font-size="14" text-anchor="middle" fill="black" font-weight="bold">${batteryVoltage}V</text>`;
+            
+            // Top horizontal wires (from battery to corners)
+            svg += `<line x1="${leftX}" y1="${topY}" x2="${centerX - batteryWidth}" y2="${topY}" 
+                         stroke="black" stroke-width="2"/>`;
+            svg += `<line x1="${centerX + batteryWidth}" y1="${topY}" x2="${rightX}" y2="${topY}" 
+                         stroke="black" stroke-width="2"/>`;
+            
+            // Calculate total current from all branches
+            let totalCurrent = 0;
+            
+            for (const branch of branchConfigs) {
+                // Branch current is now a calculated number, not a string
+                totalCurrent += branch.current;
+            }
+            
+            // Display total current on the top wire near the battery
+            const totalCurrentX = centerX + batteryWidth + 30;
+            const totalCurrentY = topY;
+            const totalCurrentId = 'total-current';
+            
+            // Total current arrow (pointing right)
+            svg += `<path d="M ${totalCurrentX} ${totalCurrentY - 5} L ${totalCurrentX + 40} ${totalCurrentY - 5}" 
+                         stroke="#28a745" stroke-width="2" marker-end="url(#totalarrowhead)"/>`;
+            
+            // Total current value text
+            let totalCurrentText = `${totalCurrent.toFixed(2)} A`;
+            let totalCurrentClass = 'total-current-display';
+            
+            if (!projectorMode) {
+                totalCurrentClass += ' clickable-value';
+                if (hiddenElements.has(totalCurrentId)) {
+                    totalCurrentText = '__?';
+                }
+            }
+            
+            svg += `<text id="${totalCurrentId}" x="${totalCurrentX + 20}" y="${totalCurrentY - 12}" text-anchor="middle" 
+                         class="${totalCurrentClass}" ${!projectorMode ? `onclick="toggleValue('${totalCurrentId}', '${totalCurrent.toFixed(2)} A')"` : ''}>${totalCurrentText}</text>`;
+            
+            // Calculate branch positions
+            const availableHeight = bottomY - topY;
+            const branchSpacing = availableHeight / numBranches;
+            
+            // Calculate vertical section currents
+            const verticalCurrents = [];
+            let remainingCurrent = totalCurrent;
+            
+            for (let i = 0; i < numBranches; i++) {
+                verticalCurrents.push(remainingCurrent);
+                if (i < numBranches) {
+                    remainingCurrent -= branchConfigs[i].current;
+                }
+            }
+            
+            // Draw vertical wires connecting to each branch
+            let lastY = topY;
+            
+            for (let i = 0; i < numBranches; i++) {
+                const branch = branchConfigs[i];
+                const branchY = topY + (i + 1) * branchSpacing;
+                const branchColor = branchColors[i % branchColors.length];
+                
+                // Draw vertical wires from last position to this branch
+                svg += `<line x1="${leftX}" y1="${lastY}" x2="${leftX}" y2="${branchY}" 
+                             stroke="black" stroke-width="2"/>`;
+                svg += `<line x1="${rightX}" y1="${lastY}" x2="${rightX}" y2="${branchY}" 
+                             stroke="black" stroke-width="2"/>`;
+                
+                // Add vertical current labels for this section
+                if (i < verticalCurrents.length) {
+                    const verticalCurrent = verticalCurrents[i];
+                    const verticalMidY = lastY + (branchY - lastY) / 2;
+                    
+                    // Left vertical current
+                    const leftVerticalId = `vertical-left-${i}`;
+                    const leftVerticalX = leftX - 20;
+                    
+                    svg += `<path d="M ${leftVerticalX - 5} ${verticalMidY + 20} L ${leftVerticalX - 5} ${verticalMidY - 20}" 
+                                 stroke="black" stroke-width="2" marker-end="url(#blackarrowhead)" class="junction-current"/>`;
+                    
+                    let leftVerticalText = `${verticalCurrent.toFixed(2)} A`;
+                    let leftVerticalClass = 'current-display junction-current';
+                    
+                    if (projectorMode) {
+                        // Could add hide options for vertical currents later if needed
+                    } else {
+                        leftVerticalClass += ' clickable-value';
+                        if (hiddenElements.has(leftVerticalId)) {
+                            leftVerticalText = '__?';
+                        }
+                    }
+                    
+                    svg += `<text id="${leftVerticalId}" x="${leftVerticalX - 15}" y="${verticalMidY + 5}" text-anchor="middle" 
+                                 class="${leftVerticalClass}" fill="black" ${!projectorMode ? `onclick="toggleValue('${leftVerticalId}', '${verticalCurrent.toFixed(2)} A')"` : ''}>${leftVerticalText}</text>`;
+                    
+                    // Right vertical current
+                    const rightVerticalId = `vertical-right-${i}`;
+                    const rightVerticalX = rightX + 20;
+                    
+                    svg += `<path d="M ${rightVerticalX + 5} ${verticalMidY - 20} L ${rightVerticalX + 5} ${verticalMidY + 20}" 
+                                 stroke="black" stroke-width="2" marker-end="url(#blackarrowhead)" class="junction-current"/>`;
+                    
+                    let rightVerticalText = `${verticalCurrent.toFixed(2)} A`;
+                    let rightVerticalClass = 'current-display junction-current';
+                    
+                    if (projectorMode) {
+                        // Could add hide options for vertical currents later if needed
+                    } else {
+                        rightVerticalClass += ' clickable-value';
+                        if (hiddenElements.has(rightVerticalId)) {
+                            rightVerticalText = '__?';
+                        }
+                    }
+                    
+                    svg += `<text id="${rightVerticalId}" x="${rightVerticalX + 15}" y="${verticalMidY + 5}" text-anchor="middle" 
+                                 class="${rightVerticalClass}" fill="black" ${!projectorMode ? `onclick="toggleValue('${rightVerticalId}', '${verticalCurrent.toFixed(2)} A')"` : ''}>${rightVerticalText}</text>`;
+                }
+                
+                // Branch connection points
+                const connectionWidth = 10;
+                
+                // Draw the branch with bulbs
+                const branchWidth = rightX - leftX - 2 * connectionWidth;
+                const bulbSpacing = branchWidth / (branch.bulbs + 1);
+                
+                // Start drawing from left connection
+                let lastX = leftX;
+                
+                // Left connection wire
+                svg += `<line x1="${leftX}" y1="${branchY}" x2="${leftX + connectionWidth}" y2="${branchY}" 
+                             stroke="black" stroke-width="2"/>`;
+                
+                lastX = leftX + connectionWidth;
+                
+                // Draw bulbs and connecting wires
+                for (let bulb = 0; bulb < branch.bulbs; bulb++) {
+                    const bulbX = leftX + connectionWidth + (bulb + 1) * bulbSpacing;
+                    
+                    // Wire before bulb
+                    svg += `<line x1="${lastX}" y1="${branchY}" x2="${bulbX - 15}" y2="${branchY}" 
+                                 stroke="black" stroke-width="2"/>`;
+                    
+                    // Draw bulb (circle with X inside)
+                    svg += `<circle cx="${bulbX}" cy="${branchY}" r="15" 
+                                   fill="none" stroke="black" stroke-width="2"/>`;
+                    
+                    // X inside the bulb (filament representation)
+                    svg += `<path d="M ${bulbX - 10} ${branchY - 10} L ${bulbX + 10} ${branchY + 10}" 
+                                 stroke="black" stroke-width="1.5"/>`;
+                    svg += `<path d="M ${bulbX - 10} ${branchY + 10} L ${bulbX + 10} ${branchY - 10}" 
+                                 stroke="black" stroke-width="1.5"/>`;
+                    
+                    // Calculate and display voltage across this bulb
+                    const bulbVoltage = (batteryVoltage / branch.bulbs).toFixed(1);
+                    const voltageId = `voltage-${i}-${bulb}`;
+                    
+                    let voltageText = `${bulbVoltage}V`;
+                    let voltageClass = 'voltage-display';
+                    
+                    if (projectorMode) {
+                        if (branch.hideVoltage) {
+                            voltageText = '__?';
+                            projectorHiddenElements.add(voltageId);
+                        }
+                    } else {
+                        voltageClass += ' clickable-value';
+                        if (hiddenElements.has(voltageId)) {
+                            voltageText = '__?';
+                        }
+                    }
+                    
+                    svg += `<text id="${voltageId}" x="${bulbX}" y="${branchY + 30}" text-anchor="middle" 
+                                 class="${voltageClass}" ${!projectorMode ? `onclick="toggleValue('${voltageId}', '${bulbVoltage}V')"` : ''}>${voltageText}</text>`;
+                    
+                    lastX = bulbX + 15;
+                }
+                
+                // Wire after last bulb to right connection
+                svg += `<line x1="${lastX}" y1="${branchY}" x2="${rightX}" y2="${branchY}" 
+                             stroke="black" stroke-width="2"/>`;
+                
+                // Add junction dots at branch connections
+                svg += `<circle cx="${leftX}" cy="${branchY}" r="3" fill="black"/>`;
+                svg += `<circle cx="${rightX}" cy="${branchY}" r="3" fill="black"/>`;
+                
+                // Display current value for this branch (center)
+                const currentX = leftX + (rightX - leftX) / 2;
+                const currentY = branchY - 30;
+                const currentId = `current-${i}`;
+                
+                // Current arrow (pointing left to indicate direction from + to -)
+                svg += `<path d="M ${currentX + 25} ${currentY} L ${currentX - 15} ${currentY}" 
+                             stroke="${branchColor}" stroke-width="2" marker-end="url(#arrowhead-${i})"/>`;
+                
+                // Current value text
+                let currentText = `${branch.current.toFixed(2)} A`;
+                let currentClass = 'current-display';
+                
+                if (projectorMode) {
+                    if (branch.hideCurrent) {
+                        currentText = '__?';
+                        projectorHiddenElements.add(currentId);
+                    }
+                } else {
+                    currentClass += ' clickable-value';
+                    if (hiddenElements.has(currentId)) {
+                        currentText = '__?';
+                    }
+                }
+                
+                svg += `<text id="${currentId}" x="${currentX}" y="${currentY - 8}" text-anchor="middle" 
+                             class="${currentClass}" fill="${branchColor}" ${!projectorMode ? `onclick="toggleValue('${currentId}', '${branch.current.toFixed(2)} A')"` : ''}>${currentText}</text>`;
+                
+                // Display current value at left end of branch
+                const leftCurrentId = `current-left-${i}`;
+                const leftCurrentX = leftX + 25;
+                const leftCurrentY = branchY - 15;
+                
+                svg += `<path d="M ${leftCurrentX + 25} ${leftCurrentY} L ${leftCurrentX - 15} ${leftCurrentY}" 
+                             stroke="${branchColor}" stroke-width="2" marker-end="url(#arrowhead-${i})" class="junction-current"/>`;
+                
+                let leftCurrentText = `${branch.current.toFixed(2)} A`;
+                let leftCurrentClass = 'current-display';
+                
+                if (projectorMode) {
+                    if (branch.hideCurrent) {
+                        leftCurrentText = '__?';
+                        projectorHiddenElements.add(leftCurrentId);
+                    }
+                } else {
+                    leftCurrentClass += ' clickable-value';
+                    if (hiddenElements.has(leftCurrentId)) {
+                        leftCurrentText = '__?';
+                    }
+                }
+                
+                svg += `<text id="${leftCurrentId}" x="${leftCurrentX}" y="${leftCurrentY - 8}" text-anchor="middle" 
+                             class="${leftCurrentClass} junction-current" fill="${branchColor}" ${!projectorMode ? `onclick="toggleValue('${leftCurrentId}', '${branch.current.toFixed(2)} A')"` : ''}>${leftCurrentText}</text>`;
+                
+                // Display current value at right end of branch
+                const rightCurrentId = `current-right-${i}`;
+                const rightCurrentX = rightX - 30;
+                const rightCurrentY = branchY - 15;
+                
+                svg += `<path d="M ${rightCurrentX + 25} ${rightCurrentY} L ${rightCurrentX - 15} ${rightCurrentY}" 
+                             stroke="${branchColor}" stroke-width="2" marker-end="url(#arrowhead-${i})" class="junction-current"/>`;
+                
+                let rightCurrentText = `${branch.current.toFixed(2)} A`;
+                let rightCurrentClass = 'current-display';
+                
+                if (projectorMode) {
+                    if (branch.hideCurrent) {
+                        rightCurrentText = '__?';
+                        projectorHiddenElements.add(rightCurrentId);
+                    }
+                } else {
+                    rightCurrentClass += ' clickable-value';
+                    if (hiddenElements.has(rightCurrentId)) {
+                        rightCurrentText = '__?';
+                    }
+                }
+                
+                svg += `<text id="${rightCurrentId}" x="${rightCurrentX}" y="${rightCurrentY - 8}" text-anchor="middle" 
+                             class="${rightCurrentClass} junction-current" fill="${branchColor}" ${!projectorMode ? `onclick="toggleValue('${rightCurrentId}', '${branch.current.toFixed(2)} A')"` : ''}>${rightCurrentText}</text>`;
+                
+                // Update last position for next iteration
+                lastY = branchY;
+            }
+            
+            // Define arrowhead markers for current arrows (one for each branch color + black for verticals)
+            let defs = '<defs>';
+            for (let i = 0; i < Math.min(numBranches, branchColors.length); i++) {
+                defs += `<marker id="arrowhead-${i}" markerWidth="10" markerHeight="7" 
+                                refX="9" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="${branchColors[i]}"/>
+                        </marker>`;
+            }
+            defs += `<marker id="totalarrowhead" markerWidth="10" markerHeight="7" 
+                            refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#28a745"/>
+                    </marker>
+                    <marker id="blackarrowhead" markerWidth="10" markerHeight="7" 
+                            refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="black"/>
+                    </marker>
+               </defs>`;
+            
+            svg = defs + svg;
+            
+            return `<svg width="${baseWidth}" height="${baseHeight}" viewBox="0 0 ${baseWidth} ${baseHeight}">${svg}</svg>`;
+        }
+        
+        let junctionCurrentsVisible = false;
+        let helpVisible = false;
+        
+        function toggleHelp() {
+            const helpContent = document.getElementById('helpContent');
+            const helpToggle = document.getElementById('helpToggle');
+            
+            helpVisible = !helpVisible;
+            
+            if (helpVisible) {
+                helpContent.style.display = 'block';
+                helpToggle.textContent = 'Hide Help';
+                updateHelpMode();
+            } else {
+                helpContent.style.display = 'none';
+                helpToggle.textContent = 'Show Help';
+            }
+        }
+        
+        function updateHelpMode() {
+            if (!helpVisible) return;
+            
+            const projectorMode = document.getElementById('projectorMode').checked;
+            const projectorHelp = document.getElementById('projectorHelp');
+            const flexibleHelp = document.getElementById('flexibleHelp');
+            
+            if (projectorMode) {
+                projectorHelp.classList.add('active');
+                flexibleHelp.classList.remove('active');
+            } else {
+                flexibleHelp.classList.add('active');
+                projectorHelp.classList.remove('active');
+            }
+        }
+        
+        function toggleJunctionCurrents() {
+            const junctionButton = document.getElementById('junctionButton');
+            const junctionElements = document.querySelectorAll('.junction-current');
+            
+            junctionCurrentsVisible = !junctionCurrentsVisible;
+            
+            if (junctionCurrentsVisible) {
+                junctionElements.forEach(element => {
+                    element.style.display = 'inline';
+                });
+                junctionButton.textContent = 'Hide Junction Currents';
+            } else {
+                junctionElements.forEach(element => {
+                    element.style.display = 'none';
+                });
+                junctionButton.textContent = 'Show Junction Currents';
+            }
+        }
+        
+        function toggleValue(elementId, originalValue) {
+            const element = document.getElementById(elementId);
+            if (hiddenElements.has(elementId)) {
+                hiddenElements.delete(elementId);
+                element.textContent = originalValue;
+            } else {
+                hiddenElements.add(elementId);
+                element.textContent = '__?';
+            }
+        }
+        
+        function revealAnswers() {
+            // Reveal all projector mode hidden elements
+            projectorHiddenElements.forEach(elementId => {
+                const element = document.getElementById(elementId);
+                if (element) {
+                    // Get the original value from the element's onclick attribute or recalculate
+                    if (elementId.startsWith('voltage-')) {
+                        const parts = elementId.split('-');
+                        const branchIndex = parseInt(parts[1]);
+                        const bulbIndex = parseInt(parts[2]);
+                        const batteryVoltage = parseInt(document.getElementById('batteryVoltage').value);
+                        const bulbs = parseInt(document.getElementById(`branch${branchIndex + 1}-bulbs`).value);
+                        const voltage = (batteryVoltage / bulbs).toFixed(1);
+                        element.textContent = `${voltage}V`;
+                    } else if (elementId.startsWith('current-')) {
+                        const parts = elementId.split('-');
+                        let branchIndex;
+                        if (parts.length === 2) {
+                            branchIndex = parseInt(parts[1]);
+                        } else {
+                            branchIndex = parseInt(parts[2]); // for current-left-X or current-right-X
+                        }
+                        const batteryVoltage = parseInt(document.getElementById('batteryVoltage').value);
+                        const bulbs = parseInt(document.getElementById(`branch${branchIndex + 1}-bulbs`).value);
+                        const current = (batteryVoltage / (bulbs * 10)).toFixed(2);
+                        element.textContent = `${current} A`;
+                    }
+                }
+            });
+            projectorHiddenElements.clear();
+        }
+        
+        // Initialize mode on page load
+        updateMode();
+        
+        // Generate initial diagram
+        generateDiagram();
+    </script>
+</body>
+</html>
