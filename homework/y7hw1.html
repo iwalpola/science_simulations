@@ -3,98 +3,194 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Year 7 Science Homework</title>
+    <title>Year 7 Science Slides</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             padding: 20px;
-            line-height: 1.6;
-            color: #333;
+        }
+        
+        .slide-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 900px;
+            height: 600px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .slide {
+            display: none;
+            flex: 1;
+            padding: 40px;
+            overflow-y: auto;
+            animation: fadeIn 0.5s;
+        }
+        
+        .slide.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         
         h1 {
             color: #2c3e50;
-            border-bottom: 3px solid #3498db;
-            padding-bottom: 10px;
+            border-bottom: 4px solid #3498db;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+            font-size: 2em;
         }
         
         h2 {
             color: #34495e;
             background: #ecf0f1;
-            padding: 10px;
-            border-left: 4px solid #3498db;
-            margin-top: 30px;
+            padding: 12px;
+            border-left: 5px solid #3498db;
+            margin: 20px 0 15px 0;
+            font-size: 1.5em;
         }
         
         h3 {
             color: #7f8c8d;
-            margin-top: 20px;
+            margin: 15px 0 10px 0;
+            font-size: 1.2em;
         }
         
         .definition-box {
             background: #e8f4f8;
             border: 2px solid #3498db;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
         }
         
         .example-box {
             background: #f9f9f9;
-            border-left: 4px solid #27ae60;
-            padding: 15px;
+            border-left: 5px solid #27ae60;
+            padding: 20px;
             margin: 15px 0;
         }
         
-        .question {
+        .question-box {
             background: #fff;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            padding: 20px;
             margin: 15px 0;
         }
         
         .answer-space {
-            border: 1px dashed #bdc3c7;
+            border: 2px dashed #bdc3c7;
             background: #fafafa;
-            padding: 10px;
+            padding: 15px;
             margin: 10px 0;
-            min-height: 40px;
-        }
-        
-        .drawing-space {
-            border: 2px dashed #95a5a6;
-            background: #fafafa;
-            padding: 20px;
-            margin: 15px 0;
-            min-height: 150px;
-            text-align: center;
-            color: #7f8c8d;
+            min-height: 50px;
+            border-radius: 5px;
         }
         
         .instructions {
             background: #fff3cd;
-            border: 1px solid #ffc107;
-            border-radius: 5px;
-            padding: 15px;
-            margin: 20px 0;
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 20px;
         }
         
         .marks {
             float: right;
             font-weight: bold;
             color: #e74c3c;
-        }
-        
-        strong {
-            color: #2c3e50;
+            background: #fee;
+            padding: 5px 10px;
+            border-radius: 5px;
         }
         
         .keyword {
             color: #e74c3c;
             font-weight: bold;
+        }
+        
+        ul {
+            margin-left: 25px;
+            margin-top: 10px;
+        }
+        
+        li {
+            margin: 8px 0;
+        }
+        
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 40px;
+            background: #34495e;
+            border-top: 3px solid #3498db;
+        }
+        
+        .nav-button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        
+        .nav-button:hover:not(:disabled) {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .nav-button:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        
+        .slide-counter {
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        .simulation-button {
+            background-color: #3498db;
+            color: white;
+            padding: 15px 30px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 15px 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+        
+        .simulation-button:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
         }
         
         .number-line {
@@ -103,286 +199,407 @@
             padding: 20px;
             margin: 20px 0;
             text-align: center;
+            border-radius: 8px;
         }
         
-        @media print {
-            body {
-                font-size: 12pt;
-            }
-            .pagebreak {
-                page-break-after: always;
-            }
+        strong {
+            color: #2c3e50;
         }
     </style>
 </head>
 <body>
-    <h1>Year 7 Science Homework</h1>
-    
-    <div class="instructions">
-        <strong>Instructions:</strong>
-        <ul>
-            <li>Complete all questions on separate paper</li>
-            <li>Number your answers clearly</li>
-            <li>For drawing questions, use pencil and label clearly</li>
-            <li>Bring your completed work for peer marking</li>
-            <li>Total marks: 48</li>
-        </ul>
-    </div>
-
-    <h2>Part A: Variables in Experiments</h2>
-    
-    <div class="definition-box">
-        <h3>Key Definitions</h3>
-        <p><strong>Independent Variable:</strong> The factor that YOU CHANGE in an experiment (the thing you're testing).</p>
-        <p><strong>Dependent Variable:</strong> The factor that you MEASURE to see the results (what happens because of your change).</p>
-        <p><strong>Control Variables:</strong> The factors you KEEP THE SAME to make the test fair.</p>
-    </div>
-
-    <div class="example-box">
-        <h3>Example: Salt Water vs Pure Water Heating</h3>
-        <p>Remember when we heated salt water and pure water to see which heated faster?</p>
-        <ul>
-            <li><strong>Independent Variable:</strong> Type of liquid - <em>we changed</em> whether we used salt water or pure water</li>
-            <li><strong>Dependent Variable:</strong> Temperature - <em>we measured</em> how hot the liquid got after 5 minutes</li>
-            <li><strong>Control Variables:</strong> 
+    <div class="slide-container">
+        <!-- Slide 1: Title -->
+        <div class="slide active">
+            <h1>Year 7 Science Homework</h1>
+            <div class="instructions">
+                <h3>Instructions:</h3>
                 <ul>
-                    <li><strong>Volume of liquid (50ml):</strong> If one beaker had more water, it would take longer to heat (unfair test!)</li>
-                    <li><strong>Size of Bunsen flame:</strong> If one flame was bigger, that liquid would heat faster (unfair test!)</li>
+                    <li>Complete all questions on separate paper</li>
+                    <li>Number your answers clearly</li>
+                    <li>For drawing questions, use pencil and label clearly</li>
+                    <li>Bring your completed work for peer marking</li>
+                    <li><strong>Total marks: 48</strong></li>
                 </ul>
-            </li>
-        </ul>
+            </div>
+            <h2 style="margin-top: 40px;">Topics Covered:</h2>
+            <ul style="font-size: 1.2em; line-height: 2;">
+                <li>Variables in Experiments</li>
+                <li>Measuring Equipment</li>
+                <li>Precision in Measurements</li>
+                <li>States of Matter</li>
+                <li>Particle Theory</li>
+            </ul>
+        </div>
+
+        <!-- Slide 2: Variables Definition -->
+        <div class="slide">
+            <h2>Part A: Variables in Experiments</h2>
+            <div class="definition-box">
+                <h3>Key Definitions</h3>
+                <p><strong>Independent Variable:</strong> The factor that YOU CHANGE in an experiment (the thing you're testing).</p>
+                <p style="margin-top: 15px;"><strong>Dependent Variable:</strong> The factor that you MEASURE to see the results (what happens because of your change).</p>
+                <p style="margin-top: 15px;"><strong>Control Variables:</strong> The factors you KEEP THE SAME to make the test fair.</p>
+            </div>
+        </div>
+
+        <!-- Slide 3: Variables Example -->
+        <div class="slide">
+            <h2>Variables - Example</h2>
+            <div class="example-box">
+                <h3>Salt Water vs Pure Water Heating</h3>
+                <p>Remember when we heated salt water and pure water to see which heated faster?</p>
+                <ul>
+                    <li><strong>Independent Variable:</strong> Type of liquid - <em>we changed</em> whether we used salt water or pure water</li>
+                    <li><strong>Dependent Variable:</strong> Temperature - <em>we measured</em> how hot the liquid got after 5 minutes</li>
+                    <li><strong>Control Variables:</strong> 
+                        <ul>
+                            <li>Volume of liquid (50ml) - If one beaker had more water, it would take longer to heat (unfair test!)</li>
+                            <li>Size of Bunsen flame - If one flame was bigger, that liquid would heat faster (unfair test!)</li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 4: Question 1 -->
+        <div class="slide">
+            <h2>Question 1: Magnesium and Acid</h2>
+            <div class="question-box">
+                <span class="marks">[3 marks]</span>
+                <p><strong>Remember:</strong> We put different lengths of magnesium ribbon (2cm, 4cm, 6cm) into tubes of acid. We timed how long the fizzing lasted. The acid amount and temperature stayed the same.</p>
+                <p style="margin-top: 20px;"><strong>Fill in the blanks:</strong></p>
+                <div class="answer-space">
+                    a) The independent variable was: _____________ of magnesium ribbon [1 mark]
+                </div>
+                <div class="answer-space">
+                    b) The dependent variable was: the _____________ for the reaction to complete [1 mark]
+                </div>
+                <div class="answer-space">
+                    c) Name ONE control variable: _____________ [1 mark]
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: Question 2 -->
+        <div class="slide">
+            <h2>Question 2: Cooling Wax</h2>
+            <div class="question-box">
+                <span class="marks">[3 marks]</span>
+                <p><strong>Remember:</strong> We melted wax and then watched it cool down. We measured the temperature every minute as it changed from liquid to solid.</p>
+                <p style="margin-top: 20px;">Identify the variables:</p>
+                <div class="answer-space">
+                    a) Independent variable: _________________________________ [1 mark]
+                </div>
+                <div class="answer-space">
+                    b) Dependent variable: _________________________________ [1 mark]
+                </div>
+                <div class="answer-space">
+                    c) One control variable: _________________________________ [1 mark]
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: Question 3 -->
+        <div class="slide">
+            <h2>Question 3: New Scenario - No Help!</h2>
+            <div class="question-box">
+                <span class="marks">[3 marks]</span>
+                <p>A student wants to test if plants grow taller in red light or blue light. They measure plant height after 2 weeks.</p>
+                <p style="margin-top: 20px;">Identify all three types of variables in this experiment:</p>
+                <div class="answer-space" style="min-height: 150px;">
+                    Write your answer here (include all three variables clearly labeled)
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 7: Measuring Equipment -->
+        <div class="slide">
+            <h2>Part B: Measuring Equipment</h2>
+            <div class="question-box">
+                <h3>Question 4: Choosing the Right Equipment <span class="marks">[3 marks]</span></h3>
+                <p>What equipment would you use to measure:</p>
+                <div class="answer-space">
+                    a) 25 cm³ of water accurately: _________________ [1 mark]
+                </div>
+                <div class="answer-space">
+                    b) The temperature of boiling water: _________________ [1 mark]
+                </div>
+                <div class="answer-space">
+                    c) 0.5 grams of salt: _________________ [1 mark]
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: Precision Definition -->
+        <div class="slide">
+            <h2>Part C: Precision in Measurements</h2>
+            <div class="definition-box">
+                <h3>What is Precision?</h3>
+                <p><strong>Precision:</strong> How small a change you can measure. Equipment with smaller divisions is MORE PRECISE.</p>
+                <p style="margin-top: 15px;">The smaller the divisions on your measuring equipment, the more precise your measurement!</p>
+            </div>
+        </div>
+
+        <!-- Slide 9: Precision Examples -->
+        <div class="slide">
+            <h2>Precision - Examples</h2>
+            <div class="example-box">
+                <h3>Example: Measuring Water</h3>
+                <p><strong>Beaker:</strong> Has divisions every 10 ml (10, 20, 30...)</p>
+                <p><strong>Measuring cylinder:</strong> Has divisions every 1 ml (1, 2, 3...)</p>
+                <p style="margin-top: 10px;">→ The measuring cylinder is MORE PRECISE because it has smaller divisions!</p>
+                
+                <h3 style="margin-top: 25px;">Ancient Candle Clocks</h3>
+                <p>Long ago, people used candles to measure time!</p>
+                <p><strong>Candle A:</strong> Has marks every hour</p>
+                <p><strong>Candle B:</strong> Has marks every 15 minutes</p>
+                <p style="margin-top: 10px;">→ Candle B is MORE PRECISE for measuring time!</p>
+            </div>
+        </div>
+
+        <!-- Slide 10: Question 5 -->
+        <div class="slide">
+            <h2>Question 5: Understanding Precision</h2>
+            <div class="question-box">
+                <span class="marks">[4 marks]</span>
+                <p><strong>Thermometer A:</strong> Has marks at 0°C, 10°C, 20°C, 30°C...</p>
+                <p><strong>Thermometer B:</strong> Has marks at 0°C, 1°C, 2°C, 3°C...</p>
+                <div class="answer-space">
+                    a) Which thermometer is more precise? _____________ [1 mark]
+                </div>
+                <div class="answer-space">
+                    b) Explain why: _________________________________ [2 marks]
+                </div>
+                <div class="answer-space">
+                    c) If water is at 23.5°C, which thermometer could show this exactly? _______ [1 mark]
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 11: Question 6 -->
+        <div class="slide">
+            <h2>Question 6: Stopwatch Precision</h2>
+            <div class="question-box">
+                <span class="marks">[2 marks]</span>
+                <p><strong>Stopwatch A:</strong> Measures to the nearest second (1s, 2s, 3s...)</p>
+                <p><strong>Stopwatch B:</strong> Measures to 0.01 seconds (1.01s, 1.02s...)</p>
+                <div class="answer-space" style="min-height: 80px;">
+                    Which is more precise and why? _________________________________ [2 marks]
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 12: States of Matter Definition -->
+        <div class="slide">
+            <h2>Part D: States of Matter</h2>
+            <div class="definition-box">
+                <h3>Important to Remember!</h3>
+                <p>• <strong>Melting point = Freezing point</strong> (same temperature!)</p>
+                <p style="margin-top: 10px;">• <strong>Boiling point = Condensing point</strong> (same temperature!)</p>
+                <p style="margin-top: 10px;">• At melting point: solid ↔ liquid (can go either way)</p>
+                <p style="margin-top: 10px;">• At boiling point: liquid ↔ gas (can go either way)</p>
+            </div>
+        </div>
+
+        <!-- Slide 13: Water Example -->
+        <div class="slide">
+            <h2>States of Matter - Water Example</h2>
+            <div class="example-box">
+                <h3>Water</h3>
+                <p><strong>Melting/Freezing point:</strong> 0°C</p>
+                <p><strong>Boiling/Condensing point:</strong> 100°C</p>
+                <div class="number-line">
+                    <p><strong>Temperature line for water:</strong></p>
+                    <p style="margin: 15px 0;">←─────────────────────────────────────────────→</p>
+                    <p>-10°C ─── 0°C ─── 50°C ─── 100°C ─── 110°C</p>
+                    <p style="margin-top: 15px;"><strong>SOLID</strong> (ice) | <strong>LIQUID</strong> (water) | <strong>GAS</strong> (steam)</p>
+                </div>
+                <p><strong>At 25°C:</strong> Water is a LIQUID (between 0°C and 100°C)</p>
+                <p><strong>At -5°C:</strong> Water is a SOLID (below 0°C)</p>
+                <p><strong>At 105°C:</strong> Water is a GAS (above 100°C)</p>
+            </div>
+        </div>
+
+        <!-- Slide 14: Question 7 -->
+        <div class="slide">
+            <h2>Question 7: Ethanol States</h2>
+            <div class="question-box">
+                <span class="marks">[4 marks]</span>
+                <p><strong>Ethanol data:</strong> Melting point: -114°C, Boiling point: 78°C</p>
+                <div class="answer-space">
+                    a) What state is ethanol at 20°C (room temperature)? __________ [1 mark]
+                </div>
+                <div class="answer-space">
+                    b) What state is ethanol at -120°C? __________ [1 mark]
+                </div>
+                <div class="answer-space">
+                    c) What state is ethanol at 85°C? __________ [1 mark]
+                </div>
+                <div class="answer-space">
+                    d) At what temperature does ethanol freeze? __________ [1 mark]
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 15: Question 8 -->
+        <div class="slide">
+            <h2>Question 8: True or False</h2>
+            <div class="question-box">
+                <span class="marks">[4 marks]</span>
+                <p>Write T for True or F for False:</p>
+                <div class="answer-space">
+                    a) Water freezes at 0°C and melts at 0°C _____ [1 mark]
+                </div>
+                <div class="answer-space">
+                    b) The condensing point of a substance is different from its boiling point _____ [1 mark]
+                </div>
+                <div class="answer-space">
+                    c) At exactly 100°C, water can be liquid OR gas _____ [1 mark]
+                </div>
+                <div class="answer-space">
+                    d) Mercury (melting point: -39°C) is a solid at room temperature (20°C) _____ [1 mark]
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 16: Particle Theory Intro -->
+        <div class="slide">
+            <h2>Part E: Particle Theory</h2>
+            <button class="simulation-button" onclick="window.open('https://javalab.org/en/status_solid_liquid_gas_en/', '_blank')">
+                🔬 Open Particle Simulation
+            </button>
+            <div class="definition-box">
+                <h3>Key Words to Use:</h3>
+                <p class="keyword">heat energy • surroundings • object • particle • vibration • pattern • fixed • rolling over • free to move around the container</p>
+            </div>
+        </div>
+
+        <!-- Slide 17: Question 9 -->
+        <div class="slide">
+            <h2>Question 9: Melting Ice</h2>
+            <div class="question-box">
+                <span class="marks">[6 marks]</span>
+                <p>Describe what happens when ice melts into water. Use at least 4 of the key words.</p>
+                <div class="answer-space" style="min-height: 150px;">
+                    <p>When ice melts: _________________________________________________</p>
+                    <p>_________________________________________________________________</p>
+                    <p>_________________________________________________________________</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 18: Question 10 -->
+        <div class="slide">
+            <h2>Question 10: Boiling Water</h2>
+            <div class="question-box">
+                <span class="marks">[6 marks]</span>
+                <p>Draw particle diagrams showing:</p>
+                <div class="answer-space" style="min-height: 120px; text-align: center; color: #7f8c8d;">
+                    a) Water (liquid) - Draw particles here [3 marks]
+                </div>
+                <div class="answer-space" style="min-height: 120px; text-align: center; color: #7f8c8d;">
+                    b) Steam (gas) - Draw particles here [3 marks]
+                </div>
+                <p style="margin-top: 15px;">Label your diagrams to show how the particles are arranged differently.</p>
+            </div>
+        </div>
+
+        <!-- Slide 19: Question 11 -->
+        <div class="slide">
+            <h2>Question 11: Freezing</h2>
+            <div class="question-box">
+                <span class="marks">[6 marks]</span>
+                <p>Explain what happens to particles when water freezes into ice. Include:</p>
+                <ul>
+                    <li>Where heat energy goes</li>
+                    <li>How particle movement changes</li>
+                    <li>How particle arrangement changes</li>
+                </ul>
+                <div class="answer-space" style="min-height: 150px;">
+                    Write your explanation here (use complete sentences)
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 20: Question 12 -->
+        <div class="slide">
+            <h2>Question 12: Quick Check</h2>
+            <div class="question-box">
+                <span class="marks">[4 marks]</span>
+                <p>Write T for True or F for False:</p>
+                <div class="answer-space">
+                    a) During melting, particles gain heat energy from surroundings _____ [1 mark]
+                </div>
+                <div class="answer-space">
+                    b) In a solid, particles are fixed in position and only vibrate _____ [1 mark]
+                </div>
+                <div class="answer-space">
+                    c) When boiling, particles slow down their movement _____ [1 mark]
+                </div>
+                <div class="answer-space">
+                    d) In a liquid, particles can roll over each other _____ [1 mark]
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 21: Checklist -->
+        <div class="slide">
+            <h2>Checklist Before Submission</h2>
+            <div class="instructions">
+                <h3>Have you completed everything?</h3>
+                <ul style="font-size: 1.1em; line-height: 2;">
+                    <li>☐ All questions answered</li>
+                    <li>☐ Diagrams drawn and labeled clearly</li>
+                    <li>☐ Key words used where required</li>
+                    <li>☐ Name written on every page</li>
+                    <li>☐ Pages numbered</li>
+                </ul>
+                <h2 style="margin-top: 40px; text-align: center; color: #e74c3c;">Total: _____ / 48 marks</h2>
+            </div>
+        </div>
+
+        <div class="navigation">
+            <button class="nav-button" id="prevBtn" onclick="changeSlide(-1)">← Previous</button>
+            <span class="slide-counter"><span id="currentSlide">1</span> / <span id="totalSlides">21</span></span>
+            <button class="nav-button" id="nextBtn" onclick="changeSlide(1)">Next →</button>
+        </div>
     </div>
 
-    <div class="question">
-        <h3>Question 1: Magnesium and Acid Experiment <span class="marks">[3 marks]</span></h3>
-        <p><strong>Remember:</strong> We put different lengths of magnesium ribbon (2cm, 4cm, 6cm) into tubes of acid. We timed how long the fizzing lasted. The acid amount and temperature stayed the same.</p>
-        <p><strong>Fill in the blanks:</strong></p>
-        <div class="answer-space">
-            a) The independent variable was: _____________ of magnesium ribbon [1 mark]
-        </div>
-        <div class="answer-space">
-            b) The dependent variable was: the _____________ for the reaction to complete [1 mark]
-        </div>
-        <div class="answer-space">
-            c) Name ONE control variable: _____________ [1 mark]
-        </div>
-    </div>
-
-    <div class="question">
-        <h3>Question 2: Cooling Wax Experiment <span class="marks">[3 marks]</span></h3>
-        <p><strong>Remember:</strong> We melted wax and then watched it cool down. We measured the temperature every minute as it changed from liquid to solid.</p>
-        <p>Identify the variables:</p>
-        <div class="answer-space">
-            a) Independent variable: _________________________________ [1 mark]
-        </div>
-        <div class="answer-space">
-            b) Dependent variable: _________________________________ [1 mark]
-        </div>
-        <div class="answer-space">
-            c) One control variable: _________________________________ [1 mark]
-        </div>
-    </div>
-
-    <div class="question">
-        <h3>Question 3: New Scenario - No Help! <span class="marks">[3 marks]</span></h3>
-        <p>A student wants to test if plants grow taller in red light or blue light. They measure plant height after 2 weeks.</p>
-        <p>Identify all three types of variables in this experiment:</p>
-        <div class="answer-space">
-            Write your answer here (include all three variables clearly labeled)
-        </div>
-    </div>
-
-    <h2>Part B: Measuring Equipment</h2>
-
-    <div class="question">
-        <h3>Question 4: Choosing the Right Equipment <span class="marks">[3 marks]</span></h3>
-        <p>What equipment would you use to measure:</p>
-        <div class="answer-space">
-            a) 25 cm³ of water accurately: _________________ [1 mark]
-        </div>
-        <div class="answer-space">
-            b) The temperature of boiling water: _________________ [1 mark]
-        </div>
-        <div class="answer-space">
-            c) 0.5 grams of salt: _________________ [1 mark]
-        </div>
-    </div>
-
-    <h2>Part C: Precision in Measurements</h2>
-
-    <div class="definition-box">
-        <h3>What is Precision?</h3>
-        <p><strong>Precision:</strong> How small a change you can measure. Equipment with smaller divisions is MORE PRECISE.</p>
-        <p>The smaller the divisions on your measuring equipment, the more precise your measurement!</p>
-    </div>
-
-    <div class="example-box">
-        <h3>Example: Measuring Water</h3>
-        <p><strong>Beaker:</strong> Has divisions every 10 ml (10, 20, 30...)</p>
-        <p><strong>Measuring cylinder:</strong> Has divisions every 1 ml (1, 2, 3...)</p>
-        <p>→ The measuring cylinder is MORE PRECISE because it has smaller divisions!</p>
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
         
-        <h3>Creative Example: Ancient Candle Clocks</h3>
-        <p>Long ago, people used candles to measure time!</p>
-        <p><strong>Candle A:</strong> Has marks every hour</p>
-        <p><strong>Candle B:</strong> Has marks every 15 minutes</p>
-        <p>→ Candle B is MORE PRECISE for measuring time!</p>
-    </div>
-
-    <div class="question">
-        <h3>Question 5: Understanding Precision <span class="marks">[4 marks]</span></h3>
-        <p>Look at these two thermometers:</p>
-        <p><strong>Thermometer A:</strong> Has marks at 0°C, 10°C, 20°C, 30°C...</p>
-        <p><strong>Thermometer B:</strong> Has marks at 0°C, 1°C, 2°C, 3°C...</p>
-        <div class="answer-space">
-            a) Which thermometer is more precise? _____________ [1 mark]
-        </div>
-        <div class="answer-space">
-            b) Explain why: _________________________________ [2 marks]
-        </div>
-        <div class="answer-space">
-            c) If water is at 23.5°C, which thermometer could show this exactly? _______ [1 mark]
-        </div>
-    </div>
-
-    <div class="question">
-        <h3>Question 6: Stopwatch Precision <span class="marks">[2 marks]</span></h3>
-        <p><strong>Stopwatch A:</strong> Measures to the nearest second (1s, 2s, 3s...)</p>
-        <p><strong>Stopwatch B:</strong> Measures to 0.01 seconds (1.01s, 1.02s...)</p>
-        <div class="answer-space">
-            Which is more precise and why? _________________________________ [2 marks]
-        </div>
-    </div>
-
-    <h2>Part D: States of Matter - Melting and Boiling Points</h2>
-
-    <div class="definition-box">
-        <h3>Important to Remember!</h3>
-        <p>• <strong>Melting point = Freezing point</strong> (same temperature!)</p>
-        <p>• <strong>Boiling point = Condensing point</strong> (same temperature!)</p>
-        <p>• At melting point: solid ↔ liquid (can go either way)</p>
-        <p>• At boiling point: liquid ↔ gas (can go either way)</p>
-    </div>
-
-    <div class="example-box">
-        <h3>Example: Water</h3>
-        <p>Melting/Freezing point: 0°C</p>
-        <p>Boiling/Condensing point: 100°C</p>
-        <div class="number-line">
-            <p><strong>Temperature line for water:</strong></p>
-            <p>←─────────────────────────────────────────────→</p>
-            <p>-10°C ─── 0°C ─── 50°C ─── 100°C ─── 110°C</p>
-            <p><strong>SOLID</strong> (ice) | <strong>LIQUID</strong> (water) | <strong>GAS</strong> (steam)</p>
-        </div>
-        <p><strong>At 25°C:</strong> Water is a LIQUID (between 0°C and 100°C)</p>
-        <p><strong>At -5°C:</strong> Water is a SOLID (below 0°C)</p>
-        <p><strong>At 105°C:</strong> Water is a GAS (above 100°C)</p>
-    </div>
-
-    <div class="question">
-        <h3>Question 7: Ethanol States <span class="marks">[4 marks]</span></h3>
-        <p><strong>Ethanol data:</strong> Melting point: -114°C, Boiling point: 78°C</p>
-        <div class="answer-space">
-            a) What state is ethanol at 20°C (room temperature)? __________ [1 mark]
-        </div>
-        <div class="answer-space">
-            b) What state is ethanol at -120°C? __________ [1 mark]
-        </div>
-        <div class="answer-space">
-            c) What state is ethanol at 85°C? __________ [1 mark]
-        </div>
-        <div class="answer-space">
-            d) At what temperature does ethanol freeze? __________ [1 mark]
-        </div>
-    </div>
-
-    <div class="question">
-        <h3>Question 8: True or False - Melting and Boiling <span class="marks">[4 marks]</span></h3>
-        <p>Write T for True or F for False:</p>
-        <div class="answer-space">
-            a) Water freezes at 0°C and melts at 0°C _____ [1 mark]
-        </div>
-        <div class="answer-space">
-            b) The condensing point of a substance is different from its boiling point _____ [1 mark]
-        </div>
-        <div class="answer-space">
-            c) At exactly 100°C, water can be liquid OR gas _____ [1 mark]
-        </div>
-        <div class="answer-space">
-            d) Mercury (melting point: -39°C) is a solid at room temperature (20°C) _____ [1 mark]
-        </div>
-    </div>
-
-    <h2>Part E: Particle Theory - Melting, Freezing, and Boiling</h2>
-
-    <div class="definition-box">
-        <h3>Key Words to Use:</h3>
-        <p class="keyword">heat energy • surroundings • object • particle • vibration • pattern • fixed • rolling over • free to move around the container</p>
-    </div>
-
-    <div class="question">
-        <h3>Question 9: Melting Ice <span class="marks">[6 marks]</span></h3>
-        <p>Describe what happens when ice melts into water. Use at least 4 of the key words above.</p>
-        <div class="answer-space">
-            <p>When ice melts: _________________________________________________</p>
-            <p>_________________________________________________________________</p>
-            <p>_________________________________________________________________</p>
-        </div>
-    </div>
-
-    <div class="question">
-        <h3>Question 10: Boiling Water <span class="marks">[6 marks]</span></h3>
-        <p>Draw particle diagrams showing:</p>
-        <div class="drawing-space">
-            a) Water (liquid) - Draw particles here [3 marks]
-        </div>
-        <div class="drawing-space">
-            b) Steam (gas) - Draw particles here [3 marks]
-        </div>
-        <p>Label your diagrams to show how the particles are arranged differently.</p>
-    </div>
-
-    <div class="question">
-        <h3>Question 11: Freezing <span class="marks">[6 marks]</span></h3>
-        <p>Explain what happens to particles when water freezes into ice. Include:</p>
-        <ul>
-            <li>Where heat energy goes</li>
-            <li>How particle movement changes</li>
-            <li>How particle arrangement changes</li>
-        </ul>
-        <div class="answer-space">
-            Write your explanation here (use complete sentences)
-        </div>
-    </div>
-
-    <div class="question">
-        <h3>Question 12: Quick Check <span class="marks">[4 marks]</span></h3>
-        <p>Write T for True or F for False:</p>
-        <div class="answer-space">
-            a) During melting, particles gain heat energy from surroundings _____ [1 mark]
-        </div>
-        <div class="answer-space">
-            b) In a solid, particles are fixed in position and only vibrate _____ [1 mark]
-        </div>
-        <div class="answer-space">
-            c) When boiling, particles slow down their movement _____ [1 mark]
-        </div>
-        <div class="answer-space">
-            d) In a liquid, particles can roll over each other _____ [1 mark]
-        </div>
-    </div>
-
-    <div class="instructions" style="margin-top: 40px;">
-        <h3>Checklist Before Submission:</h3>
-        <ul>
-            <li>☐ All questions answered</li>
-            <li>☐ Diagrams drawn and labeled clearly</li>
-            <li>☐ Key words used where required</li>
-            <li>☐ Name written on every page</li>
-            <li>☐ Pages numbered</li>
-        </ul>
-        <p><strong>Total: _____ / 48 marks</strong></p>
-    </div>
-
+        document.getElementById('totalSlides').textContent = totalSlides;
+        
+        function showSlide(n) {
+            slides.forEach(slide => slide.classList.remove('active'));
+            slides[n].classList.add('active');
+            
+            document.getElementById('currentSlide').textContent = n + 1;
+            
+            document.getElementById('prevBtn').disabled = (n === 0);
+            document.getElementById('nextBtn').disabled = (n === totalSlides - 1);
+            
+            slides[n].scrollTop = 0;
+        }
+        
+        function changeSlide(direction) {
+            currentSlide += direction;
+            if (currentSlide < 0) currentSlide = 0;
+            if (currentSlide >= totalSlides) currentSlide = totalSlides - 1;
+            showSlide(currentSlide);
+        }
+        
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') changeSlide(-1);
+            if (e.key === 'ArrowRight') changeSlide(1);
+        });
+        
+        // Initialize
+        showSlide(0);
+    </script>
 </body>
 </html>
