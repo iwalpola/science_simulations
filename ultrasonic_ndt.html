@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ultrasonic Testing Simulator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Bebas+Neue&display=swap');
+
+  :root {
+    --bg: #0d1014;
+    --panel: #161a20;
+    --panel-light: #1f252d;
+    --border: #2a313b;
+    --steel: #b8bcc2;
+    --steel-edge: #6a6f78;
+    --crack: #0a0c0f;
+    --probe: #d4a017;
+    --text: #c8cdd4;
+    --text-dim: #6a727d;
+    --accent: #ff5757;
+    --scope: #00ff88;
+    --scope-dim: #003a1e;
+    --reflect: #4db8ff;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    min-height: 100vh;
+    overflow: hidden;
+    background-image:
+      radial-gradient(circle at 20% 0%, rgba(255,87,87,0.04), transparent 50%),
+      radial-gradient(circle at 80% 100%, rgba(0,255,136,0.03), transparent 50%);
+  }
+
+  .app {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    grid-template-columns: 1fr;
+    height: 100vh;
+    padding: 16px;
+    gap: 14px;
+  }
+
+  /* ---------- Header / Controls ---------- */
+  header {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    position: relative;
+  }
+  header::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 20px;
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    transform: translateY(-50%);
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  .brand {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 0.15em;
+    color: var(--text);
+    line-height: 1;
+  }
+  .brand small {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    color: var(--text-dim);
+    margin-top: 4px;
+    font-weight: 300;
+  }
+
+  .divider {
+    width: 1px;
+    height: 32px;
+    background: var(--border);
+  }
+
+  .control {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .control label {
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .control-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 180px;
+    height: 4px;
+    background: var(--panel-light);
+    border-radius: 2px;
+    outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    background: var(--probe);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(212,160,23,0.5);
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 14px; height: 14px;
+    background: var(--probe);
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+  }
+
+  .readout {
+    font-size: 14px;
+    color: var(--scope);
+    font-weight: 600;
+    min-width: 56px;
+    text-align: right;
+    text-shadow: 0 0 6px rgba(0,255,136,0.4);
+  }
+
+  button {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 8px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.15s ease;
+    font-weight: 600;
+  }
+  button:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  button:active { transform: translateY(1px); }
+
+  .mode-toggle {
+    display: flex;
+    background: var(--panel-light);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .mode-toggle button {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    padding: 8px 14px;
+    color: var(--text-dim);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+  }
+  .mode-toggle button.active {
+    background: var(--accent);
+    color: #fff;
+  }
+  .mode-toggle button:hover:not(.active) {
+    background: rgba(255,255,255,0.04);
+    color: var(--text);
+  }
+
+  .trace-controls {
+    display: none;
+    align-items: center;
+    gap: 14px;
+  }
+  .trace-controls.visible { display: flex; }
+
+  .speed-readout {
+    color: var(--reflect);
+    font-weight: 600;
+    text-shadow: 0 0 6px rgba(77,184,255,0.4);
+  }
+
+  /* Hover-only emphasis on play button when in trace mode */
+  #playPause {
+    min-width: 90px;
+  }
+  #playPause.playing {
+    background: var(--scope);
+    border-color: var(--scope);
+    color: #000;
+  }
+
+  .status {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+  .status .dot {
+    width: 8px; height: 8px;
+    background: var(--scope);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--scope);
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+
+  /* ---------- Main panels ---------- */
+  main {
+    display: grid;
+    grid-template-columns: 1fr 1.3fr;
+    gap: 14px;
+    min-height: 0;
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .panel-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+  }
+  .panel-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px;
+    letter-spacing: 0.18em;
+    color: var(--text);
+  }
+  .panel-id {
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    color: var(--text-dim);
+  }
+  .panel-body {
+    flex: 1;
+    position: relative;
+    min-height: 0;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .info-overlay {
+    position: absolute;
+    bottom: 12px;
+    left: 16px;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    display: flex;
+    gap: 18px;
+  }
+  .info-overlay span b {
+    color: var(--text);
+    font-weight: 600;
+    margin-left: 6px;
+  }
+
+  .legend {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-dim);
+  }
+  .legend-swatch {
+    width: 18px;
+    height: 2px;
+  }
+
+  .corner {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border: 1px solid var(--text-dim);
+    opacity: 0.4;
+  }
+  .corner.tl { top: 6px; left: 6px; border-right: none; border-bottom: none; }
+  .corner.tr { top: 6px; right: 6px; border-left: none; border-bottom: none; }
+  .corner.bl { bottom: 6px; left: 6px; border-right: none; border-top: none; }
+  .corner.br { bottom: 6px; right: 6px; border-left: none; border-top: none; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      ULTRASONIC NDT
+      <small>PULSE-ECHO · MODEL UT-7</small>
+    </div>
+    <div class="divider"></div>
+
+    <div class="control">
+      <label>Beam Thickness</label>
+      <div class="control-row">
+        <input type="range" id="thickness" min="40" max="180" value="110" step="1">
+        <span class="readout"><span id="thicknessVal">110</span> mm</span>
+      </div>
+    </div>
+
+    <div class="control">
+      <label>Probe Position</label>
+      <div class="control-row">
+        <input type="range" id="probeX" min="0" max="100" value="35" step="0.5">
+        <span class="readout"><span id="probeVal">35</span> %</span>
+      </div>
+    </div>
+
+    <div class="control">
+      <label>Defect</label>
+      <button id="randomize">Randomize Crack</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="control">
+      <label>Mode</label>
+      <div class="mode-toggle">
+        <button id="modeLive" class="active">Live A-Scan</button>
+        <button id="modeTrace">Pulse Trace</button>
+      </div>
+    </div>
+
+    <div class="control trace-controls" id="traceControls">
+      <label>Playback</label>
+      <div class="control-row">
+        <button id="playPause">▶ Play</button>
+        <input type="range" id="speed" min="1" max="100" value="20" step="1" style="width:120px">
+        <span class="readout speed-readout"><span id="speedVal">20</span>×</span>
+      </div>
+    </div>
+
+    <div class="status">
+      <span class="dot"></span>
+      <span>System Active</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Specimen Cross-Section</div>
+        <div class="panel-id">CH-01 · A-SCAN</div>
+      </div>
+      <div class="panel-body">
+        <canvas id="beamCanvas"></canvas>
+        <div class="corner tl"></div><div class="corner tr"></div>
+        <div class="corner bl"></div><div class="corner br"></div>
+        <div class="info-overlay">
+          <span>MATERIAL <b>STEEL · 5900 m/s</b></span>
+          <span>COUPLANT <b>GEL</b></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Oscilloscope · A-Scan</div>
+        <div class="panel-id">TIME-OF-FLIGHT · μs</div>
+      </div>
+      <div class="panel-body">
+        <canvas id="scopeCanvas"></canvas>
+        <div class="legend">
+          <div class="legend-item"><span class="legend-swatch" style="background:var(--accent)"></span>Initial Pulse</div>
+          <div class="legend-item"><span class="legend-swatch" style="background:var(--reflect)"></span>Reflected Echo</div>
+        </div>
+        <div class="info-overlay">
+          <span>GAIN <b>42 dB</b></span>
+          <span>SWEEP <b>0–100 μs</b></span>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+// ============================================================
+//  ULTRASONIC TESTING SIMULATION
+// ============================================================
+
+const SOUND_SPEED = 5900; // m/s, longitudinal wave in steel
+const ATTEN_COEFF = 0.012; // attenuation per mm (one-way)
+
+// State
+const state = {
+  thickness: 110,       // mm
+  probeX: 0.35,         // 0..1 across beam top
+  crack: {
+    x: 0.6,             // 0..1 horizontal position
+    depthFrac: 0.55,    // 0..1 — fraction of beam thickness where crack tip sits
+    width: 14,          // mm
+  },
+  mode: 'live',         // 'live' | 'trace'
+  trace: {
+    playing: false,
+    t: 0,               // current playback time in µs
+    speed: 20,          // playback slowdown factor (higher = slower)
+    maxT: 100,          // µs window
+  },
+};
+
+function randomizeCrack() {
+  state.crack.x = 0.15 + Math.random() * 0.7;
+  state.crack.depthFrac = 0.25 + Math.random() * 0.6;
+  state.crack.width = 8 + Math.random() * 18;
+  draw();
+}
+// Seed an initial randomized crack without triggering draw() before canvases are wired
+state.crack.x = 0.15 + Math.random() * 0.7;
+state.crack.depthFrac = 0.25 + Math.random() * 0.6;
+state.crack.width = 8 + Math.random() * 18;
+
+// Controls
+const thicknessEl = document.getElementById('thickness');
+const probeXEl = document.getElementById('probeX');
+const thicknessVal = document.getElementById('thicknessVal');
+const probeVal = document.getElementById('probeVal');
+
+thicknessEl.addEventListener('input', e => {
+  state.thickness = +e.target.value;
+  thicknessVal.textContent = state.thickness;
+  if (state.mode === 'trace') state.trace.t = 0;
+  draw();
+});
+probeXEl.addEventListener('input', e => {
+  state.probeX = +e.target.value / 100;
+  probeVal.textContent = (+e.target.value).toFixed(0);
+  if (state.mode === 'trace') state.trace.t = 0;
+  draw();
+});
+document.getElementById('randomize').addEventListener('click', () => {
+  randomizeCrack();
+  // restart trace playback if in trace mode
+  if (state.mode === 'trace') { state.trace.t = 0; }
+});
+
+// Mode toggle
+const modeLiveBtn = document.getElementById('modeLive');
+const modeTraceBtn = document.getElementById('modeTrace');
+const traceControls = document.getElementById('traceControls');
+const playPauseBtn = document.getElementById('playPause');
+const speedEl = document.getElementById('speed');
+const speedVal = document.getElementById('speedVal');
+
+function setMode(mode) {
+  state.mode = mode;
+  modeLiveBtn.classList.toggle('active', mode === 'live');
+  modeTraceBtn.classList.toggle('active', mode === 'trace');
+  traceControls.classList.toggle('visible', mode === 'trace');
+  if (mode === 'trace') {
+    state.trace.t = 0;
+    state.trace.playing = true;
+    playPauseBtn.textContent = '❚❚ Pause';
+    playPauseBtn.classList.add('playing');
+  } else {
+    state.trace.playing = false;
+  }
+  draw();
+}
+modeLiveBtn.addEventListener('click', () => setMode('live'));
+modeTraceBtn.addEventListener('click', () => setMode('trace'));
+
+playPauseBtn.addEventListener('click', () => {
+  // If trace is at end, restart
+  if (state.trace.t >= state.trace.maxT) state.trace.t = 0;
+  state.trace.playing = !state.trace.playing;
+  playPauseBtn.textContent = state.trace.playing ? '❚❚ Pause' : '▶ Play';
+  playPauseBtn.classList.toggle('playing', state.trace.playing);
+});
+
+speedEl.addEventListener('input', e => {
+  state.trace.speed = +e.target.value;
+  speedVal.textContent = state.trace.speed;
+});
+
+// ============================================================
+//  BEAM CANVAS — cross section
+// ============================================================
+const beamCanvasEl = document.getElementById('beamCanvas');
+const beamCtx = beamCanvasEl.getContext('2d');
+
+function sizeCanvas(c) {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = c.getBoundingClientRect();
+  c.width = rect.width * dpr;
+  c.height = rect.height * dpr;
+  return { w: rect.width, h: rect.height, dpr };
+}
+
+function drawBeam() {
+  const { w, h, dpr } = sizeCanvas(beamCanvasEl);
+  const ctx = beamCtx;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+
+  // Background grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.025)';
+  ctx.lineWidth = 1;
+  const grid = 20;
+  for (let x = 0; x < w; x += grid) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+  }
+  for (let y = 0; y < h; y += grid) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+  }
+
+  // Beam dimensions — map thickness in mm to a portion of canvas height
+  const padX = 60;
+  const padTop = 70;
+  const padBottom = 50;
+  const maxBeamH = h - padTop - padBottom;
+  // scale: 180mm (max thickness) fills maxBeamH
+  const beamH = (state.thickness / 180) * maxBeamH;
+  const beamY = padTop + (maxBeamH - beamH); // grow downward from a fixed top? no — top edge constant for probe
+  // Actually probe sits on top edge — keep top edge fixed, beam grows downward.
+  const beamTop = padTop;
+  const beamLeft = padX;
+  const beamRight = w - padX;
+  const beamW = beamRight - beamLeft;
+  const beamBottom = beamTop + beamH;
+
+  // Steel gradient
+  const grad = ctx.createLinearGradient(0, beamTop, 0, beamBottom);
+  grad.addColorStop(0, '#c8ccd2');
+  grad.addColorStop(0.5, '#b0b4ba');
+  grad.addColorStop(1, '#9a9ea4');
+  ctx.fillStyle = grad;
+  ctx.fillRect(beamLeft, beamTop, beamW, beamH);
+
+  // Steel texture — subtle hatching
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(beamLeft, beamTop, beamW, beamH);
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(0,0,0,0.05)';
+  ctx.lineWidth = 1;
+  for (let i = -beamH; i < beamW + beamH; i += 6) {
+    ctx.beginPath();
+    ctx.moveTo(beamLeft + i, beamTop);
+    ctx.lineTo(beamLeft + i + beamH, beamBottom);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Edges
+  ctx.strokeStyle = '#6a6f78';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(beamLeft + 0.5, beamTop + 0.5, beamW - 1, beamH - 1);
+
+  // Dimension labels
+  ctx.fillStyle = '#6a727d';
+  ctx.font = '10px "JetBrains Mono"';
+  // Top label
+  ctx.fillText('TOP SURFACE', beamLeft, beamTop - 12);
+  // Thickness arrow on right
+  const ax = beamRight + 18;
+  ctx.strokeStyle = '#6a727d';
+  ctx.beginPath();
+  ctx.moveTo(ax, beamTop);
+  ctx.lineTo(ax, beamBottom);
+  ctx.stroke();
+  // arrowheads
+  ctx.beginPath();
+  ctx.moveTo(ax - 3, beamTop + 4); ctx.lineTo(ax, beamTop); ctx.lineTo(ax + 3, beamTop + 4);
+  ctx.moveTo(ax - 3, beamBottom - 4); ctx.lineTo(ax, beamBottom); ctx.lineTo(ax + 3, beamBottom - 4);
+  ctx.stroke();
+  ctx.save();
+  ctx.translate(ax + 14, (beamTop + beamBottom) / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.textAlign = 'center';
+  ctx.fillText(`${state.thickness} mm`, 0, 0);
+  ctx.restore();
+  ctx.textAlign = 'start';
+
+  // ---- Crack ----
+  // depthFrac = how far down from top the crack TIP sits (0 = right at surface, 1 = at back wall)
+  // We'll show the crack as a thin vertical slit from beamBottom up to the tip.
+  const crackX = beamLeft + state.crack.x * beamW;
+  const crackTipY = beamTop + state.crack.depthFrac * beamH;
+  const crackWidthPx = (state.crack.width / 180) * maxBeamH * 0.25; // visual width
+  const crackHalfW = Math.max(2, crackWidthPx / 2);
+
+  // crack: jagged path
+  ctx.save();
+  ctx.fillStyle = '#0a0c0f';
+  ctx.beginPath();
+  const segs = 8;
+  // left edge from bottom up to tip
+  ctx.moveTo(crackX - crackHalfW, beamBottom);
+  for (let i = 1; i <= segs; i++) {
+    const t = i / segs;
+    const y = beamBottom - t * (beamBottom - crackTipY);
+    const jitter = (Math.sin(i * 7.3 + state.crack.x * 30) * 1.4);
+    ctx.lineTo(crackX - crackHalfW + jitter, y);
+  }
+  // tip
+  ctx.lineTo(crackX, crackTipY - 2);
+  // right edge tip to bottom
+  for (let i = segs; i >= 1; i--) {
+    const t = i / segs;
+    const y = beamBottom - t * (beamBottom - crackTipY);
+    const jitter = (Math.cos(i * 5.9 + state.crack.x * 22) * 1.4);
+    ctx.lineTo(crackX + crackHalfW + jitter, y);
+  }
+  ctx.lineTo(crackX + crackHalfW, beamBottom);
+  ctx.closePath();
+  ctx.fill();
+  // subtle inner highlight
+  ctx.strokeStyle = 'rgba(255,87,87,0.25)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.restore();
+
+  // ---- Probe ----
+  const probePx = beamLeft + state.probeX * beamW;
+  // probe body
+  const probeW = 36, probeH = 28;
+  const py = beamTop - probeH - 4;
+  ctx.fillStyle = '#1f252d';
+  ctx.strokeStyle = '#3a414b';
+  ctx.lineWidth = 1.5;
+  roundRect(ctx, probePx - probeW/2, py, probeW, probeH, 3);
+  ctx.fill();
+  ctx.stroke();
+  // probe top
+  ctx.fillStyle = '#d4a017';
+  ctx.fillRect(probePx - probeW/2 + 4, py + 4, probeW - 8, 4);
+  // cable
+  ctx.strokeStyle = '#3a414b';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(probePx, py);
+  ctx.quadraticCurveTo(probePx - 25, py - 25, probePx - 55, py - 18);
+  ctx.stroke();
+  // crystal indicator
+  ctx.fillStyle = '#ff5757';
+  ctx.beginPath();
+  ctx.arc(probePx, py + 14, 2, 0, Math.PI * 2);
+  ctx.fill();
+  // couplant contact
+  ctx.fillStyle = 'rgba(212,160,23,0.4)';
+  ctx.fillRect(probePx - probeW/2 + 2, beamTop - 2, probeW - 4, 3);
+
+  // Beam path / pulse rendering
+  if (state.mode === 'live') {
+    drawSoundPath(ctx, probePx, beamTop, beamLeft, beamRight, beamBottom, beamTop, beamH, crackX, crackTipY, crackHalfW);
+  } else {
+    drawTracePulses(ctx, probePx, beamTop, beamBottom, beamH, crackX, crackTipY, crackHalfW);
+  }
+
+  // Probe label
+  ctx.fillStyle = '#d4a017';
+  ctx.font = '9px "JetBrains Mono"';
+  ctx.textAlign = 'center';
+  ctx.fillText('PROBE · 5 MHz', probePx, py - 30);
+  ctx.textAlign = 'start';
+
+  // Return geometry for sync
+  return { beamTop, beamBottom, beamLeft, beamRight, beamH, probePx, crackX, crackTipY, crackHalfW };
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function drawSoundPath(ctx, px, top, bl, br, bb, bt, bh, cx, cty, chw) {
+  // Determine if the probe column intersects the crack column
+  const overCrack = (px >= cx - chw && px <= cx + chw);
+  // Vertical beam line from probe to either crack tip or back wall
+  ctx.save();
+  ctx.strokeStyle = 'rgba(0,255,136,0.18)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 3]);
+  ctx.beginPath();
+  ctx.moveTo(px, top);
+  ctx.lineTo(px, bb);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // Highlight reflection points
+  if (overCrack) {
+    // partial reflection at crack tip
+    ctx.fillStyle = '#ff5757';
+    ctx.beginPath();
+    ctx.arc(px, cty, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,87,87,0.5)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(px, cty, 8, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  // back wall always reflects something
+  ctx.fillStyle = '#4db8ff';
+  ctx.beginPath();
+  ctx.arc(px, bb, 3, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// Compute all pulse packets travelling through the beam.
+// Each packet is a piecewise-linear depth(t) trajectory plus amplitude.
+// Returns array of { segments: [{t0, t1, d0, d1}], amp, kind }
+//   kind: 'down' (initial), 'crackRefl', 'crackTrans', 'backRefl', etc.
+function computePulsePackets() {
+  const v = 5.9; // mm/µs
+  const thickness = state.thickness;
+  const crackDepth = state.crack.depthFrac * thickness;
+  const halfWFrac = (state.crack.width / 2) / 600;
+  const overCrack = Math.abs(state.probeX - state.crack.x) < halfWFrac + 0.02;
+  const atten = (d) => Math.exp(-ATTEN_COEFF * d);
+
+  const packets = [];
+
+  if (overCrack) {
+    // 1. Initial pulse: probe (d=0) to crack tip
+    const tToCrack = crackDepth / v;
+    packets.push({
+      kind: 'down',
+      amp: 1.0,
+      segments: [{ t0: 0, t1: tToCrack, d0: 0, d1: crackDepth }],
+    });
+
+    // 2. Reflection off crack tip travels back up
+    const reflAmp = atten(crackDepth) * 0.75;
+    packets.push({
+      kind: 'crackRefl',
+      amp: reflAmp,
+      segments: [{ t0: tToCrack, t1: 2 * tToCrack, d0: crackDepth, d1: 0 }],
+    });
+
+    // 3. Transmitted portion continues to back wall
+    const transAmpAtCrack = atten(crackDepth) * 0.25;
+    const tToBack = thickness / v;
+    packets.push({
+      kind: 'crackTrans',
+      amp: transAmpAtCrack,
+      segments: [{ t0: tToCrack, t1: tToBack, d0: crackDepth, d1: thickness }],
+    });
+
+    // 4. Transmitted pulse reflects off back wall, returns through crack region attenuated
+    const backReturnStart = tToBack;
+    const tBackToCrack = tToBack + (thickness - crackDepth) / v;
+    // Down trip already accounted attenuation; on return another atten + crack barrier
+    const backReflAmp = atten(2 * thickness) * 0.25 * 0.7; // attenuated round-trip; partial back-wall reflectivity
+    packets.push({
+      kind: 'backRefl',
+      amp: backReflAmp,
+      segments: [{ t0: backReturnStart, t1: 2 * tToBack, d0: thickness, d1: 0 }],
+    });
+
+    // 5. Second-order crack echo: reflection bounces off top, returns to crack, reflects again
+    const t2CrackStart = 2 * tToCrack;
+    const t2CrackEnd = 4 * tToCrack;
+    if (t2CrackEnd < state.trace.maxT) {
+      const amp2 = atten(2 * crackDepth) * 0.4;
+      packets.push({
+        kind: 'crackRefl2',
+        amp: amp2,
+        segments: [
+          // bounces back down from probe to crack
+          { t0: t2CrackStart, t1: 3 * tToCrack, d0: 0, d1: crackDepth },
+          // and back up
+          { t0: 3 * tToCrack, t1: t2CrackEnd, d0: crackDepth, d1: 0 },
+        ],
+      });
+    }
+  } else {
+    // No crack in path — pulse goes to back wall and bounces multiple times.
+    const tToBack = thickness / v;
+    // Down trip
+    packets.push({
+      kind: 'down',
+      amp: 1.0,
+      segments: [{ t0: 0, t1: tToBack, d0: 0, d1: thickness }],
+    });
+    // First echo back
+    packets.push({
+      kind: 'backRefl',
+      amp: atten(thickness) * 0.9,
+      segments: [{ t0: tToBack, t1: 2 * tToBack, d0: thickness, d1: 0 }],
+    });
+    // Second round trip
+    if (4 * tToBack < state.trace.maxT) {
+      packets.push({
+        kind: 'backRefl2',
+        amp: atten(3 * thickness) * 0.6,
+        segments: [
+          { t0: 2 * tToBack, t1: 3 * tToBack, d0: 0, d1: thickness },
+          { t0: 3 * tToBack, t1: 4 * tToBack, d0: thickness, d1: 0 },
+        ],
+      });
+    }
+    // Third
+    if (6 * tToBack < state.trace.maxT) {
+      packets.push({
+        kind: 'backRefl3',
+        amp: atten(5 * thickness) * 0.4,
+        segments: [
+          { t0: 4 * tToBack, t1: 5 * tToBack, d0: 0, d1: thickness },
+          { t0: 5 * tToBack, t1: 6 * tToBack, d0: thickness, d1: 0 },
+        ],
+      });
+    }
+  }
+
+  return packets;
+}
+
+// Returns current depth of a packet at time t, or null if not active
+function packetDepthAt(packet, t) {
+  for (const seg of packet.segments) {
+    if (t >= seg.t0 && t <= seg.t1) {
+      const frac = (t - seg.t0) / (seg.t1 - seg.t0);
+      return seg.d0 + frac * (seg.d1 - seg.d0);
+    }
+  }
+  return null;
+}
+
+// Returns events when a packet reaches probe (d=0 on an upward segment)
+// Used to populate scope echo list progressively as playback proceeds
+function packetEchoArrivalTime(packet) {
+  // Find a segment where d1 ≈ 0 and direction is upward
+  for (const seg of packet.segments) {
+    if (seg.d1 < 0.01 && seg.d0 > seg.d1) return seg.t1;
+  }
+  return null;
+}
+
+function drawTracePulses(ctx, probePx, beamTop, beamBottom, beamH, crackX, crackTipY, crackHalfW) {
+  const packets = computePulsePackets();
+  const t = state.trace.t;
+  const thickness = state.thickness;
+
+  // Pre-draw: faint beam axis
+  ctx.save();
+  ctx.strokeStyle = 'rgba(0,255,136,0.1)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([2, 4]);
+  ctx.beginPath();
+  ctx.moveTo(probePx, beamTop);
+  ctx.lineTo(probePx, beamBottom);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // Draw active packets as glowing horizontal bars (wavefronts) at their current depth
+  for (const p of packets) {
+    const d = packetDepthAt(p, t);
+    if (d === null) continue;
+    // depth (mm) → y in canvas
+    const y = beamTop + (d / thickness) * beamH;
+    // direction (for color: red = transmitted down/initial, blue = reflected)
+    const goingDown = (() => {
+      for (const seg of p.segments) {
+        if (t >= seg.t0 && t <= seg.t1) return seg.d1 > seg.d0;
+      }
+      return true;
+    })();
+
+    const color = goingDown ? '#ff5757' : '#4db8ff';
+    const glowColor = goingDown ? 'rgba(255,87,87,' : 'rgba(77,184,255,';
+
+    // Wavefront bar: width ~ 28px centered on probe column
+    const halfW = 22;
+    const barH = 6;
+    const ampOpacity = Math.min(1, p.amp * 1.2);
+
+    // Glow halo
+    const grad = ctx.createRadialGradient(probePx, y, 0, probePx, y, halfW + 8);
+    grad.addColorStop(0, glowColor + (0.5 * ampOpacity) + ')');
+    grad.addColorStop(1, glowColor + '0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(probePx - halfW - 8, y - barH - 4, (halfW + 8) * 2, barH * 2 + 8);
+
+    // Wavefront body — series of short ticks for "wave packet" look
+    ctx.strokeStyle = color;
+    ctx.globalAlpha = ampOpacity;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    const ticks = 5;
+    for (let i = 0; i < ticks; i++) {
+      const tx = probePx - halfW + (i / (ticks - 1)) * (halfW * 2);
+      const offset = Math.sin(i * 1.3 + t * 4) * 1.5;
+      ctx.moveTo(tx, y + offset - barH/2);
+      ctx.lineTo(tx, y + offset + barH/2);
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // Direction arrow
+    ctx.fillStyle = color;
+    ctx.globalAlpha = ampOpacity * 0.8;
+    ctx.beginPath();
+    if (goingDown) {
+      ctx.moveTo(probePx, y + barH + 2);
+      ctx.lineTo(probePx - 4, y + barH - 3);
+      ctx.lineTo(probePx + 4, y + barH - 3);
+    } else {
+      ctx.moveTo(probePx, y - barH - 2);
+      ctx.lineTo(probePx - 4, y - barH + 3);
+      ctx.lineTo(probePx + 4, y - barH + 3);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // Mark reflection points that have already been encountered
+  const v = 5.9;
+  const crackDepth = state.crack.depthFrac * thickness;
+  const halfWFrac = (state.crack.width / 2) / 600;
+  const overCrack = Math.abs(state.probeX - state.crack.x) < halfWFrac + 0.02;
+  const tToCrack = crackDepth / v;
+  const tToBack = thickness / v;
+
+  if (overCrack && t >= tToCrack) {
+    // Crack tip flash
+    const age = t - tToCrack;
+    const flashAlpha = Math.max(0, 1 - age * 1.5);
+    ctx.fillStyle = `rgba(255,87,87,${0.3 + flashAlpha * 0.6})`;
+    ctx.beginPath();
+    ctx.arc(probePx, beamTop + (crackDepth / thickness) * beamH, 6 + flashAlpha * 8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  if (t >= tToBack) {
+    const age = t - tToBack;
+    const flashAlpha = Math.max(0, 1 - age * 1.5);
+    ctx.fillStyle = `rgba(77,184,255,${0.3 + flashAlpha * 0.6})`;
+    ctx.beginPath();
+    ctx.arc(probePx, beamBottom, 5 + flashAlpha * 6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Time readout in beam panel
+  ctx.fillStyle = '#00ff88';
+  ctx.font = 'bold 13px "JetBrains Mono"';
+  ctx.textAlign = 'left';
+  ctx.fillText(`t = ${t.toFixed(2)} μs`, 16, beamTop + beamH + 30);
+  ctx.fillStyle = '#6a727d';
+  ctx.font = '9px "JetBrains Mono"';
+  ctx.fillText(`distance travelled: ${(t * v).toFixed(1)} mm`, 16, beamTop + beamH + 44);
+}
+const scopeCanvasEl = document.getElementById('scopeCanvas');
+const scopeCtx = scopeCanvasEl.getContext('2d');
+
+let animTime = 0;
+
+function drawScope() {
+  const { w, h, dpr } = sizeCanvas(scopeCanvasEl);
+  const ctx = scopeCtx;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+
+  // background phosphor glow
+  const bgGrad = ctx.createRadialGradient(w/2, h/2, 0, w/2, h/2, Math.max(w, h)/1.2);
+  bgGrad.addColorStop(0, 'rgba(0,40,20,0.4)');
+  bgGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, w, h);
+
+  // Grid
+  const padL = 50, padR = 30, padT = 30, padB = 50;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+  const plotL = padL, plotT = padT;
+  const plotB = plotT + plotH;
+  const baseY = plotT + plotH * 0.85; // baseline near bottom
+
+  ctx.strokeStyle = 'rgba(0,255,136,0.06)';
+  ctx.lineWidth = 1;
+  const gx = 10, gy = 8;
+  for (let i = 0; i <= gx; i++) {
+    const x = plotL + (i / gx) * plotW;
+    ctx.beginPath(); ctx.moveTo(x, plotT); ctx.lineTo(x, plotB); ctx.stroke();
+  }
+  for (let i = 0; i <= gy; i++) {
+    const y = plotT + (i / gy) * plotH;
+    ctx.beginPath(); ctx.moveTo(plotL, y); ctx.lineTo(plotL + plotW, y); ctx.stroke();
+  }
+  // baseline (stronger)
+  ctx.strokeStyle = 'rgba(0,255,136,0.2)';
+  ctx.beginPath();
+  ctx.moveTo(plotL, baseY); ctx.lineTo(plotL + plotW, baseY); ctx.stroke();
+
+  // Axis labels
+  ctx.fillStyle = '#6a727d';
+  ctx.font = '9px "JetBrains Mono"';
+  // x-axis: time in µs, 0 to 100
+  const maxTime = 100; // µs
+  for (let i = 0; i <= gx; i++) {
+    const x = plotL + (i / gx) * plotW;
+    const t = (i / gx) * maxTime;
+    ctx.textAlign = 'center';
+    ctx.fillText(t.toFixed(0), x, plotB + 14);
+  }
+  ctx.textAlign = 'center';
+  ctx.fillText('TIME-OF-FLIGHT (μs)', plotL + plotW/2, plotB + 30);
+  // y-axis: amplitude %
+  ctx.textAlign = 'right';
+  for (let i = 0; i <= gy; i++) {
+    const y = plotT + (i / gy) * plotH;
+    const amp = 100 - (i / gy) * 100;
+    if (i % 2 === 0) ctx.fillText(amp.toFixed(0), plotL - 8, y + 3);
+  }
+  ctx.save();
+  ctx.translate(14, plotT + plotH/2);
+  ctx.rotate(-Math.PI/2);
+  ctx.textAlign = 'center';
+  ctx.fillText('AMPLITUDE (%)', 0, 0);
+  ctx.restore();
+  ctx.textAlign = 'start';
+
+  // ---- Physics ----
+  // Thickness in mm, sound speed 5900 m/s = 5.9 mm/µs
+  // Round-trip time to back wall: t = 2 * thickness / 5.9
+  const v = 5.9; // mm/µs
+  const thickness = state.thickness;
+
+  // Determine whether probe is over the crack
+  const beamLeftFrac = 0; // probe range maps to beam range identically
+  const probeX = state.probeX;
+  const crackLeft = state.crack.x - (state.crack.width / 180 * 0.5);
+  const crackRight = state.crack.x + (state.crack.width / 180 * 0.5);
+  // Actually crack horizontal extent is small in display; compute in same frac space
+  // Use crack visual width scaled: visualWidthPx = crack.width/180 * maxBeamH * 0.25
+  // For physics we'll consider probe "over crack" if within ±halfWidthFrac
+  const halfWFrac = (state.crack.width / 2) / 600; // ~ small fraction of beam width
+  const overCrack = Math.abs(probeX - state.crack.x) < halfWFrac + 0.02;
+
+  // Crack depth in mm (from top surface)
+  const crackDepthMm = state.crack.depthFrac * thickness;
+
+  // Echo events: list of {time_us, amplitude (0..1), color, label}
+  const echoes = [];
+  // Initial pulse at t=0 (and small ringing)
+  echoes.push({ t: 0, amp: 1.0, color: 'pulse', label: 'IP', width: 1.2 });
+
+  // Attenuation function: amp = exp(-alpha * 2 * d_mm)
+  const atten = (d_mm) => Math.exp(-ATTEN_COEFF * 2 * d_mm);
+
+  if (overCrack) {
+    // Reflection off crack tip
+    const tCrack = 2 * crackDepthMm / v;
+    const ampCrack = atten(crackDepthMm) * 0.75; // strong partial reflection
+    echoes.push({ t: tCrack, amp: ampCrack, color: 'echo', label: 'CRACK', width: 1.0 });
+
+    // Some signal still passes the crack and reflects from back wall — sharply attenuated
+    const tBack = 2 * thickness / v;
+    const passFactor = 0.18; // sharp drop because most reflects at crack
+    const ampBack = atten(thickness) * passFactor;
+    echoes.push({ t: tBack, amp: ampBack, color: 'echo', label: 'BW', width: 1.0 });
+
+    // Second crack echo (multiple reflection)
+    const tCrack2 = 2 * tCrack;
+    if (tCrack2 < maxTime) {
+      const ampCrack2 = atten(crackDepthMm * 2) * 0.4;
+      echoes.push({ t: tCrack2, amp: ampCrack2, color: 'echo', label: 'CRACK·2', width: 1.0 });
+    }
+  } else {
+    // Clean back wall echo
+    const tBack = 2 * thickness / v;
+    const ampBack = atten(thickness) * 0.9;
+    echoes.push({ t: tBack, amp: ampBack, color: 'echo', label: 'BACKWALL', width: 1.0 });
+    // 2nd back wall echo
+    const tBack2 = 2 * tBack;
+    if (tBack2 < maxTime) {
+      const ampBack2 = atten(thickness * 2) * 0.6;
+      echoes.push({ t: tBack2, amp: ampBack2, color: 'echo', label: 'BW·2', width: 1.0 });
+    }
+    // 3rd
+    const tBack3 = 3 * tBack;
+    if (tBack3 < maxTime) {
+      const ampBack3 = atten(thickness * 3) * 0.4;
+      echoes.push({ t: tBack3, amp: ampBack3, color: 'echo', label: 'BW·3', width: 1.0 });
+    }
+  }
+
+  // Draw waveform: baseline with damped sinusoidal bursts at each echo
+  // We'll sample continuously across time and sum contributions
+  const N = Math.floor(plotW);
+  const ampScale = plotH * 0.75; // 100% amplitude reaches near top
+  const freq = 5; // MHz → cycles per µs
+
+  // Build separate waveforms for pulse vs echo so we can color
+  function sampleWave(echo, time_us) {
+    const dt = time_us - echo.t;
+    if (dt < 0) return 0;
+    const sigma = 0.35; // µs, pulse envelope width
+    if (dt > sigma * 4) return 0;
+    const env = Math.exp(-(dt * dt) / (2 * sigma * sigma));
+    const carrier = Math.sin(2 * Math.PI * freq * dt);
+    return echo.amp * env * carrier;
+  }
+
+  // Noise
+  function noise(x) {
+    return (Math.sin(x * 12.9898 + 78.233) * 43758.5453) % 1;
+  }
+
+  // In trace mode, only draw waveform up to current playback time
+  const cutoffT = state.mode === 'trace' ? state.trace.t : maxTime;
+
+  // Draw red pulse component
+  ctx.strokeStyle = '#ff5757';
+  ctx.lineWidth = 1.5;
+  ctx.shadowColor = 'rgba(255,87,87,0.6)';
+  ctx.shadowBlur = 4;
+  ctx.beginPath();
+  let started = false;
+  for (let i = 0; i <= N; i++) {
+    const x = plotL + (i / N) * plotW;
+    const t = (i / N) * maxTime;
+    if (t > cutoffT) break;
+    let y = 0;
+    for (const e of echoes) if (e.color === 'pulse') y += sampleWave(e, t);
+    const py = baseY - y * ampScale;
+    if (!started) { ctx.moveTo(x, py); started = true; } else ctx.lineTo(x, py);
+  }
+  ctx.stroke();
+
+  // Draw blue echo component
+  ctx.strokeStyle = '#4db8ff';
+  ctx.shadowColor = 'rgba(77,184,255,0.6)';
+  ctx.shadowBlur = 4;
+  ctx.beginPath();
+  started = false;
+  for (let i = 0; i <= N; i++) {
+    const x = plotL + (i / N) * plotW;
+    const t = (i / N) * maxTime;
+    if (t > cutoffT) break;
+    let y = 0;
+    for (const e of echoes) if (e.color === 'echo') y += sampleWave(e, t);
+    // baseline noise
+    y += (Math.sin(t * 31 + animTime * 3) * 0.5 + Math.sin(t * 17.3 + animTime * 1.7) * 0.5) * 0.008;
+    const py = baseY - y * ampScale;
+    if (!started) { ctx.moveTo(x, py); started = true; } else ctx.lineTo(x, py);
+  }
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // In trace mode, draw the playback cursor (sweep line)
+  if (state.mode === 'trace') {
+    const cx = plotL + (cutoffT / maxTime) * plotW;
+    ctx.strokeStyle = 'rgba(0,255,136,0.8)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx, plotT);
+    ctx.lineTo(cx, plotB);
+    ctx.stroke();
+    // little triangle marker on top
+    ctx.fillStyle = '#00ff88';
+    ctx.beginPath();
+    ctx.moveTo(cx, plotT);
+    ctx.lineTo(cx - 4, plotT - 6);
+    ctx.lineTo(cx + 4, plotT - 6);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Echo markers / labels (only show ones that have arrived in trace mode)
+  for (const e of echoes) {
+    if (e.t === 0) continue;
+    if (e.t > maxTime) continue;
+    if (state.mode === 'trace' && e.t > state.trace.t) continue;
+    const x = plotL + (e.t / maxTime) * plotW;
+    const peakY = baseY - e.amp * ampScale;
+    ctx.strokeStyle = 'rgba(77,184,255,0.3)';
+    ctx.setLineDash([2, 3]);
+    ctx.beginPath();
+    ctx.moveTo(x, peakY);
+    ctx.lineTo(x, plotB);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // label
+    ctx.fillStyle = '#4db8ff';
+    ctx.font = '9px "JetBrains Mono"';
+    ctx.textAlign = 'center';
+    ctx.fillText(e.label, x, peakY - 6);
+    // amplitude readout
+    ctx.fillStyle = '#6a727d';
+    ctx.fillText(`${(e.amp * 100).toFixed(0)}%`, x, peakY - 18);
+  }
+
+  // Highlight crack echo zone if applicable
+  if (overCrack) {
+    const tCrack = 2 * crackDepthMm / v;
+    const x = plotL + (tCrack / maxTime) * plotW;
+    ctx.fillStyle = 'rgba(255,87,87,0.06)';
+    ctx.fillRect(x - 18, plotT, 36, plotH);
+    ctx.strokeStyle = 'rgba(255,87,87,0.3)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x - 18, plotT, 36, plotH);
+    // warning text
+    ctx.fillStyle = '#ff5757';
+    ctx.font = '10px "JetBrains Mono"';
+    ctx.textAlign = 'left';
+    ctx.fillText('⚠ DEFECT DETECTED', plotL + 8, plotT + 16);
+    ctx.fillStyle = '#6a727d';
+    ctx.fillText(`Est. depth: ${crackDepthMm.toFixed(1)} mm`, plotL + 8, plotT + 30);
+  } else {
+    ctx.fillStyle = '#00ff88';
+    ctx.font = '10px "JetBrains Mono"';
+    ctx.textAlign = 'left';
+    ctx.fillText('✓ NO DEFECT IN BEAM PATH', plotL + 8, plotT + 16);
+  }
+
+  ctx.textAlign = 'start';
+}
+
+function draw() {
+  drawBeam();
+  drawScope();
+}
+
+// Animation loop: scope noise + trace playback
+let lastFrameTime = performance.now();
+function loop(now) {
+  if (!now) now = performance.now();
+  const dt = Math.min(0.05, (now - lastFrameTime) / 1000); // seconds, capped
+  lastFrameTime = now;
+  animTime += dt;
+
+  if (state.mode === 'trace' && state.trace.playing) {
+    // µs-of-simulation per second-of-realtime = state.trace.maxT / state.trace.speed
+    // So one real second covers (maxT / speed) microseconds.
+    const usPerSec = state.trace.maxT / state.trace.speed;
+    state.trace.t += dt * usPerSec;
+    if (state.trace.t >= state.trace.maxT) {
+      state.trace.t = state.trace.maxT;
+      state.trace.playing = false;
+      playPauseBtn.textContent = '▶ Replay';
+      playPauseBtn.classList.remove('playing');
+    }
+    drawBeam();
+  }
+  drawScope();
+  requestAnimationFrame(loop);
+}
+
+window.addEventListener('resize', draw);
+draw();
+loop();
+</script>
+</body>
+</html>
