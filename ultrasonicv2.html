@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ultrasonic NDT Explorer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Baloo+2:wght@700;800&display=swap');
+
+  :root {
+    --bg: #eef4ff;
+    --panel: #ffffff;
+    --border: #c8d8f0;
+    --steel: #8ab0d8;
+    --steel-light: #c5daf0;
+    --text: #2a3a5c;
+    --text-dim: #7a90b8;
+    --accent: #ff6b6b;
+    --accent2: #ffd93d;
+    --green: #06d6a0;
+    --blue: #4d9fff;
+    --purple: #c77dff;
+    --orange: #ff9f43;
+    --pulse-out: #ff6b6b;
+    --pulse-back: #4d9fff;
+    --scope-bg: #0d1b2a;
+    --scope-grid: rgba(77,159,255,0.15);
+    --probe: #ffd93d;
+    --shadow: 0 4px 24px rgba(60,90,160,0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Nunito', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+
+  .app {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    height: 100vh;
+    padding: 12px 16px 10px;
+    gap: 10px;
+  }
+
+  /* ---- Header ---- */
+  header {
+    background: var(--panel);
+    border: 2px solid var(--border);
+    border-radius: 18px;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    box-shadow: var(--shadow);
+  }
+
+  .brand {
+    font-family: 'Baloo 2', cursive;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1;
+    letter-spacing: -0.01em;
+  }
+  .brand span { color: var(--accent); }
+
+  .header-divider {
+    width: 2px;
+    height: 32px;
+    background: var(--border);
+    border-radius: 1px;
+  }
+
+  .ctrl-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .ctrl-label {
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+  }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 160px;
+    height: 6px;
+    background: linear-gradient(90deg, var(--blue), var(--purple));
+    border-radius: 3px;
+    outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px; height: 18px;
+    background: var(--panel);
+    border: 3px solid var(--blue);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(77,159,255,0.4);
+  }
+
+  .readout {
+    font-weight: 800;
+    color: var(--blue);
+    font-size: 15px;
+    min-width: 50px;
+  }
+
+  .btn {
+    background: linear-gradient(135deg, var(--accent), #ff4757);
+    color: #fff;
+    border: none;
+    padding: 9px 18px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    border-radius: 12px;
+    box-shadow: 0 3px 12px rgba(255,107,107,0.4);
+    transition: all 0.15s ease;
+    letter-spacing: 0.03em;
+  }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 5px 16px rgba(255,107,107,0.5); }
+  .btn:active { transform: translateY(1px); }
+
+  .btn-play {
+    background: linear-gradient(135deg, var(--green), #04a87f);
+    box-shadow: 0 3px 12px rgba(6,214,160,0.4);
+    min-width: 110px;
+  }
+  .btn-play:hover { box-shadow: 0 5px 16px rgba(6,214,160,0.5); }
+  .btn-play.playing {
+    background: linear-gradient(135deg, var(--orange), #e68a00);
+    box-shadow: 0 3px 12px rgba(255,159,67,0.4);
+  }
+
+  .status-badge {
+    margin-left: auto;
+    background: linear-gradient(135deg, #e8fff6, #d0f7eb);
+    border: 2px solid var(--green);
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 11px;
+    font-weight: 800;
+    color: #049e78;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    letter-spacing: 0.05em;
+  }
+  .status-dot {
+    width: 8px; height: 8px;
+    background: var(--green);
+    border-radius: 50%;
+    animation: blink 1.2s infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* ---- Main Layout ---- */
+  main {
+    display: grid;
+    grid-template-columns: 1fr 1.15fr;
+    gap: 12px;
+    min-height: 0;
+  }
+
+  .card {
+    background: var(--panel);
+    border: 2px solid var(--border);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 10px 18px;
+    border-bottom: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(180deg, rgba(77,159,255,0.06), transparent);
+  }
+  .card-title {
+    font-family: 'Baloo 2', cursive;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .card-subtitle {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .card-body {
+    flex: 1;
+    position: relative;
+    min-height: 0;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Scope card uses dark background */
+  .card-scope .card-body {
+    background: var(--scope-bg);
+    border-radius: 0 0 16px 16px;
+  }
+
+  /* ---- Footer info strip ---- */
+  footer {
+    background: var(--panel);
+    border: 2px solid var(--border);
+    border-radius: 14px;
+    padding: 8px 20px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    box-shadow: var(--shadow);
+  }
+  .info-chip {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-dim);
+  }
+  .info-chip .dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .info-chip b { color: var(--text); }
+
+  /* Drag hint */
+  .drag-hint {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(255,255,255,0.92);
+    border: 2px dashed var(--blue);
+    border-radius: 12px;
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--blue);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+    white-space: nowrap;
+  }
+  .drag-hint.show { opacity: 1; }
+
+  /* Probe label tooltip */
+  #probeLabel {
+    position: absolute;
+    top: 4px;
+    background: var(--probe);
+    color: var(--text);
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 8px;
+    pointer-events: none;
+    white-space: nowrap;
+    transform: translateX(-50%);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">🔊 Ultrasonic <span>NDT</span> Explorer</div>
+    <div class="header-divider"></div>
+
+    <div class="ctrl-group">
+      <span class="ctrl-label">Thickness</span>
+      <input type="range" id="thickness" min="40" max="180" value="110" step="1">
+      <span class="readout"><span id="thicknessVal">110</span> mm</span>
+    </div>
+
+    <div class="header-divider"></div>
+
+    <div class="ctrl-group">
+      <button class="btn" id="randomize">🎲 New Cracks</button>
+    </div>
+
+    <div class="ctrl-group">
+      <button class="btn btn-play" id="playPause">▶ Start</button>
+      <span class="ctrl-label">Speed</span>
+      <input type="range" id="speed" min="1" max="80" value="18" step="1" style="width:100px">
+      <span class="readout" style="color:var(--purple)"><span id="speedVal">18</span>×</span>
+    </div>
+
+    <div class="status-badge">
+      <span class="status-dot"></span>
+      SYSTEM ACTIVE
+    </div>
+  </header>
+
+  <main>
+    <section class="card" id="beamCard">
+      <div class="card-header">
+        <div class="card-title">🔩 Steel Sample</div>
+        <div class="card-subtitle">Drag probe to scan</div>
+      </div>
+      <div class="card-body" id="beamBody">
+        <canvas id="beamCanvas"></canvas>
+        <div id="probeLabel">👆 Drag me!</div>
+      </div>
+    </section>
+
+    <section class="card card-scope">
+      <div class="card-header">
+        <div class="card-title">📈 Oscilloscope</div>
+        <div class="card-subtitle">Time-of-flight · μs</div>
+      </div>
+      <div class="card-body">
+        <canvas id="scopeCanvas"></canvas>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="info-chip">
+      <span class="dot" style="background:var(--pulse-out)"></span>
+      <span>Emitted pulse</span>
+    </div>
+    <div class="info-chip">
+      <span class="dot" style="background:var(--pulse-back)"></span>
+      <span>Reflected echo</span>
+    </div>
+    <div class="info-chip">
+      <span class="dot" style="background:var(--steel)"></span>
+      <span>Steel · 5900 m/s</span>
+    </div>
+    <div class="info-chip" id="depthInfo" style="margin-left:auto">
+      <span class="dot" style="background:var(--accent)"></span>
+      <span id="depthText">Move probe over a crack to detect it</span>
+    </div>
+  </footer>
+</div>
+
+<script>
+// ============================================================
+//  CONSTANTS
+// ============================================================
+const SOUND_SPEED = 5.9; // mm/µs
+const ATTEN = 0.01;      // per mm one-way
+const MAX_TIME = 100;    // µs scope window
+const MAX_CRACKS = 3;
+
+// ============================================================
+//  STATE
+// ============================================================
+const state = {
+  thickness: 110,
+  probeX: 0.35,          // fraction 0..1
+  cracks: [],            // [{x, depthFrac, widthMm, isHorizontal}]
+  trace: {
+    t: 0,
+    playing: false,
+    speed: 18,
+  },
+};
+
+function randomizeCracks() {
+  state.cracks = [];
+  const count = 1 + Math.floor(Math.random() * MAX_CRACKS);
+  // spread positions so they don't overlap too much
+  const positions = [];
+  for (let i = 0; i < count; i++) {
+    let x, ok, tries = 0;
+    do {
+      x = 0.1 + Math.random() * 0.8;
+      ok = positions.every(p => Math.abs(p - x) > 0.18);
+      tries++;
+    } while (!ok && tries < 30);
+    positions.push(x);
+    const isH = Math.random() > 0.5;
+    state.cracks.push({
+      x,
+      depthFrac: 0.2 + Math.random() * 0.65,
+      isHorizontal: isH,
+      widthMm: isH ? 8 + Math.random() * 10 : 10 + Math.random() * 20,
+    });
+  }
+  state.trace.t = 0;
+}
+randomizeCracks();
+
+// ============================================================
+//  CONTROLS
+// ============================================================
+const thicknessEl = document.getElementById('thickness');
+const thicknessVal = document.getElementById('thicknessVal');
+const playPauseBtn = document.getElementById('playPause');
+const speedEl = document.getElementById('speed');
+const speedVal = document.getElementById('speedVal');
+
+thicknessEl.addEventListener('input', e => {
+  state.thickness = +e.target.value;
+  thicknessVal.textContent = state.thickness;
+  state.trace.t = 0;
+});
+document.getElementById('randomize').addEventListener('click', () => {
+  randomizeCracks();
+  state.trace.t = 0;
+  state.trace.playing = false;
+  updatePlayBtn();
+});
+speedEl.addEventListener('input', e => {
+  state.trace.speed = +e.target.value;
+  speedVal.textContent = state.trace.speed;
+});
+playPauseBtn.addEventListener('click', () => {
+  if (state.trace.t >= MAX_TIME) state.trace.t = 0;
+  state.trace.playing = !state.trace.playing;
+  updatePlayBtn();
+});
+function updatePlayBtn() {
+  if (state.trace.playing) {
+    playPauseBtn.textContent = '⏸ Pause';
+    playPauseBtn.classList.add('playing');
+  } else {
+    playPauseBtn.textContent = state.trace.t >= MAX_TIME ? '↺ Replay' : '▶ Start';
+    playPauseBtn.classList.remove('playing');
+  }
+}
+
+// ============================================================
+//  DRAG PROBE
+// ============================================================
+const beamBodyEl = document.getElementById('beamBody');
+const probeLabelEl = document.getElementById('probeLabel');
+let isDragging = false;
+let beamGeom = null; // set after first draw
+
+function getProbeXFromEvent(e) {
+  if (!beamGeom) return state.probeX;
+  const rect = beamBodyEl.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const fx = (clientX - rect.left - beamGeom.beamLeft) / beamGeom.beamW;
+  return Math.max(0.01, Math.min(0.99, fx));
+}
+
+beamBodyEl.addEventListener('mousedown', e => {
+  isDragging = true;
+  state.probeX = getProbeXFromEvent(e);
+  state.trace.t = 0;
+  state.trace.playing = false;
+  updatePlayBtn();
+  probeLabelEl.textContent = '👋 Drag me!';
+});
+window.addEventListener('mousemove', e => {
+  if (!isDragging) return;
+  state.probeX = getProbeXFromEvent(e);
+  state.trace.t = 0;
+});
+window.addEventListener('mouseup', () => { isDragging = false; });
+beamBodyEl.addEventListener('touchstart', e => {
+  isDragging = true;
+  state.probeX = getProbeXFromEvent(e);
+  state.trace.t = 0;
+  state.trace.playing = false;
+  updatePlayBtn();
+}, { passive: true });
+window.addEventListener('touchmove', e => {
+  if (!isDragging) return;
+  state.probeX = getProbeXFromEvent(e);
+  state.trace.t = 0;
+}, { passive: true });
+window.addEventListener('touchend', () => { isDragging = false; });
+
+// ============================================================
+//  PHYSICS HELPERS
+// ============================================================
+function getEchoes() {
+  const { thickness, probeX, cracks } = state;
+  const v = SOUND_SPEED;
+  const atten = d => Math.exp(-ATTEN * d);
+  const echoes = [];
+
+  // Initial pulse at t=0
+  echoes.push({ t: 0, amp: 1.0, kind: 'pulse', label: '' });
+
+  let hitCrack = false;
+  for (const crack of cracks) {
+    const halfW = crack.isHorizontal
+      ? (crack.widthMm / 180) * 0.9
+      : (crack.widthMm / 2) / (thickness * 2.5);
+    const over = Math.abs(probeX - crack.x) < halfW + 0.01;
+    if (!over) continue;
+    hitCrack = true;
+
+    const depthMm = crack.depthFrac * thickness;
+    const tDown1 = depthMm / v;               // one-way to crack
+    const tCrack = 2 * tDown1;                // round-trip
+    const tBack  = 2 * thickness / v;         // round-trip to back wall
+    const tDown2 = thickness / v;             // one-way to back wall
+
+    echoes.push({ t: tCrack, tDown: tDown1, amp: atten(depthMm) * 0.85, kind: 'echo', label: '⚡ CRACK', depthMm });
+    if (tBack < MAX_TIME)
+      echoes.push({ t: tBack, tDown: tDown2, amp: atten(thickness) * 0.28, kind: 'echo', label: 'BACK WALL', depthMm: thickness });
+    // CRACK×2: bounces off surface, goes back down to crack
+    const t2 = 2 * tCrack;
+    if (t2 < MAX_TIME)
+      echoes.push({ t: t2, tDown: tCrack + tDown1, amp: atten(depthMm * 2) * 0.45, kind: 'echo', label: 'CRACK×2', depthMm });
+    break;
+  }
+
+  if (!hitCrack) {
+    const tDown = thickness / v;
+    const tBack = 2 * tDown;
+    echoes.push({ t: tBack, tDown: tDown, amp: atten(thickness) * 0.92, kind: 'echo', label: 'BACK WALL', depthMm: thickness });
+    // BW×2: bounces off surface at tBack, goes down again
+    const t2 = 2 * tBack;
+    if (t2 < MAX_TIME)
+      echoes.push({ t: t2, tDown: tBack + tDown, amp: atten(thickness * 2) * 0.65, kind: 'echo', label: 'BW×2', depthMm: thickness });
+    // BW×3
+    const t3 = 3 * tBack;
+    if (t3 < MAX_TIME)
+      echoes.push({ t: t3, tDown: t2 + tDown, amp: atten(thickness * 3) * 0.4, kind: 'echo', label: 'BW×3', depthMm: thickness });
+  }
+
+  return { echoes, hitCrack };
+}
+
+// Determine first crack hit info for footer
+function getHitCrack() {
+  const { probeX, cracks, thickness } = state;
+  for (const crack of cracks) {
+    const halfW = crack.isHorizontal
+      ? (crack.widthMm / 180) * 0.9
+      : (crack.widthMm / 2) / (thickness * 2.5);
+    if (Math.abs(probeX - crack.x) < halfW + 0.01) return crack;
+  }
+  return null;
+}
+
+// ============================================================
+//  BEAM CANVAS
+// ============================================================
+const beamCanvas = document.getElementById('beamCanvas');
+const beamCtx = beamCanvas.getContext('2d');
+
+function sizeCanvas(c) {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = c.getBoundingClientRect();
+  c.width = rect.width * dpr;
+  c.height = rect.height * dpr;
+  return { w: rect.width, h: rect.height, dpr };
+}
+
+function drawBeam() {
+  const { w, h, dpr } = sizeCanvas(beamCanvas);
+  const ctx = beamCtx;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+
+  const padX = 44;
+  const padTop = 76;
+  const padBottom = 38;
+  const maxBeamH = h - padTop - padBottom;
+  const beamH = (state.thickness / 180) * maxBeamH;
+  const beamTop = padTop;
+  const beamLeft = padX;
+  const beamRight = w - padX;
+  const beamW = beamRight - beamLeft;
+  const beamBottom = beamTop + beamH;
+
+  // Save geometry for drag handler
+  beamGeom = { beamLeft, beamRight, beamW, beamTop, beamBottom, beamH, w, h };
+
+  // ---- Steel block ----
+  const metalGrad = ctx.createLinearGradient(0, beamTop, 0, beamBottom);
+  metalGrad.addColorStop(0, '#d6e8f8');
+  metalGrad.addColorStop(0.4, '#b8d0ec');
+  metalGrad.addColorStop(1, '#8ab0d8');
+  ctx.fillStyle = metalGrad;
+  ctx.beginPath();
+  roundRectPath(ctx, beamLeft, beamTop, beamW, beamH, 8);
+  ctx.fill();
+
+  // Subtle grain texture
+  ctx.save();
+  ctx.beginPath();
+  roundRectPath(ctx, beamLeft, beamTop, beamW, beamH, 8);
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.lineWidth = 1;
+  for (let i = -beamH; i < beamW + beamH; i += 9) {
+    ctx.beginPath();
+    ctx.moveTo(beamLeft + i, beamTop);
+    ctx.lineTo(beamLeft + i + beamH, beamBottom);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Border
+  ctx.strokeStyle = '#5a85b8';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  roundRectPath(ctx, beamLeft, beamTop, beamW, beamH, 8);
+  ctx.stroke();
+
+  // Surface labels
+  ctx.fillStyle = '#7a90b8';
+  ctx.font = '600 10px "Nunito"';
+  ctx.textAlign = 'center';
+  ctx.fillText('TOP SURFACE', beamLeft + beamW / 2, beamTop - 7);
+  ctx.fillText('BACK WALL', beamLeft + beamW / 2, beamBottom + 16);
+
+  // Thickness label on right
+  const ax = beamRight + 16;
+  ctx.strokeStyle = '#b0c8e8';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(ax, beamTop); ctx.lineTo(ax, beamBottom); ctx.stroke();
+  arrowhead(ctx, ax, beamTop, 'up', '#b0c8e8');
+  arrowhead(ctx, ax, beamBottom, 'down', '#b0c8e8');
+  ctx.save();
+  ctx.translate(ax + 13, (beamTop + beamBottom) / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#7a90b8';
+  ctx.font = '700 10px "Nunito"';
+  ctx.fillText(`${state.thickness} mm`, 0, 0);
+  ctx.restore();
+
+  // ---- Cracks ----
+  for (const crack of state.cracks) {
+    drawCrack(ctx, crack, beamLeft, beamTop, beamW, beamH, beamBottom);
+  }
+
+  // ---- Probe ----
+  const probePx = beamLeft + state.probeX * beamW;
+  drawProbe(ctx, probePx, beamTop);
+
+  // Update probe label position
+  probeLabelEl.style.left = (beamLeft + state.probeX * beamW) + 'px';
+
+  // ---- Sound path (trace pulses) ----
+  drawTracePulses(ctx, probePx, beamTop, beamBottom, beamH);
+
+  return { beamTop, beamBottom, beamLeft, beamRight, beamH, beamW };
+}
+
+function roundRectPath(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function arrowhead(ctx, x, y, dir, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  if (dir === 'up') {
+    ctx.moveTo(x, y); ctx.lineTo(x - 3, y + 6); ctx.lineTo(x + 3, y + 6);
+  } else {
+    ctx.moveTo(x, y); ctx.lineTo(x - 3, y - 6); ctx.lineTo(x + 3, y - 6);
+  }
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawCrack(ctx, crack, bl, bt, bw, bh, bb) {
+  const cx = bl + crack.x * bw;
+  const cy = bt + crack.depthFrac * bh;
+  const wPx = Math.max(8, (crack.widthMm / 180) * bw * 1.8);
+
+  ctx.save();
+
+  if (crack.isHorizontal) {
+    // Horizontal crack: jagged horizontal line
+    const halfL = wPx;
+    ctx.strokeStyle = '#1a2a4a';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    const segs = 10;
+    ctx.moveTo(cx - halfL, cy);
+    for (let i = 1; i <= segs; i++) {
+      const px = cx - halfL + (i / segs) * halfL * 2;
+      const jy = cy + Math.sin(i * 4.7 + crack.x * 20) * 3;
+      ctx.lineTo(px, jy);
+    }
+    ctx.stroke();
+    // Crack opening highlight
+    ctx.strokeStyle = 'rgba(255,107,107,0.5)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Tick ends
+    ctx.strokeStyle = '#1a2a4a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - halfL, cy - 5); ctx.lineTo(cx - halfL, cy + 5);
+    ctx.moveTo(cx + halfL, cy - 5); ctx.lineTo(cx + halfL, cy + 5);
+    ctx.stroke();
+  } else {
+    // Vertical crack: jagged slit from back wall up to crack tip
+    const halfW = Math.max(3, wPx * 0.18);
+    const segs = 10;
+
+    ctx.fillStyle = '#0d1b2a';
+    ctx.beginPath();
+    ctx.moveTo(cx - halfW, bb);
+    for (let i = 1; i <= segs; i++) {
+      const t = i / segs;
+      const py = bb - t * (bb - cy);
+      const jx = Math.sin(i * 6.1 + crack.x * 25) * 1.8;
+      ctx.lineTo(cx - halfW + jx, py);
+    }
+    ctx.lineTo(cx, cy - 2);
+    for (let i = segs; i >= 1; i--) {
+      const t = i / segs;
+      const py = bb - t * (bb - cy);
+      const jx = Math.cos(i * 4.9 + crack.x * 18) * 1.8;
+      ctx.lineTo(cx + halfW + jx, py);
+    }
+    ctx.lineTo(cx + halfW, bb);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgba(255,107,107,0.4)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawProbe(ctx, px, beamTop) {
+  const pw = 40, ph = 30;
+  const py = beamTop - ph - 6;
+
+  // Cable
+  ctx.strokeStyle = '#b0c8e8';
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(px, py);
+  ctx.quadraticCurveTo(px - 30, py - 20, px - 60, py - 8);
+  ctx.stroke();
+
+  // Probe body
+  ctx.fillStyle = '#2a3a5c';
+  ctx.beginPath();
+  roundRectPath(ctx, px - pw/2, py, pw, ph, 5);
+  ctx.fill();
+
+  // Probe top stripe (brand color)
+  ctx.fillStyle = '#ffd93d';
+  ctx.fillRect(px - pw/2 + 4, py + 4, pw - 8, 5);
+
+  // Couplant layer
+  ctx.fillStyle = 'rgba(77,159,255,0.45)';
+  ctx.fillRect(px - pw/2 + 3, beamTop - 4, pw - 6, 5);
+
+  // Crystal dot
+  ctx.fillStyle = '#ff6b6b';
+  ctx.beginPath();
+  ctx.arc(px, py + ph/2 + 2, 3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Probe label
+  ctx.fillStyle = '#ffd93d';
+  ctx.font = '700 9px "Nunito"';
+  ctx.textAlign = 'center';
+  ctx.fillText('5 MHz', px, py - 4);
+}
+
+// ---- Trace pulse animation ----
+function drawTracePulses(ctx, probePx, beamTop, beamBottom, beamH) {
+  const { echoes } = getEchoes();
+  const t = state.trace.t;
+  const thickness = state.thickness;
+  const v = SOUND_SPEED;
+
+  // Faint beam axis
+  ctx.save();
+  ctx.strokeStyle = 'rgba(77,159,255,0.15)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(probePx, beamTop);
+  ctx.lineTo(probePx, beamBottom);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // For each "pulse segment" active at time t, draw a wavefront
+  // Segments: initial down, then per-echo: echo arrives at surface
+  const segments = buildSegments(echoes, thickness, v);
+
+  for (const seg of segments) {
+    if (t < seg.t0 || t > seg.t1) continue;
+    const frac = (t - seg.t0) / (seg.t1 - seg.t0);
+    const d = seg.d0 + frac * (seg.d1 - seg.d0);
+    const y = beamTop + (d / thickness) * beamH;
+    const goingDown = seg.d1 > seg.d0;
+    const color = goingDown ? '#ff6b6b' : '#4d9fff';
+    const glowColor = goingDown ? 'rgba(255,107,107,' : 'rgba(77,159,255,';
+    const ampO = Math.min(1, seg.amp * 1.3);
+    // Packet height scales with amplitude — shorter bar = weaker signal
+    const barHalf = Math.max(3, 11 * seg.amp); // full amp → 11px half-height, weaker → shorter
+
+    // Glow
+    const g = ctx.createRadialGradient(probePx, y, 0, probePx, y, 32);
+    g.addColorStop(0, glowColor + (0.45 * ampO) + ')');
+    g.addColorStop(1, glowColor + '0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(probePx - 32, y - 14, 64, 28);
+
+    // Wave packet: ticks scaled to barHalf
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.globalAlpha = ampO;
+    const ticks = 5;
+    const hw = 22;
+    ctx.beginPath();
+    for (let i = 0; i < ticks; i++) {
+      const tx = probePx - hw + (i / (ticks - 1)) * hw * 2;
+      const oy = Math.sin(i * 1.4) * (barHalf * 0.5);
+      ctx.moveTo(tx, y + oy - barHalf);
+      ctx.lineTo(tx, y + oy + barHalf);
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // Arrow direction
+    ctx.fillStyle = color;
+    ctx.globalAlpha = ampO * 0.9;
+    ctx.beginPath();
+    const arrOff = barHalf + 3;
+    if (goingDown) {
+      ctx.moveTo(probePx, y + arrOff + 4); ctx.lineTo(probePx - 5, y + arrOff - 3); ctx.lineTo(probePx + 5, y + arrOff - 3);
+    } else {
+      ctx.moveTo(probePx, y - arrOff - 4); ctx.lineTo(probePx - 5, y - arrOff + 3); ctx.lineTo(probePx + 5, y - arrOff + 3);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // Reflection flash at echo positions already passed
+  for (const echo of echoes) {
+    if (echo.t === 0 || echo.t > t) continue;
+    const depthMm = echo.depthMm;
+    if (depthMm === undefined) continue;
+    const y = beamTop + (depthMm / thickness) * beamH;
+    const age = t - echo.t;
+    const fa = Math.max(0, 0.9 - age * 1.2);
+    if (fa > 0) {
+      ctx.fillStyle = `rgba(255,107,107,${fa})`;
+      ctx.beginPath();
+      ctx.arc(probePx, y, 5 + fa * 12, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Time readout
+  ctx.fillStyle = '#4d9fff';
+  ctx.font = '800 13px "Nunito"';
+  ctx.textAlign = 'left';
+  ctx.fillText(`t = ${t.toFixed(2)} μs`, beamLeft + 8, beamBottom + 28);
+}
+
+function buildSegments(echoes, thickness, v) {
+  // Each echo carries tDown = time the outgoing pulse reaches the reflector.
+  // We emit: outgoing leg (0 or prev arrival → tDown) and return leg (tDown → t).
+
+  const segs = [];
+  const events = echoes
+    .filter(e => e.t > 0 && e.depthMm !== undefined && e.tDown !== undefined)
+    .slice().sort((a, b) => a.t - b.t);
+
+  if (events.length === 0) return segs;
+
+  // First echo: outgoing from t=0
+  const first = events[0];
+  segs.push({ t0: 0,           t1: first.tDown, d0: 0,              d1: first.depthMm, amp: 1.0        });
+  segs.push({ t0: first.tDown, t1: first.t,     d0: first.depthMm,  d1: 0,             amp: first.amp  });
+
+  for (let i = 1; i < events.length; i++) {
+    const prev = events[i - 1];
+    const curr = events[i];
+    // Bridging down leg: starts when previous echo arrives back at surface
+    if (curr.tDown > prev.t + 0.01) {
+      segs.push({ t0: prev.t, t1: curr.tDown, d0: 0, d1: curr.depthMm, amp: curr.amp });
+    }
+    // Return leg
+    segs.push({ t0: curr.tDown, t1: curr.t, d0: curr.depthMm, d1: 0, amp: curr.amp });
+  }
+
+  return segs;
+}
+
+// global ref so drawTracePulses can access
+let beamLeft = 44;
+
+// ============================================================
+//  SCOPE CANVAS
+// ============================================================
+const scopeCanvas = document.getElementById('scopeCanvas');
+const scopeCtx = scopeCanvas.getContext('2d');
+
+function drawScope() {
+  const { w, h, dpr } = sizeCanvas(scopeCanvas);
+  const ctx = scopeCtx;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+
+  // Subtle background glow
+  const bg = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) * 0.7);
+  bg.addColorStop(0, 'rgba(20,50,90,0.6)');
+  bg.addColorStop(1, 'transparent');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, w, h);
+
+  const padL = 52, padR = 24, padT = 36, padB = 46;
+  const pw = w - padL - padR;
+  const ph = h - padT - padB;
+  const pl = padL, pt = padT, pb = pt + ph;
+  const baseY = pb - ph * 0.12;
+
+  // Grid
+  ctx.strokeStyle = 'rgba(77,159,255,0.12)';
+  ctx.lineWidth = 1;
+  const gx = 10, gy = 8;
+  for (let i = 0; i <= gx; i++) {
+    const x = pl + (i / gx) * pw;
+    ctx.beginPath(); ctx.moveTo(x, pt); ctx.lineTo(x, pb); ctx.stroke();
+  }
+  for (let i = 0; i <= gy; i++) {
+    const y = pt + (i / gy) * ph;
+    ctx.beginPath(); ctx.moveTo(pl, y); ctx.lineTo(pl + pw, y); ctx.stroke();
+  }
+  // Baseline
+  ctx.strokeStyle = 'rgba(77,159,255,0.3)';
+  ctx.beginPath(); ctx.moveTo(pl, baseY); ctx.lineTo(pl + pw, baseY); ctx.stroke();
+
+  // Axis labels
+  ctx.fillStyle = 'rgba(180,210,255,0.5)';
+  ctx.font = '600 9px "Nunito"';
+  ctx.textAlign = 'center';
+  for (let i = 0; i <= gx; i++) {
+    const x = pl + (i / gx) * pw;
+    ctx.fillText((i / gx * MAX_TIME).toFixed(0), x, pb + 14);
+  }
+  ctx.fillText('Time (μs)', pl + pw / 2, pb + 30);
+  ctx.textAlign = 'right';
+  for (let i = 0; i <= gy; i += 2) {
+    const y = pt + (i / gy) * ph;
+    const amp = 100 - (i / gy) * 100;
+    ctx.fillText(amp.toFixed(0), pl - 7, y + 3);
+  }
+  ctx.save();
+  ctx.translate(14, pt + ph / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.textAlign = 'center';
+  ctx.fillText('Amplitude (%)', 0, 0);
+  ctx.restore();
+  ctx.textAlign = 'start';
+
+  // ---- Waveform ----
+  const { echoes, hitCrack } = getEchoes();
+  const cutoffT = state.trace.t;
+  const ampScale = ph * 0.82;
+  const freq = 5; // MHz
+
+  // Clean 2-cycle Gaussian pulse — centred so the envelope peak sits mid-oscillation
+  function samplePulse(echo, t_us) {
+    // Shift so the pulse is centred at echo.t + centre offset rather than starting at echo.t
+    const centre = 0.2; // µs offset so t=0 pulse shows full sine cycles
+    const dt = t_us - echo.t - centre;
+    const halfWidth = 0.45; // half-width of display window around centre
+    if (dt < -halfWidth * 2.2 || dt > halfWidth * 2.2) return 0;
+    const sigma = 0.22;
+    const env = Math.exp(-(dt * dt) / (2 * sigma * sigma));
+    return echo.amp * env * Math.sin(2 * Math.PI * freq * dt);
+  }
+
+  const N = Math.ceil(pw);
+
+  // Draw red (emitted) component
+  ctx.save();
+  ctx.strokeStyle = '#ff6b6b';
+  ctx.lineWidth = 2.5;
+  ctx.shadowColor = 'rgba(255,107,107,0.7)';
+  ctx.shadowBlur = 6;
+  ctx.beginPath();
+  let started = false;
+  for (let i = 0; i <= N; i++) {
+    const x = pl + (i / N) * pw;
+    const t = (i / N) * MAX_TIME;
+    if (t > cutoffT) break;
+    let y = 0;
+    for (const e of echoes) if (e.kind === 'pulse') y += samplePulse(e, t);
+    const py2 = baseY - y * ampScale;
+    if (!started) { ctx.moveTo(x, py2); started = true; } else ctx.lineTo(x, py2);
+  }
+  ctx.stroke();
+  ctx.restore();
+
+  // Draw blue (echo) component
+  ctx.save();
+  ctx.strokeStyle = '#4d9fff';
+  ctx.lineWidth = 2.5;
+  ctx.shadowColor = 'rgba(77,159,255,0.7)';
+  ctx.shadowBlur = 6;
+  ctx.beginPath();
+  started = false;
+  for (let i = 0; i <= N; i++) {
+    const x = pl + (i / N) * pw;
+    const t = (i / N) * MAX_TIME;
+    if (t > cutoffT) break;
+    let y = 0;
+    for (const e of echoes) if (e.kind === 'echo') y += samplePulse(e, t);
+    // Tiny noise
+    y += (Math.sin(t * 27 + animTime * 2.1) * 0.5 + Math.sin(t * 13 + animTime) * 0.5) * 0.006;
+    const py2 = baseY - y * ampScale;
+    if (!started) { ctx.moveTo(x, py2); started = true; } else ctx.lineTo(x, py2);
+  }
+  ctx.stroke();
+  ctx.restore();
+
+  // Playback cursor
+  const cx = pl + (cutoffT / MAX_TIME) * pw;
+  ctx.strokeStyle = 'rgba(6,214,160,0.9)';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(cx, pt); ctx.lineTo(cx, pb); ctx.stroke();
+  ctx.fillStyle = '#06d6a0';
+  ctx.beginPath();
+  ctx.moveTo(cx, pt - 1); ctx.lineTo(cx - 5, pt - 8); ctx.lineTo(cx + 5, pt - 8);
+  ctx.closePath(); ctx.fill();
+
+  // Echo markers
+  for (const e of echoes) {
+    if (e.t === 0 || e.t > MAX_TIME) continue;
+    if (e.t > cutoffT) continue;
+    const ex = pl + (e.t / MAX_TIME) * pw;
+    const peakY = baseY - e.amp * ampScale;
+
+    // Dashed line to baseline
+    ctx.save();
+    ctx.strokeStyle = 'rgba(77,159,255,0.35)';
+    ctx.setLineDash([3, 4]);
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(ex, peakY); ctx.lineTo(ex, pb); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    // Label
+    ctx.fillStyle = e.label && e.label.includes('CRACK') ? '#ff6b6b' : '#4d9fff';
+    ctx.font = '700 10px "Nunito"';
+    ctx.textAlign = 'center';
+    ctx.fillText(e.label || '', ex, peakY - 10);
+
+    // Amp readout
+    ctx.fillStyle = 'rgba(180,210,255,0.55)';
+    ctx.font = '600 9px "Nunito"';
+    ctx.fillText(`${Math.round(e.amp * 100)}%`, ex, peakY - 22);
+  }
+
+  // Detection banner — only show after the crack echo has actually arrived on scope
+  ctx.font = '800 11px "Nunito"';
+  ctx.textAlign = 'left';
+  const hitC = getHitCrack();
+  // Find first crack echo arrival time
+  const firstCrackEcho = echoes.find(e => e.kind === 'echo' && e.label && e.label.includes('CRACK'));
+  const crackDetected = hitCrack && firstCrackEcho && cutoffT >= firstCrackEcho.t;
+  if (crackDetected) {
+    const depthMm = (hitC.depthFrac * state.thickness).toFixed(1);
+    ctx.fillStyle = '#ff6b6b';
+    ctx.fillText('⚠ DEFECT DETECTED', pl + 8, pt + 18);
+    ctx.fillStyle = 'rgba(180,210,255,0.5)';
+    ctx.font = '600 10px "Nunito"';
+    ctx.fillText(`Est. depth: ${depthMm} mm`, pl + 8, pt + 32);
+  } else if (cutoffT > 0) {
+    ctx.fillStyle = '#06d6a0';
+    ctx.fillText('✓ NO DEFECT IN BEAM PATH', pl + 8, pt + 18);
+  }
+  // If trace.t === 0 (not started), show nothing
+
+  ctx.textAlign = 'start';
+
+  // Footer update — also gated on crack echo having arrived
+  if (crackDetected) {
+    document.getElementById('depthText').textContent =
+      `⚠ Crack detected at ${(hitC.depthFrac * state.thickness).toFixed(1)} mm depth`;
+    document.getElementById('depthInfo').querySelector('.dot').style.background = '#ff6b6b';
+  } else {
+    document.getElementById('depthText').textContent = cutoffT > 0 ? '✓ No defect in beam path' : 'Press Start to scan';
+    document.getElementById('depthInfo').querySelector('.dot').style.background = '#7a90b8';
+  }
+}
+
+// ============================================================
+//  ANIMATION LOOP
+// ============================================================
+let animTime = 0;
+let lastT = performance.now();
+
+function loop(now) {
+  if (!now) now = performance.now();
+  const dt = Math.min(0.05, (now - lastT) / 1000);
+  lastT = now;
+  animTime += dt;
+
+  if (state.trace.playing) {
+    const usPerSec = MAX_TIME / state.trace.speed;
+    state.trace.t += dt * usPerSec;
+    if (state.trace.t >= MAX_TIME) {
+      state.trace.t = MAX_TIME;
+      state.trace.playing = false;
+      updatePlayBtn();
+    }
+  }
+
+  drawBeam();
+  drawScope();
+  requestAnimationFrame(loop);
+}
+
+  document.getElementById('depthText').textContent = 'Press Start to scan';
+  document.getElementById('depthInfo').querySelector('.dot').style.background = '#7a90b8';
+
+window.addEventListener('resize', () => { drawBeam(); drawScope(); });
+loop();
+</script>
+</body>
+</html>
