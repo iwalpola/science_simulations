@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bat Echolocation Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #333;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #1e3c72;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #e0e0e0;
+        }
+        
+        .section-title {
+            font-size: 1.3em;
+            color: #1e3c72;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .control-group {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .control-group input[type="range"] {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+        
+        .value-display {
+            text-align: right;
+            color: #1e3c72;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        
+        .zoom-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255,255,255,0.9);
+            padding: 8px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        .zoom-btn {
+            padding: 5px 12px;
+            margin: 0 3px;
+            border: 1px solid #1e3c72;
+            background: white;
+            color: #1e3c72;
+            cursor: pointer;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        
+        .zoom-btn:hover {
+            background: #1e3c72;
+            color: white;
+        }
+        
+        .zoom-btn.active {
+            background: #1e3c72;
+            color: white;
+        }
+        
+        .canvas-container {
+            position: relative;
+        }
+        
+        .measurement-display {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 1.1em;
+            color: #d32f2f;
+            font-weight: bold;
+        }
+        
+        .button-group {
+            text-align: center;
+            margin-top: 15px;
+        }
+        
+        .control-btn {
+            padding: 10px 20px;
+            margin: 0 10px;
+            border: 2px solid #1e3c72;
+            background: white;
+            color: #1e3c72;
+            cursor: pointer;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1em;
+        }
+        
+        .control-btn:hover {
+            background: #1e3c72;
+            color: white;
+        }
+        
+        .control-btn.active {
+            background: #1e3c72;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🦇 Bat Echolocation: Pulse-Echo Distance Measurement</h1>
+        <p class="subtitle">Interactive simulation demonstrating how bats use ultrasound to locate prey</p>
+        
+        <!-- Section 1: Main Scene -->
+        <div class="section">
+            <h2 class="section-title">Bat Hunting Scene</h2>
+            <canvas id="sceneCanvas" width="1200" height="300"></canvas>
+            <div class="controls">
+                <div class="control-group">
+                    <label for="swarm1Slider">Swarm 1 Distance:</label>
+                    <input type="range" id="swarm1Slider" min="0.5" max="5" step="0.1" value="1.5">
+                    <div class="value-display" id="swarm1Value">1.5 m</div>
+                </div>
+                <div class="control-group">
+                    <label for="swarm2Slider">Swarm 2 Distance:</label>
+                    <input type="range" id="swarm2Slider" min="0.5" max="5" step="0.1" value="2.5">
+                    <div class="value-display" id="swarm2Value">2.5 m</div>
+                </div>
+                <div class="control-group">
+                    <label for="swarm3Slider">Swarm 3 Distance:</label>
+                    <input type="range" id="swarm3Slider" min="0.5" max="5" step="0.1" value="3.5">
+                    <div class="value-display" id="swarm3Value">3.5 m</div>
+                </div>
+            </div>
+            <div class="button-group">
+                <button class="control-btn" id="sendPulseBtn">Send Pulse</button>
+                <button class="control-btn" id="soundToggleBtn">Sound: OFF</button>
+            </div>
+        </div>
+        
+        <!-- Section 2: Pulse-Echo Graph -->
+        <div class="section">
+            <h2 class="section-title">Pulse-Echo Signal Graph (synchronized with animation above)</h2>
+            <div class="canvas-container">
+                <canvas id="graphCanvas" width="1200" height="350"></canvas>
+                <div class="zoom-controls">
+                    <button class="zoom-btn active" id="envelopeBtn">Envelope View</button>
+                    <button class="zoom-btn" id="waveBtn">Wave Detail</button>
+                </div>
+            </div>
+            <div class="measurement-display" id="measurementDisplay">
+                Click and drag on the graph to measure time intervals
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        const speedOfSound = 343; // m/s
+        let swarmDistances = [1.5, 2.5, 3.5]; // meters for 3 swarms
+        let showWaveDetail = false;
+        let soundEnabled = false;
+        
+        // Animation state
+        let pulseActive = false;
+        let pulseTime = 0; // current time of pulse animation in seconds
+        let maxPulseTime = 0; // maximum time for current pulse
+        
+        // Measurement arrow state
+        let measuring = false;
+        let measureStart = null;
+        let measureEnd = null;
+        
+        // Audio context
+        let audioContext = null;
+        
+        // Canvas contexts
+        const sceneCanvas = document.getElementById('sceneCanvas');
+        const sceneCtx = sceneCanvas.getContext('2d');
+        const graphCanvas = document.getElementById('graphCanvas');
+        const graphCtx = graphCanvas.getContext('2d');
+        
+        // Event listeners for swarm distance controls
+        document.getElementById('swarm1Slider').addEventListener('input', (e) => {
+            swarmDistances[0] = parseFloat(e.target.value);
+            document.getElementById('swarm1Value').textContent = swarmDistances[0].toFixed(1) + ' m';
+            if (!pulseActive) drawAll();
+        });
+        
+        document.getElementById('swarm2Slider').addEventListener('input', (e) => {
+            swarmDistances[1] = parseFloat(e.target.value);
+            document.getElementById('swarm2Value').textContent = swarmDistances[1].toFixed(1) + ' m';
+            if (!pulseActive) drawAll();
+        });
+        
+        document.getElementById('swarm3Slider').addEventListener('input', (e) => {
+            swarmDistances[2] = parseFloat(e.target.value);
+            document.getElementById('swarm3Value').textContent = swarmDistances[2].toFixed(1) + ' m';
+            if (!pulseActive) drawAll();
+        });
+        
+        // Send pulse button
+        document.getElementById('sendPulseBtn').addEventListener('click', () => {
+            if (!pulseActive) {
+                sendPulse();
+            }
+        });
+        
+        // Sound toggle button
+        document.getElementById('soundToggleBtn').addEventListener('click', () => {
+            soundEnabled = !soundEnabled;
+            document.getElementById('soundToggleBtn').textContent = 'Sound: ' + (soundEnabled ? 'ON' : 'OFF');
+            document.getElementById('soundToggleBtn').classList.toggle('active');
+            
+            if (soundEnabled && !audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        });
+        
+        // Zoom button listeners
+        document.getElementById('envelopeBtn').addEventListener('click', () => {
+            showWaveDetail = false;
+            document.getElementById('envelopeBtn').classList.add('active');
+            document.getElementById('waveBtn').classList.remove('active');
+            drawGraph();
+        });
+        
+        document.getElementById('waveBtn').addEventListener('click', () => {
+            showWaveDetail = true;
+            document.getElementById('waveBtn').classList.add('active');
+            document.getElementById('envelopeBtn').classList.remove('active');
+            drawGraph();
+        });
+        
+        // Mouse events for measurement
+        graphCanvas.addEventListener('mousedown', (e) => {
+            const rect = graphCanvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            measuring = true;
+            measureStart = x;
+            measureEnd = x;
+        });
+        
+        graphCanvas.addEventListener('mousemove', (e) => {
+            if (measuring) {
+                const rect = graphCanvas.getBoundingClientRect();
+                measureEnd = e.clientX - rect.left;
+                drawGraph();
+            }
+        });
+        
+        graphCanvas.addEventListener('mouseup', () => {
+            measuring = false;
+        });
+        
+        graphCanvas.addEventListener('mouseleave', () => {
+            measuring = false;
+        });
+        
+        // Generate ultrasound beep
+        function playUltrasoundBeep(duration) {
+            if (!soundEnabled || !audioContext) return;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            // Audible frequency (representing ultrasound)
+            oscillator.frequency.value = 2000; // 2 kHz (actual bat ultrasound is 20-100 kHz, beyond human hearing)
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration);
+        }
+        
+        // Send pulse animation
+        function sendPulse() {
+            pulseActive = true;
+            pulseTime = 0;
+            
+            // Calculate max time needed (furthest echo + some buffer)
+            const maxDistance = Math.max(...swarmDistances);
+            maxPulseTime = (2 * maxDistance) / speedOfSound + 0.01; // round trip + buffer
+            
+            // Play sound for transmitted pulse
+            playUltrasoundBeep(0.002); // 2ms pulse
+            
+            animatePulse();
+        }
+        
+        function animatePulse() {
+            if (!pulseActive) return;
+            
+            const dt = 1/60; // 60 fps
+            pulseTime += dt;
+            
+            // Play echo sounds when pulse reaches each swarm
+            swarmDistances.forEach(distance => {
+                const echoTime = (2 * distance) / speedOfSound;
+                if (pulseTime >= echoTime && pulseTime < echoTime + dt) {
+                    playUltrasoundBeep(0.002);
+                }
+            });
+            
+            drawAll();
+            
+            if (pulseTime < maxPulseTime) {
+                requestAnimationFrame(animatePulse);
+            } else {
+                pulseActive = false;
+                drawAll();
+            }
+        }
+        
+        function drawScene() {
+            sceneCtx.clearRect(0, 0, sceneCanvas.width, sceneCanvas.height);
+            
+            // Background - night sky
+            const gradient = sceneCtx.createLinearGradient(0, 0, 0, sceneCanvas.height);
+            gradient.addColorStop(0, '#0a1128');
+            gradient.addColorStop(1, '#1a2332');
+            sceneCtx.fillStyle = gradient;
+            sceneCtx.fillRect(0, 0, sceneCanvas.width, sceneCanvas.height);
+            
+            // Stars
+            sceneCtx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+            for (let i = 0; i < 50; i++) {
+                const x = (i * 73) % sceneCanvas.width;
+                const y = (i * 97) % (sceneCanvas.height - 50);
+                sceneCtx.beginPath();
+                sceneCtx.arc(x, y, 1, 0, Math.PI * 2);
+                sceneCtx.fill();
+            }
+            
+            // Ground
+            sceneCtx.fillStyle = '#0f3460';
+            sceneCtx.fillRect(0, 250, sceneCanvas.width, 50);
+            
+            // Bat position (left side)
+            const batX = 100;
+            const batY = 150;
+            
+            // Draw bat
+            drawBat(batX, batY);
+            
+            // Calculate swarm positions
+            const maxDistance = 5;
+            const swarmPositions = swarmDistances.map(dist => ({
+                x: batX + (dist / maxDistance) * 900,
+                dist: dist
+            }));
+            
+            // Draw swarms
+            swarmPositions.forEach((swarm, idx) => {
+                drawSwarm(swarm.x, 150, idx);
+            });
+            
+            // Draw pulse waves if active
+            if (pulseActive) {
+                const currentDistance = pulseTime * speedOfSound;
+                
+                // Outgoing pulse
+                if (currentDistance < Math.max(...swarmDistances)) {
+                    const pulseX = batX + (currentDistance / maxDistance) * 900;
+                    drawPulseWave(pulseX, batY, '#00ff00', 3);
+                }
+                
+                // Echoes from each swarm
+                swarmDistances.forEach((distance, idx) => {
+                    const roundTripTime = (2 * distance) / speedOfSound;
+                    if (pulseTime >= roundTripTime) {
+                        const echoProgress = pulseTime - roundTripTime;
+                        const echoDistance = distance - (echoProgress * speedOfSound);
+                        if (echoDistance > 0) {
+                            const echoX = batX + (echoDistance / maxDistance) * 900;
+                            const colors = ['#00ffff', '#ff00ff', '#ffff00'];
+                            drawPulseWave(echoX, batY, colors[idx], 2);
+                        }
+                    }
+                });
+            }
+            
+            // Distance markers
+            sceneCtx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            sceneCtx.setLineDash([3, 3]);
+            swarmPositions.forEach((swarm, idx) => {
+                sceneCtx.beginPath();
+                sceneCtx.moveTo(batX, batY + 60);
+                sceneCtx.lineTo(swarm.x, batY + 60);
+                sceneCtx.stroke();
+                
+                sceneCtx.fillStyle = 'white';
+                sceneCtx.font = '12px Arial';
+                const textX = batX + (swarm.x - batX) / 2;
+                sceneCtx.fillText(`${swarm.dist.toFixed(1)}m`, textX - 15, batY + 55);
+            });
+            sceneCtx.setLineDash([]);
+        }
+        
+        function drawBat(x, y) {
+            // Bat body
+            sceneCtx.fillStyle = '#5a4a3a';
+            sceneCtx.beginPath();
+            sceneCtx.ellipse(x, y, 18, 12, 0, 0, Math.PI * 2);
+            sceneCtx.fill();
+            
+            // Bat head
+            sceneCtx.beginPath();
+            sceneCtx.arc(x + 15, y - 5, 10, 0, Math.PI * 2);
+            sceneCtx.fill();
+            
+            // Wings
+            sceneCtx.fillStyle = '#4a3a2a';
+            sceneCtx.beginPath();
+            sceneCtx.ellipse(x - 20, y, 15, 10, -0.4, 0, Math.PI * 2);
+            sceneCtx.fill();
+            sceneCtx.beginPath();
+            sceneCtx.ellipse(x - 25, y + 8, 12, 8, -0.6, 0, Math.PI * 2);
+            sceneCtx.fill();
+            
+            // Ears
+            sceneCtx.fillStyle = '#6a5a4a';
+            sceneCtx.beginPath();
+            sceneCtx.moveTo(x + 12, y - 10);
+            sceneCtx.lineTo(x + 10, y - 18);
+            sceneCtx.lineTo(x + 15, y - 12);
+            sceneCtx.fill();
+            sceneCtx.beginPath();
+            sceneCtx.moveTo(x + 18, y - 10);
+            sceneCtx.lineTo(x + 16, y - 18);
+            sceneCtx.lineTo(x + 21, y - 12);
+            sceneCtx.fill();
+            
+            // Eye
+            sceneCtx.fillStyle = '#fff';
+            sceneCtx.beginPath();
+            sceneCtx.arc(x + 18, y - 5, 2, 0, Math.PI * 2);
+            sceneCtx.fill();
+        }
+        
+        function drawSwarm(x, y, colorIdx) {
+            const colors = [
+                'rgba(255, 200, 100, 0.8)',
+                'rgba(200, 150, 255, 0.8)',
+                'rgba(150, 255, 200, 0.8)'
+            ];
+            
+            sceneCtx.fillStyle = colors[colorIdx];
+            
+            // Draw cluster of insects
+            for (let i = 0; i < 12; i++) {
+                const angle = (i / 12) * Math.PI * 2;
+                const radius = 25;
+                const ix = x + Math.cos(angle) * radius;
+                const iy = y + Math.sin(angle) * radius;
+                
+                // Insect body
+                sceneCtx.beginPath();
+                sceneCtx.arc(ix, iy, 3, 0, Math.PI * 2);
+                sceneCtx.fill();
+                
+                // Wings
+                sceneCtx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                sceneCtx.fillRect(ix - 2, iy - 4, 1, 6);
+                sceneCtx.fillRect(ix + 1, iy - 4, 1, 6);
+                sceneCtx.fillStyle = colors[colorIdx];
+            }
+        }
+        
+        function drawPulseWave(x, y, color, rings) {
+            sceneCtx.strokeStyle = color;
+            sceneCtx.lineWidth = 2;
+            for (let i = 0; i < rings; i++) {
+                sceneCtx.globalAlpha = 0.7 - (i * 0.2);
+                sceneCtx.beginPath();
+                sceneCtx.arc(x, y, 10 + i * 8, 0, Math.PI * 2);
+                sceneCtx.stroke();
+            }
+            sceneCtx.globalAlpha = 1;
+            sceneCtx.lineWidth = 1;
+        }
+        
+        function drawGraph() {
+            graphCtx.clearRect(0, 0, graphCanvas.width, graphCanvas.height);
+            
+            // Background
+            graphCtx.fillStyle = '#f5f5f5';
+            graphCtx.fillRect(0, 0, graphCanvas.width, graphCanvas.height);
+            
+            // Grid
+            graphCtx.strokeStyle = '#ddd';
+            graphCtx.lineWidth = 1;
+            for (let i = 0; i <= 10; i++) {
+                const x = (i / 10) * (graphCanvas.width - 100) + 50;
+                graphCtx.beginPath();
+                graphCtx.moveTo(x, 30);
+                graphCtx.lineTo(x, graphCanvas.height - 50);
+                graphCtx.stroke();
+            }
+            for (let i = 0; i <= 5; i++) {
+                const y = (i / 5) * (graphCanvas.height - 80) + 30;
+                graphCtx.beginPath();
+                graphCtx.moveTo(50, y);
+                graphCtx.lineTo(graphCanvas.width - 50, y);
+                graphCtx.stroke();
+            }
+            
+            // Axes
+            graphCtx.strokeStyle = '#333';
+            graphCtx.lineWidth = 2;
+            graphCtx.beginPath();
+            graphCtx.moveTo(50, graphCanvas.height - 50);
+            graphCtx.lineTo(graphCanvas.width - 50, graphCanvas.height - 50);
+            graphCtx.stroke();
+            graphCtx.beginPath();
+            graphCtx.moveTo(50, 30);
+            graphCtx.lineTo(50, graphCanvas.height - 50);
+            graphCtx.stroke();
+            
+            // Labels
+            graphCtx.fillStyle = '#333';
+            graphCtx.font = 'bold 14px Arial';
+            graphCtx.fillText('Time (ms)', graphCanvas.width / 2 - 30, graphCanvas.height - 20);
+            graphCtx.save();
+            graphCtx.translate(15, graphCanvas.height / 2);
+            graphCtx.rotate(-Math.PI / 2);
+            graphCtx.fillText('Amplitude', 0, 0);
+            graphCtx.restore();
+            
+            // Calculate time values
+            const maxDistance = Math.max(...swarmDistances);
+            const maxTimeDelay = (2 * maxDistance) / speedOfSound * 1000; // in ms
+            const displayTime = maxTimeDelay + 10;
+            const timeScale = (graphCanvas.width - 100) / displayTime;
+            
+            // Draw transmitted pulse at t=2ms
+            const pulseStartTime = 2; // ms
+            const pulseDuration = 2; // ms
+            const pulseStartX = 50 + pulseStartTime * timeScale;
+            drawPulse(pulseStartX, pulseDuration * timeScale, '#00aa00', 'TX');
+            
+            // Draw echoes from each swarm
+            const colors = ['#0088ff', '#aa00ff', '#ffaa00'];
+            const labels = ['Echo 1', 'Echo 2', 'Echo 3'];
+            
+            swarmDistances.forEach((distance, idx) => {
+                const echoTime = pulseStartTime + (2 * distance / speedOfSound * 1000);
+                const echoX = 50 + echoTime * timeScale;
+                drawPulse(echoX, pulseDuration * timeScale, colors[idx], labels[idx]);
+            });
+            
+            // Time markers
+            graphCtx.fillStyle = '#666';
+            graphCtx.font = '11px Arial';
+            for (let i = 0; i <= 10; i++) {
+                const time = (i / 10) * displayTime;
+                const x = (i / 10) * (graphCanvas.width - 100) + 50;
+                graphCtx.fillText(time.toFixed(1), x - 10, graphCanvas.height - 32);
+            }
+            
+            // Current time indicator if pulse is active
+            if (pulseActive) {
+                const currentTimeMs = (pulseTime * 1000);
+                const indicatorX = 50 + currentTimeMs * timeScale;
+                
+                if (indicatorX >= 50 && indicatorX <= graphCanvas.width - 50) {
+                    graphCtx.strokeStyle = '#ff0000';
+                    graphCtx.lineWidth = 2;
+                    graphCtx.setLineDash([5, 5]);
+                    graphCtx.beginPath();
+                    graphCtx.moveTo(indicatorX, 30);
+                    graphCtx.lineTo(indicatorX, graphCanvas.height - 50);
+                    graphCtx.stroke();
+                    graphCtx.setLineDash([]);
+                    
+                    // Time label
+                    graphCtx.fillStyle = '#ff0000';
+                    graphCtx.font = 'bold 12px Arial';
+                    graphCtx.fillText(`t = ${currentTimeMs.toFixed(1)} ms`, indicatorX + 5, 50);
+                }
+            }
+            
+            // Draw measurement arrow if active
+            if (measureStart !== null && measureEnd !== null) {
+                drawMeasurementArrow(displayTime, timeScale);
+            }
+        }
+        
+        function drawPulse(startX, width, color, label) {
+            const centerY = graphCanvas.height / 2 - 10;
+            const amplitude = 70;
+            
+            if (showWaveDetail) {
+                // Draw sinusoidal waves
+                graphCtx.strokeStyle = color;
+                graphCtx.lineWidth = 2;
+                graphCtx.beginPath();
+                
+                const cycles = 8;
+                const samplesPerCycle = 20;
+                
+                for (let i = 0; i <= cycles * samplesPerCycle; i++) {
+                    const progress = i / (cycles * samplesPerCycle);
+                    const x = startX + progress * width;
+                    const envelope = Math.sin(progress * Math.PI);
+                    const wave = Math.sin(progress * cycles * Math.PI * 2);
+                    const y = centerY - wave * amplitude * envelope;
+                    
+                    if (i === 0) {
+                        graphCtx.moveTo(x, y);
+                    } else {
+                        graphCtx.lineTo(x, y);
+                    }
+                }
+                graphCtx.stroke();
+            } else {
+                // Draw envelope
+                graphCtx.fillStyle = color;
+                graphCtx.globalAlpha = 0.6;
+                graphCtx.fillRect(startX, centerY - amplitude, width, amplitude * 2);
+                graphCtx.globalAlpha = 1;
+                
+                graphCtx.strokeStyle = color;
+                graphCtx.lineWidth = 2;
+                graphCtx.strokeRect(startX, centerY - amplitude, width, amplitude * 2);
+            }
+            
+            // Label
+            graphCtx.fillStyle = color;
+            graphCtx.font = 'bold 11px Arial';
+            graphCtx.fillText(label, startX, centerY - amplitude - 8);
+        }
+        
+        function drawMeasurementArrow(displayTime, timeScale) {
+            const startX = Math.min(measureStart, measureEnd);
+            const endX = Math.max(measureStart, measureEnd);
+            const y = graphCanvas.height - 80;
+            
+            // Arrow line
+            graphCtx.strokeStyle = '#d32f2f';
+            graphCtx.lineWidth = 3;
+            graphCtx.beginPath();
+            graphCtx.moveTo(startX, y);
+            graphCtx.lineTo(endX, y);
+            graphCtx.stroke();
+            
+            // Arrow heads
+            const arrowSize = 8;
+            graphCtx.fillStyle = '#d32f2f';
+            graphCtx.beginPath();
+            graphCtx.moveTo(startX, y);
+            graphCtx.lineTo(startX + arrowSize, y - arrowSize/2);
+            graphCtx.lineTo(startX + arrowSize, y + arrowSize/2);
+            graphCtx.fill();
+            graphCtx.beginPath();
+            graphCtx.moveTo(endX, y);
+            graphCtx.lineTo(endX - arrowSize, y - arrowSize/2);
+            graphCtx.lineTo(endX - arrowSize, y + arrowSize/2);
+            graphCtx.fill();
+            
+            // Calculate measurement
+            const measuredTime = Math.abs(endX - startX) / timeScale;
+            const measuredDistance = (measuredTime / 1000 * speedOfSound) / 2;
+            
+            document.getElementById('measurementDisplay').innerHTML = 
+                `Measured Time: <strong>${measuredTime.toFixed(2)} ms</strong> → 
+                Calculated Distance: <strong>${measuredDistance.toFixed(2)} m</strong>`;
+        }
+        
+        function drawAll() {
+            drawScene();
+            drawGraph();
+        }
+        
+        // Initial draw
+        drawAll();
+    </script>
+</body>
+</html>
