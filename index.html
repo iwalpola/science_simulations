@@ -12,200 +12,368 @@
         }
 
         body {
-            font-family: 'Arial', sans-serif;
-            line-height: 1.6;
+            font-family: 'Segoe UI', Arial, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #333;
             min-height: 100vh;
+            color: #333;
+        }
+
+        /* ── Header ── */
+        .header {
+            padding: 32px 40px 24px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            color: #fff;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .header .byline {
+            color: rgba(255,255,255,0.75);
+            font-size: 0.95rem;
+            margin-top: 4px;
+        }
+
+        /* ── Controls bar ── */
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+            padding: 0 40px 28px;
+        }
+
+        .filter-btn {
+            background: rgba(255,255,255,0.15);
+            color: #fff;
+            border: 1.5px solid rgba(255,255,255,0.35);
+            padding: 7px 18px;
+            border-radius: 999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s;
+        }
+
+        .filter-btn:hover {
+            background: rgba(255,255,255,0.28);
+        }
+
+        .filter-btn.active {
+            background: #fff;
+            color: #764ba2;
+            border-color: #fff;
+        }
+
+        .search-wrap {
+            position: relative;
+        }
+
+        .search-wrap svg {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .search-input {
+            background: rgba(255,255,255,0.15);
+            border: 1.5px solid rgba(255,255,255,0.35);
+            color: #fff;
+            padding: 7px 14px 7px 36px;
+            border-radius: 999px;
+            font-size: 0.875rem;
+            outline: none;
+            width: 200px;
+            transition: background 0.2s, border-color 0.2s;
+        }
+
+        .search-input::placeholder { color: rgba(255,255,255,0.6); }
+
+        .search-input:focus {
+            background: rgba(255,255,255,0.25);
+            border-color: rgba(255,255,255,0.7);
+        }
+
+        /* ── Grid ── */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            padding: 0 40px 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* ── Card ── */
+        .card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 28px;
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
+            gap: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+            transition: transform 0.2s, box-shadow 0.2s;
         }
 
-        .container {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
-            text-align: center;
-            max-width: 800px;
-            width: 100%;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.18);
         }
 
-        h1 {
-            color: #4a5568;
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        .card.hidden {
+            display: none;
         }
 
-        .subtitle {
-            color: #718096;
-            font-size: 1.2em;
-            margin-bottom: 30px;
-            font-style: italic;
+        .card-icon {
+            font-size: 2.2rem;
+            line-height: 1;
         }
 
-        .intro {
-            font-size: 1.1em;
-            margin-bottom: 40px;
-            color: #4a5568;
-            line-height: 1.7;
+        .card-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
         }
 
-        .simulations {
-            background: #f7fafc;
-            border-radius: 15px;
-            padding: 30px;
-            margin: 20px 0;
-            border-left: 5px solid #667eea;
+        .card-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
         }
 
-        .simulation-item {
-            background: white;
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-            border: 1px solid #e2e8f0;
-            margin-bottom: 20px;
+        .card-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #1a202c;
+            line-height: 1.3;
         }
 
-        .simulation-item:last-child {
-            margin-bottom: 0;
-        }
-
-        .simulation-item:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-        }
-
-        .simulation-title {
-            font-size: 1.4em;
-            color: #2d3748;
-            margin-bottom: 15px;
-            font-weight: bold;
-        }
-
-        .simulation-description {
-            color: #4a5568;
-            margin-bottom: 20px;
-            line-height: 1.6;
-        }
-
-        .launch-button {
+        .badge {
             display: inline-block;
+            padding: 2px 10px;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+            width: fit-content;
+        }
+
+        .badge-physics   { background: #ebf4ff; color: #2b6cb0; }
+        .badge-chemistry { background: #f0fff4; color: #276749; }
+        .badge-tool      { background: #faf5ff; color: #6b21a8; }
+
+        .card-description {
+            font-size: 0.875rem;
+            color: #4a5568;
+            line-height: 1.6;
+            flex: 1;
+        }
+
+        .launch-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 12px 30px;
+            color: #fff;
             text-decoration: none;
-            border-radius: 25px;
-            font-weight: bold;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            padding: 10px 22px;
+            border-radius: 999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-top: 4px;
+            align-self: flex-start;
+            transition: filter 0.2s, box-shadow 0.2s;
+            box-shadow: 0 3px 10px rgba(102,126,234,0.35);
         }
 
-        .launch-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-            filter: brightness(110%);
+        .launch-btn:hover {
+            filter: brightness(1.1);
+            box-shadow: 0 5px 16px rgba(102,126,234,0.5);
         }
 
+        /* ── Empty state ── */
+        .empty-state {
+            display: none;
+            grid-column: 1 / -1;
+            text-align: center;
+            color: rgba(255,255,255,0.7);
+            padding: 60px 0;
+            font-size: 1rem;
+        }
+
+        /* ── Footer ── */
         .footer {
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #e2e8f0;
-            color: #718096;
-            font-size: 0.9em;
+            text-align: center;
+            padding: 0 40px 40px;
+            color: rgba(255,255,255,0.6);
+            font-size: 0.85rem;
         }
 
-        .science-icon {
-            font-size: 3em;
-            margin-bottom: 20px;
-            color: #667eea;
+        .footer a {
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
         }
 
+        .footer a:hover { color: #fff; }
+
+        /* ── Responsive ── */
         @media (max-width: 600px) {
-            .container {
-                padding: 25px;
-                margin: 10px;
-            }
-            
-            h1 {
-                font-size: 2em;
-            }
-            
-            .simulation-item {
-                padding: 20px;
-            }
+            .header { padding: 24px 20px 16px; }
+            .header h1 { font-size: 1.6rem; }
+            .controls { padding: 0 20px 20px; }
+            .grid { padding: 0 20px 32px; gap: 14px; }
+            .footer { padding: 0 20px 32px; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="science-icon">🔬</div>
-        <h1>Science Simulations</h1>
-        <p class="subtitle">by Mr. Walpola</p>
-        
-        <div class="intro">
-            Welcome to an interactive collection of physics simulations designed to help visualize and understand fundamental scientific concepts. Each simulation provides hands-on exploration of key principles in physics.
-        </div>
 
-        <div class="simulations">
-            <h2 style="color: #2d3748; margin-bottom: 25px; font-size: 1.5em;">Available Simulations</h2>
-            
-            <div class="simulation-item">
-                <div class="simulation-title">⚡ Voltage, Energy & Charge</div>
-                <div class="simulation-description">
-                    Explore how energy is added to a charge when it passes through a battery and removed from it when it passes through a bulb. This interactive simulation demonstrates the relationship between voltage, energy transfer, and electric charge in a simple circuit.
-                </div>
-                <a href="https://iwalpola.github.io/science_simulations/voltage_energy_charge.html" class="launch-button">
-                    Launch Simulation →
-                </a>
-            </div>
+    <div class="header">
+        <h1>🔬 Science Simulations</h1>
+        <p class="byline">by Mr. Walpola</p>
+    </div>
 
-            <div class="simulation-item">
-                <div class="simulation-title">🧠 Circuit Quiz Teacher Tool</div>
-                <div class="simulation-description">
-                    Generate voltage and current finding questions on the fly for your students. This teacher tool creates randomized circuit problems with varying difficulty levels, perfect for classroom assessments or homework assignments.
-                </div>
-                <a href="https://iwalpola.github.io/science_simulations/circuit_quiz_teacher_tool.html" class="launch-button">
-                    Launch Tool →
-                </a>
-            </div>
-            <div class="simulation-item">
-                 <div class="simulation-title">📡 Ultrasonic Non-Destructive Testing</div>
-                 <div class="simulation-description">
-                  Investigate how ultrasonic pulses are used to detect hidden cracks inside steel beams. Slide the probe across the surface, adjust the beam thickness, and randomize defect locations to see how the oscilloscope trace changes. Switch to Pulse Trace mode for a slow-motion animation of a single pulse travelling through the steel, reflecting off the crack and the back wall in real time.
-                 </div>
-                 <a href="https://iwalpola.github.io/science_simulations/ultrasonicv2.html" class="launch-button">
-                    Launch Simulation →
-                  </a>
-            </div>
-
-            <div class="simulation-item">
-                 <div class="simulation-title">⚗️ Reaction Builder</div>
-                 <div class="simulation-description">
-                  A visual tool for modelling chemical reactions, designed for GCSE chemistry. Search a species, drop it on the left, and model the change on the right to explore how atoms rearrange during a reaction.
-                 </div>
-                 <a href="./reactionbuilder.html" class="launch-button">
-                    Launch Tool →
-                  </a>
-            </div>
-        </div>
-
-        <div class="footer">
-            <p>More simulations coming soon! Check back regularly for new interactive physics experiences.</p>
-            <p style="margin-top: 10px;">
-                <a href="https://github.com/iwalpola/science_simulations" style="color: #667eea; text-decoration: none;">
-                    View on GitHub 📁
-                </a>
-            </p>
+    <div class="controls">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="physics">Physics</button>
+        <button class="filter-btn" data-filter="chemistry">Chemistry</button>
+        <div class="search-wrap">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input class="search-input" type="text" placeholder="Search…" id="searchInput">
         </div>
     </div>
+
+    <div class="grid" id="grid">
+
+        <div class="card" data-category="physics" data-keywords="voltage energy charge battery bulb circuit">
+            <div class="card-header">
+                <div class="card-icon">⚡</div>
+                <div class="card-meta">
+                    <div class="card-title">Voltage, Energy &amp; Charge</div>
+                    <span class="badge badge-physics">Physics</span>
+                </div>
+            </div>
+            <p class="card-description">
+                Explore how energy is added to a charge in a battery and released through a bulb. Visualises the relationship between voltage, energy transfer, and charge in a simple circuit.
+            </p>
+            <a href="https://iwalpola.github.io/science_simulations/voltage_energy_charge.html" class="launch-btn">
+                Launch →
+            </a>
+        </div>
+
+        <div class="card" data-category="physics" data-keywords="circuit quiz teacher voltage current series parallel question">
+            <div class="card-header">
+                <div class="card-icon">🧠</div>
+                <div class="card-meta">
+                    <div class="card-title">Circuit Quiz Teacher Tool</div>
+                    <span class="badge badge-physics">Physics</span>
+                </div>
+            </div>
+            <p class="card-description">
+                Generate randomised voltage and current questions on the fly. Vary circuit type and difficulty — ideal for classroom assessments and homework.
+            </p>
+            <a href="https://iwalpola.github.io/science_simulations/circuit_quiz_teacher_tool.html" class="launch-btn">
+                Launch →
+            </a>
+        </div>
+
+        <div class="card" data-category="physics" data-keywords="ultrasonic ndt non-destructive testing crack steel probe oscilloscope pulse">
+            <div class="card-header">
+                <div class="card-icon">📡</div>
+                <div class="card-meta">
+                    <div class="card-title">Ultrasonic Non-Destructive Testing</div>
+                    <span class="badge badge-physics">Physics</span>
+                </div>
+            </div>
+            <p class="card-description">
+                Slide a probe across a steel beam and watch the oscilloscope respond to hidden cracks. Switch to Pulse Trace mode for a slow-motion view of the pulse travelling through the material.
+            </p>
+            <a href="https://iwalpola.github.io/science_simulations/ultrasonicv2.html" class="launch-btn">
+                Launch →
+            </a>
+        </div>
+
+        <div class="card" data-category="chemistry" data-keywords="reaction builder chemical atoms molecules gcse rearrange species">
+            <div class="card-header">
+                <div class="card-icon">⚗️</div>
+                <div class="card-meta">
+                    <div class="card-title">Reaction Builder</div>
+                    <span class="badge badge-chemistry">Chemistry</span>
+                </div>
+            </div>
+            <p class="card-description">
+                A visual GCSE chemistry tool — search a species, drop it on the reactant side, then model the products to see how atoms rearrange during a reaction.
+            </p>
+            <a href="./reactionbuilder.html" class="launch-btn">
+                Launch →
+            </a>
+        </div>
+
+        <div class="empty-state" id="emptyState">
+            No simulations match your search.
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>More simulations coming soon! &nbsp;·&nbsp;
+            <a href="https://github.com/iwalpola/science_simulations">View on GitHub</a>
+        </p>
+    </div>
+
+    <script>
+        const filterBtns = document.querySelectorAll('.filter-btn');
+        const cards = document.querySelectorAll('.card');
+        const searchInput = document.getElementById('searchInput');
+        const emptyState = document.getElementById('emptyState');
+
+        let activeFilter = 'all';
+
+        function applyFilters() {
+            const query = searchInput.value.trim().toLowerCase();
+            let visibleCount = 0;
+
+            cards.forEach(card => {
+                const category = card.dataset.category;
+                const keywords = card.dataset.keywords || '';
+                const title = card.querySelector('.card-title').textContent.toLowerCase();
+                const desc = card.querySelector('.card-description').textContent.toLowerCase();
+
+                const matchesFilter = activeFilter === 'all' || category === activeFilter;
+                const matchesSearch = !query || title.includes(query) || desc.includes(query) || keywords.includes(query);
+
+                if (matchesFilter && matchesSearch) {
+                    card.classList.remove('hidden');
+                    visibleCount++;
+                } else {
+                    card.classList.add('hidden');
+                }
+            });
+
+            emptyState.style.display = visibleCount === 0 ? 'block' : 'none';
+        }
+
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                filterBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                activeFilter = btn.dataset.filter;
+                applyFilters();
+            });
+        });
+
+        searchInput.addEventListener('input', applyFilters);
+    </script>
+
 </body>
 </html>
