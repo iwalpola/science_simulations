@@ -1,0 +1,1498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Reaction Builder</title>
+<style>
+  :root {
+    --surface-1: #eceae4;
+    --surface-2: #e4e1d9;
+    --border-strong: #b8b6ae;
+    --text-primary: #1a1a19;
+    --text-secondary: #55534c;
+    --text-muted: #8a887f;
+    --text-success: #1a7f4b;
+    --text-danger: #c23b3b;
+    --grid-line: rgba(26,26,25,0.05);
+    --grid-line-major: rgba(26,26,25,0.10);
+    --select: #3a6ff7;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: #fff; color: var(--text-primary);
+    margin: 0; padding: 20px 24px 40px;
+  }
+  h1 { font-size: 19px; font-weight: 600; margin: 0; }
+  .sub { font-size: 13px; color: var(--text-secondary); margin: 4px 0 0; }
+  button, input {
+    font-family: inherit; font-size: 14px; padding: 6px 12px;
+    border-radius: 8px; border: 1px solid var(--border-strong);
+    background: #fff; color: var(--text-primary);
+  }
+  button { cursor: pointer; }
+  button:hover { background: #f2f2f0; }
+
+  .topbar { display: flex; align-items: flex-start; gap: 20px; flex-wrap: wrap; }
+  #search-wrap { position: relative; flex: 1; min-width: 280px; max-width: 460px; }
+  #search {
+    width: 100%; padding: 9px 12px 9px 34px; font-size: 14.5px;
+    border-radius: 10px; border: 1px solid var(--border-strong);
+  }
+  #search:focus { outline: 2px solid var(--select); outline-offset: -1px; border-color: transparent; }
+  .search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); pointer-events: none; opacity: .5; }
+  #results {
+    position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 80;
+    background: #fff; border: 1px solid var(--border-strong); border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.13); max-height: 340px; overflow-y: auto;
+    padding: 5px; display: none;
+  }
+  #results.on { display: block; }
+  .res { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 7px; cursor: pointer; }
+  .res:hover, .res.cursor { background: #f0f0ee; }
+  .res-name { font-size: 13px; color: var(--text-secondary); flex: 1; }
+  .res-kind { font-size: 10px; text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted); }
+  .res-empty { padding: 10px; font-size: 13px; color: var(--text-muted); }
+  .chip-row { display: flex; gap: 0; align-items: center; }
+
+  #eq-panel {
+    border: 1px solid var(--border-strong); border-radius: 10px; background: #fff;
+    padding: 8px 14px; min-height: 44px; flex: 1; min-width: 260px;
+    display: flex; flex-direction: column; gap: 4px; justify-content: center;
+  }
+  .eq { font-size: 17px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+  .eq-empty { font-size: 12.5px; color: var(--text-muted); font-weight: 400; }
+  .eq-tag {
+    font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted);
+    border: 1px solid var(--border-strong); border-radius: 4px; padding: 1px 5px; font-weight: 600;
+  }
+
+  #stage {
+    margin-top: 16px; border: 1px solid var(--border-strong); border-radius: 12px;
+    background: var(--surface-1); overflow: hidden; position: relative;
+  }
+  #board { position: relative; touch-action: none; }
+  .zone-label {
+    position: absolute; top: 8px; font-size: 11px; font-weight: 600; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--text-muted); pointer-events: none; user-select: none;
+  }
+  .divider { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--border-strong); opacity: .55; pointer-events: none; }
+  #arrow-fix { position: absolute; pointer-events: none; }
+
+  .grp { position: absolute; cursor: grab; }
+  .grp.dragging { opacity: .65; }
+  .grp.sel .selring { position: absolute; inset: -3px; border: 2px solid var(--select); border-radius: 9px; pointer-events: none; }
+  .bond {
+    position: absolute; height: 2.5px; border-radius: 2px;
+    background: var(--text-primary); opacity: .85; pointer-events: none; z-index: 5;
+  }
+  #marquee {
+    position: absolute; border: 1.5px solid var(--select);
+    background: rgba(58,111,247,.10); pointer-events: none; display: none; z-index: 40;
+  }
+  #tools { position: absolute; display: none; z-index: 60; gap: 4px; flex-direction: column; }
+  #tools.on { display: flex; }
+  .act {
+    width: 28px; height: 28px; border-radius: 50%; background: #fff;
+    border: 1px solid var(--border-strong); box-shadow: 0 2px 6px rgba(0,0,0,.2);
+    display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
+  }
+  .act:hover { background: #f4f4f2; transform: scale(1.08); }
+  .act.danger:hover { background: #fdecec; border-color: var(--text-danger); }
+  @media (prefers-reduced-motion: no-preference) { .act { transition: transform .1s; } }
+
+  .footer { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 10px; flex-wrap: wrap; }
+  .hint { font-size: 12.5px; color: var(--text-muted); }
+  kbd {
+    font-family: inherit; font-size: 11px; background: var(--surface-2);
+    border: 1px solid var(--border-strong); border-bottom-width: 2px;
+    border-radius: 4px; padding: 0 4px;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <h1>Reaction Builder</h1>
+    <p class="sub">Search a species, drop it left, model the change on the right.</p>
+  </div>
+  <div id="search-wrap">
+    <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1a1a19"
+      stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
+    <input id="search" type="text" autocomplete="off" spellcheck="false"
+      placeholder="Search lithium, carbon dioxide, sulfuric acid, carbonate…" aria-label="Search for a species" />
+    <div id="results" role="listbox"></div>
+  </div>
+  <div id="eq-panel"></div>
+</div>
+
+<div id="stage"><div id="board"></div></div>
+
+<div class="footer">
+  <span class="hint">
+    Drag on empty space to select · <kbd>Shift</kbd>-click to add · hover for tools ·
+    <kbd>Ctrl</kbd>+<kbd>D</kbd> duplicate · <kbd>Del</kbd> remove
+  </span>
+  <span style="display:flex;gap:8px;">
+    <button id="demo-btn" style="font-size:13px;padding:4px 10px;">Load Li + water</button>
+    <button id="clear-btn" style="font-size:13px;padding:4px 10px;">Clear board</button>
+  </span>
+</div>
+
+<script>
+"use strict";
+
+/* ===================== geometry ===================== */
+
+const UNIT   = 44;
+const CELL_W = 52;
+const TILE_W = 2;
+const ROWS   = 10;
+let   COLS   = 30;          // recomputed by fitToWidth()
+const PAD    = 14;
+let   BOARD_W = COLS * CELL_W + PAD * 2;
+const BOARD_H = ROWS * UNIT + PAD * 2;
+const R_TAB  = 10.5;
+let   MID_CELL = COLS / 2;
+
+/* ===================== formatting ===================== */
+
+const SUBS = {"0":"₀","1":"₁","2":"₂","3":"₃","4":"₄","5":"₅","6":"₆","7":"₇","8":"₈","9":"₉"};
+const subDigits = n => String(n).split("").map(d => SUBS[d] || d).join("");
+const toFormulaChars = s => [...s].map(c => /[0-9]/.test(c) ? SUBS[c] : c).join("");
+const supCharge = (m, sign) => ({"1":"","2":"²","3":"³","4":"⁴"}[m] || "") + (sign > 0 ? "⁺" : "⁻");
+
+/* ===================== palette ===================== */
+
+const PAL = {
+  alkali:   {bg:"#E8705F", text:"#4A1109"},
+  alkaline: {bg:"#EF9F27", text:"#4E2B04"},
+  metal:    {bg:"#B4B2A9", text:"#3A3A38"},
+  nonmetal: {bg:"#5DCAA5", text:"#07463A"},
+  halogen:  {bg:"#85B7EB", text:"#0A3A6B"},
+  noble:    {bg:"#AFA9EC", text:"#332B80"},
+  poly:     {bg:"#ED93B1", text:"#661F37"},
+  hydrogen: {bg:"#F0997B", text:"#652410"},
+  carbon:   {bg:"#97C459", text:"#22460A"},
+  oxide:    {bg:"#7FC4C0", text:"#0C4340"}
+};
+
+/* ===================== valency =====================
+   How many covalent bonds an atom of each element can hold, counting
+   bond order. Used to stop a third H joining H2, and to work out whether
+   O=C=O is complete. Elements not listed take no covalent bonds here.
+==================================================== */
+
+const VALENCY = { H:1, C:4, N:3, O:2, S:2, Cl:1, F:1, Br:1, I:1, P:3 };
+
+/* ===================== species ===================== */
+
+let uid = 0;
+const nextId = p => p + (uid++);
+const registry = {};
+const reg = sp => { registry[sp.id] = sp; return sp; };
+
+function defAtom(sym, name, pal, comp){
+  return reg({ id: nextId("sp"), kind:"atom", sym, name, formula: toFormulaChars(sym),
+    charge: 0, comp: comp || {[sym]:1}, color: PAL[pal], monatomic:true, poly:false });
+}
+function defIon(sym, name, charge, pal, comp, poly){
+  return reg({ id: nextId("sp"), kind:"ion", sym, name, formula: toFormulaChars(sym),
+    charge, comp: comp || {[sym]:1}, color: PAL[pal], poly: !!poly, monatomic: !poly });
+}
+// A molecule tile: used for species we render as ONE tile with subscripts (2D shapes).
+function defMolecule(sym, name, pal, comp){
+  return reg({ id: nextId("sp"), kind:"molecule", sym, name, formula: toFormulaChars(sym),
+    charge: 0, comp, color: PAL[pal], monatomic:false, poly:false });
+}
+
+const ELECTRON = reg({ id:"e", kind:"electron", sym:"e", name:"electron", formula:"e",
+  charge:-1, comp:{}, color:{bg:"#2f2f2e", text:"#ffffff"}, monatomic:false, poly:false });
+
+const library = [];
+const addEntry = e => { library.push(e); return e; };
+
+/* --- elements 1-20 --- */
+
+const ELEMENTS = [
+  ["H","Hydrogen","hydrogen",[1]], ["He","Helium","noble",[]],
+  ["Li","Lithium","alkali",[1]], ["Be","Beryllium","alkaline",[2]],
+  ["B","Boron","nonmetal",[]], ["C","Carbon","carbon",[]],
+  ["N","Nitrogen","nonmetal",[-3]], ["O","Oxygen","nonmetal",[-2]],
+  ["F","Fluorine","halogen",[-1]], ["Ne","Neon","noble",[]],
+  ["Na","Sodium","alkali",[1]], ["Mg","Magnesium","alkaline",[2]],
+  ["Al","Aluminium","metal",[3]], ["Si","Silicon","nonmetal",[]],
+  ["P","Phosphorus","nonmetal",[-3]], ["S","Sulfur","nonmetal",[-2]],
+  ["Cl","Chlorine","halogen",[-1]], ["Ar","Argon","noble",[]],
+  ["K","Potassium","alkali",[1]], ["Ca","Calcium","alkaline",[2]]
+];
+
+ELEMENTS.forEach(([sym, name, pal, charges]) => {
+  const atom = defAtom(sym, name, pal);
+  addEntry({ label: name, terms: [name, sym], kind: "atom", pieces: [{sp: atom}] });
+  charges.forEach(ch => {
+    const ion = defIon(sym, name, ch, pal);
+    addEntry({ label: name + " ion (" + sym + supCharge(Math.abs(ch), ch) + ")",
+      terms: [name, sym, name + " ion"], kind: "ion", pieces: [{sp: ion}] });
+  });
+});
+
+/* --- other metals / halogens --- */
+
+[["Zn","Zinc","metal",[2]], ["Fe","Iron","metal",[2,3]], ["Cu","Copper","metal",[2]],
+ ["Pb","Lead","metal",[2,4]], ["Ag","Silver","metal",[1]], ["Sn","Tin","metal",[2,4]],
+ ["Mn","Manganese","metal",[2]], ["Ni","Nickel","metal",[2]], ["Cr","Chromium","metal",[3]],
+ ["Ba","Barium","alkaline",[2]], ["Sr","Strontium","alkaline",[2]],
+ ["Br","Bromine","halogen",[-1]], ["I","Iodine","halogen",[-1]]
+].forEach(([sym, name, pal, charges]) => {
+  const atom = defAtom(sym, name, pal);
+  addEntry({ label: name, terms: [name, sym], kind: "atom", pieces: [{sp: atom}] });
+  charges.forEach(ch => {
+    const ion = defIon(sym, name, ch, pal);
+    addEntry({ label: name + " ion (" + sym + supCharge(Math.abs(ch), ch) + ")",
+      terms: [name, sym, name + " ion", sym + Math.abs(ch)], kind: "ion", pieces: [{sp: ion}] });
+  });
+});
+
+/* --- polyatomic ions --- */
+
+const polyBySym = {};
+[["OH","Hydroxide",-1,{O:1,H:1}], ["NO3","Nitrate",-1,{N:1,O:3}],
+ ["NO2","Nitrite",-1,{N:1,O:2}], ["SO4","Sulfate",-2,{S:1,O:4}],
+ ["SO3","Sulfite",-2,{S:1,O:3}], ["CO3","Carbonate",-2,{C:1,O:3}],
+ ["HCO3","Hydrogencarbonate",-1,{H:1,C:1,O:3}], ["PO4","Phosphate",-3,{P:1,O:4}],
+ ["NH4","Ammonium",1,{N:1,H:4}]
+].forEach(([sym, name, ch, comp]) => {
+  const ion = defIon(sym, name, ch, "poly", comp, true);
+  polyBySym[sym] = ion;
+  const alt = sym === "HCO3" ? ["bicarbonate"] : [];
+  addEntry({ label: name + " (" + toFormulaChars(sym) + supCharge(Math.abs(ch), ch) + ")",
+    terms: [name, sym, ...alt], kind: "ion", pieces: [{sp: ion}] });
+});
+
+const ionFor = (sym, charge) =>
+  Object.values(registry).find(s => s.kind === "ion" && s.sym === sym && s.charge === charge);
+const atomFor = sym =>
+  Object.values(registry).find(s => s.kind === "atom" && s.sym === sym);
+
+/* --- covalent molecules -----------------------------------------------
+   `chain` describes a linear molecule as atoms joined by bonds of a given
+   order: ["O", 2, "C", 2, "O"] is O=C=O. Anything that would need a 2D
+   layout (CH4, NH3) is defined as a single tile with subscripts instead.
+--------------------------------------------------------------------- */
+
+const MOLECULES = [
+  // linear chains, drawn as separate atom tiles with bond dashes
+  { label:"Carbon dioxide (CO₂)", terms:["carbon dioxide","co2","dioxide"],
+    chain:["O",2,"C",2,"O"] },
+  { label:"Carbon monoxide (CO)", terms:["carbon monoxide","co","monoxide"],
+    chain:["C",3,"O"] },
+  { label:"Sulfur dioxide (SO₂)", terms:["sulfur dioxide","sulphur dioxide","so2"],
+    chain:["O",2,"S",2,"O"] },
+  { label:"Nitrogen monoxide (NO)", terms:["nitrogen monoxide","nitric oxide","no"],
+    chain:["N",2,"O"] },
+  { label:"Nitrogen dioxide (NO₂)", terms:["nitrogen dioxide","no2"],
+    chain:["O",2,"N",1,"O"] },
+  { label:"Water (H₂O)", terms:["water","h2o"], chain:["H",1,"O",1,"H"] },
+  { label:"Hydrogen chloride (HCl)", terms:["hydrogen chloride","hcl gas"],
+    chain:["H",1,"Cl"] },
+
+  // diatomic elements
+  { label:"Hydrogen gas (H₂)", terms:["hydrogen","h2","hydrogen gas","diatomic"], chain:["H",1,"H"] },
+  { label:"Oxygen gas (O₂)", terms:["oxygen","o2","oxygen gas","diatomic"], chain:["O",2,"O"] },
+  { label:"Nitrogen gas (N₂)", terms:["nitrogen","n2","nitrogen gas","diatomic"], chain:["N",3,"N"] },
+  { label:"Chlorine gas (Cl₂)", terms:["chlorine","cl2","chlorine gas","diatomic"], chain:["Cl",1,"Cl"] },
+  { label:"Fluorine gas (F₂)", terms:["fluorine","f2","fluorine gas","diatomic"], chain:["F",1,"F"] },
+  { label:"Bromine gas (Br₂)", terms:["bromine","br2","bromine gas","diatomic"], chain:["Br",1,"Br"] },
+  { label:"Iodine gas (I₂)", terms:["iodine","i2","iodine gas","diatomic"], chain:["I",1,"I"] }
+];
+
+MOLECULES.forEach(m => addEntry({ label:m.label, terms:m.terms, kind:"molecule", chain:m.chain }));
+
+// 2D shapes collapsed to a single subscripted tile
+[["CH4","Methane","carbon",{C:1,H:4},["methane","ch4"]],
+ ["NH3","Ammonia","nonmetal",{N:1,H:3},["ammonia","nh3"]],
+ ["C2H6","Ethane","carbon",{C:2,H:6},["ethane","c2h6"]],
+ ["C2H4","Ethene","carbon",{C:2,H:4},["ethene","c2h4","ethylene"]]
+].forEach(([sym, name, pal, comp, terms]) => {
+  const sp = defMolecule(sym, name, pal, comp);
+  addEntry({ label: name + " (" + toFormulaChars(sym) + ")", terms, kind:"molecule", pieces:[{sp}] });
+});
+
+/* --- diatomic elements set (for auto-pairing) --- */
+const DIATOMIC = { H:1, O:2, N:3, Cl:1, F:1, Br:1, I:1 };   // sym -> bond order
+
+/* --- acids & water as ion pairs --- */
+
+function pairEntry(label, terms, cationSym, cationCharge, anionSp, nCations){
+  const cat = ionFor(cationSym, cationCharge);
+  const pieces = [];
+  for(let i = 0; i < nCations; i++) pieces.push({ sp: cat, dc: 0, dr: i });
+  pieces.push({ sp: anionSp, dc: TILE_W, dr: 0 });
+  addEntry({ label, terms, kind: "compound", pieces });
+}
+
+pairEntry("Hydrochloric acid ([H⁺][Cl⁻])", ["hydrochloric acid","hcl","hydrochloric","acid"],
+  "H", 1, ionFor("Cl", -1), 1);
+pairEntry("Nitric acid ([H⁺][NO₃⁻])", ["nitric acid","hno3","nitric","acid"],
+  "H", 1, polyBySym["NO3"], 1);
+pairEntry("Sulfuric acid (2[H⁺][SO₄²⁻])", ["sulfuric acid","sulphuric acid","h2so4","sulfuric","sulphuric","acid"],
+  "H", 1, polyBySym["SO4"], 2);
+pairEntry("Carbonic acid ([H⁺][HCO₃⁻])", ["carbonic acid","h2co3","carbonic","acid"],
+  "H", 1, polyBySym["HCO3"], 1);
+pairEntry("Phosphoric acid (3[H⁺][PO₄³⁻])", ["phosphoric acid","h3po4","phosphoric","acid"],
+  "H", 1, polyBySym["PO4"], 3);
+pairEntry("Water ([H⁺][OH⁻])", ["water","h2o","water ions"], "H", 1, polyBySym["OH"], 1);
+
+addEntry({ label: "Electron (e⁻)", terms: ["electron","e"], kind: "electron", pieces: [{sp: ELECTRON}] });
+
+/* ===================== board model ===================== */
+
+let groups = [];
+let selection = new Set();
+let hoverGid = null;
+let lastReaction = null;
+
+const chargeUnits = sp => Math.abs(sp.charge);
+const speciesOf = p => registry[p.spId];
+
+const widthCells = sp => (sp.kind === "electron") ? 1 : TILE_W;
+const heightRows = sp => (sp.kind === "ion") ? (chargeUnits(sp) || 1) : 1;
+
+const findGroup = gid => groups.find(g => g.gid === gid);
+const allPieces = () => groups.flatMap(g => g.pieces.map(p => ({g, p})));
+
+function cellsOf(p, col, row){
+  const sp = speciesOf(p);
+  const c0 = col === undefined ? p.col : col, r0 = row === undefined ? p.row : row;
+  const out = [];
+  for(let c = 0; c < widthCells(sp); c++)
+    for(let r = 0; r < heightRows(sp); r++) out.push([c0 + c, r0 + r]);
+  return out;
+}
+
+function occupancy(ignore = []){
+  const m = new Set();
+  groups.forEach(g => {
+    if(ignore.includes(g.gid)) return;
+    g.pieces.forEach(p => cellsOf(p).forEach(([c,r]) => m.add(c + "," + r)));
+  });
+  return m;
+}
+
+function groupBounds(g){
+  let minC = Infinity, maxC = -Infinity, minR = Infinity, maxR = -Infinity;
+  g.pieces.forEach(p => {
+    const sp = speciesOf(p);
+    minC = Math.min(minC, p.col); maxC = Math.max(maxC, p.col + widthCells(sp) - 1);
+    minR = Math.min(minR, p.row); maxR = Math.max(maxR, p.row + heightRows(sp) - 1);
+  });
+  return {minC, maxC, minR, maxR};
+}
+
+function groupFits(g, dc, dr, ignore){
+  const occ = occupancy(ignore || [g.gid]);
+  for(const p of g.pieces){
+    const sp = speciesOf(p);
+    const c0 = p.col + dc, r0 = p.row + dr;
+    if(c0 < 0 || c0 + widthCells(sp) > COLS) return false;
+    if(r0 < 0 || r0 + heightRows(sp) > ROWS) return false;
+    for(const [c,r] of cellsOf(p, c0, r0)) if(occ.has(c + "," + r)) return false;
+  }
+  return true;
+}
+
+const translateGroup = (g, dc, dr) => g.pieces.forEach(p => { p.col += dc; p.row += dr; });
+
+function findFreeSlot(sp, nearCol, nearRow){
+  const w = widthCells(sp), h = heightRows(sp);
+  const occ = occupancy();
+  const free = (c, r) => {
+    if(c < 0 || c + w > COLS || r < 0 || r + h > ROWS) return false;
+    for(let i = 0; i < w; i++) for(let j = 0; j < h; j++) if(occ.has((c+i)+","+(r+j))) return false;
+    return true;
+  };
+  if(nearCol !== undefined){
+    for(let d = 0; d <= COLS + ROWS; d++)
+      for(let dc = -d; dc <= d; dc++)
+        for(let dr = -d; dr <= d; dr++){
+          if(Math.max(Math.abs(dc), Math.abs(dr)) !== d) continue;
+          if(free(nearCol + dc, nearRow + dr)) return {col: nearCol + dc, row: nearRow + dr};
+        }
+  }
+  for(let c = 0; c <= COLS - w; c++) for(let r = 0; r <= ROWS - h; r++) if(free(c,r)) return {col:c, row:r};
+  return null;
+}
+
+/* ===================== covalent bonds =====================
+   g.bonds is a list of [pidA, pidB, order]. Order counts toward each
+   atom's valency, so an H (valency 1) can hold exactly one single bond
+   and an O (valency 2) can hold one double or two singles.
+========================================================== */
+
+const bondKey = (a, b) => [a, b].sort().join("|");
+const hasBond = (g, a, b) => (g.bonds || []).some(bd => bondKey(bd[0], bd[1]) === bondKey(a, b));
+
+// Total bond order already used by this atom.
+function usedValency(g, pid){
+  return (g.bonds || []).reduce((s, bd) =>
+    s + ((bd[0] === pid || bd[1] === pid) ? (bd[2] || 1) : 0), 0);
+}
+
+function freeValency(g, p){
+  const sp = speciesOf(p);
+  if(sp.kind !== "atom") return 0;
+  const max = VALENCY[sp.sym] || 0;
+  return max - usedValency(g, p.pid);
+}
+
+function adjacentH(pa, pb){
+  if(pa.row !== pb.row) return false;
+  const wa = widthCells(speciesOf(pa)), wb = widthCells(speciesOf(pb));
+  return pb.col === pa.col + wa || pa.col === pb.col + wb;
+}
+
+/* Auto-pairing: ONLY identical atoms of a diatomic element, at the element's
+   proper bond order (H–H single, O=O double, N≡N triple). */
+function pairDiatomics(){
+  let changed = true;
+  while(changed){
+    changed = false;
+    outer:
+    for(const g1 of groups){
+      for(const p1 of g1.pieces){
+        const s1 = speciesOf(p1);
+        if(s1.kind !== "atom" || !DIATOMIC[s1.sym]) continue;
+        const order = DIATOMIC[s1.sym];
+        if(freeValency(g1, p1) < order) continue;
+
+        for(const g2 of groups){
+          for(const p2 of g2.pieces){
+            if(p2.pid === p1.pid) continue;
+            const s2 = speciesOf(p2);
+            if(s2.id !== s1.id) continue;
+            if(!adjacentH(p1, p2)) continue;
+            if(g1.gid === g2.gid && hasBond(g1, p1.pid, p2.pid)) continue;
+            if(freeValency(g2, p2) < order) continue;
+
+            if(g1.gid === g2.gid){
+              g1.bonds = g1.bonds || [];
+              g1.bonds.push([p1.pid, p2.pid, order]);
+            } else {
+              g1.bonds = (g1.bonds || []).concat(g2.bonds || []);
+              g1.pieces.push(...g2.pieces);
+              g1.bonds.push([p1.pid, p2.pid, order]);
+              groups = groups.filter(x => x.gid !== g2.gid);
+              if(selection.has(g2.gid)){ selection.delete(g2.gid); selection.add(g1.gid); }
+            }
+            lastReaction = { type:"Bonding", text:`2${s1.formula} → ${s1.formula}${subDigits(2)}` };
+            changed = true;
+            break outer;
+          }
+        }
+      }
+    }
+  }
+}
+
+/* Read a linear chain group back as a formula, e.g. O=C=O -> CO2 */
+function chainFormula(g){
+  if(g.pieces.length < 2 || !(g.bonds || []).length) return null;
+  if(!g.pieces.every(p => speciesOf(p).kind === "atom")) return null;
+  if(g.bonds.length !== g.pieces.length - 1) return null;
+
+  const counts = {};
+  g.pieces.forEach(p => { const s = speciesOf(p).sym; counts[s] = (counts[s] || 0) + 1; });
+  const syms = Object.keys(counts);
+
+  // Single element (H2, O2, N2...) is just the symbol plus a count.
+  if(syms.length === 1)
+    return syms[0] + (counts[syms[0]] > 1 ? subDigits(counts[syms[0]]) : "");
+
+  // Otherwise lead with the most-bonded atom (the central one: C in O=C=O,
+  // S in O=S=O), which matches how these formulas are conventionally written.
+  const bondLoad = {};
+  g.pieces.forEach(p => {
+    const s = speciesOf(p).sym;
+    bondLoad[s] = Math.max(bondLoad[s] || 0, usedValency(g, p.pid));
+  });
+  const order = [...syms].sort((a, b) => {
+    if(a === "C") return -1;              // carbon always first (Hill notation)
+    if(b === "C") return 1;
+    if(a === "H" && b !== "C") return -1; // then hydrogen
+    if(b === "H" && a !== "C") return 1;
+    const d = (bondLoad[b] || 0) - (bondLoad[a] || 0);
+    return d !== 0 ? d : a.localeCompare(b);
+  });
+  return order.map(s => s + (counts[s] > 1 ? subDigits(counts[s]) : "")).join("");
+}
+
+// Is this group a molecule of identical atoms? (for the "2H -> H2" line)
+function diatomicOf(g){
+  if(g.pieces.length !== 2 || !(g.bonds || []).length) return null;
+  const [a, b] = g.pieces;
+  const sa = speciesOf(a), sb = speciesOf(b);
+  if(sa.kind !== "atom" || sa.id !== sb.id || !DIATOMIC[sa.sym]) return null;
+  if(!hasBond(g, a.pid, b.pid)) return null;
+  return sa;
+}
+
+/* ===================== ionic sockets ===================== */
+
+function socketsOf(p){
+  const sp = speciesOf(p);
+  if(sp.kind !== "ion" && sp.kind !== "electron") return [];
+  const out = [], n = chargeUnits(sp);
+  for(let k = 0; k < n; k++){
+    if(sp.charge > 0) out.push({ pid:p.pid, type:"blank", col: p.col + widthCells(sp), row: p.row + k });
+    else              out.push({ pid:p.pid, type:"tab",   col: p.col, row: p.row + k });
+  }
+  return out;
+}
+
+function socketPartner(sock, ignore = []){
+  for(const {g, p} of allPieces()){
+    if(ignore.includes(g.gid) || p.pid === sock.pid) continue;
+    for(const s of socketsOf(p)){
+      if(s.type === sock.type) continue;
+      if(s.col === sock.col && s.row === sock.row) return {piece:p, group:g, socket:s};
+    }
+  }
+  return null;
+}
+
+function resolveBonds(){
+  let merged = true;
+  while(merged){
+    merged = false;
+    outer:
+    for(const g of groups){
+      for(const p of g.pieces){
+        for(const s of socketsOf(p)){
+          const hit = socketPartner(s);
+          if(hit && hit.group.gid !== g.gid){
+            g.bonds = (g.bonds || []).concat(hit.group.bonds || []);
+            g.pieces.push(...hit.group.pieces);
+            groups = groups.filter(x => x.gid !== hit.group.gid);
+            if(selection.has(hit.group.gid)){ selection.delete(hit.group.gid); selection.add(g.gid); }
+            merged = true;
+            break outer;
+          }
+        }
+      }
+    }
+  }
+  pairDiatomics();
+}
+
+function isBondedToOther(g){
+  for(const p of g.pieces)
+    for(const s of socketsOf(p)){
+      const hit = socketPartner(s);
+      if(hit && hit.group.gid !== g.gid) return true;
+    }
+  return false;
+}
+
+function separateAll(gids){
+  for(let pass = 0; pass < 14; pass++){
+    let moved = false;
+    for(const gid of gids){
+      const g = findGroup(gid);
+      if(!g || !isBondedToOther(g)) continue;
+      for(const [dc,dr] of [[0,-2],[0,2],[2,0],[-2,0],[3,0],[-3,0],[0,-3],[0,3],[4,0],[-4,0]]){
+        if(!groupFits(g, dc, dr)) continue;
+        translateGroup(g, dc, dr);
+        if(!isBondedToOther(g)){ moved = true; break; }
+        translateGroup(g, -dc, -dr);
+      }
+    }
+    if(!moved) break;
+  }
+}
+
+/* ===================== actions ===================== */
+
+function fuseCandidate(g){
+  const ions = g.pieces.filter(p => speciesOf(p).kind === "ion");
+  const es   = g.pieces.filter(p => speciesOf(p).kind === "electron");
+  if(ions.length !== 1 || es.length === 0) return null;
+  if(g.pieces.length !== ions.length + es.length) return null;
+  const sp = speciesOf(ions[0]);
+  if(sp.charge <= 0 || es.length !== chargeUnits(sp)) return null;
+  if(!atomFor(sp.sym)) return null;
+  return { cat: ions[0], es, sp };
+}
+
+function fuseGroup(gid){
+  const g = findGroup(gid);
+  if(!g) return;
+  const cand = fuseCandidate(g);
+  if(!cand) return;
+  const { cat, sp } = cand;
+  const n = chargeUnits(sp);
+  const atom = atomFor(sp.sym);
+  groups = groups.filter(x => x.gid !== gid);
+  selection.delete(gid);
+  groups.push({ gid: nextId("g"), pieces: [{ pid: nextId("p"), spId: atom.id, col: cat.col, row: cat.row }], bonds: [] });
+  lastReaction = { type:"Reduction", text:`${sp.formula}${supCharge(n,1)} + ${n>1?n:""}e⁻ → ${sp.formula}` };
+  hoverGid = null; resolveBonds(); render();
+}
+
+function canStrip(g){
+  if(g.pieces.length !== 1) return false;
+  const sp = speciesOf(g.pieces[0]);
+  return sp.kind === "ion" && sp.charge < 0 && sp.monatomic && !!atomFor(sp.sym);
+}
+
+function stripAnion(gid){
+  const g = findGroup(gid);
+  if(!g || !canStrip(g)) return;
+  const p = g.pieces[0], sp = speciesOf(p);
+  const n = chargeUnits(sp), col = p.col, row = p.row;
+  groups = groups.filter(x => x.gid !== gid);
+  selection.delete(gid);
+  groups.push({ gid: nextId("g"), pieces: [{ pid: nextId("p"), spId: atomFor(sp.sym).id, col, row }], bonds: [] });
+  for(let k = 0; k < n; k++){
+    const es = findFreeSlot(ELECTRON, col + TILE_W + 1, row + k);
+    if(!es) break;
+    groups.push({ gid: nextId("g"), pieces: [{ pid: nextId("p"), spId:"e", col: es.col, row: es.row }], bonds: [] });
+  }
+  lastReaction = { type:"Oxidation", text:`${sp.formula}${supCharge(n,-1)} → ${sp.formula} + ${n>1?n:""}e⁻` };
+  hoverGid = null; resolveBonds(); render();
+}
+
+function reverseOptions(g){
+  if(g.pieces.length !== 1) return [];
+  const sp = speciesOf(g.pieces[0]);
+  if(sp.kind !== "atom") return [];
+  return Object.values(registry).filter(s => s.kind === "ion" && s.sym === sp.sym && s.monatomic);
+}
+
+function reverseAtom(gid){
+  const g = findGroup(gid);
+  if(!g) return;
+  const opts = reverseOptions(g);
+  if(!opts.length) return;
+  const ion = opts[0], n = chargeUnits(ion);
+  const p = g.pieces[0], col = p.col, row = p.row;
+  groups = groups.filter(x => x.gid !== gid);
+  selection.delete(gid);
+  const probe = { gid:"__p", pieces:[{ pid:"__x", spId: ion.id, col, row }] };
+  const slot = groupFits(probe, 0, 0, ["__p"]) ? {col, row} : findFreeSlot(ion, col, row);
+  if(!slot){ flash("No room to place the ion."); render(); return; }
+  groups.push({ gid: nextId("g"), pieces: [{ pid: nextId("p"), spId: ion.id, col: slot.col, row: slot.row }], bonds: [] });
+  if(ion.charge > 0){
+    for(let k = 0; k < n; k++){
+      const es = findFreeSlot(ELECTRON, slot.col + TILE_W + 1, slot.row + k);
+      if(!es) break;
+      groups.push({ gid: nextId("g"), pieces: [{ pid: nextId("p"), spId:"e", col: es.col, row: es.row }], bonds: [] });
+    }
+    lastReaction = { type:"Oxidation", text:`${ion.formula} → ${ion.formula}${supCharge(n,1)} + ${n>1?n:""}e⁻` };
+  } else {
+    lastReaction = { type:"Reduction", text:`${ion.formula} + ${n>1?n:""}e⁻ → ${ion.formula}${supCharge(n,-1)}` };
+  }
+  hoverGid = null; resolveBonds(); render();
+}
+
+// Scissors: rigid group, ALL bonds break at once.
+function scissorGroup(gid){
+  const g = findGroup(gid);
+  if(!g || g.pieces.length < 2) return;
+
+  const dia = diatomicOf(g);
+  const chain = chainFormula(g);
+  const eq = compoundEquation(g);
+
+  const pieces = [...g.pieces].sort((a,b) => a.col - b.col || a.row - b.row);
+  groups = groups.filter(x => x.gid !== gid);
+  selection.delete(gid);
+  const gids = pieces.map(p => {
+    const ng = { gid: nextId("g"), pieces:[p], bonds: [] };
+    groups.push(ng);
+    return ng.gid;
+  });
+  separateAll(gids);
+
+  if(dia) lastReaction = { type:"Bond broken", text:`${dia.formula}${subDigits(2)} → 2${dia.formula}` };
+  else if(chain){
+    const parts = pieces.map(p => speciesOf(p).formula);
+    lastReaction = { type:"Bond broken", text:`${chain} → ${parts.join(" + ")}` };
+  }
+  else if(eq) lastReaction = { type:"Dissociation", text: eq.split(" → ").reverse().join(" → ") };
+  hoverGid = null; render();
+}
+
+/* --- decomposition: irreversible, table-driven ------------------------
+   A lone polyatomic ion that breaks into fixed products. Add cases here
+   as teachers ask for them.
+--------------------------------------------------------------------- */
+
+const DECOMPOSE = {
+  // carbonate -> oxide + carbon dioxide   (CO3^2-  ->  O^2-  +  CO2)
+  "CO3|-2": {
+    label: "CO₃²⁻ → O²⁻ + CO₂",
+    products: [ {ion:["O", -2]}, {chain:["O",2,"C",2,"O"]} ]
+  },
+  // hydrogencarbonate -> carbonate + water is out of scope; add on request
+};
+
+function decomposeKey(g){
+  if(g.pieces.length !== 1) return null;
+  const sp = speciesOf(g.pieces[0]);
+  if(sp.kind !== "ion" || !sp.poly) return null;
+  const k = sp.sym + "|" + sp.charge;
+  return DECOMPOSE[k] ? k : null;
+}
+
+function decomposeGroup(gid){
+  const g = findGroup(gid);
+  if(!g) return;
+  const key = decomposeKey(g);
+  if(!key) return;
+  const rule = DECOMPOSE[key];
+  const p = g.pieces[0];
+  const col = p.col, row = p.row;
+
+  groups = groups.filter(x => x.gid !== gid);
+  selection.delete(gid);
+
+  let cursorCol = col;
+  rule.products.forEach((prod, i) => {
+    if(prod.ion){
+      const sp = ionFor(prod.ion[0], prod.ion[1]);
+      if(!sp) return;
+      const slot = (i === 0)
+        ? { col, row }
+        : findFreeSlot(sp, cursorCol + TILE_W + 1, row) || findFreeSlot(sp);
+      if(!slot) return;
+      groups.push({ gid: nextId("g"),
+        pieces:[{ pid: nextId("p"), spId: sp.id, col: slot.col, row: slot.row }], bonds: [] });
+      cursorCol = slot.col;
+    } else if(prod.chain){
+      const g2 = buildChainGroup(prod.chain, cursorCol + TILE_W + 1, row);
+      if(g2) cursorCol = groupBounds(g2).maxC;
+    }
+  });
+
+  lastReaction = { type:"Decomposition", text: rule.label };
+  hoverGid = null; render();
+}
+
+/* --- build a linear chain molecule as a group of bonded atom tiles --- */
+
+function chainWidth(chain){
+  const atoms = chain.filter((_, i) => i % 2 === 0);
+  return atoms.length * TILE_W;
+}
+
+function chainFits(chain, c, r, occ){
+  const atoms = chain.filter((_, i) => i % 2 === 0);
+  for(let i = 0; i < atoms.length; i++){
+    const c0 = c + i * TILE_W;
+    if(c0 < 0 || c0 + TILE_W > COLS || r < 0 || r + 1 > ROWS) return false;
+    for(let k = 0; k < TILE_W; k++) if(occ.has((c0+k) + "," + r)) return false;
+  }
+  return true;
+}
+
+function buildChainGroup(chain, atCol, atRow){
+  const occ = occupancy();
+  let spot = null;
+  const startC = atCol === undefined ? 0 : atCol;
+  const startR = atRow === undefined ? 0 : atRow;
+  if(chainFits(chain, startC, startR, occ)) spot = {c: startC, r: startR};
+  if(!spot){
+    outer:
+    for(let d = 0; d <= COLS + ROWS; d++)
+      for(let dc = -d; dc <= d; dc++)
+        for(let dr = -d; dr <= d; dr++){
+          if(Math.max(Math.abs(dc), Math.abs(dr)) !== d) continue;
+          const c = startC + dc, r = startR + dr;
+          if(chainFits(chain, c, r, occ)){ spot = {c, r}; break outer; }
+        }
+  }
+  if(!spot){ flash("No free space on the board."); return null; }
+
+  const pieces = [], bonds = [];
+  for(let i = 0; i < chain.length; i += 2){
+    const sym = chain[i];
+    const sp = atomFor(sym);
+    if(!sp) return null;
+    pieces.push({ pid: nextId("p"), spId: sp.id, col: spot.c + (i/2) * TILE_W, row: spot.r });
+  }
+  for(let i = 1; i < chain.length; i += 2){
+    const order = chain[i];
+    const a = pieces[(i-1)/2], b = pieces[(i+1)/2];
+    bonds.push([a.pid, b.pid, order]);
+  }
+  const g = { gid: nextId("g"), pieces, bonds };
+  groups.push(g);
+  return g;
+}
+
+function deleteGroup(gid){
+  groups = groups.filter(g => g.gid !== gid);
+  selection.delete(gid); hoverGid = null; render();
+}
+
+function duplicateGroups(gids){
+  const made = [];
+  gids.forEach(gid => {
+    const g = findGroup(gid);
+    if(!g) return;
+    const b = groupBounds(g);
+    const offsets = [[0, b.maxR - b.minR + 1], [b.maxC - b.minC + 1, 0], [0, -(b.maxR - b.minR + 1)], [2, 2]];
+    let placed = null;
+    for(const [dc, dr] of offsets){
+      const probe = { gid:"__probe",
+        pieces: g.pieces.map(p => ({ pid:"__"+p.pid, spId:p.spId, col:p.col+dc, row:p.row+dr })) };
+      if(groupFits(probe, 0, 0, ["__probe"])){ placed = [dc, dr]; break; }
+    }
+    if(!placed){
+      outer:
+      for(let c = 0; c < COLS; c++) for(let r = 0; r < ROWS; r++){
+        const dc = c - b.minC, dr = r - b.minR;
+        const probe = { gid:"__probe",
+          pieces: g.pieces.map(p => ({ pid:"__"+p.pid, spId:p.spId, col:p.col+dc, row:p.row+dr })) };
+        if(groupFits(probe, 0, 0, ["__probe"])){ placed = [dc, dr]; break outer; }
+      }
+    }
+    if(!placed) return;
+    const pidMap = {};
+    const pieces = g.pieces.map(p => {
+      const np = { pid: nextId("p"), spId: p.spId, col: p.col + placed[0], row: p.row + placed[1] };
+      pidMap[p.pid] = np.pid;
+      return np;
+    });
+    const bonds = (g.bonds || []).map(bd => [pidMap[bd[0]], pidMap[bd[1]], bd[2] || 1])
+                                 .filter(bd => bd[0] && bd[1]);
+    const ng = { gid: nextId("g"), pieces, bonds };
+    groups.push(ng);
+    made.push(ng.gid);
+  });
+  if(!made.length){ flash("No free space to place the copy."); return; }
+  selection = new Set(made);
+  hoverGid = null;
+  resolveBonds(); render();
+}
+
+/* ===================== formulas ===================== */
+
+function tallyOf(g){
+  const counts = {}, order = [];
+  [...g.pieces].sort((a,b) => a.col - b.col || a.row - b.row).forEach(p => {
+    const sp = speciesOf(p);
+    if(!counts[sp.id]){ counts[sp.id] = {sp, n:0}; order.push(sp.id); }
+    counts[sp.id].n++;
+  });
+  return {counts, order};
+}
+
+function partOf(counts, key){
+  const {sp, n} = counts[key];
+  const body = (sp.poly && n > 1) ? "(" + sp.formula + ")" : sp.formula;
+  return body + (n > 1 ? subDigits(n) : "");
+}
+
+function compoundEquation(g){
+  const dia = diatomicOf(g);
+  if(dia) return `2${dia.formula} → ${dia.formula}${subDigits(2)}`;
+
+  const chain = chainFormula(g);
+  if(chain){
+    const parts = [...g.pieces].sort((a,b) => a.col - b.col).map(p => speciesOf(p).formula);
+    return `${parts.join(" + ")} → ${chain}`;
+  }
+
+  const net = g.pieces.reduce((s,p) => s + speciesOf(p).charge, 0);
+  if(net !== 0) return "";
+  if(g.pieces.some(p => ["electron","atom","molecule"].includes(speciesOf(p).kind))) return "";
+  const {counts, order} = tallyOf(g);
+  const cats = order.filter(k => counts[k].sp.charge > 0);
+  const ans  = order.filter(k => counts[k].sp.charge < 0);
+  if(!cats.length || !ans.length) return "";
+  const lhs = order.map(k => {
+    const {sp, n} = counts[k];
+    return (n > 1 ? n : "") + sp.formula + supCharge(chargeUnits(sp), sp.charge);
+  }).join(" + ");
+
+  const isWater = cats.length === 1 && ans.length === 1 &&
+    counts[cats[0]].sp.sym === "H" && counts[ans[0]].sp.sym === "OH" &&
+    counts[cats[0]].n === counts[ans[0]].n;
+  if(isWater){
+    const n = counts[cats[0]].n;
+    return lhs + " → " + (n > 1 ? n : "") + "H" + subDigits(2) + "O";
+  }
+  const rhs = cats.map(k => partOf(counts,k)).join("") + ans.map(k => partOf(counts,k)).join("");
+  return lhs + " → " + rhs;
+}
+
+function halfEquation(g){
+  const cand = fuseCandidate(g);
+  if(!cand) return "";
+  const n = chargeUnits(cand.sp);
+  return `${cand.sp.formula}${supCharge(n,1)} + ${n>1?n:""}e⁻ → ${cand.sp.formula}`;
+}
+
+/* ===================== rendering ===================== */
+
+function pieceSVG(sp, w, h){
+  const n = chargeUnits(sp);
+  if(sp.kind === "electron"){
+    return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block;overflow:visible;">
+      <rect x="0" y="0" width="${w}" height="${h}" rx="6" fill="${sp.color.bg}"/>
+      <circle cx="0" cy="${h/2}" r="${R_TAB}" fill="${sp.color.bg}"/>
+      <text x="${w/2+4}" y="${h/2}" text-anchor="middle" dominant-baseline="central"
+        style="fill:${sp.color.text};font-size:12.5px;font-weight:600;font-style:italic;">e⁻</text></svg>`;
+  }
+  let shapes = `<rect x="0" y="0" width="${w}" height="${h}" rx="6" fill="${sp.color.bg}"/>`;
+  if(sp.kind === "ion"){
+    for(let k = 0; k < n; k++){
+      const cy = UNIT*k + UNIT/2;
+      if(sp.charge > 0) shapes += `<circle cx="${w}" cy="${cy}" r="${R_TAB+1}" fill="var(--surface-1)"/>`;
+      else              shapes += `<circle cx="0" cy="${cy}" r="${R_TAB}" fill="${sp.color.bg}"/>`;
+    }
+  }
+  if(sp.kind === "atom" || sp.kind === "molecule"){
+    shapes += `<rect x="1.5" y="1.5" width="${w-3}" height="${h-3}" rx="5" fill="none"
+      stroke="${sp.color.text}" stroke-width="1.4" stroke-dasharray="4 3" opacity=".5"/>`;
+  }
+  const label = sp.kind === "ion" ? sp.formula + supCharge(n, sp.charge) : sp.formula;
+  const tx = sp.kind === "ion" ? (sp.charge > 0 ? w/2 - 5 : w/2 + 5) : w/2;
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block;overflow:visible;">
+    ${shapes}<text x="${tx}" y="${h/2}" text-anchor="middle" dominant-baseline="central"
+      style="fill:${sp.color.text};font-size:14.5px;font-weight:500;">${label}</text></svg>`;
+}
+
+const SCISSORS = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1a1a19"
+  stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/>
+  <circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/>
+  <line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>`;
+const PLUS = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1a7f4b"
+  stroke-width="2.6" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/>
+  <line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+const CROSS = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c23b3b"
+  stroke-width="2.6" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/>
+  <line x1="18" y1="6" x2="6" y2="18"/></svg>`;
+const UNDO = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#55534c"
+  stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/>
+  <path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>`;
+const COPY = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1a1a19"
+  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg>`;
+// decompose: an arrow splitting into two
+const DECOMP = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8a4f9e"
+  stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M4 12h6"/><path d="M14 6h6"/><path d="M14 18h6"/><path d="M10 12l4-6"/><path d="M10 12l4 6"/></svg>`;
+
+function pieceRect(p){
+  const sp = speciesOf(p);
+  return { left: PAD + p.col * CELL_W, top: PAD + p.row * UNIT,
+           w: widthCells(sp) * CELL_W, h: heightRows(sp) * UNIT };
+}
+
+function render(){
+  const board = document.getElementById("board");
+  board.style.cssText =
+    `position:relative;width:${BOARD_W}px;height:${BOARD_H}px;` +
+    `background-image:` +
+      `linear-gradient(to right,var(--grid-line-major) 1px,transparent 1px),` +
+      `linear-gradient(to right,var(--grid-line) 1px,transparent 1px),` +
+      `linear-gradient(to bottom,var(--grid-line-major) 1px,transparent 1px);` +
+    `background-size:${CELL_W*2}px ${UNIT}px, ${CELL_W}px ${UNIT}px, ${CELL_W}px ${UNIT}px;` +
+    `background-position:${PAD}px ${PAD}px;`;
+
+  const midX = PAD + MID_CELL * CELL_W;
+  let html = "";
+  html += `<div class="divider" style="left:${midX - 46}px;"></div>`;
+  html += `<div class="divider" style="left:${midX + 46}px;"></div>`;
+  html += `<div class="zone-label" style="left:${PAD + 6}px;">Reactants</div>`;
+  html += `<div class="zone-label" style="left:${midX + 56}px;">Products</div>`;
+  html += `<div id="arrow-fix" style="left:${midX - 34}px;top:${BOARD_H/2 - 14}px;width:68px;height:28px;">
+    <svg width="68" height="28" viewBox="0 0 68 28"><line x1="6" y1="14" x2="54" y2="14"
+      stroke="var(--text-secondary)" stroke-width="2.5" stroke-linecap="round"/>
+      <polyline points="46,7 55,14 46,21" fill="none" stroke="var(--text-secondary)"
+      stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`;
+
+  groups.forEach(g => {
+    const b = groupBounds(g);
+    const left = PAD + b.minC * CELL_W, top = PAD + b.minR * UNIT;
+    const w = (b.maxC - b.minC + 1) * CELL_W, h = (b.maxR - b.minR + 1) * UNIT;
+    const sel = selection.has(g.gid) ? " sel" : "";
+    html += `<div class="grp${sel}" data-gid="${g.gid}" draggable="true" tabindex="0" role="button"
+      style="left:${left}px;top:${top}px;width:${w}px;height:${h}px;">`;
+    const ordered = [...g.pieces].sort((a,b2) =>
+      (speciesOf(b2).charge > 0 ? 1:0) - (speciesOf(a).charge > 0 ? 1:0));
+    ordered.forEach(p => {
+      const r = pieceRect(p);
+      html += `<div style="position:absolute;left:${r.left-left}px;top:${r.top-top}px;width:${r.w}px;
+        height:${r.h}px;pointer-events:none;">${pieceSVG(speciesOf(p), r.w, r.h)}</div>`;
+    });
+    if(sel) html += `<div class="selring"></div>`;
+
+    // covalent bonds: one dash per bond order, stacked vertically
+    (g.bonds || []).forEach(bd => {
+      const pa = g.pieces.find(p => p.pid === bd[0]);
+      const pb = g.pieces.find(p => p.pid === bd[1]);
+      if(!pa || !pb) return;
+      const order = bd[2] || 1;
+      const ra = pieceRect(pa), rb = pieceRect(pb);
+      const lp = ra.left < rb.left ? ra : rb;
+      const x = lp.left + lp.w;
+      const yMid = lp.top + lp.h / 2;
+      const GAP = 4.5;                       // vertical spacing between parallel dashes
+      const first = yMid - ((order - 1) * GAP) / 2;
+      for(let i = 0; i < order; i++){
+        const y = first + i * GAP;
+        html += `<div class="bond" style="left:${x - left - 7}px;top:${y - top - 1.25}px;width:14px;"></div>`;
+      }
+    });
+    html += `</div>`;
+  });
+
+  html += `<div id="marquee"></div><div id="tools"></div>`;
+  if(groups.length === 0)
+    html += `<span style="position:absolute;top:${PAD+4}px;left:${PAD+90}px;font-size:13px;
+      color:var(--text-muted);pointer-events:none;">Search above to add your first species.</span>`;
+  board.innerHTML = html;
+
+  wireBoard(board);
+  if(hoverGid && findGroup(hoverGid)) showTools(hoverGid);
+  renderEquations();
+}
+
+function showTools(gid){
+  const g = findGroup(gid);
+  const tools = document.getElementById("tools");
+  if(!g || !tools) return;
+  const multi = selection.size > 1 && selection.has(gid);
+  const b = multi ? selectionBounds() : groupBounds(g);
+  const acts = [];
+
+  if(multi){
+    acts.push(["copy", COPY, `Duplicate ${selection.size} selected`]);
+    acts.push(["del", CROSS, "Delete selected"]);
+  } else {
+    if(g.pieces.length > 1)
+      acts.push(["cut", SCISSORS, (diatomicOf(g) || chainFormula(g)) ? "Break the bonds" : "Split apart"]);
+    if(fuseCandidate(g))         acts.push(["fuse", PLUS, "Make a neutral atom"]);
+    if(canStrip(g))              acts.push(["strip", SCISSORS, "Take the electrons off"]);
+    if(decomposeKey(g))          acts.push(["decomp", DECOMP, DECOMPOSE[decomposeKey(g)].label + " (cannot be undone)"]);
+    if(reverseOptions(g).length) acts.push(["reverse", UNDO, "Turn into its ion"]);
+    acts.push(["copy", COPY, "Duplicate"]);
+    acts.push(["del", CROSS, "Delete"]);
+  }
+
+  tools.style.left = (PAD + (b.maxC + 1) * CELL_W + 5) + "px";
+  tools.style.top  = (PAD + b.minR * UNIT) + "px";
+  tools.className = "on";
+  tools.innerHTML = acts.map(([k, svg, title]) =>
+    `<button class="act ${k==="del"?"danger":""}" data-act="${k}" data-gid="${gid}"
+      title="${title}" aria-label="${title}">${svg}</button>`).join("");
+
+  tools.querySelectorAll(".act").forEach(btn => {
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      const id = btn.dataset.gid, act = btn.dataset.act;
+      const targets = (selection.size > 1 && selection.has(id)) ? [...selection] : [id];
+      if(act === "copy"){ duplicateGroups(targets); return; }
+      if(act === "del"){
+        targets.forEach(t => { groups = groups.filter(x => x.gid !== t); selection.delete(t); });
+        hoverGid = null; render(); return;
+      }
+      ({cut:scissorGroup, fuse:fuseGroup, strip:stripAnion,
+        reverse:reverseAtom, decomp:decomposeGroup})[act](id);
+    });
+  });
+  tools.addEventListener("mouseenter", () => { hoverGid = gid; });
+  tools.addEventListener("mouseleave", () => { hoverGid = null; hideTools(); });
+}
+
+function hideTools(){ const t = document.getElementById("tools"); if(t) t.className = ""; }
+
+function selectionBounds(){
+  let minC = Infinity, maxC = -Infinity, minR = Infinity, maxR = -Infinity;
+  selection.forEach(gid => {
+    const g = findGroup(gid);
+    if(!g) return;
+    const b = groupBounds(g);
+    minC = Math.min(minC, b.minC); maxC = Math.max(maxC, b.maxC);
+    minR = Math.min(minR, b.minR); maxR = Math.max(maxR, b.maxR);
+  });
+  return {minC, maxC, minR, maxR};
+}
+
+/* ===================== interaction ===================== */
+
+let dragState = null;
+let marquee = null;
+
+function boardXY(e){
+  const r = document.getElementById("board").getBoundingClientRect();
+  return { x: e.clientX - r.left - PAD, y: e.clientY - r.top - PAD };
+}
+
+function wireBoard(board){
+  board.querySelectorAll(".grp").forEach(el => {
+    const gid = el.dataset.gid;
+    el.addEventListener("mouseenter", () => { hoverGid = gid; showTools(gid); });
+    el.addEventListener("mouseleave", () => { setTimeout(() => { if(hoverGid !== gid) hideTools(); }, 10); });
+    el.addEventListener("focus", () => { hoverGid = gid; showTools(gid); });
+
+    el.addEventListener("mousedown", e => {
+      if(e.shiftKey){
+        e.preventDefault();
+        if(selection.has(gid)) selection.delete(gid); else selection.add(gid);
+        render();
+      } else if(!selection.has(gid)) selection.clear();
+    });
+
+    el.addEventListener("dragstart", e => {
+      const g = findGroup(gid);
+      const b = groupBounds(g);
+      const {x, y} = boardXY(e);
+      const moving = selection.has(gid) && selection.size > 1 ? [...selection] : [gid];
+      dragState = { gids: moving, anchor: gid, grabCol: x/CELL_W - b.minC, grabRow: y/UNIT - b.minR };
+      e.dataTransfer.setData("text/plain", "move:" + gid);
+      e.dataTransfer.effectAllowed = "move";
+      el.classList.add("dragging");
+      hideTools();
+    });
+    el.addEventListener("dragend", () => el.classList.remove("dragging"));
+
+    el.addEventListener("keydown", e => {
+      if(e.key === "Delete" || e.key === "Backspace"){ e.preventDefault(); deleteGroup(gid); }
+      if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d"){
+        e.preventDefault();
+        duplicateGroups(selection.size && selection.has(gid) ? [...selection] : [gid]);
+      }
+    });
+  });
+}
+
+const boardEl = document.getElementById("board");
+boardEl.addEventListener("dragover", e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; });
+boardEl.addEventListener("mouseleave", () => { hoverGid = null; hideTools(); });
+
+boardEl.addEventListener("mousedown", e => {
+  if(e.target.closest(".grp") || e.target.closest("#tools")) return;
+  const {x, y} = boardXY(e);
+  marquee = { x0:x, y0:y, x1:x, y1:y, additive: e.shiftKey };
+  if(!e.shiftKey){ selection.clear(); render(); }
+  const box = document.getElementById("marquee");
+  if(box) box.style.display = "block";
+});
+
+window.addEventListener("mousemove", e => {
+  if(!marquee) return;
+  const {x, y} = boardXY(e);
+  marquee.x1 = x; marquee.y1 = y;
+  const box = document.getElementById("marquee");
+  if(!box) return;
+  const l = Math.min(marquee.x0, marquee.x1), t = Math.min(marquee.y0, marquee.y1);
+  box.style.left = (l + PAD) + "px"; box.style.top = (t + PAD) + "px";
+  box.style.width = Math.abs(marquee.x1 - marquee.x0) + "px";
+  box.style.height = Math.abs(marquee.y1 - marquee.y0) + "px";
+});
+
+window.addEventListener("mouseup", () => {
+  if(!marquee) return;
+  const l = Math.min(marquee.x0, marquee.x1), r = Math.max(marquee.x0, marquee.x1);
+  const t = Math.min(marquee.y0, marquee.y1), bm = Math.max(marquee.y0, marquee.y1);
+  if(Math.abs(r-l) > 4 && Math.abs(bm-t) > 4){
+    if(!marquee.additive) selection.clear();
+    groups.forEach(g => {
+      const b = groupBounds(g);
+      if(b.minC*CELL_W < r && (b.maxC+1)*CELL_W > l &&
+         b.minR*UNIT < bm && (b.maxR+1)*UNIT > t) selection.add(g.gid);
+    });
+  }
+  marquee = null;
+  const box = document.getElementById("marquee");
+  if(box) box.style.display = "none";
+  render();
+});
+
+boardEl.addEventListener("drop", e => {
+  e.preventDefault();
+  const data = e.dataTransfer.getData("text/plain");
+  if(!data) return;
+  const i = data.indexOf(":");
+  const kind = data.slice(0, i), id = data.slice(i+1);
+  const {x, y} = boardXY(e);
+  if(kind === "lib"){
+    dropEntry(parseInt(id), Math.round(x/CELL_W - 1), Math.round(y/UNIT - 0.5));
+  } else if(kind === "move"){
+    if(!dragState) return;
+    const anchor = findGroup(dragState.anchor);
+    if(!anchor) return;
+    const b = groupBounds(anchor);
+    const dc = Math.round(x/CELL_W - dragState.grabCol) - b.minC;
+    const dr = Math.round(y/UNIT  - dragState.grabRow) - b.minR;
+    moveMany(dragState.gids, dc, dr);
+    dragState = null; hoverGid = null;
+    resolveBonds(); render();
+  }
+});
+
+function moveMany(gids, dc, dr){
+  const gs = gids.map(findGroup).filter(Boolean);
+  if(!gs.length) return;
+  const fitsAll = (a, b) => gs.every(g => {
+    const occ = occupancy(gids);
+    for(const p of g.pieces){
+      const sp = speciesOf(p);
+      const c0 = p.col + a, r0 = p.row + b;
+      if(c0 < 0 || c0 + widthCells(sp) > COLS) return false;
+      if(r0 < 0 || r0 + heightRows(sp) > ROWS) return false;
+      for(const [c,r] of cellsOf(p, c0, r0)) if(occ.has(c+","+r)) return false;
+    }
+    return true;
+  });
+  const cands = [[dc,dr]];
+  for(let k = 1; k <= 3; k++)
+    cands.push([dc,dr-k],[dc,dr+k],[dc-k,dr],[dc+k,dr],[dc-k,dr-k],[dc+k,dr+k],[dc-k,dr+k],[dc+k,dr-k]);
+  cands.push([0,0]);
+  for(const [a,b] of cands) if(fitsAll(a,b)){ gs.forEach(g => translateGroup(g, a, b)); return; }
+}
+
+/* ===================== search ===================== */
+
+let cursor = -1;
+let shown = [];
+
+function chipHTML(entry){
+  if(entry.chain){
+    const parts = [];
+    for(let i = 0; i < entry.chain.length; i += 2){
+      const sp = atomFor(entry.chain[i]);
+      if(!sp) continue;
+      parts.push(`<span style="display:inline-block;background:${sp.color.bg};color:${sp.color.text};
+        border-radius:4px;padding:2px 5px;font-size:11.5px;font-weight:600;
+        border:1px dashed ${sp.color.text};">${sp.formula}</span>`);
+      if(i + 1 < entry.chain.length){
+        const order = entry.chain[i+1];
+        // show bond order as 1-3 stacked mini dashes
+        const dashes = Array.from({length: order}, () =>
+          `<span style="display:block;width:6px;height:1.5px;background:var(--text-primary);opacity:.8;"></span>`).join("");
+        parts.push(`<span style="display:inline-flex;flex-direction:column;gap:1.5px;
+          justify-content:center;padding:0 1px;">${dashes}</span>`);
+      }
+    }
+    return `<span class="chip-row">${parts.join("")}</span>`;
+  }
+  return `<span class="chip-row" style="gap:3px;">` + entry.pieces.map(pc => {
+    const sp = pc.sp, n = chargeUnits(sp);
+    const label = sp.kind === "ion" ? sp.formula + supCharge(n, sp.charge)
+                : sp.kind === "electron" ? "e⁻" : sp.formula;
+    return `<span style="display:inline-block;background:${sp.color.bg};color:${sp.color.text};
+      border-radius:4px;padding:2px 6px;font-size:12px;font-weight:600;${
+      sp.kind === "atom" || sp.kind === "molecule" ? "border:1px dashed "+sp.color.text+";" : ""
+    }">${label}</span>`;
+  }).join("") + `</span>`;
+}
+
+function searchLib(q){
+  q = q.trim().toLowerCase();
+  if(!q) return [];
+  const scored = [];
+  library.forEach((e, i) => {
+    let best = Infinity;
+    e.terms.forEach(t => {
+      const tl = t.toLowerCase();
+      if(tl === q) best = Math.min(best, 0);
+      else if(tl.startsWith(q)) best = Math.min(best, 1);
+      else if(tl.includes(q)) best = Math.min(best, 2);
+    });
+    if(e.label.toLowerCase().includes(q)) best = Math.min(best, 2);
+    if(best < Infinity) scored.push({i, e, score: best});
+  });
+  scored.sort((a,b) => a.score - b.score || a.e.label.length - b.e.label.length);
+  return scored.slice(0, 12);
+}
+
+function renderResults(){
+  const box = document.getElementById("results");
+  const q = document.getElementById("search").value;
+  shown = searchLib(q);
+  if(!q.trim()){ box.className = ""; box.innerHTML = ""; return; }
+  if(!shown.length){
+    box.className = "on";
+    box.innerHTML = `<div class="res-empty">Nothing matches “${q}”.</div>`;
+    return;
+  }
+  box.className = "on";
+  box.innerHTML = shown.map((s, idx) =>
+    `<div class="res${idx===cursor?" cursor":""}" data-i="${s.i}" draggable="true" role="option">
+      ${chipHTML(s.e)}<span class="res-name">${s.e.label}</span>
+      <span class="res-kind">${s.e.kind}</span></div>`).join("");
+  box.querySelectorAll(".res").forEach(el => {
+    el.addEventListener("click", () => { dropEntry(parseInt(el.dataset.i)); closeResults(); });
+    el.addEventListener("dragstart", ev => {
+      ev.dataTransfer.setData("text/plain", "lib:" + el.dataset.i);
+      ev.dataTransfer.effectAllowed = "copy";
+    });
+  });
+}
+
+function closeResults(){
+  const box = document.getElementById("results");
+  box.className = ""; box.innerHTML = "";
+  cursor = -1;
+  const s = document.getElementById("search");
+  s.value = ""; s.blur();
+}
+
+function dropEntry(libIndex, atCol, atRow){
+  const entry = library[libIndex];
+  if(!entry) return;
+
+  // linear molecules build as bonded atom chains
+  if(entry.chain){
+    const g = buildChainGroup(entry.chain, atCol, atRow);
+    if(g){ selection = new Set([g.gid]); render(); }
+    return;
+  }
+
+  const fitsAt = (c, r) => {
+    const occ = occupancy();
+    for(const pc of entry.pieces){
+      const c0 = c + (pc.dc || 0), r0 = r + (pc.dr || 0);
+      if(c0 < 0 || c0 + widthCells(pc.sp) > COLS) return false;
+      if(r0 < 0 || r0 + heightRows(pc.sp) > ROWS) return false;
+      for(let i = 0; i < widthCells(pc.sp); i++)
+        for(let j = 0; j < heightRows(pc.sp); j++)
+          if(occ.has((c0+i)+","+(r0+j))) return false;
+    }
+    return true;
+  };
+
+  let spot = null;
+  if(atCol !== undefined && fitsAt(atCol, atRow)) spot = {c: atCol, r: atRow};
+  if(!spot){
+    const startC = atCol !== undefined ? atCol : 0;
+    const startR = atRow !== undefined ? atRow : 0;
+    outer:
+    for(let d = 0; d <= COLS + ROWS; d++)
+      for(let dc = -d; dc <= d; dc++)
+        for(let dr = -d; dr <= d; dr++){
+          if(Math.max(Math.abs(dc), Math.abs(dr)) !== d) continue;
+          const c = startC + dc, r = startR + dr;
+          if(fitsAt(c, r)){ spot = {c, r}; break outer; }
+        }
+  }
+  if(!spot){ flash("No free space on the board."); return; }
+
+  const pieces = entry.pieces.map(pc => ({ pid: nextId("p"), spId: pc.sp.id,
+    col: spot.c + (pc.dc || 0), row: spot.r + (pc.dr || 0) }));
+  groups.push({ gid: nextId("g"), pieces, bonds: [] });
+  selection = new Set([groups[groups.length-1].gid]);
+  resolveBonds(); render();
+}
+
+const searchEl = document.getElementById("search");
+searchEl.addEventListener("input", () => { cursor = -1; renderResults(); });
+searchEl.addEventListener("keydown", e => {
+  if(e.key === "ArrowDown"){ e.preventDefault(); cursor = Math.min(cursor+1, shown.length-1); renderResults(); }
+  else if(e.key === "ArrowUp"){ e.preventDefault(); cursor = Math.max(cursor-1, 0); renderResults(); }
+  else if(e.key === "Enter"){
+    e.preventDefault();
+    const pick = cursor >= 0 ? shown[cursor] : shown[0];
+    if(pick){ dropEntry(pick.i); closeResults(); }
+  } else if(e.key === "Escape") closeResults();
+});
+document.addEventListener("click", e => {
+  if(!e.target.closest("#search-wrap")){
+    const box = document.getElementById("results");
+    if(box){ box.className = ""; box.innerHTML = ""; }
+  }
+});
+
+/* ===================== readouts ===================== */
+
+let flashMsg = "";
+function flash(m){ flashMsg = m; renderEquations(); setTimeout(() => { flashMsg = ""; renderEquations(); }, 2200); }
+
+function renderEquations(){
+  const panel = document.getElementById("eq-panel");
+  if(!panel) return;
+  if(flashMsg){ panel.innerHTML = `<div class="eq" style="font-size:13px;color:var(--text-danger);">${flashMsg}</div>`; return; }
+  const rows = [];
+  groups.forEach(g => {
+    if(g.pieces.length < 2) return;
+    const half = halfEquation(g);
+    if(half){ rows.push(["Half-equation", half]); return; }
+    const cmp = compoundEquation(g);
+    if(cmp) rows.push(["Formation", cmp]);
+  });
+  if(lastReaction && !rows.some(r => r[1] === lastReaction.text))
+    rows.push([lastReaction.type, lastReaction.text]);
+  if(!rows.length){
+    panel.innerHTML = `<span class="eq-empty">Assemble or split something and the equation shows up here.</span>`;
+    return;
+  }
+  panel.innerHTML = rows.slice(-2).map(([tag, text]) =>
+    `<div class="eq"><span class="eq-tag">${tag}</span><span>${text}</span></div>`).join("");
+}
+
+/* ===================== controls ===================== */
+
+document.getElementById("clear-btn").addEventListener("click", () => {
+  groups = []; selection.clear(); hoverGid = null; lastReaction = null; render();
+});
+
+document.getElementById("demo-btn").addEventListener("click", () => {
+  groups = []; selection.clear(); lastReaction = null;
+  const Li = atomFor("Li"), H = ionFor("H", 1), OH = polyBySym["OH"];
+  const put = (sp, c, r) => groups.push({ gid: nextId("g"),
+    pieces: [{ pid: nextId("p"), spId: sp.id, col: c, row: r }], bonds: [] });
+  put(Li, 0, 1); put(Li, 0, 4);
+  put(H, 4, 1); put(OH, 6, 1);
+  put(H, 4, 4); put(OH, 6, 4);
+  resolveBonds(); render();
+});
+
+window.addEventListener("keydown", e => {
+  if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d" && selection.size){
+    e.preventDefault(); duplicateGroups([...selection]);
+  }
+  if(e.key === "Escape"){ selection.clear(); render(); }
+  if((e.key === "Delete" || e.key === "Backspace") && selection.size &&
+     document.activeElement === document.body){
+    e.preventDefault();
+    [...selection].forEach(gid => { groups = groups.filter(g => g.gid !== gid); });
+    selection.clear(); render();
+  }
+});
+
+/* ===================== responsive canvas ===================== */
+
+function fitToWidth(){
+  const stage = document.getElementById("stage");
+  const avail = stage.clientWidth - PAD * 2;
+  let cols = Math.floor(avail / CELL_W);
+  if(cols % 2) cols--;                  // keep even so the midline is a cell boundary
+  COLS = Math.max(12, cols);
+  BOARD_W = COLS * CELL_W + PAD * 2;
+  MID_CELL = COLS / 2;
+}
+
+document.getElementById("stage").style.height = (BOARD_H + 2) + "px";
+fitToWidth();
+render();
+
+window.addEventListener("resize", () => {
+  fitToWidth();
+  groups.forEach(g => {
+    const b = groupBounds(g);
+    if(b.maxC >= COLS) translateGroup(g, COLS - 1 - b.maxC, 0);
+    if(b.minC < 0) translateGroup(g, -b.minC, 0);
+  });
+  render();
+});
+</script>
+</body>
+</html>
