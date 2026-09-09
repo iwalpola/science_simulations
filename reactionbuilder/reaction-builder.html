@@ -112,8 +112,11 @@
   @media (prefers-reduced-motion: no-preference) {
     .grp.flying { transition: transform .45s cubic-bezier(.5,0,.9,.4), opacity .45s ease-in; }
     .grp.pulse { animation: pulse .32s ease-out; }
+    .grp.reacting { transition: transform .26s ease-in, opacity .26s ease-in; }
+    .grp.popin { animation: popin .3s cubic-bezier(.2,.8,.4,1.2); }
   }
   @keyframes pulse { 0% { transform: scale(1); } 40% { transform: scale(1.12); } 100% { transform: scale(1); } }
+  @keyframes popin { 0% { transform: scale(.35); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
   .selring {
     position: absolute; inset: -3px; border: 2px solid var(--select);
     border-radius: 9px; pointer-events: none; display: none;
@@ -534,6 +537,7 @@ let selection = new Set();
 let hoverGid = null;
 let lastReaction = null;
 let animating = false;
+let justAdded = null; // Set of gids to pop in on the next render only
 
 const chargeUnits = sp => Math.abs(sp.charge);
 const speciesOf = p => registry[p.spId];
@@ -548,7 +552,7 @@ const allPieces = () => groups.flatMap(g => g.pieces.map(p => ({g, p})));
 const rangeOf = side => side === "L" ? [0, MID_CELL - 1] : [MID_CELL + 1, COLS];
 const sideOf = g => g.side;
 const onSide = side => groups.filter(g => g.side === side);
-const mirrorShift = () => MID_CELL + 1;
+const mirrorShift = () => MID_CELL + 2;
 
 const mkGroup = (pieces, bonds, side) => ({ gid: nextId("g"), pieces, bonds: bonds || [], side });
 const single = (sp, col, row, side) => mkGroup([{ pid: nextId("p"), spId: sp.id, col, row }], [], side);
@@ -1001,16 +1005,25 @@ function stripAnion(gid){
   if(!g || !canStrip(g)) return;
   const p = g.pieces[0], sp = speciesOf(p);
   const n = chargeUnits(sp), col = p.col, row = p.row;
-  groups = groups.filter(x => x.gid !== gid);
-  selection.delete(gid);
-  groups.push(single(atomFor(sp.sym), col, row, g.side));
-  for(let k = 0; k < n; k++){
-    const es = findFreeSlot(ELECTRON, col + TILE_W + 1, row + k, g.side);
-    if(!es) break;
-    groups.push(single(ELECTRON, es.col, es.row, g.side));
-  }
-  lastReaction = { type:"Oxidation", text:`${sp.formula}${supCharge(n,-1)} → ${sp.formula} + ${n>1?n:""}e⁻` };
-  hoverGid = null; resolveBonds(); render();
+
+  shrinkAway(gid, () => {
+    groups = groups.filter(x => x.gid !== gid);
+    selection.delete(gid);
+    const ng = single(atomFor(sp.sym), col, row, g.side);
+    groups.push(ng);
+    const newGids = [ng.gid];
+    for(let k = 0; k < n; k++){
+      const es = findFreeSlot(ELECTRON, col + TILE_W + 1, row + k, g.side);
+      if(!es) break;
+      const eg = single(ELECTRON, es.col, es.row, g.side);
+      groups.push(eg);
+      newGids.push(eg.gid);
+    }
+    lastReaction = { type:"Oxidation", text:`${sp.formula}${supCharge(n,-1)} → ${sp.formula} + ${n>1?n:""}e⁻` };
+    hoverGid = null;
+    justAdded = new Set(newGids);
+    resolveBonds(); render();
+  });
 }
 
 function reverseOptions(g){
@@ -1080,23 +1093,27 @@ function scissorGroup(gid){
   const chain = chainFormula(g);
   const eq = compoundEquation(g);
 
-  const pieces = [...g.pieces].sort((a,b) => a.col - b.col || a.row - b.row);
-  groups = groups.filter(x => x.gid !== gid);
-  selection.delete(gid);
-  const gids = pieces.map(p => {
-    const ng = mkGroup([p], [], g.side);
-    groups.push(ng);
-    return ng.gid;
-  });
-  separateAll(gids);
+  shrinkAway(gid, () => {
+    const pieces = [...g.pieces].sort((a,b) => a.col - b.col || a.row - b.row);
+    groups = groups.filter(x => x.gid !== gid);
+    selection.delete(gid);
+    const gids = pieces.map(p => {
+      const ng = mkGroup([p], [], g.side);
+      groups.push(ng);
+      return ng.gid;
+    });
+    separateAll(gids);
 
-  if(dia) lastReaction = { type:"Bond broken", text:`${dia.formula}${subDigits(2)} → 2${dia.formula}` };
-  else if(chain){
-    const parts = pieces.map(p => speciesOf(p).formula);
-    lastReaction = { type:"Bond broken", text:`${chain} → ${parts.join(" + ")}` };
-  }
-  else if(eq) lastReaction = { type:"Dissociation", text: eq.split(" → ").reverse().join(" → ") };
-  hoverGid = null; render();
+    if(dia) lastReaction = { type:"Bond broken", text:`${dia.formula}${subDigits(2)} → 2${dia.formula}` };
+    else if(chain){
+      const parts = pieces.map(p => speciesOf(p).formula);
+      lastReaction = { type:"Bond broken", text:`${chain} → ${parts.join(" + ")}` };
+    }
+    else if(eq) lastReaction = { type:"Dissociation", text: eq.split(" → ").reverse().join(" → ") };
+    hoverGid = null;
+    justAdded = new Set(gids);
+    render();
+  });
 }
 
 /* --- decomposition: table-driven --------------------------------------
@@ -1109,6 +1126,16 @@ const DECOMPOSE = {
   "CO3|-2": {
     label: "CO₃²⁻ → O²⁻ + CO₂",
     products: [ {ion:["O", -2]}, {chain:["O",2,"C",2,"O"]} ]
+  },
+  // sulfite -> oxide + sulfur dioxide   (SO3^2-  ->  O^2-  +  SO2)
+  "SO3|-2": {
+    label: "SO₃²⁻ → O²⁻ + SO₂",
+    products: [ {ion:["O", -2]}, {chain:["O",2,"S",2,"O"]} ]
+  },
+  // hydrogencarbonate -> hydroxide + carbon dioxide   (HCO3^-  ->  OH^-  +  CO2)
+  "HCO3|-1": {
+    label: "HCO₃⁻ → OH⁻ + CO₂",
+    products: [ {ion:["OH", -1]}, {chain:["O",2,"C",2,"O"]} ]
   }
 };
 
@@ -1120,37 +1147,64 @@ function decomposeKey(g){
   return DECOMPOSE[k] ? k : null;
 }
 
+// Shrink+fade the gid's current tile, then run commit() (which should
+// mutate `groups`, set `justAdded` to the new gids, and call render()).
+// Skips the animation (runs commit synchronously) if reduced motion is
+// requested or the element isn't on screen.
+function shrinkAway(gid, commit){
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const el = grpEl(gid);
+  if(reduce || !el){ commit(); return; }
+
+  animating = true;
+  hideTools();
+  el.classList.add("reacting");
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    el.style.transform = "scale(.4)";
+    el.style.opacity = "0";
+  }));
+  setTimeout(() => { animating = false; commit(); }, 260);
+}
+
 function decomposeGroup(gid){
   if(animating) return;
   const g = findGroup(gid);
   if(!g) return;
   const key = decomposeKey(g);
   if(!key) return;
-  const rule = DECOMPOSE[key];
-  const p = g.pieces[0];
-  const col = p.col, row = p.row, side = g.side;
 
-  groups = groups.filter(x => x.gid !== gid);
-  selection.delete(gid);
+  shrinkAway(gid, () => {
+    const rule = DECOMPOSE[key];
+    const p = g.pieces[0];
+    const col = p.col, row = p.row, side = g.side;
 
-  let cursorCol = col;
-  rule.products.forEach((prod, i) => {
-    if(prod.ion){
-      const sp = ionFor(prod.ion[0], prod.ion[1]);
-      if(!sp) return;
-      const slot = (i === 0) ? { col, row }
-        : findFreeSlot(sp, cursorCol + TILE_W + 1, row, side);
-      if(!slot) return;
-      groups.push(single(sp, slot.col, slot.row, side));
-      cursorCol = slot.col;
-    } else if(prod.chain){
-      const g2 = buildChainGroup(prod.chain, cursorCol + TILE_W + 1, row, side);
-      if(g2) cursorCol = groupBounds(g2).maxC;
-    }
+    groups = groups.filter(x => x.gid !== gid);
+    selection.delete(gid);
+
+    let cursorCol = col;
+    const newGids = [];
+    rule.products.forEach((prod, i) => {
+      if(prod.ion){
+        const sp = ionFor(prod.ion[0], prod.ion[1]);
+        if(!sp) return;
+        const slot = (i === 0) ? { col, row }
+          : findFreeSlot(sp, cursorCol + TILE_W + 1, row, side);
+        if(!slot) return;
+        const ng = single(sp, slot.col, slot.row, side);
+        groups.push(ng);
+        newGids.push(ng.gid);
+        cursorCol = slot.col;
+      } else if(prod.chain){
+        const g2 = buildChainGroup(prod.chain, cursorCol + TILE_W + 1, row, side);
+        if(g2){ newGids.push(g2.gid); cursorCol = groupBounds(g2).maxC; }
+      }
+    });
+
+    lastReaction = { type:"Decomposition", text: rule.label };
+    hoverGid = null;
+    justAdded = new Set(newGids);
+    render();
   });
-
-  lastReaction = { type:"Decomposition", text: rule.label };
-  hoverGid = null; render();
 }
 
 /* --- build a linear chain molecule as a group of bonded atom tiles --- */
@@ -1171,7 +1225,7 @@ function buildChainGroup(chain, atCol, atRow, side){
   const occ = occupancy();
   let spot = null;
   const startC = atCol === undefined ? rangeOf(side)[0] : atCol;
-  const startR = atRow === undefined ? 0 : atRow;
+  const startR = atRow === undefined ? 1 : atRow;
   if(chainFits(chain, startC, startR, occ, side)) spot = {c: startC, r: startR};
   if(!spot){
     outer:
@@ -1436,7 +1490,8 @@ function render(){
     const left = PAD + b.minC * CELL_W, top = PAD + b.minR * UNIT;
     const w = (b.maxC - b.minC + 1) * CELL_W, h = (b.maxR - b.minR + 1) * UNIT;
     const sel = selection.has(g.gid) ? " sel" : "";
-    html += `<div class="grp${sel}" data-gid="${g.gid}" tabindex="0" role="button"
+    const popin = justAdded && justAdded.has(g.gid) ? " popin" : "";
+    html += `<div class="grp${sel}${popin}" data-gid="${g.gid}" tabindex="0" role="button"
       style="left:${left}px;top:${top}px;width:${w}px;height:${h}px;">`;
     const ordered = [...g.pieces].sort((a,b2) =>
       (speciesOf(b2).charge > 0 ? 1:0) - (speciesOf(a).charge > 0 ? 1:0));
@@ -1473,6 +1528,7 @@ function render(){
   if(!onSide("R").length)
     html += `<span class="zone-hint" style="top:${PAD+4}px;left:${midX + CELL_W + 90}px;">Reactants you add appear here, ready to rearrange into products.</span>`;
   board.innerHTML = html;
+  justAdded = null;
 
   wireBoard(board);
   if(hoverGid && findGroup(hoverGid)) showTools(hoverGid);
@@ -1885,7 +1941,7 @@ function dropEntry(libIndex, atCol, atRow){
     if(atCol !== undefined && fitsAt(atCol, atRow)) spot = {c: atCol, r: atRow};
     if(!spot){
       const startC = atCol !== undefined ? atCol : 0;
-      const startR = atRow !== undefined ? atRow : 0;
+      const startR = atRow !== undefined ? atRow : 1;
       outer:
       for(let d = 0; d <= COLS + ROWS; d++)
         for(let dc = -d; dc <= d; dc++)
