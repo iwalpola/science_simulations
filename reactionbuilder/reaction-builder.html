@@ -289,9 +289,14 @@
      Add an element/ion ....... ELEMENTS table or the "other metals" table
      Add a polyatomic ion ..... the polyatomic ions table (needs comp)
      Add a linear molecule .... MOLECULES with a `chain` ["O",2,"C",2,"O"]
-     Add a 2-D molecule ....... the "2D shapes" table (single tile)
+     Add a 2-D molecule ....... the "2D shapes" table (single tile); the
+                                 scissors open it via moleculeAtoms
+     Give an atom bond tabs ... BOND_TABS (ctab plugs into cblank); pair it
+                                 with a CONDENSE entry or it plugs into
+                                 something it can never become
      Add an acid / ion pair ... pairEntry(...)
      Add a decomposition ...... DECOMPOSE["SYM|charge"] = {label, products}
+     Add a condensation ....... CONDENSE table (a neutral group -> molecule)
      Add a preset ............. PRESETS (keys like "Mg", "H+1", "CO3-2",
                                  or a chain array); products are mirrored
      Add a product-side tool .. write fn(gid) following stripAnion or
@@ -324,6 +329,7 @@ const PAD    = 14;
 let   BOARD_W = COLS * CELL_W + PAD * 2;
 const BOARD_H = ROWS * UNIT + PAD * 2;
 const R_TAB  = 10.5;
+const R_BOND = 7;           // covalent tabs: two a side, so smaller than R_TAB
 let   MID_CELL = COLS / 2;
 
 /* ===================== formatting ===================== */
@@ -552,7 +558,12 @@ const allPieces = () => groups.flatMap(g => g.pieces.map(p => ({g, p})));
 const rangeOf = side => side === "L" ? [0, MID_CELL - 1] : [MID_CELL + 1, COLS];
 const sideOf = g => g.side;
 const onSide = side => groups.filter(g => g.side === side);
-const mirrorShift = () => MID_CELL + 2;
+// Left cols run 0..MID_CELL-1, right cols MID_CELL+1..COLS, so a reactant at
+// the far right of its side (col MID_CELL-3, the last that fits a 2-wide tile)
+// has to land on col COLS-2. That pins the shift at MID_CELL+1 exactly: one
+// more and the last column mirrors off the board, where placeCopy gives up on
+// the intended spot and scatters the group looking for room.
+const mirrorShift = () => MID_CELL + 1;
 
 const mkGroup = (pieces, bonds, side) => ({ gid: nextId("g"), pieces, bonds: bonds || [], side });
 const single = (sp, col, row, side) => mkGroup([{ pid: nextId("p"), spId: sp.id, col, row }], [], side);
@@ -791,24 +802,54 @@ function diatomicOf(g){
   return sa;
 }
 
-/* ===================== ionic sockets ===================== */
+/* ===================== sockets =====================
+   Two families, and they never mix: ionic tab/blank joins a cation to an
+   anion, covalent ctab/cblank joins atoms that can share a bond. Keeping
+   them apart is what stops a carbon block plugging into a sodium ion.
 
-function socketsOf(p){
+   Covalent tabs exist so CO₂ can be built by hand. Dragging atoms
+   together only ever bonds identical ones (see pairDiatomics), so without
+   these there is no route from carbon and oxygen to CO₂. Carbon is the
+   block the rest plugs into, so it carries the tabs and oxygen carries
+   the matching holes, on both edges — an oxygen can sit either side.
+
+   Each edge is ONE socket, because a socket is matched by grid cell and a
+   tile is one row tall. The two bumps drawn per edge are the double bond
+   in O=C=O: they say "carbon holds four bonds, two a side" without making
+   every O-containing molecule two rows tall and ragged.
+==================================================== */
+
+const BOND_TABS = { C: "ctab", O: "cblank" };
+const SOCKET_MATE = { tab:"blank", blank:"tab", ctab:"cblank", cblank:"ctab" };
+
+// The covalent tab an atom shows, or null. Ions never have one, so O²⁻
+// keeps its ionic tab and the neutral O atom gets the covalent hole.
+const bondTabOf = sp => (sp.kind === "atom" && BOND_TABS[sp.sym]) || null;
+
+// `g` is the piece's own group; pass it so an atom that has already used
+// up its valency (one inside a finished molecule) stops offering sockets.
+function socketsOf(p, g){
   const sp = speciesOf(p);
-  if(sp.kind !== "ion" && sp.kind !== "electron") return [];
-  const out = [], n = chargeUnits(sp);
-  for(let k = 0; k < n; k++){
-    if(sp.charge > 0) out.push({ pid:p.pid, type:"blank", col: p.col + widthCells(sp), row: p.row + k });
-    else              out.push({ pid:p.pid, type:"tab",   col: p.col, row: p.row + k });
+  if(sp.kind === "ion" || sp.kind === "electron"){
+    const out = [], n = chargeUnits(sp);
+    for(let k = 0; k < n; k++){
+      if(sp.charge > 0) out.push({ pid:p.pid, type:"blank", col: p.col + widthCells(sp), row: p.row + k });
+      else              out.push({ pid:p.pid, type:"tab",   col: p.col, row: p.row + k });
+    }
+    return out;
   }
-  return out;
+  const type = bondTabOf(sp);
+  if(!type) return [];
+  if(g && freeValency(g, p) <= 0) return [];
+  return [{ pid:p.pid, type, col: p.col,                   row: p.row },
+          { pid:p.pid, type, col: p.col + widthCells(sp),  row: p.row }];
 }
 
 function socketPartner(sock, ignore = []){
   for(const {g, p} of allPieces()){
     if(ignore.includes(g.gid) || p.pid === sock.pid) continue;
-    for(const s of socketsOf(p)){
-      if(s.type === sock.type) continue;
+    for(const s of socketsOf(p, g)){
+      if(s.type !== SOCKET_MATE[sock.type]) continue;
       if(s.col === sock.col && s.row === sock.row) return {piece:p, group:g, socket:s};
     }
   }
@@ -822,7 +863,7 @@ function resolveBonds(){
     outer:
     for(const g of groups){
       for(const p of g.pieces){
-        for(const s of socketsOf(p)){
+        for(const s of socketsOf(p, g)){
           const hit = socketPartner(s);
           if(hit && hit.group.gid !== g.gid){
             g.bonds = (g.bonds || []).concat(hit.group.bonds || []);
@@ -841,7 +882,7 @@ function resolveBonds(){
 
 function isBondedToOther(g){
   for(const p of g.pieces)
-    for(const s of socketsOf(p)){
+    for(const s of socketsOf(p, g)){
       const hit = socketPartner(s);
       if(hit && hit.group.gid !== g.gid) return true;
     }
@@ -1083,6 +1124,56 @@ function reverseAtom(gid){
   });
 }
 
+/* A 2-D molecule (CH₄, NH₃) is drawn as a single tile, so it has no bonds
+   for the scissors to cut. Break it into its atoms instead: CH₄ → C + 4H.
+   Without this the tile is a dead end — it can go on the board but never
+   take part in anything. */
+function moleculeAtoms(g){
+  if(g.pieces.length !== 1) return null;
+  const sp = speciesOf(g.pieces[0]);
+  if(sp.kind !== "molecule") return null;
+  const syms = [];
+  Object.entries(sp.comp).forEach(([sym, k]) => { for(let i = 0; i < k; i++) syms.push(sym); });
+  if(syms.length < 2 || !syms.every(atomFor)) return null;
+  const parts = {};
+  syms.forEach(x => { parts[x] = (parts[x] || 0) + 1; });
+  const rhs = Object.keys(parts).map(x => (parts[x] > 1 ? parts[x] : "") + x).join(" + ");
+  return { sp, syms, rhs };
+}
+
+function splitMolecule(gid){
+  if(animating) return;
+  const g = findGroup(gid);
+  const m = g && moleculeAtoms(g);
+  if(!m) return;
+
+  const p = g.pieces[0], col = p.col, row = p.row, side = g.side;
+
+  shrinkAway(gid, () => {
+    groups = groups.filter(x => x.gid !== gid);
+    selection.delete(gid);
+
+    const gids = [];
+    let cursorCol = col;
+    m.syms.forEach((sym, i) => {
+      const sp = atomFor(sym);
+      const slot = (i === 0) ? { col, row }
+        : findFreeSlot(sp, cursorCol + TILE_W + 1, row, side);
+      if(!slot) return;
+      const ng = single(sp, slot.col, slot.row, side);
+      groups.push(ng);
+      gids.push(ng.gid);
+      cursorCol = slot.col;
+    });
+    separateAll(gids);
+
+    lastReaction = { type:"Bond broken", text: `${m.sp.formula} → ${m.rhs}` };
+    hoverGid = null;
+    justAdded = new Set(gids);
+    render();
+  });
+}
+
 // Scissors: rigid group, ALL bonds break at once.
 function scissorGroup(gid){
   if(animating) return;
@@ -1201,6 +1292,119 @@ function decomposeGroup(gid){
     });
 
     lastReaction = { type:"Decomposition", text: rule.label };
+    hoverGid = null;
+    justAdded = new Set(newGids);
+    render();
+  });
+}
+
+/* --- condensation: a neutral group that collapses into a molecule -----
+   [H⁺][OH⁻] and 2[H⁺][O²⁻] are the same substance cut into different
+   pieces, so both condense into the ONE H₂O molecule rather than living
+   on the board as rival forms of water. Matching is by atom tally, which
+   is why the carbonate route (CO₃²⁻ → O²⁻ + CO₂, then O²⁻ + 2H⁺) needs
+   no case of its own.
+
+   It works on ONE group — whatever the student has already joined up on
+   the board. Nothing here reaches across separate groups; if two pieces
+   are meant to become a molecule, they have to be plugged together first.
+
+   Allowlisted per molecule, like DECOMPOSE: a general "neutral pieces
+   whose atoms spell a molecule" rule would also let [H⁺][Cl⁻] quietly
+   become HCl gas, which is not what an acid does in water. Add molecules
+   here as teachers ask; the chain must match the MOLECULES entry.
+--------------------------------------------------------------------- */
+
+const CONDENSE = {};
+[["H2O", ["H",1,"O",1,"H"]],
+ ["CO2", ["O",2,"C",2,"O"]]].forEach(([sym, chain]) => {
+  const comp = {};
+  for(let i = 0; i < chain.length; i += 2) comp[chain[i]] = (comp[chain[i]] || 0) + 1;
+  CONDENSE[compKey(comp)] = { sym, chain, formula: toFormulaChars(sym) };
+});
+
+// A composition as a stable string: {O:1,H:2} -> "H2O1". Internal only.
+function compKey(comp){
+  return Object.keys(comp).sort().map(s => s + comp[s]).join("");
+}
+
+const gcd = (a, b) => b ? gcd(b, a % b) : a;
+
+/* Does this group add up to a whole number of molecules?
+
+   Only raw material qualifies: pieces must be atoms or ions, and the group
+   must carry no covalent bonds — that is what tells a finished H₂O from
+   the pieces of one, and stops the tool offering to condense a molecule it
+   has already made.
+
+   Returns {rule, n} where n is how many molecules come out, or null. */
+function condenseCandidate(g){
+  if(!g || (g.bonds || []).length) return null;
+  if(g.pieces.length < 2) return null;
+  if(!g.pieces.every(p => ["atom", "ion"].includes(speciesOf(p).kind))) return null;
+  if(g.pieces.reduce((s, p) => s + speciesOf(p).charge, 0) !== 0) return null;
+
+  const comp = {};
+  g.pieces.forEach(p => Object.entries(speciesOf(p).comp)
+    .forEach(([sym, k]) => { comp[sym] = (comp[sym] || 0) + k; }));
+
+  const n = Object.values(comp).reduce((a, b) => gcd(a, b));
+  const unit = {};
+  Object.entries(comp).forEach(([sym, k]) => { unit[sym] = k / n; });
+
+  const rule = CONDENSE[compKey(unit)];
+  return rule ? { rule, n } : null;
+}
+
+// "2H⁺ + O²⁻ → H₂O", "2O + C → CO₂". compoundEquation covers the all-ion
+// case; this one also handles a group of plugged-together atoms.
+function condenseEquation(g, cand){
+  const counts = {}, order = [];
+  [...g.pieces].sort((a, b) => a.col - b.col || a.row - b.row).forEach(p => {
+    const sp = speciesOf(p);
+    if(!counts[sp.id]){ counts[sp.id] = {sp, n:0}; order.push(sp.id); }
+    counts[sp.id].n++;
+  });
+  const lhs = order.map(k => {
+    const {sp, n} = counts[k];
+    return (n > 1 ? n : "") + sp.formula +
+      (sp.charge ? supCharge(chargeUnits(sp), sp.charge) : "");
+  }).join(" + ");
+  return lhs + " → " + (cand.n > 1 ? cand.n : "") + cand.rule.formula;
+}
+
+function condenseGroup(gid){
+  if(animating) return;
+  const g = findGroup(gid);
+  if(!g) return;
+  const cand = condenseCandidate(g);
+  if(!cand) return;
+
+  const eq = condenseEquation(g, cand);
+  const b = groupBounds(g);
+  const side = g.side;
+
+  shrinkAway(gid, () => {
+    groups = groups.filter(x => x.gid !== gid);
+    selection.delete(gid);
+
+    // Cleared the space first, so the molecule can be built where its
+    // pieces were rather than being pushed off to one side.
+    const newGids = [];
+    for(let i = 0; i < cand.n; i++){
+      const ng = buildChainGroup(cand.rule.chain, b.minC, b.minR + i, side);
+      if(ng) newGids.push(ng.gid);
+    }
+
+    // The Condensation line already states this reaction, so don't let the
+    // live logger also announce the new chain's own "H + O + H → H₂O".
+    newGids.forEach(id => {
+      const ng = findGroup(id);
+      const t = ng && (halfEquation(ng) || compoundEquation(ng));
+      if(t) loggedLive.add(id + "|" + t);
+    });
+
+    lastReaction = { type:"Condensation", text: eq };
     hoverGid = null;
     justAdded = new Set(newGids);
     render();
@@ -1342,13 +1546,11 @@ function compoundEquation(g){
     return (n > 1 ? n : "") + sp.formula + supCharge(chargeUnits(sp), sp.charge);
   }).join(" + ");
 
-  const isWater = cats.length === 1 && ans.length === 1 &&
-    counts[cats[0]].sp.sym === "H" && counts[ans[0]].sp.sym === "OH" &&
-    counts[cats[0]].n === counts[ans[0]].n;
-  if(isWater){
-    const n = counts[cats[0]].n;
-    return lhs + " → " + (n > 1 ? n : "") + "H" + subDigits(2) + "O";
-  }
+  // Ions that add up to a molecule read as that molecule, not as a salt:
+  // H⁺ + OH⁻ and 2H⁺ + O²⁻ both give H₂O. See CONDENSE.
+  const cond = condenseCandidate(g);
+  if(cond) return lhs + " → " + (cond.n > 1 ? cond.n : "") + cond.rule.formula;
+
   const rhs = cats.map(k => partOf(counts,k)).join("") + ans.map(k => partOf(counts,k)).join("");
   return lhs + " → " + rhs;
 }
@@ -1405,7 +1607,10 @@ function renderStatus(){
 
 /* ===================== rendering ===================== */
 
-function pieceSVG(sp, w, h){
+// `tabs` is whether this piece is still offering its covalent sockets; the
+// render loop works it out from socketsOf, so an atom inside a finished
+// molecule is drawn plain instead of advertising bonds it cannot make.
+function pieceSVG(sp, w, h, tabs){
   const n = chargeUnits(sp);
   if(sp.kind === "electron"){
     return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block;overflow:visible;">
@@ -1425,6 +1630,18 @@ function pieceSVG(sp, w, h){
   if(sp.kind === "atom" || sp.kind === "molecule"){
     shapes += `<rect x="1.5" y="1.5" width="${w-3}" height="${h-3}" rx="5" fill="none"
       stroke="${sp.color.text}" stroke-width="1.4" stroke-dasharray="4 3" opacity=".5"/>`;
+  }
+  // Covalent tabs: two a side, reading as the double bond they stand for.
+  // Carbon shows bumps, oxygen the holes they drop into.
+  if(tabs && bondTabOf(sp)){
+    const bump = bondTabOf(sp) === "ctab";
+    [h/2 - R_BOND - 2, h/2 + R_BOND + 2].forEach(cy => {
+      [0, w].forEach(cx => {
+        shapes += bump
+          ? `<circle cx="${cx}" cy="${cy}" r="${R_BOND}" fill="${sp.color.bg}"/>`
+          : `<circle cx="${cx}" cy="${cy}" r="${R_BOND + 1}" fill="var(--surface-1)"/>`;
+      });
+    });
   }
   const label = sp.kind === "ion" ? sp.formula + supCharge(n, sp.charge) : sp.formula;
   const tx = sp.kind === "ion" ? (sp.charge > 0 ? w/2 - 5 : w/2 + 5) : w/2;
@@ -1449,6 +1666,10 @@ const UNDO = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke
 const COPY = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1a1a19"
   stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg>`;
+// condense: a droplet
+const CONDENSE_ICON = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2f7fb5"
+  stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 3.5c3.2 3.9 5 6.6 5 9a5 5 0 0 1-10 0c0-2.4 1.8-5.1 5-9z"/></svg>`;
 // decompose: an arrow splitting into two
 const DECOMP = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8a4f9e"
   stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
@@ -1493,12 +1714,16 @@ function render(){
     const popin = justAdded && justAdded.has(g.gid) ? " popin" : "";
     html += `<div class="grp${sel}${popin}" data-gid="${g.gid}" tabindex="0" role="button"
       style="left:${left}px;top:${top}px;width:${w}px;height:${h}px;">`;
+    // Pieces that show holes are drawn first so the pieces that show bumps
+    // land on top of them: cations before anions, oxygen before carbon.
+    const plugLast = sp => (sp.charge < 0 || bondTabOf(sp) === "ctab") ? 1 : 0;
     const ordered = [...g.pieces].sort((a,b2) =>
-      (speciesOf(b2).charge > 0 ? 1:0) - (speciesOf(a).charge > 0 ? 1:0));
+      plugLast(speciesOf(a)) - plugLast(speciesOf(b2)));
     ordered.forEach(p => {
       const r = pieceRect(p);
       html += `<div style="position:absolute;left:${r.left-left}px;top:${r.top-top}px;width:${r.w}px;
-        height:${r.h}px;pointer-events:none;">${pieceSVG(speciesOf(p), r.w, r.h)}</div>`;
+        height:${r.h}px;pointer-events:none;">${pieceSVG(speciesOf(p), r.w, r.h,
+          socketsOf(p, g).length > 0)}</div>`;
     });
     html += `<div class="selring"></div>`;
 
@@ -1555,10 +1780,15 @@ function showTools(gid){
   } else {
     if(g.pieces.length > 1)
       acts.push(["cut", SCISSORS, (diatomicOf(g) || chainFormula(g)) ? "Break the bonds" : "Split apart"]);
+    else if(moleculeAtoms(g))
+      acts.push(["split", SCISSORS, `Break it into atoms (${moleculeAtoms(g).rhs})`]);
     if(fuseCandidate(g))         acts.push(["fuse", PLUS, "Make a neutral atom"]);
     else if(loneCation(g))       acts.push(["fusefree", PLUS, "Make a neutral atom (pulls in free electrons)"]);
     if(canStrip(g))              acts.push(["strip", SCISSORS, "Take the electrons off"]);
     if(decomposeKey(g))          acts.push(["decomp", DECOMP, DECOMPOSE[decomposeKey(g)].label]);
+    const cond = condenseCandidate(g);
+    if(cond) acts.push(["condense", CONDENSE_ICON,
+      `Combine into ${cond.n > 1 ? cond.n : ""}${cond.rule.formula}`]);
     if(reverseOptions(g).length){
       const ion = reverseOptions(g)[0];
       acts.push(["reverse", UNDO, ion.charge > 0 ? "Turn into its ion (gives up electrons)"
@@ -1584,8 +1814,9 @@ function showTools(gid){
       const targets = (selection.size > 1 && selection.has(id)) ? [...selection] : [id];
       if(act === "copy"){ duplicateGroups(targets); return; }
       if(act === "del"){ requestDelete(targets); return; }
-      ({cut:scissorGroup, fuse:fuseGroup, fusefree:fuseFree, strip:stripAnion,
-        reverse:reverseAtom, decomp:decomposeGroup})[act](id);
+      ({cut:scissorGroup, split:splitMolecule, fuse:fuseGroup, fusefree:fuseFree,
+        strip:stripAnion, reverse:reverseAtom, decomp:decomposeGroup,
+        condense:condenseGroup})[act](id);
     });
   });
   tools.addEventListener("mouseenter", () => { hoverGid = gid; });
@@ -1995,7 +2226,10 @@ function flash(m){ flashMsg = m; renderEquations(); setTimeout(() => { flashMsg 
 
 function pushLog(type, text){
   const last = eqLog[eqLog.length - 1];
-  if(last && last.type === type && last.text === text) return;
+  // Same equation as the line before it: keep one line and let the newer,
+  // more specific event name it. Ions snapping together log a Formation;
+  // clicking condense then turns that same line into a Condensation.
+  if(last && last.text === text){ last.type = type; return; }
   eqLog.push({type, text});
 }
 
@@ -2036,21 +2270,75 @@ function renderEquations(){
    Each preset lists reactants as [speciesKey | chain, col, row]. Keys
    use the stable form "Li", "H+1", "Cl-1", "CO3-2", "e". Chains are
    the same arrays used by the molecule library. Products are mirrored.
+
+   The list walks the GCSE reaction types in teaching order. Every entry
+   is placed so the ions that belong together already touch (a cation's
+   sockets sit at col + 2), and so nothing reaches past column 8 — the
+   left side is only 9 columns wide on the narrowest board.
+
+   Water is the [H⁺][OH⁻] pair, not the H₂O molecule, wherever the
+   reaction pulls it apart: that is the whole point of "metal + water"
+   and of aqueous electrolysis. The condense tool puts it back together.
 ==================================================== */
 
 const PRESETS = [
-  { name: "Lithium + water",
-    place: [["Li",0,1], ["Li",0,4], ["H+1",3,1], ["OH-1",5,1], ["H+1",3,4], ["OH-1",5,4]] },
-  { name: "Magnesium + hydrochloric acid",
+  // 2Na + 2H₂O → 2NaOH + H₂
+  { name: "Metal + water (Na + H₂O)",
+    place: [["Na",0,1], ["Na",0,4], ["H+1",3,1], ["OH-1",5,1], ["H+1",3,4], ["OH-1",5,4]] },
+
+  // Mg + 2HCl → MgCl₂ + H₂
+  { name: "Metal + acid (Mg + HCl)",
     place: [["Mg",0,2], ["H+1",3,1], ["Cl-1",5,1], ["H+1",3,4], ["Cl-1",5,4]] },
-  { name: "Sodium + chlorine",
+
+  // 2Mg + O₂ → 2MgO
+  { name: "Metal + oxygen (Mg + O₂)",
+    place: [["Mg",0,1], ["Mg",0,4], [["O",2,"O"],3,2]] },
+
+  // 2Na + Cl₂ → 2NaCl
+  { name: "Metal + halogen (Na + Cl₂)",
     place: [["Na",0,1], ["Na",0,4], [["Cl",1,"Cl"],3,2]] },
-  { name: "Hydrogen + oxygen",
-    place: [[["H",1,"H"],0,1], [["H",1,"H"],0,3], [["O",2,"O"],0,5]] },
-  { name: "Electrolysis of molten sodium chloride",
-    place: [["Na+1",0,1], ["Cl-1",2,1], ["Na+1",0,4], ["Cl-1",2,4]] },
-  { name: "Thermal decomposition of calcium carbonate",
-    place: [["Ca+2",0,1], ["CO3-2",2,1]] }
+
+  // Zn + CuSO₄ → ZnSO₄ + Cu   (sulfate is a spectator)
+  { name: "Metal displacement (Zn + CuSO₄)",
+    place: [["Zn",0,4], ["Cu+2",0,1], ["SO4-2",2,1]] },
+
+  // Cl₂ + 2KBr → 2KCl + Br₂   (potassium is a spectator)
+  { name: "Halogen displacement (Cl₂ + KBr)",
+    place: [[["Cl",1,"Cl"],0,3], ["K+1",4,1], ["Br-1",6,1], ["K+1",4,5], ["Br-1",6,5]] },
+
+  // HCl + NaOH → NaCl + H₂O
+  { name: "Acid + metal hydroxide (HCl + NaOH)",
+    place: [["H+1",0,1], ["Cl-1",2,1], ["Na+1",0,4], ["OH-1",2,4]] },
+
+  // H₂SO₄ + CuO → CuSO₄ + H₂O   (the copper sulfate prep)
+  { name: "Acid + metal oxide (H₂SO₄ + CuO)",
+    place: [["H+1",0,1], ["H+1",0,2], ["SO4-2",2,1], ["Cu+2",0,4], ["O-2",2,4]] },
+
+  // CaCO₃ + 2HCl → CaCl₂ + H₂O + CO₂
+  { name: "Acid + metal carbonate (HCl + CaCO₃)",
+    place: [["Ca+2",0,1], ["CO3-2",2,1], ["H+1",4,1], ["Cl-1",6,1],
+            ["H+1",4,4], ["Cl-1",6,4]] },
+
+  // CaCO₃ → CaO + CO₂
+  { name: "Thermal decomposition (CaCO₃)",
+    place: [["Ca+2",0,1], ["CO3-2",2,1]] },
+
+  // 2CuO + C → 2Cu + CO₂
+  { name: "Metal oxide + carbon (CuO + C)",
+    place: [["Cu+2",0,1], ["O-2",2,1], ["Cu+2",0,4], ["O-2",2,4], ["C",5,2]] },
+
+  // PbBr₂ → Pb + Br₂
+  { name: "Electrolysis, molten (PbBr₂)",
+    place: [["Pb+2",0,1], ["Br-1",2,1], ["Br-1",2,2]] },
+
+  // 2NaCl + 2H₂O → 2NaOH + H₂ + Cl₂   (brine; Na⁺ stays in solution)
+  { name: "Electrolysis, aqueous (NaCl solution)",
+    place: [["Na+1",0,1], ["Cl-1",2,1], ["Na+1",0,3], ["Cl-1",2,3],
+            ["H+1",4,1], ["OH-1",6,1], ["H+1",4,3], ["OH-1",6,3]] },
+
+  // CH₄ + 2O₂ → CO₂ + 2H₂O
+  { name: "Combustion (CH₄ + O₂)",
+    place: [["CH4",0,1], [["O",2,"O"],3,1], [["O",2,"O"],3,4]] }
 ];
 
 function resetBoard(){

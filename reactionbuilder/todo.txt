@@ -1,0 +1,51 @@
+reaction-builder.html — open decisions
+======================================
+
+1. Covalent tabs: two drawn per edge, but only one real socket
+---------------------------------------------------------------
+Status:  deferred, working as described below
+Code:    BOND_TABS / socketsOf()  (the "sockets" section)
+         R_BOND and the tab drawing in pieceSVG()
+         heightRows(), chainFits(), buildChainGroup()
+
+The ask was a carbon block with two tabs on the left and two on the right,
+with an oxygen plugging into each side.
+
+What was built: carbon shows two bumps per edge and oxygen two holes, but
+each EDGE IS ONE SOCKET. Sockets are matched by grid cell and an atom tile
+is one row tall, so one cell per edge is all there is to match on. The two
+bumps are the double bond in O=C=O drawn honestly; mechanically it is one
+connection per side. O + C + O still snap into a single group and condense
+into CO2, which is the behaviour that was actually wanted.
+
+Why it was not done properly: two real sockets per edge needs two grid rows,
+so carbon and oxygen atoms would become 2-row tiles. Those same atom species
+are the pieces of every chain molecule, so:
+
+  - H2O would render ragged: H (1 row), O (2 rows), H (1 row). Same for SO2,
+    NO, NO2 — any chain mixing O with a 1-row atom.
+  - chainFits() only checks row r for occupancy, never r+1, so a 2-row atom
+    would silently overlap whatever sat below it. Real bug, would need fixing
+    before tall atoms are safe.
+  - buildChainGroup() places every atom of a chain on the same row and would
+    need to centre them instead.
+  - presets and layouts assume 1-row atoms; row budget is ROWS = 8.
+
+If the two-socket geometry is wanted for real, that list is the work it
+implies. Do not just change heightRows() — chainFits() is the trap.
+
+2. Hydrogen has no bond tabs (related, also open)
+--------------------------------------------------
+Scope was deliberately limited to carbon and oxygen, so water can only be
+made the ionic way: H -> H+ + e-, O + 2e- -> O2-, snap, condense. That works
+and is tested, but it is a detour in combustion, where the chemistry is not
+ionic at all.
+
+Adding  H: "ctab"  to BOND_TABS would let H-O-H snap together directly,
+since oxygen already carries the matching holes and H2O is already in the
+CONDENSE table. One line, no other change needed — but it puts tabs on every
+hydrogen tile on the board, including the ones in acids, which is the reason
+it was left out.
+
+Note both of these are cosmetic-vs-mechanical trade-offs, not correctness
+bugs. Everything currently passes: node test.js (needs `npm install jsdom`).
