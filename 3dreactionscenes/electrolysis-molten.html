@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Electrolysis, molten</title>
+<style>
+  :root{
+    --ink:#eef2f7;
+    --dim:#93a2b6;
+    --panel:rgba(10,14,21,.72);
+    --line:rgba(147,162,182,.22);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;background:#080b11;color:var(--ink);
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;overflow:hidden;}
+  #stage{position:fixed;inset:0;}
+  canvas{display:block;}
+
+  #fade{position:fixed;inset:0;background:#080b11;pointer-events:none;opacity:0;}
+
+  .title{position:fixed;top:22px;left:26px;max-width:min(46ch,60vw);pointer-events:none;}
+  .title h1{
+    margin:0;
+    font-family:"Iowan Old Style","Charter","Palatino Linotype",Georgia,serif;
+    font-weight:600;font-size:23px;letter-spacing:.2px;line-height:1.25;
+  }
+  .title p{margin:6px 0 0;font-size:13px;line-height:1.5;color:var(--dim);}
+  .eq{font-variant-numeric:tabular-nums;}
+  .title a{pointer-events:auto;color:var(--dim);text-decoration:none;font-size:12px;
+    border-bottom:1px solid rgba(147,162,182,.3);}
+  .title a:hover{color:var(--ink);}
+
+  #caption{
+    position:fixed;left:50%;transform:translateX(-50%);
+    bottom:112px;width:min(680px,92vw);text-align:center;pointer-events:none;
+    font-family:"Iowan Old Style","Charter","Palatino Linotype",Georgia,serif;
+    font-size:19px;line-height:1.45;
+    text-shadow:0 2px 18px rgba(0,0,0,.85);
+    transition:opacity .35s ease;
+  }
+  /* which electrode is which, pinned to the screen during the micro act */
+  #poles{position:fixed;inset:0;pointer-events:none;opacity:0;transition:opacity .4s ease;}
+  #poles span{
+    position:absolute;top:50%;transform:translateY(-50%);
+    font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  }
+  #poles .neg{left:26px;color:#9fc0ff;}
+  #poles .pos{right:26px;color:#ffb08a;text-align:right;}
+  #poles b{display:block;font-size:26px;letter-spacing:0;margin-bottom:2px;}
+
+  #bar{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:20px;
+    width:min(720px,94vw);
+    background:var(--panel);backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:14px;
+    padding:12px 14px;display:flex;align-items:center;gap:12px;
+  }
+  button{
+    font:inherit;font-size:13px;color:var(--ink);
+    background:rgba(255,255,255,.06);border:1px solid var(--line);
+    border-radius:9px;padding:7px 13px;cursor:pointer;
+    transition:background .15s ease,border-color .15s ease;
+  }
+  button:hover{background:rgba(255,255,255,.12);}
+  button:focus-visible{outline:2px solid #7fb0ff;outline-offset:2px;}
+  #play{min-width:74px;}
+  #gear{padding:7px 11px;font-size:15px;line-height:1;}
+  #gear.open{background:rgba(127,176,255,.2);border-color:rgba(127,176,255,.5);}
+  #scrub{
+    flex:1;appearance:none;height:4px;border-radius:4px;
+    background:linear-gradient(90deg,var(--hl,#6f7480) 0%,var(--hl,#6f7480) var(--p,0%),rgba(255,255,255,.14) var(--p,0%));
+    cursor:pointer;
+  }
+  #scrub::-webkit-slider-thumb{appearance:none;width:14px;height:14px;border-radius:50%;
+    background:var(--ink);border:none;box-shadow:0 0 0 3px rgba(8,11,17,.6);}
+  #scrub::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--ink);border:none;}
+  #clock{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums;min-width:74px;text-align:right;}
+
+  #key{
+    position:fixed;right:24px;top:22px;
+    background:var(--panel);backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:12px;padding:11px 13px;
+    font-size:12.5px;line-height:1.9;color:var(--dim);
+  }
+  #key div{display:flex;align-items:center;gap:8px;}
+  .dot{width:11px;height:11px;border-radius:50%;flex:none;box-shadow:inset -2px -2px 3px rgba(0,0,0,.45);}
+  #key b{color:var(--ink);font-weight:600;}
+  #hint{position:fixed;bottom:90px;right:24px;font-size:11.5px;color:var(--dim);opacity:.75;}
+
+  /* ---- menu ---- */
+  #menu{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:86px;
+    width:min(720px,94vw);
+    background:var(--panel);backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:14px;
+    padding:16px 18px;display:none;gap:18px;
+  }
+  #menu.open{display:flex;flex-wrap:wrap;}
+  #menu fieldset{border:none;margin:0;padding:0;flex:1;min-width:230px;}
+  #menu legend{
+    font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+    color:#64748b;padding:0 0 8px;
+  }
+  .opts{display:flex;flex-wrap:wrap;gap:6px;}
+  .opt{
+    font:inherit;font-size:12.5px;padding:6px 11px;border-radius:8px;
+    background:rgba(255,255,255,.05);border:1px solid var(--line);
+    color:var(--dim);cursor:pointer;
+  }
+  .opt:hover{background:rgba(255,255,255,.1);color:var(--ink);}
+  .opt.on{background:rgba(127,176,255,.18);border-color:rgba(127,176,255,.5);color:#dce9ff;}
+  .opt .f{font-family:"Iowan Old Style","Charter",Georgia,serif;font-variant-numeric:tabular-nums;}
+  #menuEq{
+    flex-basis:100%;border-top:1px solid var(--line);padding-top:12px;margin:0;
+    font-family:"Iowan Old Style","Charter",Georgia,serif;font-size:15.5px;
+    color:var(--ink);font-variant-numeric:tabular-nums;line-height:1.9;
+  }
+  #menuEq .el{display:inline-block;min-width:128px;font-size:11px;letter-spacing:.08em;
+    text-transform:uppercase;font-family:ui-sans-serif,system-ui,sans-serif;}
+  #menuEq .neg{color:#9fc0ff;} #menuEq .pos{color:#ffb08a;}
+  #menuEq span{color:#64748b;font-size:12px;display:block;margin-top:7px;
+    font-family:ui-sans-serif,system-ui,sans-serif;line-height:1.5;}
+
+  @media (max-width:640px){
+    .title h1{font-size:18px;} .title p{display:none;}
+    #key{right:14px;top:14px;padding:8px 10px;font-size:11px;line-height:1.7;}
+    #caption{font-size:16px;bottom:100px;}
+    #hint{display:none;}
+    #clock{display:none;}
+    #menu{bottom:82px;padding:13px 14px;}
+    #poles span{font-size:10px;} #poles b{font-size:20px;}
+  }
+  @media (prefers-reduced-motion:reduce){#caption,#poles{transition:none;}}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="fade"></div>
+
+<div class="title">
+  <h1 id="h1">Electrolysis of molten lead(II) bromide</h1>
+  <p class="eq" id="subtitle">PbBr₂ → Pb + Br₂</p>
+  <p><a href="index.html">← All fourteen reactions</a></p>
+</div>
+
+<div id="key"></div>
+
+<div id="poles">
+  <span class="neg"><b>−</b>cathode<br>cations come here</span>
+  <span class="pos"><b>+</b>anode<br>anions come here</span>
+</div>
+
+<div id="caption"></div>
+<div id="hint">Drag to look around</div>
+
+<div id="menu">
+  <fieldset>
+    <legend>Molten compound</legend>
+    <div class="opts" id="saltOpts"></div>
+  </fieldset>
+  <p id="menuEq"></p>
+</div>
+
+<div id="bar">
+  <button id="play">Pause</button>
+  <button id="restart">Restart</button>
+  <input id="scrub" type="range" min="0" max="64" step="0.01" value="0" aria-label="Timeline">
+  <span id="clock">0.0 / 64.0s</span>
+  <button id="gear" title="Change the compound" aria-label="Change the compound">⚙</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ---------------------------------------------------------------------------
+   SCENE 13 — electrolysis of a molten salt,  MX₂ → M + X₂
+
+   The first scene whose micro world is not a meeting. Nothing bumps into
+   anything by chance here: there is a field across the liquid, and every ion
+   is pulled along it according to its charge. So the motion is a force law
+   rather than a set of appointments — positive ions to the negative electrode,
+   negative ions to the positive one, all of them at once.
+
+   Two ideas the scene is built to land:
+
+     1. It has to be MOLTEN. Micro world 1 starts with the solid lattice, where
+        the ions can vibrate but cannot go anywhere — which is exactly why the
+        lamp stays dark — and then melts it, and they are free.
+
+     2. The ions go THROUGH the liquid; the electrons go ROUND the outside. The
+        external circuit is drawn as an arc above the electrodes with electrons
+        running along it, because that is the bit students never see.
+
+   Acts:
+     0  – 7   macro: the crucible of solid salt, electrodes, power on, lamp dark
+     7  – 16  micro 1: the lattice — locked, then melted
+    16  – 34  macro: it melts, the lamp lights, and products appear
+    34  – end micro 2: migration, discharge, and the circuit
+
+   Everything is a closed-form function of t — the migration included.
+--------------------------------------------------------------------------- */
+
+/* ======================= the species tables ======================= */
+
+const EL = {               // the same palette as every other scene here
+  Cl: {name:'chlorine', col:0x4fbf72, r:0.62},
+  Br: {name:'bromine',  col:0xa8412a, r:0.72},
+  I:  {name:'iodine',   col:0x7a4fa8, r:0.82},
+  C:  {name:'carbon',   col:0x4d5560, r:0.58}
+};
+const E_COL = 0xffe070;
+
+/* Every compound here is M²⁺ with two X⁻, so one cation is discharged for
+   every two anions — which is why the electron count comes out even. */
+const SALTS = {
+  PbBr2: {
+    formula:'PbBr₂', name:'lead(II) bromide', mp:'about 370 °C',
+    metal:{sym:'Pb', name:'lead', ion:'Pb²⁺', col:0x6f7480, r:0.78, lblCol:'#c8ccd4', ionR:0.64},
+    hal:{sym:'Br', name:'bromine', mol:'Br₂', ion:'Br⁻', col:0xa8412a, lblCol:'#e09080',
+         r:0.72, ionR:0.88, vapour:[0.72,0.34,0.14], vapWord:'orange-brown'},
+    solid:0xd8d0a8, solidWord:'white'
+  },
+  PbI2: {
+    formula:'PbI₂', name:'lead(II) iodide', mp:'about 400 °C',
+    metal:{sym:'Pb', name:'lead', ion:'Pb²⁺', col:0x6f7480, r:0.78, lblCol:'#c8ccd4', ionR:0.64},
+    hal:{sym:'I', name:'iodine', mol:'I₂', ion:'I⁻', col:0x7a4fa8, lblCol:'#c0a0e0',
+         r:0.82, ionR:0.98, vapour:[0.46,0.28,0.56], vapWord:'violet'},
+    solid:0xe8d86a, solidWord:'bright yellow'
+  },
+  ZnCl2: {
+    formula:'ZnCl₂', name:'zinc chloride', mp:'about 290 °C',
+    metal:{sym:'Zn', name:'zinc', ion:'Zn²⁺', col:0x9fb0c2, r:0.64, lblCol:'#cfe0f0', ionR:0.52},
+    hal:{sym:'Cl', name:'chlorine', mol:'Cl₂', ion:'Cl⁻', col:0x4fbf72, lblCol:'#8fe0a8',
+         r:0.62, ionR:0.78, vapour:[0.74,0.86,0.44], vapWord:'pale green'},
+    solid:0xeceef0, solidWord:'white'
+  }
+};
+
+const qs = new URLSearchParams(location.search);
+let saltKey = SALTS[qs.get('salt')] ? qs.get('salt') : 'PbBr2';
+let SA, MT, HX;
+function derive(){ SA = SALTS[saltKey]; MT = SA.metal; HX = SA.hal; }
+
+const cap1 = s => s.charAt(0).toUpperCase() + s.slice(1);
+const equation = () => `${SA.formula} → ${MT.sym} + ${HX.mol}`;
+const atCathode = () => `${MT.ion} + 2e⁻ → ${MT.sym}`;
+const atAnode   = () => `2${HX.ion} → ${HX.mol} + 2e⁻`;
+
+const MICRO1_Y =  400;   // the lattice
+const MICRO2_Y = -400;   // the cell
+
+/* ---------- renderer / scene ---------- */
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+document.getElementById('stage').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x080b11);
+
+const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.05, 2000);
+
+scene.add(new THREE.HemisphereLight(0x9fb4d0, 0x0a0d13, 0.6));
+const keyL = new THREE.DirectionalLight(0xffffff, 0.9); keyL.position.set(6,11,8); scene.add(keyL);
+const fillL = new THREE.DirectionalLight(0x9ec3ff, 0.4); fillL.position.set(-8,4,-6); scene.add(fillL);
+const rimL  = new THREE.DirectionalLight(0xffd9b0, 0.35); rimL.position.set(0,3,-10); scene.add(rimL);
+const bunsenLight = new THREE.PointLight(0x8fb4ff, 0, 7); scene.add(bunsenLight);
+const meltLight   = new THREE.PointLight(0xff7a28, 0, 7); scene.add(meltLight);
+const lampLight   = new THREE.PointLight(0xffe9a0, 0, 5); scene.add(lampLight);
+
+(function environment(){
+  const env = new THREE.Scene();
+  const box = new THREE.BoxGeometry(1,1,1);
+  env.add(new THREE.Mesh(new THREE.BoxGeometry(24,14,24),
+    new THREE.MeshBasicMaterial({color:0x1d2634, side:THREE.BackSide})));
+  const panel=(hex,gain,x,y,z,sx,sy,sz)=>{
+    const m=new THREE.Mesh(box,new THREE.MeshBasicMaterial({color:hex}));
+    m.material.color.multiplyScalar(gain);
+    m.position.set(x,y,z); m.scale.set(sx,sy,sz); env.add(m);
+  };
+  panel(0xffffff,3.2,  0, 6.6,  0, 11,0.1,11);
+  panel(0xbcd6ff,1.3, -9, 1.0,  0, 0.1,9,16);
+  panel(0xffd7b0,0.9,  9, 1.0,  2, 0.1,9,16);
+  panel(0x8fb0e0,0.5,  0, 0.0,-10, 18,9,0.1);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(env, 0.04).texture;
+  pmrem.dispose();
+})();
+
+/* ---------- shared helpers ---------- */
+const SPH = new THREE.SphereGeometry(1,32,24);
+const SPH_LO = new THREE.SphereGeometry(1,16,12);
+const CYL = new THREE.CylinderGeometry(1,1,1,20,1,false);
+
+function atom(color, radius, opts={}){
+  const mat = new THREE.MeshStandardMaterial({
+    color, roughness: opts.rough ?? 0.35, metalness: opts.metal ?? 0.25,
+    emissive: new THREE.Color(color).multiplyScalar(opts.glow ?? 0.06)
+  });
+  if(opts.op !== undefined && opts.op < 1){ mat.transparent = true; mat.opacity = opts.op; }
+  const m = new THREE.Mesh(opts.lo?SPH_LO:SPH, mat);
+  m.scale.setScalar(radius);
+  return m;
+}
+
+function electron(){
+  const g = new THREE.Group();
+  const core = new THREE.Mesh(SPH_LO, new THREE.MeshStandardMaterial({
+    color:0xfff6d0, emissive:E_COL, roughness:0.3, metalness:0,
+    transparent:true, opacity:1
+  }));
+  core.scale.setScalar(0.16);
+  const halo = new THREE.Mesh(SPH_LO, new THREE.MeshBasicMaterial({
+    color:E_COL, transparent:true, opacity:0.20,
+    blending:THREE.AdditiveBlending, depthWrite:false
+  }));
+  halo.scale.setScalar(0.38);
+  g.add(core, halo);
+  g.userData.core = core; g.userData.halo = halo;
+  return g;
+}
+function electronFade(e, a){
+  e.userData.core.material.opacity = a;
+  e.userData.halo.material.opacity = 0.20*a;
+  e.visible = a > 0.02;
+}
+
+function bond(color=0xa9b6c6, radius=0.12){
+  const m = new THREE.Mesh(CYL, new THREE.MeshStandardMaterial({
+    color, roughness:0.5, metalness:0.1, transparent:true, opacity:1
+  }));
+  m.userData.radius = radius;
+  return m;
+}
+const _v1=new THREE.Vector3(), _up=new THREE.Vector3(0,1,0);
+function placeBond(mesh, a, b, shrink=0){
+  const dir = new THREE.Vector3().subVectors(b,a);
+  const len = Math.max(dir.length()-shrink*2, 0.001);
+  mesh.position.copy(a).addScaledVector(dir,0.5);
+  mesh.scale.set(mesh.userData.radius, len, mesh.userData.radius);
+  mesh.quaternion.setFromUnitVectors(_up, dir.normalize());
+}
+function tubeSeg(a, b, r, mat){
+  const m = new THREE.Mesh(CYL, mat);
+  m.userData.radius = r;
+  placeBond(m, a, b, 0);
+  return m;
+}
+
+function label(text, color='#eef2f7', size=54){
+  const pad=16, c=document.createElement('canvas'), ctx=c.getContext('2d');
+  const font = `600 ${size}px "Iowan Old Style", Charter, Georgia, serif`;
+  ctx.font=font; const w=Math.ceil(ctx.measureText(text).width)+pad*2;
+  c.width=w; c.height=size+pad*2;
+  ctx.font=font; ctx.textBaseline='middle'; ctx.textAlign='center';
+  ctx.shadowColor='rgba(0,0,0,.9)'; ctx.shadowBlur=14;
+  ctx.fillStyle=color; ctx.fillText(text, c.width/2, c.height/2);
+  const tex = new THREE.CanvasTexture(c); tex.anisotropy=4;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:false, opacity:0}));
+  sp.renderOrder = 10;
+  sp.scale.set(c.width/c.height*0.62, 0.62, 1);
+  return sp;
+}
+
+const GLOW_TEX = (function(){
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(64,64,0,64,64,64);
+  g.addColorStop(0,   'rgba(255,255,255,1)');
+  g.addColorStop(0.3, 'rgba(240,240,240,.55)');
+  g.addColorStop(1,   'rgba(200,200,200,0)');
+  ctx.fillStyle = g; ctx.fillRect(0,0,128,128);
+  return new THREE.CanvasTexture(c);
+})();
+
+function lerp(a,b,t){ return a+(b-a)*t; }
+function clamp01(x){ return Math.max(0,Math.min(1,x)); }
+function smooth(x){ x=clamp01(x); return x*x*(3-2*x); }
+function ramp(t,a,b){ return smooth((t-a)/(b-a)); }
+
+function clearGroup(g){
+  for(let i=g.children.length-1;i>=0;i--){
+    const c = g.children[i];
+    g.remove(c);
+    c.traverse(o=>{
+      if(o.material){
+        if(o.material.map && o.material.map !== GLOW_TEX) o.material.map.dispose();
+        o.material.dispose();
+      }
+    });
+  }
+}
+function rng(seed){
+  let s = seed>>>0;
+  return ()=>{ s = (s*1664525 + 1013904223)>>>0; return s/4294967296; };
+}
+
+/* =====================================================================
+   MACRO WORLD — crucible on a tripod, two carbon electrodes, a supply
+===================================================================== */
+const macro = new THREE.Group(); scene.add(macro);
+
+const bench = new THREE.Mesh(
+  new THREE.CylinderGeometry(9,9,0.35,64),
+  new THREE.MeshStandardMaterial({color:0x11151d, roughness:0.95, metalness:0})
+);
+bench.position.y=-0.175; macro.add(bench);
+
+const steel = new THREE.MeshStandardMaterial({color:0xb9c3cf, metalness:0.9, roughness:0.26});
+const graphite = new THREE.MeshStandardMaterial({color:0x32363d, roughness:0.75, metalness:0.25});
+
+/* the tripod */
+const TRIPOD_Y = 1.32;
+const ring = new THREE.Mesh(new THREE.TorusGeometry(0.56,0.035,8,36), steel);
+ring.rotation.x = Math.PI/2; ring.position.y = TRIPOD_Y; macro.add(ring);
+[90,210,330].forEach(d=>{
+  const a = d*Math.PI/180;
+  const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.032,0.032,TRIPOD_Y,10), steel);
+  leg.position.set(Math.cos(a)*0.52, TRIPOD_Y/2, Math.sin(a)*0.52);
+  leg.rotation.z = -Math.cos(a)*0.12;
+  leg.rotation.x =  Math.sin(a)*0.12;
+  macro.add(leg);
+});
+
+/* the crucible, and the salt in it */
+const CRU_TOP = TRIPOD_Y + 0.42, MELT_Y = TRIPOD_Y + 0.10;
+const crucible = new THREE.Mesh(new THREE.CylinderGeometry(0.52,0.34,0.52,32,1,true),
+  new THREE.MeshStandardMaterial({color:0xcfc8ba, roughness:0.9, metalness:0.04,
+    side:THREE.DoubleSide}));
+crucible.position.y = TRIPOD_Y + 0.20; macro.add(crucible);
+const cruFloor = new THREE.Mesh(new THREE.CircleGeometry(0.34,32),
+  new THREE.MeshStandardMaterial({color:0xb8b1a2, roughness:0.92, metalness:0.04}));
+cruFloor.rotation.x = -Math.PI/2; cruFloor.position.y = TRIPOD_Y - 0.06; macro.add(cruFloor);
+
+const meltMat = new THREE.MeshStandardMaterial({
+  color:0xd8d0a8, roughness:0.85, metalness:0.05, emissive:0x000000
+});
+const melt = new THREE.Mesh(new THREE.CylinderGeometry(0.45,0.34,0.34,32), meltMat);
+melt.position.y = MELT_Y; macro.add(melt);
+/* the metal, collecting in the bottom under the cathode */
+const poolMat = new THREE.MeshStandardMaterial({
+  color:0x8e949d, roughness:0.35, metalness:0.7, emissive:0x2a1a08, emissiveIntensity:0.8
+});
+const pool = new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.18,1,26), poolMat);
+macro.add(pool);
+
+/* the Bunsen */
+const bBase = new THREE.Mesh(new THREE.CylinderGeometry(0.26,0.30,0.09,24),
+  new THREE.MeshStandardMaterial({color:0x252c38, metalness:0.6, roughness:0.45}));
+bBase.position.set(0,0.045,0); macro.add(bBase);
+const bBarrel = new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.085,0.62,18), steel);
+bBarrel.position.set(0,0.40,0); macro.add(bBarrel);
+const flameOuter = new THREE.Mesh(new THREE.ConeGeometry(0.15,0.95,20,1,true),
+  new THREE.MeshBasicMaterial({color:0x6f9cff, transparent:true, opacity:0,
+    blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide}));
+flameOuter.position.set(0,1.18,0); macro.add(flameOuter);
+const flameInner = new THREE.Mesh(new THREE.ConeGeometry(0.065,0.42,14,1,true),
+  new THREE.MeshBasicMaterial({color:0x9fe8ff, transparent:true, opacity:0,
+    blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide}));
+flameInner.position.set(0,0.92,0); macro.add(flameInner);
+
+/* the two electrodes, dipping in */
+const EL_X = 0.30, EL_TOP = 2.65;
+const cathode = new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,EL_TOP-MELT_Y+0.2,16), graphite);
+cathode.position.set(-EL_X, (EL_TOP+MELT_Y-0.2)/2, 0); macro.add(cathode);
+const anode = new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,EL_TOP-MELT_Y+0.2,16), graphite);
+anode.position.set( EL_X, (EL_TOP+MELT_Y-0.2)/2, 0); macro.add(anode);
+
+/* the power supply, and leads to it */
+const SUP_X = 2.35;
+const supply = new THREE.Mesh(new THREE.BoxGeometry(1.15,0.72,0.62),
+  new THREE.MeshStandardMaterial({color:0x2b323d, roughness:0.6, metalness:0.4}));
+supply.position.set(SUP_X,0.36,0); macro.add(supply);
+const dial = new THREE.Mesh(new THREE.CylinderGeometry(0.11,0.11,0.05,20), steel);
+dial.rotation.x = Math.PI/2; dial.position.set(SUP_X-0.3,0.40,0.32); macro.add(dial);
+const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.13,20,14),
+  new THREE.MeshStandardMaterial({color:0x7a6a42, roughness:0.3, metalness:0.1,
+    emissive:0x000000}));
+lamp.position.set(SUP_X+0.28,0.82,0); macro.add(lamp);
+const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.12,14), steel);
+lampBase.position.set(SUP_X+0.28,0.70,0); macro.add(lampBase);
+
+const leadMatPos = new THREE.MeshStandardMaterial({color:0xb04a3a, roughness:0.6, metalness:0.2});
+const leadMatNeg = new THREE.MeshStandardMaterial({color:0x2b3a55, roughness:0.6, metalness:0.2});
+[[new THREE.Vector3(EL_X, EL_TOP, 0), new THREE.Vector3(EL_X, EL_TOP+0.3, 0), leadMatPos],
+ [new THREE.Vector3(EL_X, EL_TOP+0.3, 0), new THREE.Vector3(SUP_X+0.1, EL_TOP+0.3, 0), leadMatPos],
+ [new THREE.Vector3(SUP_X+0.1, EL_TOP+0.3, 0), new THREE.Vector3(SUP_X+0.1, 0.72, 0), leadMatPos],
+ [new THREE.Vector3(-EL_X, EL_TOP, 0), new THREE.Vector3(-EL_X, EL_TOP+0.62, 0), leadMatNeg],
+ [new THREE.Vector3(-EL_X, EL_TOP+0.62, 0), new THREE.Vector3(SUP_X-0.3, EL_TOP+0.62, 0), leadMatNeg],
+ [new THREE.Vector3(SUP_X-0.3, EL_TOP+0.62, 0), new THREE.Vector3(SUP_X-0.3, 0.72, 0), leadMatNeg]
+].forEach(([a,b,m])=> macro.add(tubeSeg(a,b,0.028,m)));
+
+/* the halogen vapour, coming off the anode */
+const vapGrp = new THREE.Group(); macro.add(vapGrp);
+let vapour = [];
+const MELT_AT = 19.2;
+function buildVapour(){
+  clearGroup(vapGrp);
+  vapour = [];
+  const rand = rng(20240913);
+  for(let i=0;i<40;i++){
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({
+      map:GLOW_TEX, color:new THREE.Color(HX.vapour[0],HX.vapour[1],HX.vapour[2]),
+      transparent:true, opacity:0, blending:THREE.NormalBlending, depthWrite:false}));
+    vapour.push({s, birth: MELT_AT+1.2 + rand()*12.0, life:1.8+rand()*1.4,
+                 x:(rand()-0.5)*0.18, z:(rand()-0.5)*0.18, sz:0.22+rand()*0.24,
+                 rise:0.5+rand()*0.5});
+    vapGrp.add(s);
+  }
+}
+function updateVapour(t){
+  for(const p of vapour){
+    const age = t - p.birth;
+    if(age < 0 || age > p.life){ p.s.visible = false; continue; }
+    p.s.visible = true;
+    const u = age/p.life;
+    p.s.position.set(EL_X + p.x*(1+u*2), MELT_Y+0.2 + u*p.rise, p.z*(1+u*2));
+    p.s.scale.setScalar(p.sz*(0.7+u*1.3));
+    p.s.material.opacity = 0.5*Math.sin(u*Math.PI);
+  }
+}
+
+/* =====================================================================
+   MICRO 1 — the lattice: locked solid, then melted
+===================================================================== */
+const micro1 = new THREE.Group(); micro1.position.y=MICRO1_Y; scene.add(micro1);
+let M1 = {};
+
+function buildMicro1(){
+  clearGroup(micro1);
+  const ions = [];
+  const rand = rng(20240923);
+  /* a rock-salt style block, one cation to two anions */
+  for(let ix=-1;ix<=1;ix++) for(let iy=-1;iy<=1;iy++) for(let iz=-1;iz<=1;iz++){
+    const cat = ((ix+iy+iz)%2+2)%2 === 0;
+    const isCation = cat && (Math.abs(ix)+Math.abs(iy)+Math.abs(iz)) % 3 !== 2;
+    const sp = isCation
+      ? atom(MT.col, MT.ionR, {rough:0.3, metal:0.5})
+      : atom(HX.col, HX.ionR*0.9, {rough:0.3, metal:0.12});
+    const home = new THREE.Vector3(ix*2.1, iy*2.1, iz*2.1);
+    sp.position.copy(home);
+    sp.userData = {home, isCation,
+      ph:rand()*6.283, sp:0.7+rand()*0.8,
+      free:new THREE.Vector3(home.x*1.5 + (rand()-0.5)*3.4,
+                             home.y*1.5 + (rand()-0.5)*3.4,
+                             home.z*1.5 + (rand()-0.5)*3.0),
+      drift:new THREE.Vector3(rand()-0.5, rand()-0.5, rand()-0.5)};
+    micro1.add(sp); ions.push(sp);
+  }
+  const lblCat = label(MT.ion, MT.lblCol, 48);
+  const lblAn  = label(HX.ion, HX.lblCol, 48);
+  const lblLock= label('locked in a lattice — they can only vibrate','#ffe9a8',38);
+  const lblFree= label('molten: now they can move','#8fd3a8',42);
+  micro1.add(lblCat,lblAn,lblLock,lblFree);
+  M1 = {ions, lblCat, lblAn, lblLock, lblFree};
+}
+
+/* how melted it is — micro 1's whole arc */
+function meltedAt(t){ return ramp(t, 13.4, 15.8); }
+
+function updateMicro1(t){
+  const {ions, lblCat, lblAn, lblLock, lblFree} = M1;
+  const u = t - 7.0;
+  const heat = ramp(t, 9.0, 13.4);
+  const melted = meltedAt(t);
+  micro1.rotation.y = 0.12 + u*0.05;
+  micro1.rotation.x = Math.sin(u*0.2)*0.08;
+
+  ions.forEach((s,i)=>{
+    const d = s.userData;
+    const amp = 0.04 + heat*0.26;
+    _v1.copy(d.home);
+    _v1.x += Math.sin(t*6.2*d.sp + d.ph)*amp;
+    _v1.y += Math.cos(t*5.8*d.sp + d.ph*1.3)*amp;
+    _v1.z += Math.sin(t*6.0*d.sp + d.ph*0.7)*amp;
+    if(melted > 0){
+      /* once molten they wander, instead of sitting on a site */
+      const f = d.free;
+      _v1.lerp(_v1.clone().set(
+        f.x + Math.sin(t*0.5*d.sp + d.ph)*1.5*d.drift.x,
+        f.y + Math.cos(t*0.45*d.sp + d.ph)*1.5*d.drift.y,
+        f.z + Math.sin(t*0.4*d.sp + d.ph)*1.2*d.drift.z
+      ), melted);
+    }
+    s.position.copy(_v1);
+  });
+
+  const off = 1-ramp(t,15.0,15.8);
+  lblCat.material.opacity = ramp(t,8.0,9.0)*off;
+  lblAn.material.opacity  = ramp(t,8.4,9.4)*off;
+  lblCat.position.set(-3.3, 3.4, 0);
+  lblAn.position.set( 3.3, 3.4, 0);
+  lblLock.material.opacity = ramp(t,10.4,11.4)*(1-ramp(t,13.2,14.0));
+  lblLock.position.set(0, -4.2, 0);
+  lblFree.material.opacity = ramp(t,14.4,15.2)*off;
+  lblFree.position.set(0, -4.2, 0);
+}
+
+/* =====================================================================
+   MICRO 2 — the cell.  The ions are driven by the field, not by chance:
+   each one's path is a closed-form drift toward whichever electrode its
+   charge sends it to, plus thermal wander.
+===================================================================== */
+const micro2 = new THREE.Group(); micro2.position.y=MICRO2_Y; scene.add(micro2);
+let M2 = {};
+
+const V = (x,y,z)=>new THREE.Vector3(x,y,z);
+const CATH_X = -7.0, AN_X = 7.0;      // the two electrodes
+const FACE = 1.2;                      // how far in front of them ions stop
+
+function buildMicro2(){
+  clearGroup(micro2);
+
+  /* the electrodes, as slabs of graphite */
+  const mk = (x, sign) => {
+    const g = new THREE.Group();
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(1.5, 9.0, 3.0), graphite.clone());
+    g.add(slab);
+    g.position.set(x, 0, 0);
+    micro2.add(g);
+    return g;
+  };
+  const cath = mk(CATH_X, -1), an = mk(AN_X, +1);
+
+  /* the external circuit: an arc over the top, with electrons along it */
+  const wireMat = new THREE.MeshStandardMaterial({color:0x8b94a2, roughness:0.5, metalness:0.6});
+  const WIRE = [V(AN_X,4.6,0), V(AN_X,7.2,0), V(0,8.6,0), V(CATH_X,7.2,0), V(CATH_X,4.6,0)];
+  for(let i=0;i<WIRE.length-1;i++) micro2.add(tubeSeg(WIRE[i],WIRE[i+1],0.075,wireMat));
+  /* cumulative lengths, so an electron can run along it at a steady pace */
+  const segLen = [], total = (()=>{
+    let s = 0;
+    for(let i=0;i<WIRE.length-1;i++){ const l = WIRE[i].distanceTo(WIRE[i+1]); segLen.push(l); s += l; }
+    return s;
+  })();
+  const wireEs = [];
+  for(let i=0;i<7;i++){
+    const e = electron(); electronFade(e,0); micro2.add(e);
+    wireEs.push({e, off: i/7});
+  }
+
+  /* the migrating crowd: one cation for every two anions */
+  const rand = rng(20240933);
+  const crowd = [];
+  for(let i=0;i<24;i++){
+    const isCation = (i % 3) === 0;
+    const s = isCation
+      ? atom(MT.col, MT.ionR, {rough:0.3, metal:0.5, lo:true})
+      : atom(HX.col, HX.ionR*0.9, {rough:0.3, metal:0.12, lo:true});
+    const x0 = (rand()-0.5)*9.0;
+    const y0 = (rand()-0.5)*6.4;
+    const z0 = (rand()-0.5)*2.2;
+    const targetX = isCation ? CATH_X + FACE : AN_X - FACE;
+    /* how long the trip takes depends on how far it has to go — a constant
+       drift speed, which is what a constant field gives you */
+    const dist = Math.abs(targetX - x0);
+    const t0 = 37.0 + rand()*3.0;
+    s.userData = {isCation, start:V(x0,y0,z0), targetX,
+                  t0, t1: t0 + dist/1.35 + 1.0,
+                  ph:rand()*6.283, sp:0.6+rand()*0.8,
+                  yEnd:y0 + (rand()-0.5)*1.2};
+    micro2.add(s); crowd.push(s);
+  }
+
+  /* the cast that actually discharges */
+  const heroCat = atom(MT.col, MT.ionR, {rough:0.3, metal:0.5});
+  const heroMetalE = [electron(), electron()];
+  heroMetalE.forEach(e=>{ electronFade(e,0); micro2.add(e); });
+  micro2.add(heroCat);
+
+  const heroAn = [atom(HX.col, HX.ionR, {rough:0.3, metal:0.12}),
+                  atom(HX.col, HX.ionR, {rough:0.3, metal:0.12})];
+  const heroAnE = [electron(), electron()];
+  heroAn.forEach(a=>micro2.add(a));
+  heroAnE.forEach(e=>{ electronFade(e,0); micro2.add(e); });
+  const xxBond = bond(0xa9b6c6, 0.12); xxBond.material.opacity = 0; micro2.add(xxBond);
+
+  /* the metal piling up on the cathode */
+  const deposit = [];
+  for(let i=0;i<6;i++){
+    const d = atom(MT.col, MT.r*0.8, {rough:0.3, metal:0.8, lo:true, op:0.001});
+    d.position.set(CATH_X + 0.95 + (i%2)*0.5, -3.2 + Math.floor(i/2)*0.75, (i%3-1)*0.7);
+    micro2.add(d); deposit.push(d);
+  }
+
+  const lbl = {
+    cat:   label(MT.ion, MT.lblCol, 46),
+    an:    label(HX.ion, HX.lblCol, 46),
+    metal: label(MT.sym, MT.lblCol, 46),
+    mol:   label(HX.mol, HX.lblCol, 46),
+    cath:  label('negative electrode','#9fc0ff',38),
+    anod:  label('positive electrode','#ffb08a',38),
+    wire:  label('the electrons go round the outside','#ffe9a8',38),
+    ions:  label('the ions go through the middle','#8fd3a8',38)
+  };
+  Object.values(lbl).forEach(l=>micro2.add(l));
+
+  M2 = {cath,an,WIRE,segLen,total,wireEs,crowd,heroCat,heroMetalE,
+        heroAn,heroAnE,xxBond,deposit,lbl};
+}
+
+/* walk a distance along the wire polyline */
+const _wp = new THREE.Vector3();
+function alongWire(u){
+  const {WIRE,segLen,total} = M2;
+  let d = clamp01(u)*total;
+  for(let i=0;i<segLen.length;i++){
+    if(d <= segLen[i] || i === segLen.length-1){
+      return _wp.lerpVectors(WIRE[i], WIRE[i+1], clamp01(d/segLen[i]));
+    }
+    d -= segLen[i];
+  }
+  return _wp.copy(WIRE[0]);
+}
+
+const _pa=new THREE.Vector3(), _pb=new THREE.Vector3();
+
+function updateMicro2(t){
+  const {wireEs,crowd,heroCat,heroMetalE,heroAn,heroAnE,xxBond,deposit,lbl} = M2;
+
+  /* --- the crowd, driven by the field --- */
+  crowd.forEach((s,i)=>{
+    const d = s.userData;
+    const u = smooth((t - d.t0)/(d.t1 - d.t0));
+    _pa.set(
+      lerp(d.start.x, d.targetX, u),
+      lerp(d.start.y, d.yEnd, u),
+      d.start.z
+    );
+    /* thermal wander, which never overcomes the drift */
+    _pa.x += Math.sin(t*0.9*d.sp + d.ph)*0.30*(1-u*0.7);
+    _pa.y += Math.cos(t*0.8*d.sp + d.ph*1.3)*0.34;
+    _pa.z += Math.sin(t*0.7*d.sp + d.ph*0.7)*0.28;
+    s.position.copy(_pa);
+  });
+
+  /* --- the cation that gets discharged --- */
+  const catIn   = ramp(t, 38.0, 46.6);
+  const took    = ramp(t, 47.4, 49.4);
+  const settled = ramp(t, 49.6, 52.4);
+  _pa.set(lerp(5.6, CATH_X + FACE, catIn), lerp(2.2, 0.9, catIn), 0.4);
+  _pa.y += Math.cos(t*0.8)*0.22*(1-took);
+  if(settled > 0) _pa.lerp(V(CATH_X + 0.95, -1.9, 0.3), settled);
+  heroCat.position.copy(_pa);
+  /* an ion becomes an atom: it gets BIGGER, because it gets electrons back */
+  heroCat.scale.setScalar(lerp(MT.ionR, MT.r, took));
+  heroCat.material.metalness = lerp(0.5, 0.85, took);
+
+  /* --- the two anions that get discharged --- */
+  const anIn  = ramp(t, 38.6, 49.6);
+  const gave  = [ramp(t, 50.6, 52.6), ramp(t, 51.0, 53.0)];
+  const paired= ramp(t, 53.6, 56.2);
+  const rise  = Math.max(0, t - 56.6);
+  const anPos = [];
+  heroAn.forEach((a,k)=>{
+    _pb.set(lerp(-5.2 - k*0.8, AN_X - FACE, anIn),
+            lerp(k? -2.4 : 2.6, k? -0.7 : 0.7, anIn), k? -0.4 : 0.5);
+    _pb.y += Math.sin(t*0.85 + k*2)*0.22*(1-gave[k]);
+    if(paired > 0){
+      const c = V(AN_X - FACE - 0.5, 0.2, 0.2);
+      c.y += rise*0.95; c.x -= rise*0.35;
+      _pb.lerp(_v1.copy(c).add(V(0, k? -0.62 : 0.62, 0)), paired);
+    }
+    a.position.copy(_pb);
+    /* losing an electron makes it smaller — back to an atom */
+    a.scale.setScalar(lerp(HX.ionR, HX.r, gave[k]));
+    anPos.push(_pb.clone());
+  });
+  const bondOn = ramp(t, 55.0, 56.6);
+  xxBond.material.opacity = bondOn;
+  xxBond.visible = bondOn > 0.01;
+  if(xxBond.visible) placeBond(xxBond, anPos[0], anPos[1], 0.1);
+
+  /* --- the electrons.  Two into the cation at the cathode, one out of each
+         anion at the anode, and a steady stream round the wire. --- */
+  heroMetalE.forEach((e,k)=>{
+    /* they arrive out of the cathode itself */
+    _v1.set(CATH_X + 0.78, 0.9 + (k? -0.5 : 0.5), 0.2);
+    _v1.lerp(heroCat.position, ramp(t, 46.8 + k*0.3, 48.8 + k*0.3));
+    e.position.copy(_v1);
+    electronFade(e, ramp(t, 46.0+k*0.3, 46.9+k*0.3) * (1 - ramp(t, 48.6+k*0.3, 49.4+k*0.3)));
+  });
+  heroAnE.forEach((e,k)=>{
+    /* and leave into the anode */
+    _v1.copy(anPos[k]).add(V(0.5, 0.32, 0.25));
+    _v1.lerp(V(AN_X - 0.78, 0.3 + (k? -0.5 : 0.5), 0.2), ramp(t, 50.8+k*0.4, 53.0+k*0.4));
+    e.position.copy(_v1);
+    electronFade(e, ramp(t, 50.2+k*0.4, 51.0+k*0.4) * (1 - ramp(t, 52.8+k*0.4, 53.6+k*0.4)));
+  });
+  /* the circuit current: anode → wire → cathode, continuously */
+  const flowing = ramp(t, 56.6, 58.2);
+  wireEs.forEach((w,i)=>{
+    const u = ((t - 56.6)*0.13 + w.off) % 1;
+    w.e.position.copy(alongWire(u));
+    electronFade(w.e, flowing*0.95);
+  });
+
+  /* --- the metal building up on the cathode --- */
+  deposit.forEach((d,i)=>{
+    const on = ramp(t, 52.0 + i*0.55, 53.4 + i*0.55);
+    d.material.opacity = on*0.95;
+    d.visible = on > 0.02;
+    d.position.y += Math.sin(t*1.1+i)*0.004;
+  });
+
+  /* --- labels --- */
+  const L = lbl;
+  L.cath.material.opacity = ramp(t,34.6,35.6)*(1-ramp(t,61.0,62.0));
+  L.cath.position.set(CATH_X + 0.2, 5.2, 0);
+  L.anod.material.opacity = ramp(t,34.6,35.6)*(1-ramp(t,61.0,62.0));
+  L.anod.position.set(AN_X - 0.2, 5.2, 0);
+  L.cat.material.opacity = ramp(t,37.6,38.6)*(1-took);
+  L.cat.position.copy(heroCat.position).add(_v1.set(0, MT.r+0.85, 0));
+  L.metal.material.opacity = took*(1-ramp(t,58.0,59.0));
+  L.metal.position.copy(heroCat.position).add(_v1.set(0, MT.r+0.85, 0));
+  L.an.material.opacity = ramp(t,40.6,41.6)*(1-gave[0]);
+  L.an.position.copy(anPos[0]).add(_v1.set(0, HX.ionR+0.8, 0));
+  L.mol.material.opacity = ramp(t,56.2,57.2)*(1-ramp(t,60.4,61.4));
+  L.mol.position.copy(anPos[0]).add(_v1.set(0.9, 0.6, 0));
+  L.ions.material.opacity = ramp(t,44.6,45.6)*(1-ramp(t,48.0,48.8));
+  L.ions.position.set(0, -4.6, 0);
+  L.wire.material.opacity = ramp(t,57.6,58.6)*(1-ramp(t,62.4,63.4));
+  L.wire.position.set(0, 9.6, 0);
+}
+
+/* =====================================================================
+   TIMELINE
+===================================================================== */
+const TOTAL = 64;
+let SEGS = [];
+
+function buildCaptions(){
+  SEGS = [
+    {t:0,    c:`${cap1(SA.name)} — a ${SA.solidWord} solid — in a crucible, with two carbon electrodes in it.`},
+    {t:3.5,  c:'The power is already on. And nothing whatever is happening: the lamp is dark.'},
+    {t:7.0,  c:`Inside the solid. ${MT.ion} ions and ${HX.ion} ions, in a lattice.`},
+    {t:10.4, c:'They can vibrate, but they cannot go anywhere. And a current needs charge that moves.'},
+    {t:13.4, c:`So melt it — ${SA.mp} for this one.`},
+    {t:16.0, c:'Molten. The lattice is gone and the ions are free.'},
+    {t:19.6, c:'And the lamp comes on. Charge is moving, so a current is flowing.'},
+    {t:23.4, c:`At the negative electrode, something molten and metallic is collecting. That is ${MT.name}.`},
+    {t:27.0, c:`At the positive one, ${HX.vapWord} ${HX.name} vapour, coming off as a gas.`},
+    {t:30.6, c:'Two different products, at two different electrodes. Down between them to see why.'},
+    {t:34.0, c:'Ions everywhere, and a field across the liquid pulling on every one of them.'},
+    {t:37.6, c:`${MT.ion} is positive, so it is pulled to the negative electrode.`},
+    {t:41.0, c:`${HX.ion} is negative, so it goes the other way, to the positive one.`},
+    {t:44.6, c:'Nothing is bumping into anything by luck here. Opposite charges, and they are dragged.'},
+    {t:47.4, c:`At the negative electrode, ${MT.ion} takes two electrons — and is a ${MT.name} atom.`},
+    {t:50.6, c:`At the positive one, two ${HX.ion} each give one electron up.`},
+    {t:54.0, c:`Which leaves two ${HX.name} atoms, and they pair off.`},
+    {t:56.6, c:`${HX.mol} — a gas, so away it goes.`},
+    {t:58.6, c:'And the electrons? Never through the liquid. Round the outside, along the wire.'},
+    {t:60.8, c:`${atCathode()}     ·     ${atAnode()}`},
+    {t:62.6, c: equation()}
+  ];
+}
+
+const TRANSITIONS = [7.0, 16.0, 34.0];
+const FADE = 0.55;
+
+function worldAt(t){
+  if(t < 7.0)  return 'macro';
+  if(t < 16.0) return 'micro1';
+  if(t < 34.0) return 'macro';
+  return 'micro2';
+}
+
+const CAM = {
+  macro:[
+    {t:0,    p:[1.4,2.9,4.6],  l:[0.4,1.3,0]},
+    {t:3.5,  p:[2.1,1.6,2.4],  l:[2.3,0.7,0]},
+    {t:7.0,  p:[0.3,2.0,1.5],  l:[0.0,1.5,0]},
+    {t:16.0, p:[0.8,2.6,4.0],  l:[0.2,1.4,0]},
+    {t:19.6, p:[2.2,1.5,2.2],  l:[2.5,0.8,0]},
+    {t:23.4, p:[-0.7,1.9,1.5], l:[-0.3,1.4,0]},
+    {t:27.0, p:[0.9,2.0,1.4],  l:[0.35,1.6,0]},
+    {t:30.6, p:[0.1,1.9,1.8],  l:[0.0,1.5,0]},
+    {t:34.0, p:[0,1.8,1.5],    l:[0,1.45,0]}
+  ],
+  micro1:[
+    {t:7.0,  p:[0,1.0,12.0],  l:[0,0,0]},
+    {t:10.4, p:[3.0,2.0,10.6],l:[0,0,0]},
+    {t:13.4, p:[0,1.4,11.4],  l:[0,0,0]},
+    {t:16.0, p:[0,5.0,24.0],  l:[0,0,0]}
+  ],
+  micro2:[
+    {t:34.0, p:[0,1.2,19.0],   l:[0,0,0]},
+    {t:37.6, p:[2.0,1.0,15.0], l:[0,0.4,0]},
+    {t:41.0, p:[-1.6,1.0,15.0],l:[0,0.2,0]},
+    {t:44.6, p:[0,1.6,17.6],   l:[0,0.2,0]},
+    {t:47.4, p:[-5.0,1.0,8.4], l:[-5.6,0.7,0]},
+    {t:50.6, p:[5.2,0.6,8.4],  l:[5.8,0.2,0]},
+    {t:54.0, p:[4.8,0.8,7.6],  l:[5.4,0.3,0]},
+    {t:56.6, p:[4.6,1.4,8.8],  l:[5.2,1.2,0]},
+    {t:58.6, p:[0,5.0,17.0],   l:[0,5.2,0]},
+    {t:60.8, p:[0,2.0,19.0],   l:[0,1.0,0]},
+    {t:64.0, p:[0,1.6,21.0],   l:[0,0.4,0]}
+  ]
+};
+
+const camPos=new THREE.Vector3(), camTgt=new THREE.Vector3();
+function sampleCam(t){
+  const w = worldAt(t), keys = CAM[w];
+  let i=0; while(i<keys.length-2 && t>=keys[i+1].t) i++;
+  const a=keys[i], b=keys[Math.min(i+1,keys.length-1)];
+  const u = b.t===a.t?0:smooth((t-a.t)/(b.t-a.t));
+  const off = w==='micro1'?MICRO1_Y : w==='micro2'?MICRO2_Y : 0;
+  camPos.set(lerp(a.p[0],b.p[0],u), lerp(a.p[1],b.p[1],u)+off, lerp(a.p[2],b.p[2],u));
+  camTgt.set(lerp(a.l[0],b.l[0],u), lerp(a.l[1],b.l[1],u)+off, lerp(a.l[2],b.l[2],u));
+}
+
+/* ---------- macro animation ---------- */
+const LIGHT_A = 15.4, LIGHT_B = 16.1;
+function updateMacro(t){
+  /* the Bunsen, lit as the second macro act starts */
+  const on = ramp(t, LIGHT_A, LIGHT_B);
+  const flick = 0.9 + Math.sin(t*21)*0.07 + Math.sin(t*34)*0.05;
+  flameOuter.material.opacity = on*0.55*flick;
+  flameInner.material.opacity = on*0.8*flick;
+  flameOuter.scale.y = flick; flameInner.scale.y = flick*1.04;
+  bunsenLight.position.set(0, 1.0, 0);
+  bunsenLight.intensity = on*1.7*flick;
+
+  /* the salt melts — and only then does anything electrical happen */
+  const molten = ramp(t, MELT_AT-1.6, MELT_AT+1.2);
+  meltMat.color.copy(new THREE.Color(SA.solid)).lerp(new THREE.Color(0xc8761f), molten*0.7);
+  meltMat.emissive.setRGB(molten*0.45, molten*0.16, molten*0.02);
+  meltMat.roughness = lerp(0.85, 0.3, molten);
+  meltLight.position.set(0, MELT_Y+0.2, 0);
+  meltLight.intensity = molten*1.6*flick;
+
+  /* the lamp: dark until there are ions that can move */
+  const lit = ramp(t, MELT_AT, MELT_AT+0.8);
+  lamp.material.emissive.setRGB(lit*1.0, lit*0.85, lit*0.45);
+  lamp.material.color.setRGB(lerp(0.48,1.0,lit), lerp(0.42,0.95,lit), lerp(0.26,0.7,lit));
+  lampLight.position.copy(lamp.position);
+  lampLight.intensity = lit*1.5;
+
+  /* the metal pooling under the cathode */
+  const pooled = ramp(t, MELT_AT+1.6, 32.0);
+  const h = Math.max(pooled*0.16, 0.001);
+  pool.scale.y = h;
+  pool.position.set(-EL_X, TRIPOD_Y - 0.05 + h/2, 0);
+  pool.visible = pooled > 0.03;
+  poolMat.color.copy(new THREE.Color(MT.col)).lerp(new THREE.Color(0xffb060), 0.25*molten);
+
+  updateVapour(t);
+}
+
+/* =====================================================================
+   ORBIT-ISH DRAG
+===================================================================== */
+let yaw=0, pitch=0, dragging=false, lx=0, ly=0;
+const el = renderer.domElement;
+function down(x,y){dragging=true;lx=x;ly=y;el.style.cursor='grabbing';}
+function move(x,y){
+  if(!dragging) return;
+  yaw   -= (x-lx)*0.005;
+  pitch  = Math.max(-0.9, Math.min(0.9, pitch + (y-ly)*0.004));
+  lx=x; ly=y;
+}
+function up(){dragging=false; el.style.cursor='grab';}
+el.style.cursor='grab';
+el.addEventListener('mousedown',e=>down(e.clientX,e.clientY));
+addEventListener('mousemove',e=>move(e.clientX,e.clientY));
+addEventListener('mouseup',up);
+el.addEventListener('touchstart',e=>{down(e.touches[0].clientX,e.touches[0].clientY);},{passive:true});
+el.addEventListener('touchmove',e=>{move(e.touches[0].clientX,e.touches[0].clientY);},{passive:true});
+addEventListener('touchend',up);
+
+const _sph = new THREE.Spherical();
+function applyCamera(){
+  const dir = camPos.clone().sub(camTgt);
+  _sph.setFromVector3(dir);
+  _sph.theta += yaw;
+  _sph.phi = Math.max(0.12, Math.min(Math.PI-0.12, _sph.phi - pitch));
+  dir.setFromSpherical(_sph);
+  camera.position.copy(camTgt).add(dir);
+  camera.lookAt(camTgt);
+}
+
+/* =====================================================================
+   UI
+===================================================================== */
+const capEl  = document.getElementById('caption');
+const fadeEl = document.getElementById('fade');
+const polesEl= document.getElementById('poles');
+const playBtn= document.getElementById('play');
+const scrub  = document.getElementById('scrub');
+const clock  = document.getElementById('clock');
+const keyEl  = document.getElementById('key');
+const menuEl = document.getElementById('menu');
+const gearEl = document.getElementById('gear');
+
+let t = 0, playing = true, lastFrame = performance.now(), curSeg = -1;
+
+playBtn.onclick = ()=>{ playing=!playing; playBtn.textContent = playing?'Pause':'Play'; };
+document.getElementById('restart').onclick = ()=>{ t=0; curSeg=-1; playing=true; playBtn.textContent='Pause'; };
+scrub.oninput = ()=>{ t = parseFloat(scrub.value); curSeg=-1; };
+addEventListener('keydown', e=>{
+  if(e.code==='Space'){ e.preventDefault(); playBtn.click(); }
+  if(e.code==='ArrowRight'){ t = Math.min(TOTAL, t+2); curSeg=-1; }
+  if(e.code==='ArrowLeft'){  t = Math.max(0, t-2);     curSeg=-1; }
+  if(e.code==='Escape') setMenu(false);
+});
+
+function captionFor(time){
+  let i=0; for(let k=0;k<SEGS.length;k++) if(time>=SEGS[k].t) i=k;
+  return i;
+}
+function fadeAmount(time){
+  let f=0;
+  for(const T of TRANSITIONS) f = Math.max(f, 1 - Math.min(1, Math.abs(time-T)/FADE));
+  return f;
+}
+
+const hexCss = k => '#'+k.toString(16).padStart(6,'0');
+
+function buildLegend(){
+  const rows = [
+    {sym:MT.sym, name:MT.name, col:MT.col},
+    {sym:HX.sym, name:HX.name, col:HX.col},
+    {sym:'C', name:'carbon electrodes', col:EL.C.col},
+    {sym:'e⁻', name:'electron', col:E_COL}
+  ];
+  keyEl.innerHTML = rows.map(r=>
+    `<div><span class="dot" style="background:${hexCss(r.col)}"></span><b>${r.sym}</b> ${r.name}</div>`
+  ).join('');
+}
+
+function buildMenu(){
+  document.getElementById('saltOpts').innerHTML = Object.keys(SALTS).map(k=>
+    `<button class="opt ${k===saltKey?'on':''}" data-key="${k}">` +
+    `<span class="f">${SALTS[k].formula}</span> · ${SALTS[k].name}</button>`
+  ).join('');
+  document.getElementById('menuEq').innerHTML =
+    `<span class="el neg">at the cathode (−)</span>${atCathode()}<br>` +
+    `<span class="el pos">at the anode (+)</span>${atAnode()}<br>` +
+    `<span class="el">overall</span>${equation()}` +
+    `<span>It must be molten — ${SA.mp} — because in the solid the ions cannot move, ` +
+    `and a current is moving charge. Once liquid, the metal always appears at the negative ` +
+    `electrode and the non-metal at the positive one. The electrons travel round the ` +
+    `external circuit, never through the liquid.</span>`;
+  menuEl.querySelectorAll('.opt').forEach(b=>{
+    b.onclick = ()=>{ saltKey = b.dataset.key; build(); playing = true; playBtn.textContent = 'Pause'; };
+  });
+}
+
+function setMenu(open){
+  menuEl.classList.toggle('open', open);
+  gearEl.classList.toggle('open', open);
+  if(open) buildMenu();
+}
+gearEl.onclick = ()=> setMenu(!menuEl.classList.contains('open'));
+
+/* ---------- rebuild everything that depends on the species ---------- */
+function build(){
+  derive();
+  buildVapour();
+  buildMicro1();
+  buildMicro2();
+  buildCaptions();
+  buildLegend();
+
+  document.title = `Electrolysis of molten ${SA.name}`;
+  document.getElementById('h1').textContent = `Electrolysis of molten ${SA.name}`;
+  document.getElementById('subtitle').textContent = equation();
+  scrub.style.setProperty('--hl', hexCss(MT.col));
+
+  if(menuEl.classList.contains('open')) buildMenu();
+  history.replaceState(null,'',`?salt=${saltKey}`);
+
+  t = 0; curSeg = -1;
+}
+build();
+
+/* =====================================================================
+   LOOP
+===================================================================== */
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt = Math.min((now-lastFrame)/1000, 1/24);
+  lastFrame = now;
+
+  if(playing){
+    t += dt;
+    if(t >= TOTAL){ t = TOTAL; playing=false; playBtn.textContent='Play'; }
+  }
+
+  updateMacro(t);
+  updateMicro1(t);
+  updateMicro2(t);
+  sampleCam(t);
+  applyCamera();
+
+  const f = fadeAmount(t);
+  fadeEl.style.opacity = f;
+  const seg = captionFor(t);
+  if(seg !== curSeg){ curSeg = seg; capEl.textContent = SEGS[seg].c; }
+  capEl.style.opacity = 1 - f;
+  /* the pole markers only make sense while we are inside the cell */
+  polesEl.style.opacity = (worldAt(t)==='micro2' ? (1-f)*0.95 : 0).toFixed(3);
+  scrub.value = t;
+  scrub.style.setProperty('--p', (t/TOTAL*100)+'%');
+  clock.textContent = t.toFixed(1)+' / '+TOTAL.toFixed(1)+'s';
+
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(frame);
+
+addEventListener('resize', ()=>{
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+</script>
+</body>
+</html>

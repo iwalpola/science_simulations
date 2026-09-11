@@ -1,0 +1,234 @@
+REACTION BUILDER — tutorial speaker notes
+=========================================
+Roughly 11-12 minutes with the demo pauses. [SHOW] = do this on screen;
+the rest is what you say.
+
+Sections 3 and 4 carry a "word for word" block. That is an ALTERNATIVE to
+the bullets above it, not an extra — the two cover the same ground, so read
+one or the other. Bullets if you are comfortable ad-libbing, script if you
+would rather not think about wording while you are also driving the mouse.
+
+
+1. THE ONE IDEA  (30s)
+----------------------
+[SHOW] Empty board, arrow button in the middle.
+
+- Single HTML file. No install, works offline.
+- Left of the arrow: reactants. Right: products.
+- The rule everything is built on: products are the SAME ATOMS, rearranged.
+  You can never add or delete matter on the right, only convert it.
+  That is why the two sides have different tools.
+
+
+2. GETTING THINGS ON THE BOARD  (45s)
+-------------------------------------
+[SHOW] Type "sulfuric" in the search box.
+
+- Search takes names, formulas, and categories: lithium, carbon dioxide,
+  sulfuric acid, carbonate.
+- Arrow keys to move, Enter to add — or drag a result straight onto the board.
+- It always lands on the LEFT and is mirrored to the right automatically.
+- Presets dropdown (bottom right) has 14 ready-made GCSE reactions.
+  "Clear board" empties everything.
+
+[SHOW] Load "Metal + acid (Mg + HCl)".
+
+
+3. PIECES AND HOW THEY JOIN  (1.5-2 min)
+----------------------------------------
+[SHOW] Point at the tiles.
+
+- Dashed outline = neutral atom. Solid = ion. Small dark tile = electron.
+- Ions are jigsaw pieces: a positive ion has holes on its right, a negative
+  ion has tabs on its left, one per unit of charge. Slide them together and
+  they lock into one piece — that is why H+ and Cl- sit as a pair.
+- Charge is not a number to remember, it is the shape of the tile.
+- Two identical atoms placed side by side bond on their own: 2H becomes H2.
+- Carbon is special: it is a block with two tabs each side, and oxygen has
+  the matching holes. Plug an oxygen onto each side of a carbon — that is
+  how you build CO2.
+
+
+   ---- word for word, if you want it ----
+
+   Every tile tells you what it is before you read the label. Dashed
+   outline, neutral atom. Solid tile, ion. And the little dark ones are
+   electrons.
+
+   Now look at the edges. A positive ion has holes punched into its
+   right-hand side. A negative ion has tabs sticking out on its left. One
+   for each unit of charge — so a magnesium two-plus has two holes, and a
+   chloride, one-minus, has a single tab.
+
+   [slide Mg2+ and two Cl- together]
+
+   Push them together and they lock. That's magnesium chloride — and
+   notice I never typed a formula and never balanced anything. The shapes
+   only fit one way. That's the whole idea: charge stops being a number to
+   remember and becomes something you can see.
+
+   [break an H2 apart, leave the two atoms side by side]
+
+   Atoms behave differently. Put two identical atoms next to each other —
+   hydrogen, oxygen, chlorine, that family — and they bond on their own.
+   Two H's become H-two.
+
+   [bring in a carbon and two oxygens]
+
+   And then there's carbon, which has a shape of its own. It's a block
+   with two tabs on each side, because carbon holds four bonds. Oxygen has
+   the matching holes. So: oxygen on the left, oxygen on the right — and
+   that is carbon dioxide, waiting to be made. Hold that thought.
+
+
+4. THE PRODUCTS-SIDE TOOLS  (3.5-4 min)  ** the core of the video **
+--------------------------------------------------------------------
+[SHOW] Hover (or tap) a piece on the right. Buttons appear beside it.
+
+Go through these on real pieces rather than listing them:
+
+  Scissors    Break the bonds / Split apart.
+              Splits a molecule into atoms, or an ionic compound into ions.
+              On a CH4 tile it breaks it into its atoms: C + 4H.
+
+  Undo arrow  Turn into its ion.
+              An atom gives up electrons (Na -> Na+ + e-) or takes them in
+              (Cl + e- -> Cl-). This is oxidation and reduction.
+
+  Scissors    Take the electrons off — an anion back to an atom.
+
+  Plus        Make a neutral atom.
+              A positive ion plus the right number of electrons. If the
+              electrons are loose elsewhere on the board it will fly them in.
+
+  Purple      Decomposition, e.g. CO3(2-) -> O(2-) + CO2. Only appears on
+              ions that actually do this.
+
+  Droplet     Combine into H2O / CO2.
+              Appears when the piece you have built adds up to a molecule:
+              H+ with OH-, or 2H+ with O(2-), or oxygen either side of carbon.
+
+Key point to land: **reduction uses real electrons.** If none are loose you
+get an error dialog. Electrons come from somewhere.
+
+[SHOW] Reactants side by contrast: only Duplicate and Delete.
+
+
+   ---- word for word, if you want it ----
+
+   Everything you do to the products happens on the piece itself. Hover
+   over one — or tap it, on a touchscreen — and the buttons appear beside
+   it.
+
+   [hover an ionic pair]
+
+   Scissors splits things up. On an ionic compound it says "split apart"
+   and hands you the separate ions. On a molecule it says "break the
+   bonds" and hands you loose atoms.
+
+   [hover a CH4 tile]
+
+   Methane is drawn as a single tile, so there are no bonds to cut — but
+   the scissors still open it, into a carbon and four hydrogens.
+
+   [hover a sodium atom]
+
+   This next one is the important one. The curved arrow turns an atom into
+   its ion. Sodium gives up an electron — and there it is, on the board,
+   as its own tile. That's oxidation, and the log has already written the
+   half-equation for you.
+
+   [hover a chlorine atom]
+
+   The same button on a chlorine goes the other way: chlorine takes an
+   electron in. And here is the bit I really want you to notice — it needs
+   a real one. If there is no free electron anywhere on the board, it
+   refuses, and tells you why. Electrons have to come from somewhere.
+   That's not the software being fussy, that's the chemistry.
+
+   [hover a negative ion]
+
+   Scissors on a negative ion does the reverse — takes the electrons back
+   off and leaves you the atom.
+
+   [hover a positive ion with electrons loose nearby]
+
+   Plus makes a neutral atom. Give a positive ion the right number of
+   electrons and it fuses. If they're loose elsewhere on the board, it
+   will fly them in for you.
+
+   [hover a carbonate]
+
+   Some ions decompose. Carbonate breaks into an oxide ion and carbon
+   dioxide. The button only appears on ions that genuinely do this, so
+   nobody is guessing.
+
+   [hover the H+/OH- pair, then the oxygen-carbon-oxygen from earlier]
+
+   And the droplet. When the pieces you've assembled add up to a molecule,
+   this offers to make it. Hydrogen and hydroxide give you water. Two
+   H-plus and an oxide give you water. And the oxygen-carbon-oxygen I
+   built a minute ago gives you carbon dioxide.
+
+   [hover any piece on the left]
+
+   One last thing. Go over to the reactants side and the tools are
+   completely different — duplicate, delete, and that's it. You cannot
+   create or destroy anything on the products side. Everything over there
+   has to have come from something you already had.
+
+
+5. THE TWO READOUTS  (45s)
+--------------------------
+[SHOW] Equation panel (right) and status strip (under the board).
+
+- Equation panel logs every step as it happens, labelled: Formation,
+  Bonding, Bond broken, Dissociation, Oxidation, Reduction, Half-equation,
+  Decomposition, Condensation. It is a worked answer building itself.
+- Status strip is the checklist:
+    "Atoms C H2 Ca Cl2"      what must be accounted for
+    "2 electrons still loose" park them somewhere
+    "still charged: Cl-"      not finished
+    "Products complete" tick  done
+
+
+6. HOUSEKEEPING  (30s)
+----------------------
+- Drag on empty space to marquee-select; Shift-click to add; Esc to clear.
+- Ctrl+D duplicates a reactant, Del removes one.
+- Arrow button in the middle: reset products — wipes the right and copies
+  the reactants across again. The undo button, effectively.
+
+
+7. WORKED EXAMPLE  (90s)
+------------------------
+Do ONE end to end, narrating. Suggested: Acid + metal carbonate.
+
+[SHOW] Load "Acid + metal carbonate (HCl + CaCO3)".
+  1. Scissors the CaCO3 apart.
+  2. Decompose the carbonate: CO3(2-) -> O(2-) + CO2.
+  3. Scissors both acid pairs apart.
+  4. Slide the two H+ onto the oxide's two sockets.
+  5. Droplet: 2H+ + O(2-) -> H2O.
+  6. Join Ca2+ with the two Cl- to finish CaCl2.
+  Status strip goes green. Read the log back — it is the full equation.
+
+If there is time, a second one with a different flavour: Metal displacement
+(Zn + CuSO4) shows electrons moving between metals cleanly.
+
+
+8. GOTCHAS TO MENTION  (30s)
+----------------------------
+- Water is deliberately two things: the H2O molecule, and the [H+][OH-] pair.
+  The pair is for reactions that pull water apart; the droplet turns it back.
+- The tool checks atoms and charge, not chemical sense. It will let a student
+  build a molecule the reaction would not actually make. That judgement is
+  still the teacher's — say so out loud.
+- Aqueous electrolysis: nothing enforces which ion discharges. Good starting
+  point, not a rule checker.
+
+
+CLOSING (15s)
+-------------
+- One file, share it or host it, nothing to set up.
+- Best used on a projector with students calling out the next move.

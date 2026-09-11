@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3D reaction scenes</title>
+<style>
+  :root{
+    --ink:#eef2f7;
+    --dim:#93a2b6;
+    --faint:#64748b;
+    --panel:rgba(255,255,255,.035);
+    --line:rgba(147,162,182,.18);
+    --accent:#7fb0ff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    background:#080b11;color:var(--ink);min-height:100vh;
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(ellipse 120% 70% at 50% -10%,rgba(60,90,150,.22),transparent 70%);
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:54px 28px 80px;}
+
+  header{margin-bottom:40px;}
+  .kicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:12px;}
+  h1{
+    font-family:"Iowan Old Style","Charter","Palatino Linotype",Georgia,serif;
+    font-weight:600;font-size:clamp(28px,4.4vw,40px);letter-spacing:.2px;line-height:1.15;
+  }
+  .lede{margin-top:14px;max-width:62ch;font-size:15px;line-height:1.6;color:var(--dim);}
+  .lede a{color:var(--accent);text-decoration:none;border-bottom:1px solid rgba(127,176,255,.3);}
+  .lede a:hover{border-bottom-color:var(--accent);}
+
+  .family{margin-top:44px;}
+  .family > h2{
+    font-family:"Iowan Old Style","Charter",Georgia,serif;
+    font-size:19px;font-weight:600;margin-bottom:4px;
+  }
+  .family > p{font-size:13px;color:var(--faint);margin-bottom:18px;}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:14px;}
+
+  .card{
+    display:block;text-decoration:none;color:inherit;
+    background:var(--panel);border:1px solid var(--line);border-radius:13px;
+    padding:17px 18px 16px;position:relative;
+    transition:background .18s ease,border-color .18s ease,transform .18s ease;
+  }
+  a.card:hover{background:rgba(255,255,255,.075);border-color:rgba(147,162,182,.4);transform:translateY(-2px);}
+  a.card:focus-visible{outline:2px solid var(--accent);outline-offset:3px;}
+  .card.todo{opacity:.52;}
+
+  .n{font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums;}
+  .card h3{font-size:15px;font-weight:600;margin:5px 0 9px;line-height:1.3;}
+  .eq{
+    font-family:"Iowan Old Style","Charter",Georgia,serif;
+    font-size:14.5px;color:var(--dim);font-variant-numeric:tabular-nums;line-height:1.4;
+  }
+  .tag{
+    display:inline-block;margin-top:12px;font-size:11px;letter-spacing:.06em;
+    text-transform:uppercase;padding:3px 8px;border-radius:5px;
+  }
+  .tag.ready{background:rgba(127,176,255,.16);color:#a8c9ff;border:1px solid rgba(127,176,255,.3);}
+  .tag.soon{background:rgba(147,162,182,.1);color:var(--faint);border:1px solid var(--line);}
+  .vary{margin-top:9px;font-size:11.5px;color:var(--faint);line-height:1.45;}
+
+  footer{margin-top:56px;padding-top:22px;border-top:1px solid var(--line);
+    font-size:12.5px;color:var(--faint);line-height:1.7;}
+  footer a{color:var(--dim);}
+
+  @media (max-width:560px){.wrap{padding:34px 18px 60px;} .grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">Chemistry &middot; molecular animation</div>
+  <h1>The fourteen reactions, in three dimensions</h1>
+  <p class="lede">
+    One scene per reaction type. Each runs from the bench down to the individual ions and back,
+    on a timeline you can scrub and pause. Every scene lets you swap the species &mdash; pick a
+    different metal, a different acid &mdash; and the chemistry, colours, labels and equation follow.
+    Built to sit alongside the <a href="../reactionbuilder/reaction-builder.html">Reaction Builder</a>,
+    which uses the same fourteen presets.
+  </p>
+</header>
+
+<section class="family">
+  <h2>In solution</h2>
+  <p>Bench, beaker, and a dive into the liquid to watch the ions swap partners.</p>
+  <div class="grid">
+
+    <a class="card" href="acid-metal-oxide.html">
+      <div class="n">01</div>
+      <h3>Acid + metal oxide</h3>
+      <div class="eq">CuO + H&#8322;SO&#8324; &rarr; CuSO&#8324; + H&#8322;O</div>
+      <div class="vary">4 metal oxides &times; 3 acids</div>
+      <span class="tag ready">Ready</span>
+    </a>
+
+    <a class="card" href="acid-metal-hydroxide.html">
+      <div class="n">02</div>
+      <h3>Acid + metal hydroxide</h3>
+      <div class="eq">HCl + NaOH &rarr; NaCl + H&#8322;O</div>
+      <div class="vary">9 pairs &times; 3 indicators &middot; including none at all</div>
+      <span class="tag ready">Ready</span>
+    </a>
+
+    <a class="card" href="acid-metal-carbonate.html">
+      <div class="n">03</div>
+      <h3>Acid + metal carbonate</h3>
+      <div class="eq">CaCO&#8323; + 2HCl &rarr; CaCl&#8322; + H&#8322;O + CO&#8322;</div>
+      <div class="vary">11 pairs &middot; watch the carbonate straighten into CO&#8322;</div>
+      <span class="tag ready">Ready</span>
+    </a>
+
+    <a class="card" href="metal-acid.html">
+      <div class="n">04</div>
+      <h3>Metal + acid</h3>
+      <div class="eq">Mg + 2HCl &rarr; MgCl&#8322; + H&#8322;</div>
+      <div class="vary">3 metals &times; 2 acids &middot; electrons you can count</div>
+      <span class="tag ready">Ready</span>
+    </a>
+
+    <a class="card" href="metal-water.html">
+      <div class="n">05</div>
+      <h3>Metal + water</h3>
+      <div class="eq">2Na + 2H&#8322;O &rarr; 2NaOH + H&#8322;</div>
+      <div class="vary">Li, Na, K &middot; why the trend down group 1 exists</div>
+      <span class="tag ready">Ready</span>
+    </a>
+
+    <a class="card" href="metal-displacement.html">
+      <div class="n">06</div>
+      <h3>Metal displacement</h3>
+      <div class="eq">Zn + CuSO&#8324; &rarr; ZnSO&#8324; + Cu</div>
+      <div class="vary">Any 2 of 4 metals &middot; pick the wrong way round and watch nothing happen</div>
+      <span class="tag ready">Ready</span>
+    </a>
+
+    <a class="card" href="halogen-displacement.html">
+      <div class="n">07</div>
+      <h3>Halogen displacement</h3>
+      <div class="eq">Cl&#8322; + 2KBr &rarr; 2KCl + Br&#8322;</div>
+      <div class="vary">Any 2 of 3 halogens &middot; a molecule becomes ions, and ions a molecule</div>
+      <span class="tag ready">Ready</span>
+    </a>
+
+  </div>
+</section>
+
+<section class="family">
+  <h2>Heated solid</h2>
+  <p>Bunsen, test tube or crucible. The micro world starts as a lattice.</p>
+  <div class="grid">
+
+    <a class="card" href="thermal-decomposition.html">
+      <div class="n">08</div>
+      <h3>Thermal decomposition</h3>
+      <div class="eq">CaCO&#8323; &rarr; CaO + CO&#8322;</div>
+      <div class="vary">5 carbonates &middot; one of them refuses to break down</div>
+      <span class="tag ready">Ready</span>
+    </a>
+
+    <a class="card" href="metal-oxide-carbon.html">
+      <div class="n">09</div>
+      <h3>Metal oxide + carbon</h3>
+      <div class="eq">2CuO + C &rarr; 2Cu + CO&#8322;</div>
+      <div class="vary">4 oxides &middot; carbon can only reduce the ones below it</div>
+      <span class="tag ready">Ready</span>
+    </a>
+
+  </div>
+</section>
+
+<section class="family">
+  <h2>Burning</h2>
+  <p>Flame and gas jar. Reactants meet in the open air.</p>
+  <div class="grid">
+
+    <a class="card" href="metal-oxygen.html">
+      <div class="n">10</div>
+      <h3>Metal + oxygen</h3>
+      <div class="eq">2Mg + O&#8322; &rarr; 2MgO</div>
+      <div class="vary">4 metals &middot; an ionic lattice built from scratch</div>
+      <span class="tag ready">Ready</span>
+    </a>
+
+    <a class="card" href="metal-halogen.html">
+      <div class="n">11</div>
+      <h3>Metal + halogen</h3>
+      <div class="eq">2Na + Cl&#8322; &rarr; 2NaCl</div>
+      <div class="vary">3 metals &times; 3 halogens &middot; one spare, one gap</div>
+      <span class="tag ready">Ready</span>
+    </a>
+
+    <a class="card" href="combustion.html">
+      <div class="n">12</div>
+      <h3>Combustion</h3>
+      <div class="eq">CH&#8324; + 2O&#8322; &rarr; CO&#8322; + 2H&#8322;O</div>
+      <div class="vary">4 fuels &times; air supply &middot; where the heat actually comes from</div>
+      <span class="tag ready">Ready</span>
+    </a>
+
+  </div>
+</section>
+
+<section class="family">
+  <h2>Electrolysis</h2>
+  <p>A cell, two electrodes and a field. Ions move because they are pulled, not because they meet.</p>
+  <div class="grid">
+
+    <a class="card" href="electrolysis-molten.html">
+      <div class="n">13</div>
+      <h3>Electrolysis, molten</h3>
+      <div class="eq">PbBr&#8322; &rarr; Pb + Br&#8322;</div>
+      <div class="vary">3 salts &middot; why it has to be molten, and where the electrons go</div>
+      <span class="tag ready">Ready</span>
+    </a>
+
+    <a class="card" href="electrolysis-aqueous.html">
+      <div class="n">14</div>
+      <h3>Electrolysis, aqueous</h3>
+      <div class="eq">2NaCl + 2H&#8322;O &rarr; 2NaOH + H&#8322; + Cl&#8322;</div>
+      <div class="vary">4 solutions &middot; four ions arrive, two are turned away</div>
+      <span class="tag ready">Ready</span>
+    </a>
+
+  </div>
+</section>
+
+<section class="family">
+  <h2>Beyond the fourteen</h2>
+  <p>Carbon reduces iron oxide too &mdash; but at 1500&nbsp;&deg;C, by a different route, and not on a bench.</p>
+  <div class="grid">
+
+    <a class="card" href="blast-furnace.html">
+      <div class="n">15</div>
+      <h3>The blast furnace</h3>
+      <div class="eq">2Fe&#8322;O&#8323; + 3C &rarr; 4Fe + 3CO&#8322;</div>
+      <div class="vary">2 ores &times; limestone on or off &middot; three steps, and the camera climbs with the gas</div>
+      <span class="tag ready">Ready</span>
+    </a>
+
+  </div>
+</section>
+
+<section class="family">
+  <h2>Particles</h2>
+  <p>Not a reaction &mdash; but the evidence that any of this is made of particles at all. Lives in its own folder.</p>
+  <div class="grid">
+
+    <a class="card" href="../particles/brownian-motion.html">
+      <div class="n">&mdash;</div>
+      <h3>Brownian Motion</h3>
+      <div class="eq">pollen &middot; water &middot; a microscope</div>
+      <div class="vary">3 grain sizes &times; 3 temperatures &middot; the molecules made visible</div>
+      <span class="tag ready">Ready</span>
+    </a>
+
+  </div>
+</section>
+
+<footer>
+  Drag to look around &middot; space to pause &middot; arrow keys to step &middot; the gear swaps the species.<br>
+  Chemistry and timings are checked by <code>node test-scenes.js</code>.<br>
+  <a href="../index.html">&larr; All simulations</a>
+</footer>
+
+</div>
+</body>
+</html>

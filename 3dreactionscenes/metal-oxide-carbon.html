@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Metal oxide + carbon</title>
+<style>
+  :root{
+    --ink:#eef2f7;
+    --dim:#93a2b6;
+    --panel:rgba(10,14,21,.72);
+    --line:rgba(147,162,182,.22);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;background:#080b11;color:var(--ink);
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;overflow:hidden;}
+  #stage{position:fixed;inset:0;}
+  canvas{display:block;}
+
+  #fade{position:fixed;inset:0;background:#080b11;pointer-events:none;opacity:0;}
+
+  .title{position:fixed;top:22px;left:26px;max-width:min(46ch,60vw);pointer-events:none;}
+  .title h1{
+    margin:0;
+    font-family:"Iowan Old Style","Charter","Palatino Linotype",Georgia,serif;
+    font-weight:600;font-size:23px;letter-spacing:.2px;line-height:1.25;
+  }
+  .title p{margin:6px 0 0;font-size:13px;line-height:1.5;color:var(--dim);}
+  .eq{font-variant-numeric:tabular-nums;}
+  .title a{pointer-events:auto;color:var(--dim);text-decoration:none;font-size:12px;
+    border-bottom:1px solid rgba(147,162,182,.3);}
+  .title a:hover{color:var(--ink);}
+
+  #caption{
+    position:fixed;left:50%;transform:translateX(-50%);
+    bottom:112px;width:min(680px,92vw);text-align:center;pointer-events:none;
+    font-family:"Iowan Old Style","Charter","Palatino Linotype",Georgia,serif;
+    font-size:19px;line-height:1.45;
+    text-shadow:0 2px 18px rgba(0,0,0,.85);
+    transition:opacity .35s ease;
+  }
+
+  #bar{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:20px;
+    width:min(720px,94vw);
+    background:var(--panel);backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:14px;
+    padding:12px 14px;display:flex;align-items:center;gap:12px;
+  }
+  button{
+    font:inherit;font-size:13px;color:var(--ink);
+    background:rgba(255,255,255,.06);border:1px solid var(--line);
+    border-radius:9px;padding:7px 13px;cursor:pointer;
+    transition:background .15s ease,border-color .15s ease;
+  }
+  button:hover{background:rgba(255,255,255,.12);}
+  button:focus-visible{outline:2px solid #7fb0ff;outline-offset:2px;}
+  #play{min-width:74px;}
+  #gear{padding:7px 11px;font-size:15px;line-height:1;}
+  #gear.open{background:rgba(127,176,255,.2);border-color:rgba(127,176,255,.5);}
+  #scrub{
+    flex:1;appearance:none;height:4px;border-radius:4px;
+    background:linear-gradient(90deg,var(--hl,#c8763c) 0%,var(--hl,#c8763c) var(--p,0%),rgba(255,255,255,.14) var(--p,0%));
+    cursor:pointer;
+  }
+  #scrub::-webkit-slider-thumb{appearance:none;width:14px;height:14px;border-radius:50%;
+    background:var(--ink);border:none;box-shadow:0 0 0 3px rgba(8,11,17,.6);}
+  #scrub::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--ink);border:none;}
+  #clock{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums;min-width:74px;text-align:right;}
+
+  #key{
+    position:fixed;right:24px;top:22px;
+    background:var(--panel);backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:12px;padding:11px 13px;
+    font-size:12.5px;line-height:1.9;color:var(--dim);
+  }
+  #key div{display:flex;align-items:center;gap:8px;}
+  .dot{width:11px;height:11px;border-radius:50%;flex:none;box-shadow:inset -2px -2px 3px rgba(0,0,0,.45);}
+  #key b{color:var(--ink);font-weight:600;}
+  #hint{position:fixed;bottom:90px;right:24px;font-size:11.5px;color:var(--dim);opacity:.75;}
+
+  /* ---- species menu ---- */
+  #menu{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:86px;
+    width:min(740px,94vw);
+    background:var(--panel);backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:14px;
+    padding:16px 18px;display:none;gap:18px;
+  }
+  #menu.open{display:flex;flex-wrap:wrap;}
+  #menu fieldset{border:none;margin:0;padding:0;flex:1;min-width:240px;}
+  #menu legend{
+    font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+    color:#64748b;padding:0 0 8px;
+  }
+  .opts{display:flex;flex-wrap:wrap;gap:6px;}
+  .opt{
+    font:inherit;font-size:12.5px;padding:6px 11px;border-radius:8px;
+    background:rgba(255,255,255,.05);border:1px solid var(--line);
+    color:var(--dim);cursor:pointer;
+  }
+  .opt:hover{background:rgba(255,255,255,.1);color:var(--ink);}
+  .opt.on{background:rgba(127,176,255,.18);border-color:rgba(127,176,255,.5);color:#dce9ff;}
+  .opt .f{font-family:"Iowan Old Style","Charter",Georgia,serif;font-variant-numeric:tabular-nums;}
+  .series{
+    flex-basis:100%;margin:0;font-size:12px;color:#64748b;line-height:1.9;
+    font-variant-numeric:tabular-nums;
+  }
+  .series .hi{color:#ffd9a0;font-weight:600;}
+  .series .me{color:#a8c9ff;font-weight:600;}
+  #menuEq{
+    flex-basis:100%;border-top:1px solid var(--line);padding-top:12px;margin:0;
+    font-family:"Iowan Old Style","Charter",Georgia,serif;font-size:16px;
+    color:var(--ink);font-variant-numeric:tabular-nums;
+  }
+  #menuEq span{color:#64748b;font-size:12px;display:block;margin-top:5px;
+    font-family:ui-sans-serif,system-ui,sans-serif;line-height:1.5;}
+  #menuEq b.no{color:#e89a8a;font-weight:600;}
+  #menuEq b.yes{color:#8fd3a8;font-weight:600;}
+  #menuEq a{color:#a8c9ff;}
+  #menuEq i{color:#a8c9ff;font-style:normal;}
+
+  @media (max-width:640px){
+    .title h1{font-size:18px;} .title p{display:none;}
+    #key{right:14px;top:14px;padding:8px 10px;font-size:11px;line-height:1.7;}
+    #caption{font-size:16px;bottom:100px;}
+    #hint{display:none;}
+    #clock{display:none;}
+    #menu{bottom:82px;padding:13px 14px;}
+  }
+  @media (prefers-reduced-motion:reduce){#caption{transition:none;}}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="fade"></div>
+
+<div class="title">
+  <h1 id="h1">Copper(II) oxide heated with carbon</h1>
+  <p class="eq" id="subtitle">2CuO + C → 2Cu + CO₂</p>
+  <p><a href="index.html">← All fourteen reactions</a></p>
+</div>
+
+<div id="key"></div>
+
+<div id="caption"></div>
+<div id="hint">Drag to look around</div>
+
+<div id="menu">
+  <fieldset>
+    <legend>Metal oxide, mixed with carbon powder</legend>
+    <div class="opts" id="oxideOpts"></div>
+  </fieldset>
+  <p class="series" id="series"></p>
+  <p id="menuEq"></p>
+</div>
+
+<div id="bar">
+  <button id="play">Pause</button>
+  <button id="restart">Restart</button>
+  <input id="scrub" type="range" min="0" max="60" step="0.01" value="0" aria-label="Timeline">
+  <span id="clock">0.0 / 60.0s</span>
+  <button id="gear" title="Change the oxide" aria-label="Change the oxide">⚙</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ---------------------------------------------------------------------------
+   SCENE 09 — metal oxide + carbon,  2MO + C → 2M + CO₂
+
+   A competition for oxygen, settled by the reactivity series. Carbon sits
+   between aluminium and zinc, so it can pull oxygen away from the oxides below
+   it — copper, lead — and cannot touch the ones above it. Choosing magnesium
+   or aluminium runs a shorter timeline in which the carbon comes up, is
+   refused, and the caption says the thing that matters: you cannot get these
+   metals by heating with carbon, which is why they are electrolysed instead.
+
+   The transfer is shown as it really is: the oxide ion hands its two electrons
+   to the metal ion — so the metal becomes a neutral atom and GROWS — and only
+   then does the now-neutral oxygen bond to the carbon. Two oxides per carbon,
+   because CO₂ needs two oxygens.
+
+   Iron and zinc are missing on purpose: carbon does reduce them, but not at
+   Bunsen temperature. That is a blast furnace, and it has its own scene.
+
+   Acts:
+     0  – 7   macro: the mixture in a tube, the delivery tube into limewater
+     7  – 15  micro 1: the two solids side by side
+    15  – 30  macro: heat it; metal appears and the limewater goes milky
+    30  – end micro 2: oxygen changes hands   (or refuses to)
+
+   Everything is a closed-form function of t — no particle sim.
+--------------------------------------------------------------------------- */
+
+/* ======================= the species tables ======================= */
+
+const EL = {               // the same palette as every other scene here
+  O:  {name:'oxygen',   col:0x2f47b8, r:0.50},
+  H:  {name:'hydrogen', col:0xd8402f, r:0.34},
+  C:  {name:'carbon',   col:0x4d5560, r:0.58}
+};
+const E_COL = 0xffe070;
+
+/* The school reactivity series, with carbon in it.  Anything with a lower
+   index than carbon cannot be reduced by carbon. */
+const SERIES = ['K','Na','Ca','Mg','Al','C','Zn','Fe','Sn','Pb','Cu','Ag'];
+const C_AT = SERIES.indexOf('C');
+const below = sym => SERIES.indexOf(sym) > C_AT;
+
+const OXIDES = {
+  CuO:   {sym:'Cu', name:'copper', full:'copper(II)', ion:'Cu²⁺', formula:'CuO',
+          solid:'copper(II) oxide', metalWord:'pink-brown',
+          col:0xc8763c, r:0.66, lblCol:'#f0b07a', ionR:0.54,
+          powder:0x14161a, powderWord:'black', ease:1.00},
+  PbO:   {sym:'Pb', name:'lead', full:'lead(II)', ion:'Pb²⁺', formula:'PbO',
+          solid:'lead(II) oxide', metalWord:'dull grey',
+          col:0x6f7480, r:0.78, lblCol:'#c8ccd4', ionR:0.64,
+          powder:0xd8c068, powderWord:'yellow', ease:0.80},
+  MgO:   {sym:'Mg', name:'magnesium', full:'magnesium', ion:'Mg²⁺', formula:'MgO',
+          solid:'magnesium oxide', metalWord:'silvery',
+          col:0xc3cbd6, r:0.62, lblCol:'#dde6f0', ionR:0.50,
+          powder:0xe6e8ec, powderWord:'white', ease:null},
+  Al2O3: {sym:'Al', name:'aluminium', full:'aluminium', ion:'Al³⁺', formula:'Al₂O₃',
+          solid:'aluminium oxide', metalWord:'silvery',
+          col:0xa9b2bd, r:0.58, lblCol:'#d4dae2', ionR:0.46,
+          powder:0xeceef0, powderWord:'white', ease:null}
+};
+
+const qs = new URLSearchParams(location.search);
+let oxideKey = OXIDES[qs.get('oxide')] ? qs.get('oxide') : 'CuO';
+let OX, REACTS, EASE;
+
+function derive(){
+  OX = OXIDES[oxideKey];
+  REACTS = below(OX.sym);          // the reactivity series decides, not a flag
+  EASE = OX.ease || 0;
+}
+
+const cap1 = s => s.charAt(0).toUpperCase() + s.slice(1);
+const equation = () => REACTS
+  ? `2${OX.formula} + C → 2${OX.sym} + CO₂`
+  : `${OX.formula} + C → no reaction`;
+const redox = () =>
+  `${OX.formula} is reduced — it loses oxygen.  C is oxidised — it gains oxygen.`;
+const halves = () =>
+  `2${OX.ion} + 4e⁻ → 2${OX.sym}     ·     C + 2O²⁻ → CO₂ + 4e⁻`;
+
+const MICRO1_Y =  400;   // the two solids
+const MICRO2_Y = -400;   // the handover
+
+/* ---------- renderer / scene ---------- */
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+document.getElementById('stage').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x080b11);
+
+const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.05, 2000);
+
+scene.add(new THREE.HemisphereLight(0x9fb4d0, 0x0a0d13, 0.6));
+const keyL = new THREE.DirectionalLight(0xffffff, 0.95); keyL.position.set(6,11,8); scene.add(keyL);
+const fill = new THREE.DirectionalLight(0x9ec3ff, 0.4); fill.position.set(-8,4,-6); scene.add(fill);
+const rim  = new THREE.DirectionalLight(0xffd9b0, 0.35); rim.position.set(0,3,-10); scene.add(rim);
+const flameLight = new THREE.PointLight(0x8fb4ff, 0, 7); scene.add(flameLight);
+
+(function environment(){
+  const env = new THREE.Scene();
+  const box = new THREE.BoxGeometry(1,1,1);
+  env.add(new THREE.Mesh(new THREE.BoxGeometry(24,14,24),
+    new THREE.MeshBasicMaterial({color:0x1d2634, side:THREE.BackSide})));
+  const panel=(hex,gain,x,y,z,sx,sy,sz)=>{
+    const m=new THREE.Mesh(box,new THREE.MeshBasicMaterial({color:hex}));
+    m.material.color.multiplyScalar(gain);
+    m.position.set(x,y,z); m.scale.set(sx,sy,sz); env.add(m);
+  };
+  panel(0xffffff,3.2,  0, 6.6,  0, 11,0.1,11);
+  panel(0xbcd6ff,1.3, -9, 1.0,  0, 0.1,9,16);
+  panel(0xffd7b0,0.9,  9, 1.0,  2, 0.1,9,16);
+  panel(0x8fb0e0,0.5,  0, 0.0,-10, 18,9,0.1);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(env, 0.04).texture;
+  pmrem.dispose();
+})();
+
+/* ---------- shared helpers ---------- */
+const SPH = new THREE.SphereGeometry(1,32,24);
+const SPH_LO = new THREE.SphereGeometry(1,16,12);
+const CYL = new THREE.CylinderGeometry(1,1,1,20,1,false);
+const ORIGIN = new THREE.Vector3();
+
+function atom(color, radius, opts={}){
+  const mat = new THREE.MeshStandardMaterial({
+    color, roughness: opts.rough ?? 0.35, metalness: opts.metal ?? 0.25,
+    emissive: new THREE.Color(color).multiplyScalar(0.06)
+  });
+  if(opts.op !== undefined && opts.op < 1){ mat.transparent = true; mat.opacity = opts.op; }
+  const m = new THREE.Mesh(opts.lo?SPH_LO:SPH, mat);
+  m.scale.setScalar(radius);
+  return m;
+}
+
+function electron(){
+  const g = new THREE.Group();
+  const core = new THREE.Mesh(SPH_LO, new THREE.MeshStandardMaterial({
+    color:0xfff6d0, emissive:E_COL, roughness:0.3, metalness:0,
+    transparent:true, opacity:1
+  }));
+  core.scale.setScalar(0.15);
+  const halo = new THREE.Mesh(SPH_LO, new THREE.MeshBasicMaterial({
+    color:E_COL, transparent:true, opacity:0.20,
+    blending:THREE.AdditiveBlending, depthWrite:false
+  }));
+  halo.scale.setScalar(0.36);
+  g.add(core, halo);
+  g.userData.core = core; g.userData.halo = halo;
+  return g;
+}
+function electronFade(e, a){
+  e.userData.core.material.opacity = a;
+  e.userData.halo.material.opacity = 0.20*a;
+  e.visible = a > 0.02;
+}
+
+function bond(color=0xa9b6c6, radius=0.13){
+  const m = new THREE.Mesh(CYL, new THREE.MeshStandardMaterial({
+    color, roughness:0.5, metalness:0.1, transparent:true, opacity:1
+  }));
+  m.userData.radius = radius;
+  return m;
+}
+const _v1=new THREE.Vector3(), _up=new THREE.Vector3(0,1,0);
+function placeBond(mesh, a, b, shrink=0){
+  const dir = new THREE.Vector3().subVectors(b,a);
+  const len = Math.max(dir.length()-shrink*2, 0.001);
+  mesh.position.copy(a).addScaledVector(dir,0.5);
+  mesh.scale.set(mesh.userData.radius, len, mesh.userData.radius);
+  mesh.quaternion.setFromUnitVectors(_up, dir.normalize());
+}
+function tubeSeg(a, b, r, mat){
+  const m = new THREE.Mesh(CYL, mat);
+  m.userData.radius = r;
+  placeBond(m, a, b, 0);
+  return m;
+}
+
+function label(text, color='#eef2f7', size=54){
+  const pad=16, c=document.createElement('canvas'), ctx=c.getContext('2d');
+  const font = `600 ${size}px "Iowan Old Style", Charter, Georgia, serif`;
+  ctx.font=font; const w=Math.ceil(ctx.measureText(text).width)+pad*2;
+  c.width=w; c.height=size+pad*2;
+  ctx.font=font; ctx.textBaseline='middle'; ctx.textAlign='center';
+  ctx.shadowColor='rgba(0,0,0,.9)'; ctx.shadowBlur=14;
+  ctx.fillStyle=color; ctx.fillText(text, c.width/2, c.height/2);
+  const tex = new THREE.CanvasTexture(c); tex.anisotropy=4;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:false, opacity:0}));
+  sp.renderOrder = 10;
+  sp.scale.set(c.width/c.height*0.62, 0.62, 1);
+  return sp;
+}
+
+const GLOW_TEX = (function(){
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(64,64,0,64,64,64);
+  g.addColorStop(0,   'rgba(255,255,255,1)');
+  g.addColorStop(0.3, 'rgba(220,235,255,.6)');
+  g.addColorStop(1,   'rgba(140,180,255,0)');
+  ctx.fillStyle = g; ctx.fillRect(0,0,128,128);
+  return new THREE.CanvasTexture(c);
+})();
+
+function lerp(a,b,t){ return a+(b-a)*t; }
+function clamp01(x){ return Math.max(0,Math.min(1,x)); }
+function smooth(x){ x=clamp01(x); return x*x*(3-2*x); }
+function ramp(t,a,b){ return smooth((t-a)/(b-a)); }
+
+function clearGroup(g){
+  for(let i=g.children.length-1;i>=0;i--){
+    const c = g.children[i];
+    g.remove(c);
+    c.traverse(o=>{
+      if(o.material){
+        if(o.material.map && o.material.map !== GLOW_TEX) o.material.map.dispose();
+        o.material.dispose();
+      }
+    });
+  }
+}
+function rng(seed){
+  let s = seed>>>0;
+  return ()=>{ s = (s*1664525 + 1013904223)>>>0; return s/4294967296; };
+}
+
+/* =====================================================================
+   MACRO WORLD — the same heated-solid kit as scene 08
+===================================================================== */
+const macro = new THREE.Group(); scene.add(macro);
+
+const bench = new THREE.Mesh(
+  new THREE.CylinderGeometry(9,9,0.35,64),
+  new THREE.MeshStandardMaterial({color:0x11151d, roughness:0.95, metalness:0})
+);
+bench.position.y=-0.175; macro.add(bench);
+
+const glassMat = new THREE.MeshStandardMaterial({
+  color:0xbfd6e8, roughness:0.07, metalness:0.0,
+  transparent:true, opacity:0.20, side:THREE.DoubleSide
+});
+const steel = new THREE.MeshStandardMaterial({color:0xb9c3cf, metalness:0.9, roughness:0.24});
+
+const STAND_X = -2.85;
+const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.055,5.0,16), steel);
+rod.position.set(STAND_X, 2.5, -0.45); macro.add(rod);
+const standBase = new THREE.Mesh(new THREE.BoxGeometry(1.0,0.09,0.8),
+  new THREE.MeshStandardMaterial({color:0x2a3140, metalness:0.55, roughness:0.5}));
+standBase.position.set(STAND_X, 0.045, -0.45); macro.add(standBase);
+const clampArm = new THREE.Mesh(new THREE.BoxGeometry(1.5,0.09,0.12), steel);
+clampArm.position.set(STAND_X+0.75, 2.42, -0.3); clampArm.rotation.z = 0.22; macro.add(clampArm);
+
+const TUBE_LEN = 2.7, TUBE_R = 0.30;
+const TUBE_TILT = -1.05;
+const TUBE_MID = new THREE.Vector3(-0.70, 2.30, 0);
+const reactTube = new THREE.Group();
+reactTube.position.copy(TUBE_MID);
+reactTube.rotation.z = TUBE_TILT;
+macro.add(reactTube);
+
+const rtWall = new THREE.Mesh(
+  new THREE.CylinderGeometry(TUBE_R,TUBE_R,TUBE_LEN,36,1,true), glassMat);
+reactTube.add(rtWall);
+const rtFoot = new THREE.Mesh(
+  new THREE.SphereGeometry(TUBE_R,28,18,0,Math.PI*2,Math.PI/2,Math.PI/2), glassMat);
+rtFoot.position.y = -TUBE_LEN/2; reactTube.add(rtFoot);
+const bung = new THREE.Mesh(new THREE.CylinderGeometry(TUBE_R+0.02,TUBE_R-0.02,0.26,24),
+  new THREE.MeshStandardMaterial({color:0x6b5a4a, roughness:0.85, metalness:0.02}));
+bung.position.y = TUBE_LEN/2 - 0.06; reactTube.add(bung);
+
+/* the mixture: the oxide, plus carbon powder stirred through it */
+let powder = null;
+const powderPos = new THREE.Vector3(0, -TUBE_LEN/2 + 0.16, 0);
+const CARBON_BLACK = 0x151719;
+function mixColour(){
+  return new THREE.Color(OX.powder).lerp(new THREE.Color(CARBON_BLACK), 0.55);
+}
+function buildPowder(){
+  if(powder){ reactTube.remove(powder); clearGroup(powder); }
+  powder = new THREE.Group();
+  powder.position.copy(powderPos);
+  const base = mixColour();
+  const heap = new THREE.Mesh(new THREE.SphereGeometry(1,22,14),
+    new THREE.MeshStandardMaterial({color:base, roughness:0.96, metalness:0.04}));
+  heap.scale.set(TUBE_R*0.92, 0.11, TUBE_R*0.92);
+  powder.add(heap);
+  const gGeo = new THREE.IcosahedronGeometry(0.028,0);
+  const rand = rng(20240909);
+  for(let i=0;i<36;i++){
+    // some grains are the oxide, some are carbon — it is a mixture
+    const isC = rand() < 0.45;
+    const g = new THREE.Mesh(gGeo, new THREE.MeshStandardMaterial({
+      color:new THREE.Color(isC?CARBON_BLACK:OX.powder).offsetHSL(0,0,(rand()-0.5)*0.07),
+      roughness:0.95, metalness:0.04
+    }));
+    const a = rand()*Math.PI*2, r = Math.sqrt(rand())*TUBE_R*0.8;
+    g.position.set(Math.cos(a)*r, 0.045 + rand()*0.05, Math.sin(a)*r);
+    g.rotation.set(rand()*3, rand()*3, rand()*3);
+    g.scale.setScalar(0.7+rand()*0.8);
+    g.userData.isC = isC;
+    powder.add(g);
+  }
+  reactTube.add(powder);
+}
+/* metal appears as specks among the black — only the oxide grains change */
+function tintPowder(mix, glow){
+  const metal = new THREE.Color(OX.col);
+  const base = mixColour();
+  powder.children.forEach((c,i)=>{
+    if(i === 0){
+      c.material.color.copy(base).lerp(metal, mix*0.45);
+    } else if(!c.userData.isC){
+      c.material.color.copy(new THREE.Color(OX.powder)).lerp(metal, mix);
+      c.material.metalness = lerp(0.04, 0.72, mix);
+      c.material.roughness = lerp(0.95, 0.30, mix);
+    }
+    c.material.emissive.setRGB(glow*0.6, glow*0.2, glow*0.02);
+  });
+}
+
+/* the delivery tube and the limewater */
+const LIME_X = 2.55, LIME_R = 0.34, LIME_BOT = 0.46, LIME_TOP = 1.68, LIME_MOUTH = 2.55;
+const bungTop = new THREE.Vector3().copy(TUBE_MID)
+  .add(new THREE.Vector3(Math.sin(-TUBE_TILT)*(TUBE_LEN/2+0.14),
+                         Math.cos(-TUBE_TILT)*(TUBE_LEN/2+0.14), 0));
+[[bungTop, new THREE.Vector3(1.45, 3.30, 0)],
+ [new THREE.Vector3(1.45, 3.30, 0), new THREE.Vector3(LIME_X, 3.05, 0)],
+ [new THREE.Vector3(LIME_X, 3.05, 0), new THREE.Vector3(LIME_X, 0.78, 0)]
+].forEach(([a,b])=> macro.add(tubeSeg(a,b,0.055,glassMat)));
+const DELIVERY_OUT = new THREE.Vector3(LIME_X, 0.78, 0);
+
+const limeTube = new THREE.Group(); limeTube.position.set(LIME_X,0,0); macro.add(limeTube);
+const ltWall = new THREE.Mesh(
+  new THREE.CylinderGeometry(LIME_R,LIME_R,LIME_MOUTH-LIME_BOT,36,1,true), glassMat);
+ltWall.position.y = LIME_BOT + (LIME_MOUTH-LIME_BOT)/2; limeTube.add(ltWall);
+const ltFoot = new THREE.Mesh(
+  new THREE.SphereGeometry(LIME_R,28,18,0,Math.PI*2,Math.PI/2,Math.PI/2), glassMat);
+ltFoot.position.y = LIME_BOT; limeTube.add(ltFoot);
+const limeMat = new THREE.MeshStandardMaterial({
+  color:0xe4eef8, roughness:0.1, metalness:0.0, transparent:true, opacity:0.34
+});
+const lime = new THREE.Mesh(
+  new THREE.CylinderGeometry(LIME_R-0.03,LIME_R-0.03,LIME_TOP-LIME_BOT,36), limeMat);
+lime.position.y = LIME_BOT + (LIME_TOP-LIME_BOT)/2; limeTube.add(lime);
+const limeFoot = new THREE.Mesh(
+  new THREE.SphereGeometry(LIME_R-0.03,26,16,0,Math.PI*2,Math.PI/2,Math.PI/2), limeMat);
+limeFoot.position.y = LIME_BOT; limeTube.add(limeFoot);
+
+const wood = new THREE.MeshStandardMaterial({color:0x3a3026, roughness:0.8, metalness:0.05});
+const rackBase = new THREE.Mesh(new THREE.BoxGeometry(1.1,0.12,0.8), wood);
+rackBase.position.set(LIME_X,0.06,0); macro.add(rackBase);
+const rackCollar = new THREE.Mesh(new THREE.TorusGeometry(LIME_R+0.07,0.065,8,26), wood);
+rackCollar.rotation.x = Math.PI/2; rackCollar.position.set(LIME_X,1.0,0); macro.add(rackCollar);
+[[-0.44],[0.44]].forEach(([dx])=>{
+  const p = new THREE.Mesh(new THREE.BoxGeometry(0.085,1.0,0.085), wood);
+  p.position.set(LIME_X+dx, 0.55, 0); macro.add(p);
+});
+
+/* the Bunsen */
+const BUNSEN_X = -1.80;
+const bBase = new THREE.Mesh(new THREE.CylinderGeometry(0.34,0.38,0.1,28),
+  new THREE.MeshStandardMaterial({color:0x252c38, metalness:0.6, roughness:0.45}));
+bBase.position.set(BUNSEN_X,0.05,0); macro.add(bBase);
+const bBarrel = new THREE.Mesh(new THREE.CylinderGeometry(0.085,0.10,1.00,20), steel);
+bBarrel.position.set(BUNSEN_X,0.58,0); macro.add(bBarrel);
+const bCollar = new THREE.Mesh(new THREE.CylinderGeometry(0.115,0.115,0.2,20), steel);
+bCollar.position.set(BUNSEN_X,0.24,0); macro.add(bCollar);
+
+const flameOuter = new THREE.Mesh(new THREE.ConeGeometry(0.17,1.25,20,1,true),
+  new THREE.MeshBasicMaterial({color:0x6f9cff, transparent:true, opacity:0,
+    blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide}));
+flameOuter.position.set(BUNSEN_X,1.69,0); macro.add(flameOuter);
+const flameInner = new THREE.Mesh(new THREE.ConeGeometry(0.075,0.55,16,1,true),
+  new THREE.MeshBasicMaterial({color:0x9fe8ff, transparent:true, opacity:0,
+    blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide}));
+flameInner.position.set(BUNSEN_X,1.355,0); macro.add(flameInner);
+const flameGlow = new THREE.Sprite(new THREE.SpriteMaterial({
+  map:GLOW_TEX, color:0x9fc4ff, transparent:true, opacity:0,
+  blending:THREE.AdditiveBlending, depthWrite:false, depthTest:false}));
+flameGlow.position.set(BUNSEN_X,1.7,0); flameGlow.scale.setScalar(1.6); macro.add(flameGlow);
+
+/* bubbles of CO₂ through the limewater */
+const bubbleGrp = new THREE.Group(); macro.add(bubbleGrp);
+let bubbles = [], FIZZ_A = 20.6, FIZZ_B = 29.2;
+function buildBubbles(){
+  clearGroup(bubbleGrp);
+  bubbles = [];
+  if(!REACTS) return;
+  FIZZ_A = lerp(22.6, 20.2, EASE);
+  const n = Math.round(40 + 80*EASE);
+  const rand = rng(20240919);
+  for(let i=0;i<n;i++){
+    const m = new THREE.Mesh(SPH_LO, new THREE.MeshStandardMaterial({
+      color:0xeaf4ff, roughness:0.05, metalness:0.1, transparent:true, opacity:0.5
+    }));
+    const b = {m, birth: FIZZ_A + rand()*(FIZZ_B-FIZZ_A),
+               x0:(rand()-0.5)*0.14, z0:(rand()-0.5)*0.14,
+               sz:0.03+rand()*0.045, speed:0.55+rand()*0.5, ph:rand()*6.283};
+    b.life = (LIME_TOP - DELIVERY_OUT.y)/b.speed;
+    bubbleGrp.add(m); bubbles.push(b);
+  }
+}
+function updateBubbles(t){
+  for(const b of bubbles){
+    const age = t - b.birth;
+    if(age < 0 || age > b.life + 0.22){ b.m.visible = false; continue; }
+    b.m.visible = true;
+    const rise = Math.min(age, b.life);
+    b.m.position.set(
+      DELIVERY_OUT.x + b.x0 + Math.sin(age*3+b.ph)*0.05,
+      DELIVERY_OUT.y + b.speed*rise,
+      b.z0 + Math.cos(age*2.6+b.ph)*0.05
+    );
+    b.m.scale.setScalar(b.sz);
+    b.m.material.opacity = 0.5*(1 - clamp01((age-b.life)/0.22));
+  }
+}
+
+/* =====================================================================
+   MICRO 1 — the two solids, side by side
+===================================================================== */
+const micro1 = new THREE.Group(); micro1.position.y=MICRO1_Y; scene.add(micro1);
+let M1 = {};
+
+/* a flake of graphite: carbons in a flat hexagon */
+function makeGraphite(scale){
+  const g = new THREE.Group();
+  const d = 1.05*scale, pts = [];
+  for(let i=0;i<6;i++){
+    const a = (i*60)*Math.PI/180;
+    const p = new THREE.Vector3(Math.cos(a)*d, Math.sin(a)*d, 0);
+    pts.push(p);
+    const c = atom(EL.C.col, EL.C.r*scale, {rough:0.45, metal:0.1});
+    c.position.copy(p); g.add(c);
+  }
+  for(let i=0;i<6;i++){
+    const b = bond(0x7c848f, 0.10*scale);
+    placeBond(b, pts[i], pts[(i+1)%6], 0.05);
+    g.add(b);
+  }
+  return g;
+}
+
+function buildMicro1(){
+  clearGroup(micro1);
+
+  /* the oxide lattice, on the left */
+  const oxide = new THREE.Group(); oxide.position.set(-4.4, 0, 0); micro1.add(oxide);
+  const oxUnits = [];
+  for(let ix=-1;ix<=1;ix++) for(let iy=-1;iy<=1;iy++) for(let iz=-1;iz<=0;iz++){
+    const u = new THREE.Group();
+    u.position.set(ix*2.4, iy*2.2, iz*2.3+1.0);
+    const flip = ((ix+iy+iz)%2===0)?1:-1;
+    const m = atom(OX.col, OX.ionR, {rough:0.3, metal:0.5, lo:true});
+    m.position.x = -0.68*flip;
+    const o = atom(EL.O.col, EL.O.r, {rough:0.28, metal:0.1, lo:true});
+    o.position.x = 0.68*flip;
+    const b = bond(0x9aa8bb, 0.13); placeBond(b, m.position, o.position, 0.05);
+    u.add(m,o,b);
+    u.userData.ph = Math.random()*6.283;
+    oxide.add(u); oxUnits.push(u);
+  }
+
+  /* the carbon, on the right */
+  const carbon = new THREE.Group(); carbon.position.set(4.4, 0, 0); micro1.add(carbon);
+  for(let k=0;k<3;k++){
+    const flake = makeGraphite(0.95);
+    flake.position.set((k-1)*0.5, (k-1)*1.9, (k-1)*1.4);
+    flake.rotation.set(0.25*k, 0.2*k, 0);
+    carbon.add(flake);
+  }
+
+  const lblOx = label(`${OX.solid}, ${OX.formula}`, OX.lblCol, 42);
+  lblOx.position.set(-4.4, -3.3, 0);
+  const lblC  = label('carbon', '#c8ced6', 42);
+  lblC.position.set(4.4, -3.3, 0);
+  const lblWant = label('both of them want the oxygen', '#ffe9a8', 40);
+  lblWant.position.set(0, 3.9, 0);
+  micro1.add(lblOx,lblC,lblWant);
+
+  M1 = {oxide, oxUnits, carbon, lblOx, lblC, lblWant};
+}
+
+function updateMicro1(t){
+  const {oxide, oxUnits, carbon, lblOx, lblC, lblWant} = M1;
+  const u = t - 7.0;
+  oxide.rotation.y = 0.2 + u*0.05;
+  carbon.rotation.y = -0.2 - u*0.04;
+  carbon.rotation.x = Math.sin(u*0.3)*0.22;
+  oxUnits.forEach(g=>{
+    g.position.y += Math.sin(t*1.2+g.userData.ph)*0.001;
+  });
+  const off = 1-ramp(t,12.8,13.8);
+  lblOx.material.opacity   = ramp(t,8.0,9.0)*off;
+  lblC.material.opacity    = ramp(t,8.6,9.6)*off;
+  lblWant.material.opacity = ramp(t,10.6,11.6)*off;
+}
+
+/* =====================================================================
+   MICRO 2 — oxygen changes hands.  Two oxides per carbon.
+===================================================================== */
+const micro2 = new THREE.Group(); micro2.position.y=MICRO2_Y; scene.add(micro2);
+let M2 = {};
+
+const V = (x,y,z)=>new THREE.Vector3(x,y,z);
+const CO2_LEN = 1.16;
+const P = {
+  cAt:    V( 0.90, 0.00, 0.00),     // the carbon atom
+  oxA:    V(-1.10, 1.70, 0.30),     // the two oxide ions
+  oxB:    V(-1.10,-1.70, 0.20),
+  catA:   V(-3.30, 2.30,-0.20),     // and their metal ions
+  catB:   V(-3.50,-2.20,-0.30),
+  metA:   V(-3.00, 0.55,-0.10),     // where the two metal atoms settle together
+  metB:   V(-3.00,-0.55,-0.10)
+};
+
+function buildMicro2(){
+  clearGroup(micro2);
+
+  /* the carbon, with a little graphite behind it for context */
+  const cAt = atom(EL.C.col, EL.C.r, {rough:0.45, metal:0.1});
+  micro2.add(cAt);
+  const flake = makeGraphite(0.8);
+  flake.position.set(3.4, -0.4, -2.2); flake.rotation.set(0.3,0.4,0);
+  micro2.add(flake);
+
+  /* two oxide ions and two metal ions */
+  const oxs = [], cats = [], bonds = [], es = [];
+  [[P.oxA,P.catA,+1],[P.oxB,P.catB,-1]].forEach(([op,cp,side],i)=>{
+    const o = atom(EL.O.col, EL.O.r, {rough:0.28, metal:0.1});
+    const c = atom(OX.col, OX.ionR, {rough:0.3, metal:0.5});
+    const ionic = bond(0x9aa8bb, 0.11);
+    const co = bond(0xa9b6c6, 0.12); co.material.opacity = 0;
+    const co2 = bond(0xa9b6c6, 0.075); co2.material.opacity = 0;
+    micro2.add(o,c,ionic,co,co2);
+    oxs.push(o); cats.push(c); bonds.push({ionic, co, co2, side});
+    for(let k=0;k<2;k++){
+      const e = electron(); electronFade(e,0); micro2.add(e); es.push(e);
+    }
+  });
+
+  const lblOxA = label('O²⁻','#9db4ff'), lblOxB = label('O²⁻','#9db4ff');
+  const lblIonA= label(OX.ion, OX.lblCol), lblIonB = label(OX.ion, OX.lblCol);
+  const lblMetA= label(OX.sym, OX.lblCol), lblMetB = label(OX.sym, OX.lblCol);
+  const lblC   = label('C','#c8ced6');
+  const lblCO2 = label('carbon dioxide, O=C=O','#a9c4ff',42);
+  const lblMetal = label(`${OX.name} metal`, OX.lblCol, 42);
+  const lblHeld  = label(`${OX.sym} holds its oxygen`, OX.lblCol, 42);
+  const lblE   = label('e⁻','#ffe9a8',42);
+  micro2.add(lblOxA,lblOxB,lblIonA,lblIonB,lblMetA,lblMetB,lblC,lblCO2,lblMetal,lblHeld,lblE);
+
+  M2 = {cAt,oxs,cats,bonds,es,
+        lblOxA,lblOxB,lblIonA,lblIonB,lblMetA,lblMetB,lblC,lblCO2,lblMetal,lblHeld,lblE};
+}
+
+const _pa=new THREE.Vector3(), _pb=new THREE.Vector3(), _pc=new THREE.Vector3();
+function setO(o, centre, deg, dist){
+  const a = deg*Math.PI/180;
+  o.position.set(centre.x + Math.cos(a)*dist, centre.y + Math.sin(a)*dist, centre.z);
+}
+
+function heatAt(t){ return ramp(t, 32.0, REACTS ? lerp(38.0,35.5,EASE) : 37.0); }
+
+/* ---- oxygen changes hands ---- */
+function updateHandover(t){
+  const {cAt,oxs,cats,bonds,es,
+         lblOxA,lblOxB,lblIonA,lblIonB,lblMetA,lblMetB,lblC,lblCO2,lblMetal,lblE} = M2;
+  const heat = heatAt(t);
+  const shake = 0.03 + heat*0.16;
+
+  /* the carbon, which ends up leaving as CO₂ */
+  const lift = Math.max(0, t - 50.6);
+  _pc.copy(P.cAt);
+  _pc.x += Math.sin(t*6.8)*shake; _pc.y += Math.cos(t*6.2)*shake;
+  _pc.y += lift*0.85; _pc.x += lift*0.18;
+  cAt.position.copy(_pc);
+
+  /* the handover: electrons first, then the oxygen moves across */
+  const give   = [ramp(t,36.6,39.6), ramp(t,37.2,40.2)];   // electrons cross
+  const became = [ramp(t,38.4,41.0), ramp(t,39.0,41.6)];   // ion → metal atom
+  const joined = [ramp(t,40.4,44.0), ramp(t,41.0,44.6)];   // oxygen joins carbon
+  const turn   = ramp(t, 47.4, 50.6);                      // CO₂ swings flat
+  const gather = ramp(t, 44.2, 48.0);                      // the metal collects
+
+  oxs.forEach((o,i)=>{
+    const start = i ? P.oxB : P.oxA;
+    const cat   = cats[i];
+    const b     = bonds[i];
+
+    /* the metal ion: becomes a neutral atom, and a metal atom is BIGGER
+       than its ion, because it has its electrons back */
+    _pa.copy(i ? P.catB : P.catA);
+    _pa.x += Math.sin(t*7.2+i)*shake; _pa.y += Math.cos(t*6.6+i)*shake;
+    _pa.lerp(i ? P.metB : P.metA, gather);
+    cat.position.copy(_pa);
+    cat.scale.setScalar(lerp(OX.ionR, OX.r, became[i]));
+    cat.material.metalness = lerp(0.5, 0.85, became[i]);
+    cat.material.roughness = lerp(0.30, 0.22, became[i]);
+
+    /* the oxygen: held by the metal, then swung round onto the carbon */
+    _pb.copy(start);
+    _pb.x += Math.sin(t*7.6+i)*shake; _pb.y += Math.cos(t*7.0+i)*shake;
+    if(joined[i] > 0){
+      const deg = lerp(i?270:90, i?180:0, turn);
+      const a = deg*Math.PI/180;
+      _v1.set(cAt.position.x + Math.cos(a)*CO2_LEN,
+              cAt.position.y + Math.sin(a)*CO2_LEN,
+              cAt.position.z);
+      _pb.lerp(_v1, joined[i]);
+    }
+    o.position.copy(_pb);
+
+    /* the ionic bond to the metal fades as the oxygen leaves it */
+    const ionicGone = ramp(t, 39.4 + i*0.6, 43.0 + i*0.6);
+    b.ionic.material.opacity = 1 - ionicGone;
+    b.ionic.visible = ionicGone < 0.99;
+    if(b.ionic.visible) placeBond(b.ionic, cat.position, _pb, 0.06);
+
+    /* and a bond to the carbon fades in */
+    const coOn = ramp(t, 42.0 + i*0.6, 44.4 + i*0.6);
+    const dbl  = ramp(t, 48.6, 50.6);
+    b.co.material.opacity = coOn*(1-dbl);
+    b.co.visible = b.co.material.opacity > 0.01;
+    if(b.co.visible) placeBond(b.co, cAt.position, _pb, 0.05);
+    b.co2.material.opacity = coOn*dbl;
+    b.co2.visible = b.co2.material.opacity > 0.01;
+    if(b.co2.visible){
+      _v1.set(0,0,0.1);
+      placeBond(b.co2, _v1.clone().add(cAt.position), _v1.clone().add(_pb), 0.05);
+    }
+
+    /* the two electrons: off the oxide, onto the metal ion */
+    for(let k=0;k<2;k++){
+      const e = es[i*2+k];
+      const off = V(k?0.52:-0.52, 0.48, 0.22);
+      _v1.copy(_pb).add(off);
+      _v1.x += Math.sin(t*2.6+k*2+i)*0.05;
+      _v1.lerp(cat.position, give[i]);
+      e.position.copy(_v1);
+      electronFade(e, ramp(t, 35.0+i*0.4, 36.2+i*0.4) * (1 - ramp(t, 39.0+i*0.6, 39.9+i*0.6)));
+    }
+  });
+
+  /* labels */
+  const named = ramp(t,30.6,31.6);
+  [[lblOxA,oxs[0],1],[lblOxB,oxs[1],-1]].forEach(([l,o,s])=>{
+    l.material.opacity = named*(1-ramp(t,43.4,44.4));
+    l.position.copy(o.position).add(_v1.set(0, s*0.95, 0));
+  });
+  [[lblIonA,lblMetA,cats[0],0],[lblIonB,lblMetB,cats[1],1]].forEach(([li,lm,c,i])=>{
+    li.material.opacity = named*(1-became[i]);
+    lm.material.opacity = became[i]*(1-ramp(t,53.0,54.0));
+    li.position.copy(c.position).add(_v1.set(-0.85, 0.75, 0));
+    lm.position.copy(li.position);
+  });
+  lblC.material.opacity = named*(1-ramp(t,50.8,51.8));
+  lblC.position.copy(cAt.position).add(_v1.set(0.9,0.2,0));
+  lblE.material.opacity = ramp(t,36.0,37.0)*(1-ramp(t,38.8,39.6));
+  lblE.position.copy(es[0].position).add(_v1.set(0.1,0.55,0));
+  lblCO2.material.opacity = ramp(t,50.8,51.8)*(1-ramp(t,56.0,57.0));
+  lblCO2.position.copy(cAt.position).add(_v1.set(0,1.8,0));
+  lblMetal.material.opacity = ramp(t,48.4,49.4)*(1-ramp(t,57.4,58.4));
+  lblMetal.position.set(P.metA.x + 0.3, -2.3, 0);
+}
+
+/* ---- the refusal: carbon cannot have it ---- */
+function updateRefusal(t){
+  const {cAt,oxs,cats,bonds,es,
+         lblOxA,lblOxB,lblIonA,lblIonB,lblMetA,lblMetB,lblC,lblCO2,lblMetal,lblHeld,lblE} = M2;
+  const heat = heatAt(t);
+  const shake = 0.03 + heat*0.20;
+
+  /* the carbon comes up to the oxide, hovers, and backs off */
+  const come = ramp(t, 31.0, 34.6), goes = ramp(t, 37.0, 41.2);
+  _pc.lerpVectors(V(4.6,-0.4,1.2), V(1.05,0.0,0.25), come);
+  if(goes > 0) _pc.lerp(V(5.0,-0.8,1.6), goes);
+  _pc.x += Math.sin(t*6.8)*shake; _pc.y += Math.cos(t*6.2)*shake;
+  cAt.position.copy(_pc);
+
+  /* the oxides stay exactly where they are, bonded to their metal ions */
+  oxs.forEach((o,i)=>{
+    const cat = cats[i], b = bonds[i];
+    _pa.copy(i ? P.catB : P.catA);
+    _pa.x += Math.sin(t*7.2+i)*shake; _pa.y += Math.cos(t*6.6+i)*shake;
+    cat.position.copy(_pa);
+    cat.scale.setScalar(OX.ionR);                 // still an ion at the end
+    _pb.copy(i ? P.oxB : P.oxA);
+    _pb.x += Math.sin(t*7.6+i)*shake; _pb.y += Math.cos(t*7.0+i)*shake;
+    o.position.copy(_pb);
+    b.ionic.material.opacity = 1; b.ionic.visible = true;
+    placeBond(b.ionic, _pa, _pb, 0.06);
+    b.co.visible = false; b.co2.visible = false;
+    for(let k=0;k<2;k++) electronFade(es[i*2+k], 0);
+  });
+
+  lblCO2.material.opacity = 0; lblMetal.material.opacity = 0; lblE.material.opacity = 0;
+  lblMetA.material.opacity = 0; lblMetB.material.opacity = 0;
+
+  const named = ramp(t,30.6,31.6), off = 1-ramp(t,39.2,40.2);
+  lblOxA.material.opacity = named*off;
+  lblOxA.position.copy(oxs[0].position).add(_v1.set(0,0.95,0));
+  lblOxB.material.opacity = named*off;
+  lblOxB.position.copy(oxs[1].position).add(_v1.set(0,-0.95,0));
+  lblIonA.material.opacity = named*off;
+  lblIonA.position.copy(cats[0].position).add(_v1.set(-0.85,0.75,0));
+  lblIonB.material.opacity = named*off;
+  lblIonB.position.copy(cats[1].position).add(_v1.set(-0.85,0.75,0));
+  lblC.material.opacity = named*off;
+  lblC.position.copy(cAt.position).add(_v1.set(0.8,0.2,0));
+  lblHeld.material.opacity = ramp(t,35.6,36.6)*off;
+  lblHeld.position.set(-2.2, -3.1, 0);
+}
+
+function updateMicro2(t){
+  if(REACTS) updateHandover(t); else updateRefusal(t);
+}
+
+/* =====================================================================
+   TIMELINE
+===================================================================== */
+let TOTAL = 60, SEGS = [], TRANSITIONS = [7.0, 15.0, 30.0];
+const FADE = 0.55;
+
+function buildCaptions(){
+  const opening = [
+    {t:0,    c:`${cap1(OX.solid)} mixed with carbon powder, in a tube over a Bunsen.`},
+    {t:3.5,  c:'Into the mixture first.'},
+    {t:7.0,  c:`Two solids: the oxide on one side, carbon on the other.`},
+    {t:10.6, c:'Both of them want that oxygen. Which one gets it is the whole question.'},
+    {t:13.0, c:'Back to the bench.'},
+    {t:15.0, c:'The limewater on the right is clear.'},
+    {t:17.2, c:'Heat it, hard.'}
+  ];
+  if(REACTS){
+    TOTAL = 60;
+    SEGS = opening.concat([
+      {t:20.6, c:'Bubbles through the limewater — and it is going milky. Carbon dioxide.'},
+      {t:24.2, c:`And in the tube, specks of ${OX.metalWord} metal. That is ${OX.name}.`},
+      {t:27.2, c:`${cap1(OX.name)} you can see, from a powder that had none in it loose.`},
+      {t:30.0, c:`Down into the mixture. Two ${OX.ion} ions, two O²⁻ ions, and a carbon atom.`},
+      {t:33.4, c:'Heat shakes everything, and the carbon gets in among the oxide.'},
+      {t:36.6, c:'Now watch the oxide ions. Each hands its two electrons to a metal ion.'},
+      {t:40.2, c:`Which makes them ${OX.sym} atoms — neutral, and bigger than the ions were.`},
+      {t:43.8, c:'And the oxygens, no longer charged, swing across onto the carbon.'},
+      {t:47.6, c:'Two of them, one carbon. O=C=O.'},
+      {t:50.8, c:'Off it goes, up the tube — which is what turned the limewater milky.'},
+      {t:53.8, c:`Leaving ${OX.name} metal behind. ${redox()}`},
+      {t:57.0, c: equation()}
+    ]);
+  } else {
+    TOTAL = 42;
+    SEGS = opening.concat([
+      {t:20.6, c:'Heat it as long as you like.'},
+      {t:24.2, c:'The limewater stays clear. No gas.'},
+      {t:27.2, c:`And no metal. The powder is still ${OX.powderWord}. Go down and see why.`},
+      {t:30.0, c:`Two ${OX.ion} ions, two O²⁻ ions, and a carbon atom — same as before.`},
+      {t:33.4, c:'The carbon comes right up to the oxide.'},
+      {t:36.4, c:`But ${OX.name} is above carbon in the reactivity series. It holds oxygen more tightly than carbon can pull.`},
+      {t:39.4, c:`Nothing is given up. ${equation()} — which is why ${OX.name} has to be extracted with electricity instead.`}
+    ]);
+  }
+}
+
+function worldAt(t){
+  if(t < 7.0)  return 'macro';
+  if(t < 15.0) return 'micro1';
+  if(t < 30.0) return 'macro';
+  return 'micro2';
+}
+
+const CAM_MACRO = [
+  {t:0,    p:[-0.4,3.9,6.2],  l:[0.0,2.0,0]},
+  {t:3.5,  p:[-1.4,2.9,2.4],  l:[-1.5,2.0,0]},
+  {t:7.0,  p:[-1.7,2.5,1.3],  l:[-1.6,1.85,0]},
+  {t:15.0, p:[1.4,3.2,5.6],   l:[1.3,1.6,0]},
+  {t:17.2, p:[-0.8,2.4,4.2],  l:[-1.4,1.5,0]},
+  {t:20.6, p:[2.3,1.9,2.8],   l:[2.5,1.2,0]},
+  {t:24.2, p:[-1.2,2.1,2.2],  l:[-1.55,1.8,0]},
+  {t:27.2, p:[-1.5,1.95,1.7], l:[-1.6,1.85,0]},
+  {t:30.0, p:[-1.45,2.0,1.5], l:[-1.55,1.85,0]}
+];
+const CAM_MICRO1 = [
+  {t:7.0,  p:[0,0.8,15.0],  l:[0,0,0]},
+  {t:10.6, p:[0,1.6,12.4],  l:[0,0,0]},
+  {t:13.0, p:[2.6,2.6,15.0],l:[0,0,0]},
+  {t:15.0, p:[0,6.0,30.0],  l:[0,0,0]}
+];
+const CAM_GIVE = [
+  {t:30.0, p:[0,0.8,13.0],    l:[-0.4,0,0]},
+  {t:33.4, p:[1.0,0.8,10.0],  l:[0.2,0,0]},
+  {t:36.6, p:[-0.6,1.2,7.6],  l:[-1.0,1.0,0.2]},
+  {t:40.2, p:[-1.8,0.8,7.8],  l:[-2.4,0.6,0]},
+  {t:43.8, p:[0.2,0.6,7.2],   l:[0.0,0.3,0.1]},
+  {t:47.6, p:[1.0,0.4,6.8],   l:[0.9,0.1,0]},
+  {t:50.8, p:[1.0,1.2,8.2],   l:[0.9,1.0,0]},
+  {t:53.8, p:[-1.8,0.6,8.4],  l:[-2.6,0.0,0]},
+  {t:57.0, p:[-0.6,1.2,11.6], l:[-1.0,0.2,0]},
+  {t:60.0, p:[0.6,1.6,13.6],  l:[-0.2,0.2,0]}
+];
+const CAM_REFUSE = [
+  {t:30.0, p:[0,0.8,13.0],    l:[-0.4,0,0]},
+  {t:33.4, p:[1.2,0.8,9.4],   l:[0.4,0,0]},
+  {t:36.4, p:[0.4,0.8,7.8],   l:[-0.3,0.2,0.2]},
+  {t:39.4, p:[-0.6,1.0,10.0], l:[-1.0,-0.4,0]},
+  {t:42.0, p:[0.4,1.4,12.6],  l:[-0.2,0,0]}
+];
+let CAM = {macro:CAM_MACRO, micro1:CAM_MICRO1, micro2:CAM_GIVE};
+
+const camPos=new THREE.Vector3(), camTgt=new THREE.Vector3();
+function sampleCam(t){
+  const w = worldAt(t), keys = CAM[w];
+  let i=0; while(i<keys.length-2 && t>=keys[i+1].t) i++;
+  const a=keys[i], b=keys[Math.min(i+1,keys.length-1)];
+  const u = b.t===a.t?0:smooth((t-a.t)/(b.t-a.t));
+  const off = w==='micro1'?MICRO1_Y : w==='micro2'?MICRO2_Y : 0;
+  camPos.set(lerp(a.p[0],b.p[0],u), lerp(a.p[1],b.p[1],u)+off, lerp(a.p[2],b.p[2],u));
+  camTgt.set(lerp(a.l[0],b.l[0],u), lerp(a.l[1],b.l[1],u)+off, lerp(a.l[2],b.l[2],u));
+}
+
+/* ---------- macro animation ---------- */
+const LIGHT_A = 17.2, LIGHT_B = 17.9;
+function updateMacro(t){
+  const on = ramp(t, LIGHT_A, LIGHT_B);
+  const flick = 0.9 + Math.sin(t*21)*0.07 + Math.sin(t*34)*0.04;
+  flameOuter.material.opacity = on*0.55*flick;
+  flameInner.material.opacity = on*0.8*flick;
+  flameOuter.scale.y = flick; flameInner.scale.y = flick*1.05;
+  flameGlow.material.opacity = on*0.5*flick;
+  flameLight.position.set(BUNSEN_X, 1.7, 0);
+  flameLight.intensity = on*1.9*flick;
+
+  const glow = on * ramp(t, LIGHT_B, LIGHT_B+2.0) * 0.6;
+  const mix = REACTS ? ramp(t, lerp(23.0,20.4,EASE), lerp(31.0,26.5,EASE)) : 0;
+  tintPowder(mix, glow);
+
+  const milky = REACTS ? ramp(t, FIZZ_A+1.4, FIZZ_B-1.0) : 0;
+  limeMat.color.setRGB(lerp(0.89,0.97,milky), lerp(0.93,0.97,milky), lerp(0.97,0.96,milky));
+  limeMat.opacity = lerp(0.34, 0.92, milky);
+
+  updateBubbles(t);
+}
+
+/* =====================================================================
+   ORBIT-ISH DRAG
+===================================================================== */
+let yaw=0, pitch=0, dragging=false, lx=0, ly=0;
+const el = renderer.domElement;
+function down(x,y){dragging=true;lx=x;ly=y;el.style.cursor='grabbing';}
+function move(x,y){
+  if(!dragging) return;
+  yaw   -= (x-lx)*0.005;
+  pitch  = Math.max(-0.9, Math.min(0.9, pitch + (y-ly)*0.004));
+  lx=x; ly=y;
+}
+function up(){dragging=false; el.style.cursor='grab';}
+el.style.cursor='grab';
+el.addEventListener('mousedown',e=>down(e.clientX,e.clientY));
+addEventListener('mousemove',e=>move(e.clientX,e.clientY));
+addEventListener('mouseup',up);
+el.addEventListener('touchstart',e=>{down(e.touches[0].clientX,e.touches[0].clientY);},{passive:true});
+el.addEventListener('touchmove',e=>{move(e.touches[0].clientX,e.touches[0].clientY);},{passive:true});
+addEventListener('touchend',up);
+
+const _sph = new THREE.Spherical();
+function applyCamera(){
+  const dir = camPos.clone().sub(camTgt);
+  _sph.setFromVector3(dir);
+  _sph.theta += yaw;
+  _sph.phi = Math.max(0.12, Math.min(Math.PI-0.12, _sph.phi - pitch));
+  dir.setFromSpherical(_sph);
+  camera.position.copy(camTgt).add(dir);
+  camera.lookAt(camTgt);
+}
+
+/* =====================================================================
+   UI
+===================================================================== */
+const capEl  = document.getElementById('caption');
+const fadeEl = document.getElementById('fade');
+const playBtn= document.getElementById('play');
+const scrub  = document.getElementById('scrub');
+const clock  = document.getElementById('clock');
+const keyEl  = document.getElementById('key');
+const menuEl = document.getElementById('menu');
+const gearEl = document.getElementById('gear');
+
+let t = 0, playing = true, lastFrame = performance.now(), curSeg = -1;
+
+playBtn.onclick = ()=>{ playing=!playing; playBtn.textContent = playing?'Pause':'Play'; };
+document.getElementById('restart').onclick = ()=>{ t=0; curSeg=-1; playing=true; playBtn.textContent='Pause'; };
+scrub.oninput = ()=>{ t = parseFloat(scrub.value); curSeg=-1; };
+addEventListener('keydown', e=>{
+  if(e.code==='Space'){ e.preventDefault(); playBtn.click(); }
+  if(e.code==='ArrowRight'){ t = Math.min(TOTAL, t+2); curSeg=-1; }
+  if(e.code==='ArrowLeft'){  t = Math.max(0, t-2);     curSeg=-1; }
+  if(e.code==='Escape') setMenu(false);
+});
+
+function captionFor(time){
+  let i=0; for(let k=0;k<SEGS.length;k++) if(time>=SEGS[k].t) i=k;
+  return i;
+}
+function fadeAmount(time){
+  let f=0;
+  for(const T of TRANSITIONS) f = Math.max(f, 1 - Math.min(1, Math.abs(time-T)/FADE));
+  return f;
+}
+
+const hexCss = n => '#'+n.toString(16).padStart(6,'0');
+
+function buildLegend(){
+  const rows = [
+    {sym:OX.sym, name:OX.name, col:OX.col},
+    {sym:'C', name:'carbon', col:EL.C.col},
+    {sym:'O', name:'oxygen', col:EL.O.col},
+    {sym:'e⁻', name:'electron', col:E_COL}
+  ];
+  keyEl.innerHTML = rows.map(r=>
+    `<div><span class="dot" style="background:${hexCss(r.col)}"></span><b>${r.sym}</b> ${r.name}</div>`
+  ).join('');
+}
+
+/* the series, with carbon picked out and the chosen metal highlighted */
+function buildSeries(){
+  document.getElementById('series').innerHTML =
+    'reactivity &nbsp;' + SERIES.map(s=>{
+      if(s === 'C') return `<span class="me">C</span>`;
+      if(s === OX.sym) return `<span class="hi">${s}</span>`;
+      return s;
+    }).join(' &nbsp;') +
+    `<br><span style="font-size:11px">only the oxides to the right of carbon can be reduced by it</span>`;
+}
+
+const byOrder = Object.keys(OXIDES).sort((a,b)=>
+  SERIES.indexOf(OXIDES[b].sym) - SERIES.indexOf(OXIDES[a].sym));
+
+function buildMenu(){
+  document.getElementById('oxideOpts').innerHTML = byOrder.map(k=>
+    `<button class="opt ${k===oxideKey?'on':''}" data-key="${k}">` +
+    `<span class="f">${OXIDES[k].formula}</span> · ${OXIDES[k].name}</button>`
+  ).join('');
+  buildSeries();
+  const verdict = REACTS
+    ? `<b class="yes">Carbon wins.</b> ${cap1(OX.name)} is below carbon, so carbon takes the oxygen and you get the metal.`
+    : `<b class="no">Carbon cannot.</b> ${cap1(OX.name)} is above carbon, so it keeps its oxygen no matter how hot you make it — this metal has to be extracted by electrolysis.`;
+  document.getElementById('menuEq').innerHTML =
+    `${equation()}<span>${verdict}` +
+    (REACTS? ` As electrons: <i>${halves()}</i>` : ``) +
+    `<br>Iron and zinc are not offered here: carbon does reduce them, but only at around 1500&nbsp;°C — ` +
+    `that is a <a href="blast-furnace.html">blast furnace</a>, not a Bunsen.</span>`;
+  menuEl.querySelectorAll('.opt').forEach(b=>{
+    b.onclick = ()=>{ oxideKey = b.dataset.key; build(); playing = true; playBtn.textContent = 'Pause'; };
+  });
+}
+
+function setMenu(open){
+  menuEl.classList.toggle('open', open);
+  gearEl.classList.toggle('open', open);
+  if(open) buildMenu();
+}
+gearEl.onclick = ()=> setMenu(!menuEl.classList.contains('open'));
+
+/* ---------- rebuild everything that depends on the species ---------- */
+function build(){
+  derive();
+  buildPowder();
+  buildBubbles();
+  buildMicro1();
+  buildMicro2();
+  buildCaptions();                    // sets TOTAL too
+  buildLegend();
+  CAM = {macro:CAM_MACRO, micro1:CAM_MICRO1, micro2: REACTS?CAM_GIVE:CAM_REFUSE};
+
+  document.title = `${cap1(OX.solid)} + carbon`;
+  document.getElementById('h1').textContent = `${cap1(OX.solid)} heated with carbon`;
+  document.getElementById('subtitle').textContent = equation();
+  scrub.style.setProperty('--hl', hexCss(OX.col));
+  scrub.max = TOTAL;
+
+  if(menuEl.classList.contains('open')) buildMenu();
+  history.replaceState(null,'',`?oxide=${oxideKey}`);
+
+  t = 0; curSeg = -1;
+}
+build();
+
+/* =====================================================================
+   LOOP
+===================================================================== */
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt = Math.min((now-lastFrame)/1000, 1/24);
+  lastFrame = now;
+
+  if(playing){
+    t += dt;
+    if(t >= TOTAL){ t = TOTAL; playing=false; playBtn.textContent='Play'; }
+  }
+
+  updateMacro(t);
+  updateMicro1(t);
+  updateMicro2(t);
+  sampleCam(t);
+  applyCamera();
+
+  const f = fadeAmount(t);
+  fadeEl.style.opacity = f;
+  const seg = captionFor(t);
+  if(seg !== curSeg){ curSeg = seg; capEl.textContent = SEGS[seg].c; }
+  capEl.style.opacity = 1 - f;
+  scrub.value = t;
+  scrub.style.setProperty('--p', (t/TOTAL*100)+'%');
+  clock.textContent = t.toFixed(1)+' / '+TOTAL.toFixed(1)+'s';
+
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(frame);
+
+addEventListener('resize', ()=>{
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thermal decomposition</title>
+<style>
+  :root{
+    --ink:#eef2f7;
+    --dim:#93a2b6;
+    --panel:rgba(10,14,21,.72);
+    --line:rgba(147,162,182,.22);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;background:#080b11;color:var(--ink);
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;overflow:hidden;}
+  #stage{position:fixed;inset:0;}
+  canvas{display:block;}
+
+  #fade{position:fixed;inset:0;background:#080b11;pointer-events:none;opacity:0;}
+
+  .title{position:fixed;top:22px;left:26px;max-width:min(46ch,60vw);pointer-events:none;}
+  .title h1{
+    margin:0;
+    font-family:"Iowan Old Style","Charter","Palatino Linotype",Georgia,serif;
+    font-weight:600;font-size:23px;letter-spacing:.2px;line-height:1.25;
+  }
+  .title p{margin:6px 0 0;font-size:13px;line-height:1.5;color:var(--dim);}
+  .eq{font-variant-numeric:tabular-nums;}
+  .title a{pointer-events:auto;color:var(--dim);text-decoration:none;font-size:12px;
+    border-bottom:1px solid rgba(147,162,182,.3);}
+  .title a:hover{color:var(--ink);}
+
+  #caption{
+    position:fixed;left:50%;transform:translateX(-50%);
+    bottom:112px;width:min(670px,92vw);text-align:center;pointer-events:none;
+    font-family:"Iowan Old Style","Charter","Palatino Linotype",Georgia,serif;
+    font-size:19px;line-height:1.45;
+    text-shadow:0 2px 18px rgba(0,0,0,.85);
+    transition:opacity .35s ease;
+  }
+
+  #bar{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:20px;
+    width:min(720px,94vw);
+    background:var(--panel);backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:14px;
+    padding:12px 14px;display:flex;align-items:center;gap:12px;
+  }
+  button{
+    font:inherit;font-size:13px;color:var(--ink);
+    background:rgba(255,255,255,.06);border:1px solid var(--line);
+    border-radius:9px;padding:7px 13px;cursor:pointer;
+    transition:background .15s ease,border-color .15s ease;
+  }
+  button:hover{background:rgba(255,255,255,.12);}
+  button:focus-visible{outline:2px solid #7fb0ff;outline-offset:2px;}
+  #play{min-width:74px;}
+  #gear{padding:7px 11px;font-size:15px;line-height:1;}
+  #gear.open{background:rgba(127,176,255,.2);border-color:rgba(127,176,255,.5);}
+  #scrub{
+    flex:1;appearance:none;height:4px;border-radius:4px;
+    background:linear-gradient(90deg,var(--hl,#3f8f63) 0%,var(--hl,#3f8f63) var(--p,0%),rgba(255,255,255,.14) var(--p,0%));
+    cursor:pointer;
+  }
+  #scrub::-webkit-slider-thumb{appearance:none;width:14px;height:14px;border-radius:50%;
+    background:var(--ink);border:none;box-shadow:0 0 0 3px rgba(8,11,17,.6);}
+  #scrub::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--ink);border:none;}
+  #clock{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums;min-width:74px;text-align:right;}
+
+  #key{
+    position:fixed;right:24px;top:22px;
+    background:var(--panel);backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:12px;padding:11px 13px;
+    font-size:12.5px;line-height:1.9;color:var(--dim);
+  }
+  #key div{display:flex;align-items:center;gap:8px;}
+  .dot{width:11px;height:11px;border-radius:50%;flex:none;box-shadow:inset -2px -2px 3px rgba(0,0,0,.45);}
+  #key b{color:var(--ink);font-weight:600;}
+  #hint{position:fixed;bottom:90px;right:24px;font-size:11.5px;color:var(--dim);opacity:.75;}
+
+  /* ---- species menu ---- */
+  #menu{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:86px;
+    width:min(720px,94vw);
+    background:var(--panel);backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:14px;
+    padding:16px 18px;display:none;gap:18px;
+  }
+  #menu.open{display:flex;flex-wrap:wrap;}
+  #menu fieldset{border:none;margin:0;padding:0;flex:1;min-width:220px;}
+  #menu legend{
+    font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+    color:#64748b;padding:0 0 8px;
+  }
+  .opts{display:flex;flex-wrap:wrap;gap:6px;}
+  .opt{
+    font:inherit;font-size:12.5px;padding:6px 11px;border-radius:8px;
+    background:rgba(255,255,255,.05);border:1px solid var(--line);
+    color:var(--dim);cursor:pointer;
+  }
+  .opt:hover{background:rgba(255,255,255,.1);color:var(--ink);}
+  .opt.on{background:rgba(127,176,255,.18);border-color:rgba(127,176,255,.5);color:#dce9ff;}
+  .opt .f{font-family:"Iowan Old Style","Charter",Georgia,serif;font-variant-numeric:tabular-nums;}
+  #menuEq{
+    flex-basis:100%;border-top:1px solid var(--line);padding-top:12px;margin:0;
+    font-family:"Iowan Old Style","Charter",Georgia,serif;font-size:16px;
+    color:var(--ink);font-variant-numeric:tabular-nums;
+  }
+  #menuEq span{color:#64748b;font-size:12px;display:block;margin-top:5px;
+    font-family:ui-sans-serif,system-ui,sans-serif;line-height:1.5;}
+  #menuEq b.no{color:#e89a8a;font-weight:600;}
+  #menuEq b.yes{color:#8fd3a8;font-weight:600;}
+  #menuEq i{color:#a8c9ff;font-style:normal;}
+
+  @media (max-width:640px){
+    .title h1{font-size:18px;} .title p{display:none;}
+    #key{right:14px;top:14px;padding:8px 10px;font-size:11px;line-height:1.7;}
+    #caption{font-size:16px;bottom:100px;}
+    #hint{display:none;}
+    #clock{display:none;}
+    #menu{bottom:82px;padding:13px 14px;}
+  }
+  @media (prefers-reduced-motion:reduce){#caption{transition:none;}}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="fade"></div>
+
+<div class="title">
+  <h1 id="h1">Heating copper(II) carbonate</h1>
+  <p class="eq" id="subtitle">CuCO₃ → CuO + CO₂</p>
+  <p><a href="index.html">← All fourteen reactions</a></p>
+</div>
+
+<div id="key"></div>
+
+<div id="caption"></div>
+<div id="hint">Drag to look around</div>
+
+<div id="menu">
+  <fieldset>
+    <legend>Carbonate — easiest to break down first</legend>
+    <div class="opts" id="carbOpts"></div>
+  </fieldset>
+  <p id="menuEq"></p>
+</div>
+
+<div id="bar">
+  <button id="play">Pause</button>
+  <button id="restart">Restart</button>
+  <input id="scrub" type="range" min="0" max="58" step="0.01" value="0" aria-label="Timeline">
+  <span id="clock">0.0 / 58.0s</span>
+  <button id="gear" title="Change the carbonate" aria-label="Change the carbonate">⚙</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ---------------------------------------------------------------------------
+   SCENE 08 — thermal decomposition,  MCO₃ → MO + CO₂
+
+   One compound, two products, and nothing added. The carbonate ion comes apart
+   under heat: one of its three oxygens stays behind with the metal ion as an
+   oxide, and the other two leave with the carbon as CO₂ — which means the
+   remainder has to straighten from 120° to 180°, exactly as it did in scene 03.
+   Same ion, two different ways of being taken apart.
+
+   There is a second path. Carbonates of very reactive metals do not decompose
+   at all on heating, so choosing sodium carbonate runs a shorter timeline in
+   which the lattice is heated hard and simply holds. That refusal is the
+   lesson — the more reactive the metal, the more heat-stable its carbonate.
+
+   Acts:
+     0  – 7   macro: the tube, the bung, the delivery tube into limewater
+     7  – 15  micro 1: the carbonate lattice
+    15  – 30  macro: light the Bunsen; the limewater goes milky
+    30  – end micro 2: the carbonate ion comes apart   (or holds)
+
+   Everything is a closed-form function of t — no particle sim.
+--------------------------------------------------------------------------- */
+
+/* ======================= the species tables ======================= */
+
+const EL = {               // the same palette as every other scene here
+  O:  {name:'oxygen',   col:0x2f47b8, r:0.50},
+  H:  {name:'hydrogen', col:0xd8402f, r:0.34},
+  C:  {name:'carbon',   col:0x4d5560, r:0.58}
+};
+
+/* `ease` is how readily it decomposes — copper carbonate goes almost at once,
+   calcium carbonate needs a roaring flame. null means it does not go at all. */
+const CARBONATES = {
+  CuCO3: {sym:'Cu', name:'copper', full:'copper(II)', ion:'Cu²⁺', nCat:1,
+          formula:'CuCO₃', solid:'copper(II) carbonate', oxide:'CuO',
+          oxideName:'copper(II) oxide',
+          col:0xc8763c, r:0.66, lblCol:'#f0b07a',
+          powder:0x3f8f63, powderWord:'green',
+          oxPowder:0x14161a, oxWord:'black', ease:1.00},
+  ZnCO3: {sym:'Zn', name:'zinc', full:'zinc', ion:'Zn²⁺', nCat:1,
+          formula:'ZnCO₃', solid:'zinc carbonate', oxide:'ZnO',
+          oxideName:'zinc oxide',
+          col:0x9fb0c2, r:0.64, lblCol:'#cfe0f0',
+          powder:0xeceef0, powderWord:'white',
+          oxPowder:0xf4ead0, oxWord:'faintly yellow while it is hot', ease:0.85},
+  MgCO3: {sym:'Mg', name:'magnesium', full:'magnesium', ion:'Mg²⁺', nCat:1,
+          formula:'MgCO₃', solid:'magnesium carbonate', oxide:'MgO',
+          oxideName:'magnesium oxide',
+          col:0xc3cbd6, r:0.62, lblCol:'#dde6f0',
+          powder:0xe6e8ec, powderWord:'white',
+          oxPowder:0xeef0f4, oxWord:'white', ease:0.70},
+  CaCO3: {sym:'Ca', name:'calcium', full:'calcium', ion:'Ca²⁺', nCat:1,
+          formula:'CaCO₃', solid:'calcium carbonate', oxide:'CaO',
+          oxideName:'calcium oxide — quicklime',
+          col:0xd6d9c2, r:0.72, lblCol:'#e6e8d8',
+          powder:0xe8e9e4, powderWord:'white',
+          oxPowder:0xf2f2ee, oxWord:'white', ease:0.28},
+  Na2CO3:{sym:'Na', name:'sodium', full:'sodium', ion:'Na⁺', nCat:2,
+          formula:'Na₂CO₃', solid:'sodium carbonate', oxide:null,
+          oxideName:null,
+          col:0xd9cbb0, r:0.66, lblCol:'#ece0c8',
+          powder:0xf0f0ee, powderWord:'white',
+          oxPowder:0xf0f0ee, oxWord:'white', ease:null}
+};
+
+const qs = new URLSearchParams(location.search);
+let carbKey = CARBONATES[qs.get('carbonate')] ? qs.get('carbonate') : 'CuCO3';
+let CB, DECOMPOSES, EASE;
+
+function derive(){
+  CB = CARBONATES[carbKey];
+  DECOMPOSES = CB.ease !== null;
+  EASE = CB.ease || 0;
+}
+
+const cap1 = s => s.charAt(0).toUpperCase() + s.slice(1);
+const equation = () => DECOMPOSES
+  ? `${CB.formula} → ${CB.oxide} + CO₂`
+  : `${CB.formula} → no reaction, however hard you heat it`;
+const ionicEq = () => 'CO₃²⁻ → O²⁻ + CO₂';
+const colourChanges = () => CB.powder !== CB.oxPowder;
+
+const MICRO1_Y =  400;   // the carbonate lattice
+const MICRO2_Y = -400;   // the decomposition
+
+/* ---------- renderer / scene ---------- */
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+document.getElementById('stage').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x080b11);
+
+const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.05, 2000);
+
+scene.add(new THREE.HemisphereLight(0x9fb4d0, 0x0a0d13, 0.6));
+const keyL = new THREE.DirectionalLight(0xffffff, 0.95); keyL.position.set(6,11,8); scene.add(keyL);
+const fill = new THREE.DirectionalLight(0x9ec3ff, 0.4); fill.position.set(-8,4,-6); scene.add(fill);
+const rim  = new THREE.DirectionalLight(0xffd9b0, 0.35); rim.position.set(0,3,-10); scene.add(rim);
+const flameLight = new THREE.PointLight(0x8fb4ff, 0, 7); scene.add(flameLight);
+
+(function environment(){
+  const env = new THREE.Scene();
+  const box = new THREE.BoxGeometry(1,1,1);
+  env.add(new THREE.Mesh(new THREE.BoxGeometry(24,14,24),
+    new THREE.MeshBasicMaterial({color:0x1d2634, side:THREE.BackSide})));
+  const panel=(hex,gain,x,y,z,sx,sy,sz)=>{
+    const m=new THREE.Mesh(box,new THREE.MeshBasicMaterial({color:hex}));
+    m.material.color.multiplyScalar(gain);
+    m.position.set(x,y,z); m.scale.set(sx,sy,sz); env.add(m);
+  };
+  panel(0xffffff,3.2,  0, 6.6,  0, 11,0.1,11);
+  panel(0xbcd6ff,1.3, -9, 1.0,  0, 0.1,9,16);
+  panel(0xffd7b0,0.9,  9, 1.0,  2, 0.1,9,16);
+  panel(0x8fb0e0,0.5,  0, 0.0,-10, 18,9,0.1);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(env, 0.04).texture;
+  pmrem.dispose();
+})();
+
+/* ---------- shared helpers ---------- */
+const SPH = new THREE.SphereGeometry(1,32,24);
+const SPH_LO = new THREE.SphereGeometry(1,16,12);
+const CYL = new THREE.CylinderGeometry(1,1,1,20,1,false);
+const ORIGIN = new THREE.Vector3();
+
+function atom(color, radius, opts={}){
+  const mat = new THREE.MeshStandardMaterial({
+    color, roughness: opts.rough ?? 0.35, metalness: opts.metal ?? 0.25,
+    emissive: new THREE.Color(color).multiplyScalar(0.06)
+  });
+  if(opts.op !== undefined && opts.op < 1){ mat.transparent = true; mat.opacity = opts.op; }
+  const m = new THREE.Mesh(opts.lo?SPH_LO:SPH, mat);
+  m.scale.setScalar(radius);
+  return m;
+}
+
+function bond(color=0xa9b6c6, radius=0.13){
+  const m = new THREE.Mesh(CYL, new THREE.MeshStandardMaterial({
+    color, roughness:0.5, metalness:0.1, transparent:true, opacity:1
+  }));
+  m.userData.radius = radius;
+  return m;
+}
+const _v1=new THREE.Vector3(), _up=new THREE.Vector3(0,1,0);
+function placeBond(mesh, a, b, shrink=0){
+  const dir = new THREE.Vector3().subVectors(b,a);
+  const len = Math.max(dir.length()-shrink*2, 0.001);
+  mesh.position.copy(a).addScaledVector(dir,0.5);
+  mesh.scale.set(mesh.userData.radius, len, mesh.userData.radius);
+  mesh.quaternion.setFromUnitVectors(_up, dir.normalize());
+}
+/* a length of glass tubing between two points */
+function tubeSeg(a, b, r, mat){
+  const m = new THREE.Mesh(CYL, mat);
+  m.userData.radius = r;
+  placeBond(m, a, b, 0);
+  return m;
+}
+
+function label(text, color='#eef2f7', size=54){
+  const pad=16, c=document.createElement('canvas'), ctx=c.getContext('2d');
+  const font = `600 ${size}px "Iowan Old Style", Charter, Georgia, serif`;
+  ctx.font=font; const w=Math.ceil(ctx.measureText(text).width)+pad*2;
+  c.width=w; c.height=size+pad*2;
+  ctx.font=font; ctx.textBaseline='middle'; ctx.textAlign='center';
+  ctx.shadowColor='rgba(0,0,0,.9)'; ctx.shadowBlur=14;
+  ctx.fillStyle=color; ctx.fillText(text, c.width/2, c.height/2);
+  const tex = new THREE.CanvasTexture(c); tex.anisotropy=4;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:false, opacity:0}));
+  sp.renderOrder = 10;
+  sp.scale.set(c.width/c.height*0.62, 0.62, 1);
+  return sp;
+}
+
+/* a soft round glow, for the flame */
+const GLOW_TEX = (function(){
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(64,64,0,64,64,64);
+  g.addColorStop(0,   'rgba(255,255,255,1)');
+  g.addColorStop(0.3, 'rgba(220,235,255,.6)');
+  g.addColorStop(1,   'rgba(140,180,255,0)');
+  ctx.fillStyle = g; ctx.fillRect(0,0,128,128);
+  return new THREE.CanvasTexture(c);
+})();
+
+function lerp(a,b,t){ return a+(b-a)*t; }
+function clamp01(x){ return Math.max(0,Math.min(1,x)); }
+function smooth(x){ x=clamp01(x); return x*x*(3-2*x); }
+function ramp(t,a,b){ return smooth((t-a)/(b-a)); }
+
+function clearGroup(g){
+  for(let i=g.children.length-1;i>=0;i--){
+    const c = g.children[i];
+    g.remove(c);
+    c.traverse(o=>{
+      if(o.material){
+        if(o.material.map && o.material.map !== GLOW_TEX) o.material.map.dispose();
+        o.material.dispose();
+      }
+    });
+  }
+}
+function rng(seed){
+  let s = seed>>>0;
+  return ()=>{ s = (s*1664525 + 1013904223)>>>0; return s/4294967296; };
+}
+
+/* =====================================================================
+   MACRO WORLD — the heated-solid kit: a clamped tube over a Bunsen, with a
+   delivery tube into limewater.  Shared with scene 09.
+===================================================================== */
+const macro = new THREE.Group(); scene.add(macro);
+
+const bench = new THREE.Mesh(
+  new THREE.CylinderGeometry(9,9,0.35,64),
+  new THREE.MeshStandardMaterial({color:0x11151d, roughness:0.95, metalness:0})
+);
+bench.position.y=-0.175; macro.add(bench);
+
+const glassMat = new THREE.MeshStandardMaterial({
+  color:0xbfd6e8, roughness:0.07, metalness:0.0,
+  transparent:true, opacity:0.20, side:THREE.DoubleSide
+});
+const steel = new THREE.MeshStandardMaterial({color:0xb9c3cf, metalness:0.9, roughness:0.24});
+
+/* --- the stand and clamp --- */
+const STAND_X = -2.85;
+const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.055,5.0,16), steel);
+rod.position.set(STAND_X, 2.5, -0.45); macro.add(rod);
+const standBase = new THREE.Mesh(new THREE.BoxGeometry(1.0,0.09,0.8),
+  new THREE.MeshStandardMaterial({color:0x2a3140, metalness:0.55, roughness:0.5}));
+standBase.position.set(STAND_X, 0.045, -0.45); macro.add(standBase);
+const clampArm = new THREE.Mesh(new THREE.BoxGeometry(1.5,0.09,0.12), steel);
+clampArm.position.set(STAND_X+0.75, 2.42, -0.3); clampArm.rotation.z = 0.22; macro.add(clampArm);
+
+/* --- the reaction tube, tilted so the closed end sits over the flame --- */
+const TUBE_LEN = 2.7, TUBE_R = 0.30;
+const TUBE_TILT = -1.05;                      // radians, from vertical
+const TUBE_MID = new THREE.Vector3(-0.70, 2.30, 0);
+const reactTube = new THREE.Group();
+reactTube.position.copy(TUBE_MID);
+reactTube.rotation.z = TUBE_TILT;
+macro.add(reactTube);
+
+const rtWall = new THREE.Mesh(
+  new THREE.CylinderGeometry(TUBE_R,TUBE_R,TUBE_LEN,36,1,true), glassMat);
+reactTube.add(rtWall);
+const rtFoot = new THREE.Mesh(
+  new THREE.SphereGeometry(TUBE_R,28,18,0,Math.PI*2,Math.PI/2,Math.PI/2), glassMat);
+rtFoot.position.y = -TUBE_LEN/2; reactTube.add(rtFoot);
+/* the bung, at the open end */
+const bung = new THREE.Mesh(new THREE.CylinderGeometry(TUBE_R+0.02,TUBE_R-0.02,0.26,24),
+  new THREE.MeshStandardMaterial({color:0x6b5a4a, roughness:0.85, metalness:0.02}));
+bung.position.y = TUBE_LEN/2 - 0.06; reactTube.add(bung);
+
+/* the powder, sitting in the closed end */
+let powder = null;
+const powderPos = new THREE.Vector3(0, -TUBE_LEN/2 + 0.16, 0);   // tube-local
+function buildPowder(){
+  if(powder){ reactTube.remove(powder); clearGroup(powder); }
+  powder = new THREE.Group();
+  powder.position.copy(powderPos);
+  const heap = new THREE.Mesh(new THREE.SphereGeometry(1,22,14),
+    new THREE.MeshStandardMaterial({color:CB.powder, roughness:0.96, metalness:0.04}));
+  heap.scale.set(TUBE_R*0.92, 0.10, TUBE_R*0.92);
+  powder.add(heap);
+  const gGeo = new THREE.IcosahedronGeometry(0.028,0);
+  const rand = rng(20240908);
+  for(let i=0;i<34;i++){
+    const g = new THREE.Mesh(gGeo, new THREE.MeshStandardMaterial({
+      color:new THREE.Color(CB.powder).offsetHSL(0,0,(rand()-0.5)*0.08),
+      roughness:0.95, metalness:0.04
+    }));
+    const a = rand()*Math.PI*2, r = Math.sqrt(rand())*TUBE_R*0.8;
+    g.position.set(Math.cos(a)*r, 0.04 + rand()*0.05, Math.sin(a)*r);
+    g.rotation.set(rand()*3, rand()*3, rand()*3);
+    g.scale.setScalar(0.7+rand()*0.8);
+    powder.add(g);
+  }
+  reactTube.add(powder);
+}
+/* repaint the heap as the carbonate turns into the oxide */
+function tintPowder(mix, glow){
+  const from = new THREE.Color(CB.powder), to = new THREE.Color(CB.oxPowder);
+  powder.children.forEach(c=>{
+    c.material.color.copy(from).lerp(to, mix);
+    c.material.emissive.setRGB(glow*0.55, glow*0.17, glow*0.02);
+  });
+}
+
+/* --- the delivery tube, bending over into the limewater --- */
+const LIME_X = 2.55, LIME_R = 0.34, LIME_BOT = 0.46, LIME_TOP = 1.68, LIME_MOUTH = 2.55;
+const bungTop = new THREE.Vector3().copy(TUBE_MID)
+  .add(new THREE.Vector3(Math.sin(-TUBE_TILT)*(TUBE_LEN/2+0.14),
+                         Math.cos(-TUBE_TILT)*(TUBE_LEN/2+0.14), 0));
+[[bungTop, new THREE.Vector3(1.45, 3.30, 0)],
+ [new THREE.Vector3(1.45, 3.30, 0), new THREE.Vector3(LIME_X, 3.05, 0)],
+ [new THREE.Vector3(LIME_X, 3.05, 0), new THREE.Vector3(LIME_X, 0.78, 0)]
+].forEach(([a,b])=> macro.add(tubeSeg(a,b,0.055,glassMat)));
+const DELIVERY_OUT = new THREE.Vector3(LIME_X, 0.78, 0);
+
+/* --- the limewater, in a tube in a rack --- */
+const limeTube = new THREE.Group(); limeTube.position.set(LIME_X,0,0); macro.add(limeTube);
+const ltWall = new THREE.Mesh(
+  new THREE.CylinderGeometry(LIME_R,LIME_R,LIME_MOUTH-LIME_BOT,36,1,true), glassMat);
+ltWall.position.y = LIME_BOT + (LIME_MOUTH-LIME_BOT)/2; limeTube.add(ltWall);
+const ltFoot = new THREE.Mesh(
+  new THREE.SphereGeometry(LIME_R,28,18,0,Math.PI*2,Math.PI/2,Math.PI/2), glassMat);
+ltFoot.position.y = LIME_BOT; limeTube.add(ltFoot);
+const limeMat = new THREE.MeshStandardMaterial({
+  color:0xe4eef8, roughness:0.1, metalness:0.0, transparent:true, opacity:0.34
+});
+const lime = new THREE.Mesh(
+  new THREE.CylinderGeometry(LIME_R-0.03,LIME_R-0.03,LIME_TOP-LIME_BOT,36), limeMat);
+lime.position.y = LIME_BOT + (LIME_TOP-LIME_BOT)/2; limeTube.add(lime);
+const limeFoot = new THREE.Mesh(
+  new THREE.SphereGeometry(LIME_R-0.03,26,16,0,Math.PI*2,Math.PI/2,Math.PI/2), limeMat);
+limeFoot.position.y = LIME_BOT; limeTube.add(limeFoot);
+
+const wood = new THREE.MeshStandardMaterial({color:0x3a3026, roughness:0.8, metalness:0.05});
+const rackBase = new THREE.Mesh(new THREE.BoxGeometry(1.1,0.12,0.8), wood);
+rackBase.position.set(LIME_X,0.06,0); macro.add(rackBase);
+const rackCollar = new THREE.Mesh(new THREE.TorusGeometry(LIME_R+0.07,0.065,8,26), wood);
+rackCollar.rotation.x = Math.PI/2; rackCollar.position.set(LIME_X,1.0,0); macro.add(rackCollar);
+[[-0.44],[0.44]].forEach(([dx])=>{
+  const p = new THREE.Mesh(new THREE.BoxGeometry(0.085,1.0,0.085), wood);
+  p.position.set(LIME_X+dx, 0.55, 0); macro.add(p);
+});
+
+/* --- the Bunsen, under the closed end of the tube --- */
+const BUNSEN_X = -1.80;
+const bBase = new THREE.Mesh(new THREE.CylinderGeometry(0.34,0.38,0.1,28),
+  new THREE.MeshStandardMaterial({color:0x252c38, metalness:0.6, roughness:0.45}));
+bBase.position.set(BUNSEN_X,0.05,0); macro.add(bBase);
+const bBarrel = new THREE.Mesh(new THREE.CylinderGeometry(0.085,0.10,1.00,20), steel);
+bBarrel.position.set(BUNSEN_X,0.58,0); macro.add(bBarrel);
+const bCollar = new THREE.Mesh(new THREE.CylinderGeometry(0.115,0.115,0.2,20), steel);
+bCollar.position.set(BUNSEN_X,0.24,0); macro.add(bCollar);
+
+const flameOuter = new THREE.Mesh(new THREE.ConeGeometry(0.17,1.25,20,1,true),
+  new THREE.MeshBasicMaterial({color:0x6f9cff, transparent:true, opacity:0,
+    blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide}));
+flameOuter.position.set(BUNSEN_X,1.08+0.625-0.02,0); macro.add(flameOuter);
+const flameInner = new THREE.Mesh(new THREE.ConeGeometry(0.075,0.55,16,1,true),
+  new THREE.MeshBasicMaterial({color:0x9fe8ff, transparent:true, opacity:0,
+    blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide}));
+flameInner.position.set(BUNSEN_X,1.08+0.275,0); macro.add(flameInner);
+const flameGlow = new THREE.Sprite(new THREE.SpriteMaterial({
+  map:GLOW_TEX, color:0x9fc4ff, transparent:true, opacity:0,
+  blending:THREE.AdditiveBlending, depthWrite:false, depthTest:false}));
+flameGlow.position.set(BUNSEN_X,1.7,0); flameGlow.scale.setScalar(1.6); macro.add(flameGlow);
+
+/* --- bubbles of CO₂ coming out of the delivery tube --- */
+const bubbleGrp = new THREE.Group(); macro.add(bubbleGrp);
+let bubbles = [], FIZZ_A = 20.0, FIZZ_B = 29.2;
+function buildBubbles(){
+  clearGroup(bubbleGrp);
+  bubbles = [];
+  if(!DECOMPOSES) return;
+  FIZZ_A = lerp(23.0, 19.4, EASE);           // the easy ones start sooner
+  const n = Math.round(40 + 90*EASE);
+  const rand = rng(20240918);
+  for(let i=0;i<n;i++){
+    const m = new THREE.Mesh(SPH_LO, new THREE.MeshStandardMaterial({
+      color:0xeaf4ff, roughness:0.05, metalness:0.1, transparent:true, opacity:0.5
+    }));
+    const b = {m, birth: FIZZ_A + rand()*(FIZZ_B-FIZZ_A),
+               x0:(rand()-0.5)*0.14, z0:(rand()-0.5)*0.14,
+               sz:0.03+rand()*0.045, speed:0.55+rand()*0.5, ph:rand()*6.283};
+    b.life = (LIME_TOP - DELIVERY_OUT.y)/b.speed;
+    bubbleGrp.add(m); bubbles.push(b);
+  }
+}
+function updateBubbles(t){
+  for(const b of bubbles){
+    const age = t - b.birth;
+    if(age < 0 || age > b.life + 0.22){ b.m.visible = false; continue; }
+    b.m.visible = true;
+    const rise = Math.min(age, b.life);
+    b.m.position.set(
+      DELIVERY_OUT.x + b.x0 + Math.sin(age*3+b.ph)*0.05,
+      DELIVERY_OUT.y + b.speed*rise,
+      b.z0 + Math.cos(age*2.6+b.ph)*0.05
+    );
+    b.m.scale.setScalar(b.sz);
+    b.m.material.opacity = 0.5*(1 - clamp01((age-b.life)/0.22));
+  }
+}
+
+/* =====================================================================
+   MOLECULE BUILDERS
+===================================================================== */
+const CO_DIST = 1.24;
+function makeCarbonate(){
+  const g = new THREE.Group();
+  g.add(atom(EL.C.col, EL.C.r, {rough:0.4, metal:0.2}));
+  [90,210,330].forEach(deg=>{
+    const a = deg*Math.PI/180;
+    const o = atom(EL.O.col, 0.46, {rough:0.28, metal:0.1});
+    o.position.set(Math.cos(a)*CO_DIST, Math.sin(a)*CO_DIST, 0);
+    const b = bond(0xa9b6c6, 0.12); placeBond(b, ORIGIN, o.position, 0.05);
+    g.add(o,b);
+  });
+  return g;
+}
+
+/* =====================================================================
+   MICRO 1 — the carbonate lattice
+===================================================================== */
+const micro1 = new THREE.Group(); micro1.position.y=MICRO1_Y; scene.add(micro1);
+let M1 = {};
+
+function buildMicro1(){
+  clearGroup(micro1);
+  const lattice = new THREE.Group(); micro1.add(lattice);
+  const units = [];
+  for(let ix=-1;ix<=1;ix++) for(let iy=-1;iy<=1;iy++) for(let iz=-1;iz<=0;iz++){
+    if(Math.abs(ix)+Math.abs(iy)===2 && iz===-1) continue;
+    const u = new THREE.Group();
+    u.position.set(ix*3.6, iy*3.3, iz*3.5+1.6);
+    const flip = ((ix+iy+iz)%2===0)?1:-1;
+    for(let k=0;k<CB.nCat;k++){
+      const c = atom(CB.col, CB.r, {rough:0.3, metal:0.5});
+      c.position.set(-1.55*flip, CB.nCat>1 ? (k?0.95:-0.95) : 0, 0);
+      u.add(c);
+    }
+    const co3 = makeCarbonate(); co3.scale.setScalar(0.78);
+    co3.position.x = 1.15*flip;
+    co3.rotation.set(Math.random()*0.5, Math.random()*0.6, Math.random()*Math.PI);
+    u.add(co3);
+    u.rotation.set(Math.random()*0.4, Math.random()*Math.PI, Math.random()*0.3);
+    u.userData.phase = Math.random()*6.283;
+    lattice.add(u); units.push(u);
+  }
+  const front = units.pop();
+  lattice.remove(front); micro1.add(front);
+  front.position.set(0,0,5.8); front.rotation.set(0,0,0); front.scale.setScalar(1.1);
+
+  const lblM = label(CB.ion, CB.lblCol);
+  const lblC = label('CO₃²⁻','#9db4ff');
+  const lblU = label(`${CB.solid}, ${CB.formula}`,'#dfe7f2',42);
+  lblM.position.set(-1.8, 1.6, 5.8);
+  lblC.position.set( 1.5, 1.9, 5.8);
+  lblU.position.set(0, -2.2, 5.8);
+  micro1.add(lblM,lblC,lblU);
+
+  M1 = {lattice, units, front, lblM, lblC, lblU};
+}
+
+function updateMicro1(t){
+  const {lattice, units, front, lblM, lblC, lblU} = M1;
+  const u = t - 7.0;
+  lattice.rotation.y = 0.12 + u*0.05;
+  lattice.rotation.x = Math.sin(u*0.22)*0.08;
+  units.forEach(g=>{
+    g.position.y += Math.sin(t*1.1+g.userData.phase)*0.0009;
+    g.rotation.y += 0.0014;
+  });
+  front.position.y = Math.sin(u*0.8)*0.10;
+  front.rotation.y = Math.sin(u*0.3)*0.25;
+
+  const off = 1-ramp(t,12.6,13.6);
+  lblM.material.opacity = ramp(t,8.0,9.0)*off;
+  lblC.material.opacity = ramp(t,8.6,9.6)*off;
+  lblU.material.opacity = ramp(t,10.4,11.4)*off;
+}
+
+/* =====================================================================
+   MICRO 2 — heat shakes the lattice, and one carbonate ion comes apart
+===================================================================== */
+const micro2 = new THREE.Group(); micro2.position.y=MICRO2_Y; scene.add(micro2);
+let M2 = {};
+
+const V = (x,y,z)=>new THREE.Vector3(x,y,z);
+const P = {
+  carbHome: V( 1.05, 0.00, 0.00),    // the carbonate ion we follow
+  catHome:  V(-1.55, 0.00, 0.00),    // and the metal ion beside it
+  oxSeat:   V(-0.30, 0.15, 0.10)     // where the freed oxygen settles
+};
+
+function buildMicro2(){
+  clearGroup(micro2);
+
+  /* the surrounding lattice, which is what actually shakes */
+  const around = new THREE.Group(); micro2.add(around);
+  const neighbours = [];
+  for(let ix=-1;ix<=1;ix++) for(let iy=-1;iy<=1;iy++) for(let iz=-1;iz<=0;iz++){
+    if(ix===0 && iy===0 && iz===0) continue;
+    const u = new THREE.Group();
+    u.position.set(ix*5.0, iy*4.6, iz*4.8 - 1.2);
+    const flip = ((ix+iy+iz)%2===0)?1:-1;
+    for(let k=0;k<CB.nCat;k++){
+      const c = atom(CB.col, CB.r, {rough:0.3, metal:0.5, lo:true});
+      c.position.set(-1.55*flip, CB.nCat>1 ? (k?0.95:-0.95) : 0, 0);
+      u.add(c);
+    }
+    const co3 = makeCarbonate(); co3.scale.setScalar(0.78);
+    co3.position.x = 1.15*flip;
+    u.add(co3);
+    u.userData = {home:u.position.clone(), ph:Math.random()*6.283, sp:0.8+Math.random()*0.8};
+    around.add(u); neighbours.push(u);
+  }
+
+  /* the one we follow, built loose so it can be taken apart */
+  const carb = new THREE.Group(); micro2.add(carb);
+  const cC = atom(EL.C.col, EL.C.r, {rough:0.4, metal:0.2});
+  const oA = atom(EL.O.col, 0.46, {rough:0.28, metal:0.1});
+  const oB = atom(EL.O.col, 0.46, {rough:0.28, metal:0.1});
+  const bA = bond(0xa9b6c6, 0.12), bB = bond(0xa9b6c6, 0.12);
+  const dA1 = bond(0xa9b6c6, 0.075), dA2 = bond(0xa9b6c6, 0.075);
+  const dB1 = bond(0xa9b6c6, 0.075), dB2 = bond(0xa9b6c6, 0.075);
+  [dA1,dA2,dB1,dB2].forEach(d=>d.material.opacity = 0);
+  carb.add(cC,oA,oB,bA,bB,dA1,dA2,dB1,dB2);
+
+  /* the oxygen that stays behind, and the metal ion it stays with */
+  const oC = atom(EL.O.col, EL.O.r, {rough:0.28, metal:0.1});
+  const bC = bond(0xa9b6c6, 0.12);
+  micro2.add(oC, bC);
+  const cats = [];
+  for(let k=0;k<CB.nCat;k++){
+    const c = atom(CB.col, CB.r, {rough:0.3, metal:0.5});
+    cats.push(c); micro2.add(c);
+  }
+  const oxLink = bond(0x9aa8bb, 0.10); oxLink.material.opacity = 0; micro2.add(oxLink);
+
+  const lblCarb = label('CO₃²⁻','#9db4ff');
+  const lblCat  = label(CB.ion, CB.lblCol);
+  const lblOx   = label('O²⁻','#9db4ff');
+  const lblCO2  = label('carbon dioxide, O=C=O','#a9c4ff',42);
+  const lblOxide= label(CB.oxideName ? `${CB.oxideName}, ${CB.oxide}` : '', '#dfe7f2', 40);
+  const lblHeat = label('heat — the whole lattice shaking','#ffb27a',40);
+  const lblHolds= label('the carbonate holds','#e89a8a',44);
+  micro2.add(lblCarb,lblCat,lblOx,lblCO2,lblOxide,lblHeat,lblHolds);
+
+  M2 = {around,neighbours,carb,cC,oA,oB,bA,bB,dA1,dA2,dB1,dB2,oC,bC,cats,oxLink,
+        lblCarb,lblCat,lblOx,lblCO2,lblOxide,lblHeat,lblHolds};
+}
+
+const _pa=new THREE.Vector3(), _pb=new THREE.Vector3(), _pc=new THREE.Vector3();
+function setO(o, deg, dist){
+  const a = deg*Math.PI/180;
+  o.position.set(Math.cos(a)*dist, Math.sin(a)*dist, 0);
+}
+
+/* how hard everything is shaking: rises once the flame is on, and the harder
+   the carbonate is to break, the longer it takes to get there */
+function heatAt(t){
+  return ramp(t, 32.0, DECOMPOSES ? lerp(40.0, 35.0, EASE) : 37.0);
+}
+
+function updateMicro2Common(t){
+  const {around, neighbours, lblHeat} = M2;
+  const heat = heatAt(t);
+  const amp = 0.05 + heat*0.42;
+  neighbours.forEach(u=>{
+    const d = u.userData;
+    u.position.set(
+      d.home.x + Math.sin(t*7.0*d.sp + d.ph)*amp,
+      d.home.y + Math.cos(t*6.3*d.sp + d.ph*1.4)*amp,
+      d.home.z + Math.sin(t*6.7*d.sp + d.ph*0.7)*amp
+    );
+    u.rotation.y = Math.sin(t*2.0*d.sp+d.ph)*0.12*(0.3+heat);
+  });
+  around.rotation.y = 0.1 + (t-30)*0.02;
+  lblHeat.material.opacity = ramp(t,33.2,34.2)*(1-ramp(t,37.0,38.0));
+  lblHeat.position.set(0, 4.4, 0);
+}
+
+/* ---- it comes apart ---- */
+function updateBreak(t){
+  const {carb,cC,oA,oB,bA,bB,dA1,dA2,dB1,dB2,oC,bC,cats,oxLink,
+         lblCarb,lblCat,lblOx,lblCO2,lblOxide} = M2;
+  const heat = heatAt(t);
+  const shake = 0.04 + heat*0.30;
+
+  /* the carbonate, shaking with everything else, then lifting away as CO₂ */
+  const rise = Math.max(0, t - 46.4);
+  _pa.copy(P.carbHome);
+  _pa.x += Math.sin(t*7.4)*shake; _pa.y += Math.cos(t*6.9)*shake;
+  _pa.y += rise*0.90; _pa.x += rise*0.16;
+  carb.position.copy(_pa);
+  carb.rotation.z = Math.sin(t*0.4)*0.10;
+  carb.rotation.y = Math.sin(t*0.26)*0.16;
+
+  /* 120° → 180° once the third oxygen has gone */
+  const straighten = ramp(t, 42.8, 46.2);
+  const coLen = lerp(CO_DIST, 1.16, straighten);
+  setO(oA, lerp( 90,   0, straighten), coLen);
+  setO(oB, lerp(210, 180, straighten), coLen);
+  placeBond(bA, ORIGIN, oA.position, 0.05);
+  placeBond(bB, ORIGIN, oB.position, 0.05);
+  const dbl = ramp(t, 44.6, 46.4);
+  bA.material.opacity = 1-dbl; bB.material.opacity = 1-dbl;
+  [[dA1,oA,+1],[dA2,oA,-1],[dB1,oB,+1],[dB2,oB,-1]].forEach(([d,o,s])=>{
+    d.material.opacity = dbl;
+    d.visible = dbl > 0.01;
+    if(d.visible){
+      _pb.set(0,0,s*0.105);
+      _pc.copy(o.position).add(_pb);
+      placeBond(d, _pb, _pc, 0.05);
+    }
+  });
+
+  /* the third oxygen: pulled off, and left sitting with the metal ion */
+  const pulled = ramp(t, 38.4, 42.6);
+  _pb.set(Math.cos(330*Math.PI/180)*CO_DIST, Math.sin(330*Math.PI/180)*CO_DIST, 0);
+  _pb.applyEuler(carb.rotation).add(carb.position);
+  const oPos = _pb.clone();
+  if(pulled > 0) oPos.lerp(P.oxSeat, pulled);
+  if(t > 42.6){ oPos.x += Math.sin(t*5.0)*shake*0.5; oPos.y += Math.cos(t*4.6)*shake*0.5; }
+  oC.position.copy(oPos);
+  const bondGone = ramp(t, 37.8, 41.2);
+  bC.material.opacity = 1 - bondGone;
+  bC.visible = bondGone < 0.99;
+  if(bC.visible) placeBond(bC, carb.position, oPos, 0.08);
+
+  /* the metal ions, shaking where they are */
+  cats.forEach((c,k)=>{
+    c.position.set(
+      P.catHome.x + Math.sin(t*7.8+k)*shake,
+      P.catHome.y + (CB.nCat>1 ? (k?0.95:-0.95) : 0) + Math.cos(t*7.1+k)*shake,
+      Math.sin(t*6.4+k)*shake*0.6
+    );
+  });
+  const oxOn = ramp(t, 42.8, 44.2);
+  oxLink.material.opacity = oxOn*0.55;
+  oxLink.visible = oxOn > 0.01;
+  if(oxLink.visible) placeBond(oxLink, cats[0].position, oPos, 0.55);
+
+  /* labels */
+  const named = ramp(t,30.6,31.6);
+  lblCarb.material.opacity = named*(1-ramp(t,42.8,43.8));
+  lblCarb.position.copy(carb.position).add(_v1.set(0,2.0,0));
+  lblCat.material.opacity = named*(1-ramp(t,53.0,54.0));
+  lblCat.position.copy(cats[0].position).add(_v1.set(-0.4,CB.r+0.85,0));
+  lblOx.material.opacity = ramp(t,42.4,43.4)*(1-ramp(t,53.0,54.0));
+  lblOx.position.copy(oPos).add(_v1.set(0.2,0.95,0));
+  lblCO2.material.opacity = ramp(t,46.6,47.6)*(1-ramp(t,52.4,53.4));
+  lblCO2.position.copy(carb.position).add(_v1.set(0,1.5,0));
+  lblOxide.material.opacity = ramp(t,50.2,51.2)*(1-ramp(t,56.0,57.0));
+  lblOxide.position.set(P.catHome.x+0.5, -2.3, 0);
+}
+
+/* ---- it holds ---- */
+function updateHolds(t){
+  const {carb,cC,oA,oB,bA,bB,dA1,dA2,dB1,dB2,oC,bC,cats,oxLink,
+         lblCarb,lblCat,lblOx,lblCO2,lblOxide,lblHolds} = M2;
+  const heat = heatAt(t);
+  const shake = 0.04 + heat*0.34;
+
+  /* everything shakes, harder and harder, and nothing comes apart */
+  _pa.copy(P.carbHome);
+  _pa.x += Math.sin(t*7.4)*shake; _pa.y += Math.cos(t*6.9)*shake;
+  carb.position.copy(_pa);
+  carb.rotation.z = Math.sin(t*0.4)*0.10 + Math.sin(t*9.0)*0.05*heat;
+  carb.rotation.y = Math.sin(t*0.26)*0.16;
+
+  setO(oA,  90, CO_DIST);
+  setO(oB, 210, CO_DIST);
+  placeBond(bA, ORIGIN, oA.position, 0.05);
+  placeBond(bB, ORIGIN, oB.position, 0.05);
+  bA.material.opacity = 1; bB.material.opacity = 1;
+  [dA1,dA2,dB1,dB2].forEach(d=>{ d.material.opacity = 0; d.visible = false; });
+
+  // the third oxygen stays exactly where it belongs
+  _pb.set(Math.cos(330*Math.PI/180)*CO_DIST, Math.sin(330*Math.PI/180)*CO_DIST, 0);
+  _pb.applyEuler(carb.rotation).add(carb.position);
+  oC.position.copy(_pb);
+  oC.scale.setScalar(0.46);
+  bC.material.opacity = 1; bC.visible = true;
+  placeBond(bC, carb.position, _pb, 0.05);
+
+  cats.forEach((c,k)=>{
+    c.position.set(
+      P.catHome.x + Math.sin(t*7.8+k)*shake,
+      P.catHome.y + (CB.nCat>1 ? (k?0.95:-0.95) : 0) + Math.cos(t*7.1+k)*shake,
+      Math.sin(t*6.4+k)*shake*0.6
+    );
+  });
+  oxLink.visible = false;
+  lblOx.material.opacity = 0; lblCO2.material.opacity = 0; lblOxide.material.opacity = 0;
+
+  const named = ramp(t,30.6,31.6), off = 1-ramp(t,38.2,39.2);
+  lblCarb.material.opacity = named*off;
+  lblCarb.position.copy(carb.position).add(_v1.set(0,2.0,0));
+  lblCat.material.opacity = named*off;
+  lblCat.position.copy(cats[0].position).add(_v1.set(-0.4,CB.r+0.85,0));
+  lblHolds.material.opacity = ramp(t,36.2,37.2)*off;
+  lblHolds.position.set(0.4, -2.6, 0);
+}
+
+function updateMicro2(t){
+  updateMicro2Common(t);
+  if(DECOMPOSES) updateBreak(t); else updateHolds(t);
+}
+
+/* =====================================================================
+   TIMELINE — it decomposes, or it holds
+===================================================================== */
+let TOTAL = 58, SEGS = [], TRANSITIONS = [7.0, 15.0, 30.0];
+const FADE = 0.55;
+
+function buildCaptions(){
+  const opening = [
+    {t:0,    c:`${cap1(CB.solid)} — a ${CB.powderWord} powder — in a tube, with a delivery tube into limewater.`},
+    {t:3.5,  c:'Into the solid first.'},
+    {t:7.0,  c:`A ${CB.name} ion, and a carbonate ion. Nothing else.`},
+    {t:10.4, c:'Locked in a lattice, going nowhere — until you heat it.'},
+    {t:13.0, c:'Back to the bench.'},
+    {t:15.0, c:'The limewater on the right is clear. Keep an eye on it.'},
+    {t:17.2, c:'Light the Bunsen.'}
+  ];
+  if(DECOMPOSES){
+    TOTAL = 58;
+    const speed = EASE >= 0.85
+      ? 'Almost at once, bubbles start coming through.'
+      : EASE >= 0.6
+        ? 'Before long, bubbles start coming through.'
+        : 'This one needs a roaring flame and patience — but eventually, bubbles.';
+    SEGS = opening.concat([
+      {t:20.2, c: speed},
+      {t:24.0, c:'And the limewater is going milky. That is the test for carbon dioxide.'},
+      {t:27.0, c: colourChanges()
+        ? `Look at the powder, too: ${CB.powderWord} has become ${CB.oxWord}.`
+        : `The powder looks much the same — but it is no longer the same substance.`},
+      {t:30.0, c:'Down into the solid. Cold, the ions only shuffle a little.'},
+      {t:33.2, c:'Now the heat. Everything shakes, harder and harder.'},
+      {t:36.6, c:'Until one carbonate ion cannot hold itself together.'},
+      {t:39.6, c:`One of its three oxygens is pulled away — and stays behind with the ${CB.name} ion.`},
+      {t:43.2, c:'Which leaves a carbon holding two. So it straightens out, just as it did in the acid.'},
+      {t:46.8, c:'O=C=O — and being a gas, it leaves. Up the tube, and into the limewater.'},
+      {t:50.4, c:`What is left in the tube is ${CB.oxideName}: ${CB.ion} and O²⁻.`},
+      {t:53.2, c:`The carbonate did this, and nothing else:  ${ionicEq()}`},
+      {t:55.8, c: equation()}
+    ]);
+  } else {
+    TOTAL = 42;
+    SEGS = opening.concat([
+      {t:20.2, c:'Heat it as hard as you like.'},
+      {t:24.0, c:'The limewater stays clear. No gas at all.'},
+      {t:27.0, c:'Nothing has happened. Go down and see why not.'},
+      {t:30.0, c:'Down into the solid. Cold, the ions only shuffle a little.'},
+      {t:33.2, c:'Now the heat. Everything shakes, harder and harder.'},
+      {t:36.2, c:'And the carbonate simply holds.'},
+      {t:39.0, c:`${cap1(CB.name)} is a very reactive metal — and the more reactive the metal, the more heat its carbonate will take. ${equation()}`}
+    ]);
+  }
+}
+
+function worldAt(t){
+  if(t < 7.0)  return 'macro';
+  if(t < 15.0) return 'micro1';
+  if(t < 30.0) return 'macro';
+  return 'micro2';
+}
+
+const CAM_MACRO = [
+  {t:0,    p:[-0.4,3.9,6.2],  l:[0.0,2.0,0]},
+  {t:3.5,  p:[-1.4,2.9,2.4],  l:[-1.5,2.0,0]},
+  {t:7.0,  p:[-1.7,2.5,1.3],  l:[-1.6,1.85,0]},
+  {t:15.0, p:[1.4,3.2,5.6],   l:[1.3,1.6,0]},
+  {t:17.2, p:[-0.8,2.4,4.2],  l:[-1.4,1.5,0]},
+  {t:20.2, p:[0.4,2.2,3.6],   l:[0.2,1.5,0]},
+  {t:24.0, p:[2.3,1.9,2.8],   l:[2.5,1.2,0]},
+  {t:27.0, p:[-1.0,2.2,2.6],  l:[-1.5,1.8,0]},
+  {t:30.0, p:[-1.45,2.0,1.5], l:[-1.55,1.85,0]}
+];
+const CAM_MICRO1 = [
+  {t:7.0,  p:[0,0.8,10.2],  l:[0,0,4.2]},
+  {t:10.4, p:[3.4,2.2,10.6],l:[0,0,2.0]},
+  {t:13.0, p:[2.2,3.2,14.2],l:[0,0,0]},
+  {t:15.0, p:[0,7.0,28.0],  l:[0,0,0]}
+];
+const CAM_BREAK = [
+  {t:30.0, p:[0,1.0,14.0],    l:[0,0,0]},
+  {t:33.2, p:[0.2,1.6,11.6],  l:[0,0.2,0]},
+  {t:36.6, p:[1.0,0.6,8.0],   l:[0.8,0,0]},
+  {t:39.6, p:[0.4,0.5,6.8],   l:[0.3,0.05,0]},
+  {t:43.2, p:[1.0,0.5,6.6],   l:[0.9,0.05,0]},
+  {t:46.8, p:[1.0,1.0,7.6],   l:[0.9,0.7,0]},
+  {t:50.4, p:[-0.6,0.4,7.4],  l:[-0.8,-0.1,0]},
+  {t:53.2, p:[0,1.2,11.0],    l:[-0.2,0.2,0]},
+  {t:58.0, p:[1.2,1.6,13.4],  l:[0.2,0.2,0]}
+];
+const CAM_HOLD = [
+  {t:30.0, p:[0,1.0,14.0],    l:[0,0,0]},
+  {t:33.2, p:[0.2,1.6,11.6],  l:[0,0.2,0]},
+  {t:36.2, p:[0.8,0.6,8.2],   l:[0.6,0,0]},
+  {t:39.0, p:[0,1.0,10.6],    l:[0,0,0]},
+  {t:42.0, p:[0.8,1.4,13.0],  l:[0.2,0,0]}
+];
+let CAM = {macro:CAM_MACRO, micro1:CAM_MICRO1, micro2:CAM_BREAK};
+
+const camPos=new THREE.Vector3(), camTgt=new THREE.Vector3();
+function sampleCam(t){
+  const w = worldAt(t), keys = CAM[w];
+  let i=0; while(i<keys.length-2 && t>=keys[i+1].t) i++;
+  const a=keys[i], b=keys[Math.min(i+1,keys.length-1)];
+  const u = b.t===a.t?0:smooth((t-a.t)/(b.t-a.t));
+  const off = w==='micro1'?MICRO1_Y : w==='micro2'?MICRO2_Y : 0;
+  camPos.set(lerp(a.p[0],b.p[0],u), lerp(a.p[1],b.p[1],u)+off, lerp(a.p[2],b.p[2],u));
+  camTgt.set(lerp(a.l[0],b.l[0],u), lerp(a.l[1],b.l[1],u)+off, lerp(a.l[2],b.l[2],u));
+}
+
+/* ---------- macro animation ---------- */
+const LIGHT_A = 17.2, LIGHT_B = 17.9;
+function updateMacro(t){
+  /* the flame */
+  const on = ramp(t, LIGHT_A, LIGHT_B);
+  const flick = 0.9 + Math.sin(t*21)*0.07 + Math.sin(t*34)*0.04;
+  flameOuter.material.opacity = on*0.55*flick;
+  flameInner.material.opacity = on*0.8*flick;
+  flameOuter.scale.y = flick; flameInner.scale.y = flick*1.05;
+  flameGlow.material.opacity = on*0.5*flick;
+  flameLight.position.set(BUNSEN_X, 1.7, 0);
+  flameLight.intensity = on*1.9*flick;
+
+  /* the powder: heats, glows, and turns into the oxide */
+  const glow = on * ramp(t, LIGHT_B, LIGHT_B+2.2) * (0.35 + 0.45*EASE);
+  const mix = DECOMPOSES ? ramp(t, lerp(23.5,19.8,EASE), lerp(31.0,26.0,EASE)) : 0;
+  tintPowder(mix, glow);
+
+  /* the limewater goes milky once gas is coming through */
+  const milky = DECOMPOSES ? ramp(t, FIZZ_A+1.4, FIZZ_B-1.0) : 0;
+  limeMat.color.setRGB(lerp(0.89,0.97,milky), lerp(0.93,0.97,milky), lerp(0.97,0.96,milky));
+  limeMat.opacity = lerp(0.34, 0.92, milky);
+
+  updateBubbles(t);
+}
+
+/* =====================================================================
+   ORBIT-ISH DRAG
+===================================================================== */
+let yaw=0, pitch=0, dragging=false, lx=0, ly=0;
+const el = renderer.domElement;
+function down(x,y){dragging=true;lx=x;ly=y;el.style.cursor='grabbing';}
+function move(x,y){
+  if(!dragging) return;
+  yaw   -= (x-lx)*0.005;
+  pitch  = Math.max(-0.9, Math.min(0.9, pitch + (y-ly)*0.004));
+  lx=x; ly=y;
+}
+function up(){dragging=false; el.style.cursor='grab';}
+el.style.cursor='grab';
+el.addEventListener('mousedown',e=>down(e.clientX,e.clientY));
+addEventListener('mousemove',e=>move(e.clientX,e.clientY));
+addEventListener('mouseup',up);
+el.addEventListener('touchstart',e=>{down(e.touches[0].clientX,e.touches[0].clientY);},{passive:true});
+el.addEventListener('touchmove',e=>{move(e.touches[0].clientX,e.touches[0].clientY);},{passive:true});
+addEventListener('touchend',up);
+
+const _sph = new THREE.Spherical();
+function applyCamera(){
+  const dir = camPos.clone().sub(camTgt);
+  _sph.setFromVector3(dir);
+  _sph.theta += yaw;
+  _sph.phi = Math.max(0.12, Math.min(Math.PI-0.12, _sph.phi - pitch));
+  dir.setFromSpherical(_sph);
+  camera.position.copy(camTgt).add(dir);
+  camera.lookAt(camTgt);
+}
+
+/* =====================================================================
+   UI
+===================================================================== */
+const capEl  = document.getElementById('caption');
+const fadeEl = document.getElementById('fade');
+const playBtn= document.getElementById('play');
+const scrub  = document.getElementById('scrub');
+const clock  = document.getElementById('clock');
+const keyEl  = document.getElementById('key');
+const menuEl = document.getElementById('menu');
+const gearEl = document.getElementById('gear');
+
+let t = 0, playing = true, lastFrame = performance.now(), curSeg = -1;
+
+playBtn.onclick = ()=>{ playing=!playing; playBtn.textContent = playing?'Pause':'Play'; };
+document.getElementById('restart').onclick = ()=>{ t=0; curSeg=-1; playing=true; playBtn.textContent='Pause'; };
+scrub.oninput = ()=>{ t = parseFloat(scrub.value); curSeg=-1; };
+addEventListener('keydown', e=>{
+  if(e.code==='Space'){ e.preventDefault(); playBtn.click(); }
+  if(e.code==='ArrowRight'){ t = Math.min(TOTAL, t+2); curSeg=-1; }
+  if(e.code==='ArrowLeft'){  t = Math.max(0, t-2);     curSeg=-1; }
+  if(e.code==='Escape') setMenu(false);
+});
+
+function captionFor(time){
+  let i=0; for(let k=0;k<SEGS.length;k++) if(time>=SEGS[k].t) i=k;
+  return i;
+}
+function fadeAmount(time){
+  let f=0;
+  for(const T of TRANSITIONS) f = Math.max(f, 1 - Math.min(1, Math.abs(time-T)/FADE));
+  return f;
+}
+
+const hexCss = n => '#'+n.toString(16).padStart(6,'0');
+
+function buildLegend(){
+  const rows = [
+    {sym:CB.sym, name:CB.name, col:CB.col},
+    {sym:'C', name:'carbon', col:EL.C.col},
+    {sym:'O', name:'oxygen', col:EL.O.col}
+  ];
+  keyEl.innerHTML = rows.map(r=>
+    `<div><span class="dot" style="background:${hexCss(r.col)}"></span><b>${r.sym}</b> ${r.name}</div>`
+  ).join('');
+}
+
+/* easiest to break down first, which is also least reactive metal first */
+const byEase = Object.keys(CARBONATES).sort((a,b)=>
+  (CARBONATES[b].ease ?? -1) - (CARBONATES[a].ease ?? -1));
+
+function buildMenu(){
+  document.getElementById('carbOpts').innerHTML = byEase.map(k=>
+    `<button class="opt ${k===carbKey?'on':''}" data-key="${k}">` +
+    `<span class="f">${CARBONATES[k].formula}</span> · ${CARBONATES[k].name}</button>`
+  ).join('');
+  const verdict = DECOMPOSES
+    ? `<b class="yes">Decomposes.</b> ` + (EASE >= 0.85
+        ? `${cap1(CB.name)} carbonate goes very readily.`
+        : EASE >= 0.6
+          ? `It goes, without much trouble.`
+          : `It goes, but only with strong heating — this is what happens in a lime kiln.`)
+    : `<b class="no">Does not decompose.</b> Group 1 carbonates are stable to heat — you cannot break this one down with a Bunsen at all.`;
+  document.getElementById('menuEq').innerHTML =
+    `${equation()}<span>${verdict} The rule: the more reactive the metal, the more heat-stable its ` +
+    `carbonate. Where it does go, the change is always the same — <i>${ionicEq()}</i>.</span>`;
+  menuEl.querySelectorAll('.opt').forEach(b=>{
+    b.onclick = ()=>{ carbKey = b.dataset.key; build(); playing = true; playBtn.textContent = 'Pause'; };
+  });
+}
+
+function setMenu(open){
+  menuEl.classList.toggle('open', open);
+  gearEl.classList.toggle('open', open);
+  if(open) buildMenu();
+}
+gearEl.onclick = ()=> setMenu(!menuEl.classList.contains('open'));
+
+/* ---------- rebuild everything that depends on the species ---------- */
+function build(){
+  derive();
+  buildPowder();
+  buildBubbles();
+  buildMicro1();
+  buildMicro2();
+  buildCaptions();                    // sets TOTAL too
+  buildLegend();
+  CAM = {macro:CAM_MACRO, micro1:CAM_MICRO1, micro2: DECOMPOSES?CAM_BREAK:CAM_HOLD};
+
+  document.title = `Heating ${CB.solid}`;
+  document.getElementById('h1').textContent = `Heating ${CB.solid}`;
+  document.getElementById('subtitle').textContent = equation();
+  scrub.style.setProperty('--hl', hexCss(CB.powder));
+  scrub.max = TOTAL;
+
+  if(menuEl.classList.contains('open')) buildMenu();
+  history.replaceState(null,'',`?carbonate=${carbKey}`);
+
+  t = 0; curSeg = -1;
+}
+build();
+
+/* =====================================================================
+   LOOP
+===================================================================== */
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt = Math.min((now-lastFrame)/1000, 1/24);
+  lastFrame = now;
+
+  if(playing){
+    t += dt;
+    if(t >= TOTAL){ t = TOTAL; playing=false; playBtn.textContent='Play'; }
+  }
+
+  updateMacro(t);
+  updateMicro1(t);
+  updateMicro2(t);
+  sampleCam(t);
+  applyCamera();
+
+  const f = fadeAmount(t);
+  fadeEl.style.opacity = f;
+  const seg = captionFor(t);
+  if(seg !== curSeg){ curSeg = seg; capEl.textContent = SEGS[seg].c; }
+  capEl.style.opacity = 1 - f;
+  scrub.value = t;
+  scrub.style.setProperty('--p', (t/TOTAL*100)+'%');
+  clock.textContent = t.toFixed(1)+' / '+TOTAL.toFixed(1)+'s';
+
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(frame);
+
+addEventListener('resize', ()=>{
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Acid + metal hydroxide</title>
+<style>
+  :root{
+    --ink:#eef2f7;
+    --dim:#93a2b6;
+    --panel:rgba(10,14,21,.72);
+    --line:rgba(147,162,182,.22);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;background:#080b11;color:var(--ink);
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;overflow:hidden;}
+  #stage{position:fixed;inset:0;}
+  canvas{display:block;}
+
+  #fade{position:fixed;inset:0;background:#080b11;pointer-events:none;opacity:0;}
+
+  .title{position:fixed;top:22px;left:26px;max-width:min(46ch,60vw);pointer-events:none;}
+  .title h1{
+    margin:0;
+    font-family:"Iowan Old Style","Charter","Palatino Linotype",Georgia,serif;
+    font-weight:600;font-size:23px;letter-spacing:.2px;line-height:1.25;
+  }
+  .title p{margin:6px 0 0;font-size:13px;line-height:1.5;color:var(--dim);}
+  .eq{font-variant-numeric:tabular-nums;}
+  .title a{pointer-events:auto;color:var(--dim);text-decoration:none;font-size:12px;
+    border-bottom:1px solid rgba(147,162,182,.3);}
+  .title a:hover{color:var(--ink);}
+
+  #caption{
+    position:fixed;left:50%;transform:translateX(-50%);
+    bottom:112px;width:min(660px,92vw);text-align:center;pointer-events:none;
+    font-family:"Iowan Old Style","Charter","Palatino Linotype",Georgia,serif;
+    font-size:19px;line-height:1.45;
+    text-shadow:0 2px 18px rgba(0,0,0,.85);
+    transition:opacity .35s ease;
+  }
+
+  #bar{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:20px;
+    width:min(720px,94vw);
+    background:var(--panel);backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:14px;
+    padding:12px 14px;display:flex;align-items:center;gap:12px;
+  }
+  button{
+    font:inherit;font-size:13px;color:var(--ink);
+    background:rgba(255,255,255,.06);border:1px solid var(--line);
+    border-radius:9px;padding:7px 13px;cursor:pointer;
+    transition:background .15s ease,border-color .15s ease;
+  }
+  button:hover{background:rgba(255,255,255,.12);}
+  button:focus-visible{outline:2px solid #7fb0ff;outline-offset:2px;}
+  #play{min-width:74px;}
+  #gear{padding:7px 11px;font-size:15px;line-height:1;}
+  #gear.open{background:rgba(127,176,255,.2);border-color:rgba(127,176,255,.5);}
+  #scrub{
+    flex:1;appearance:none;height:4px;border-radius:4px;
+    background:linear-gradient(90deg,var(--hl,#d9cbb0) 0%,var(--hl,#d9cbb0) var(--p,0%),rgba(255,255,255,.14) var(--p,0%));
+    cursor:pointer;
+  }
+  #scrub::-webkit-slider-thumb{appearance:none;width:14px;height:14px;border-radius:50%;
+    background:var(--ink);border:none;box-shadow:0 0 0 3px rgba(8,11,17,.6);}
+  #scrub::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--ink);border:none;}
+  #clock{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums;min-width:74px;text-align:right;}
+
+  #key{
+    position:fixed;right:24px;top:22px;
+    background:var(--panel);backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:12px;padding:11px 13px;
+    font-size:12.5px;line-height:1.9;color:var(--dim);
+  }
+  #key div{display:flex;align-items:center;gap:8px;}
+  .dot{width:11px;height:11px;border-radius:50%;flex:none;box-shadow:inset -2px -2px 3px rgba(0,0,0,.45);}
+  #key b{color:var(--ink);font-weight:600;}
+  #hint{position:fixed;bottom:90px;right:24px;font-size:11.5px;color:var(--dim);opacity:.75;}
+
+  /* ---- species menu ---- */
+  #menu{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:86px;
+    width:min(760px,94vw);
+    background:var(--panel);backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:14px;
+    padding:16px 18px;display:none;gap:16px;
+  }
+  #menu.open{display:flex;flex-wrap:wrap;}
+  #menu fieldset{border:none;margin:0;padding:0;flex:1;min-width:180px;}
+  #menu legend{
+    font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+    color:#64748b;padding:0 0 8px;
+  }
+  .opts{display:flex;flex-wrap:wrap;gap:6px;}
+  .opt{
+    font:inherit;font-size:12.5px;padding:6px 11px;border-radius:8px;
+    background:rgba(255,255,255,.05);border:1px solid var(--line);
+    color:var(--dim);cursor:pointer;
+  }
+  .opt:hover{background:rgba(255,255,255,.1);color:var(--ink);}
+  .opt.on{background:rgba(127,176,255,.18);border-color:rgba(127,176,255,.5);color:#dce9ff;}
+  .opt .f{font-family:"Iowan Old Style","Charter",Georgia,serif;font-variant-numeric:tabular-nums;}
+  .swatch{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;
+    vertical-align:-1px;border:1px solid rgba(255,255,255,.25);}
+  #menuEq{
+    flex-basis:100%;border-top:1px solid var(--line);padding-top:12px;margin:0;
+    font-family:"Iowan Old Style","Charter",Georgia,serif;font-size:16px;
+    color:var(--ink);font-variant-numeric:tabular-nums;
+  }
+  #menuEq span{color:#64748b;font-size:12px;display:block;margin-top:5px;
+    font-family:ui-sans-serif,system-ui,sans-serif;line-height:1.5;}
+  #menuEq i{color:#a8c9ff;font-style:normal;}
+
+  @media (max-width:640px){
+    .title h1{font-size:18px;} .title p{display:none;}
+    #key{right:14px;top:14px;padding:8px 10px;font-size:11px;line-height:1.7;}
+    #caption{font-size:16px;bottom:100px;}
+    #hint{display:none;}
+    #clock{display:none;}
+    #menu{bottom:82px;padding:13px 14px;}
+  }
+  @media (prefers-reduced-motion:reduce){#caption{transition:none;}}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="fade"></div>
+
+<div class="title">
+  <h1 id="h1">Sodium hydroxide meets hydrochloric acid</h1>
+  <p class="eq" id="subtitle">NaOH + HCl → NaCl + H₂O</p>
+  <p><a href="index.html">← All fourteen reactions</a></p>
+</div>
+
+<div id="key"></div>
+
+<div id="caption"></div>
+<div id="hint">Drag to look around</div>
+
+<div id="menu">
+  <fieldset>
+    <legend>Alkali in the beaker</legend>
+    <div class="opts" id="alkaliOpts"></div>
+  </fieldset>
+  <fieldset>
+    <legend>Acid in the burette</legend>
+    <div class="opts" id="acidOpts"></div>
+  </fieldset>
+  <fieldset>
+    <legend>Indicator</legend>
+    <div class="opts" id="indOpts"></div>
+  </fieldset>
+  <p id="menuEq"></p>
+</div>
+
+<div id="bar">
+  <button id="play">Pause</button>
+  <button id="restart">Restart</button>
+  <input id="scrub" type="range" min="0" max="54" step="0.01" value="0" aria-label="Timeline">
+  <span id="clock">0.0 / 54.0s</span>
+  <button id="gear" title="Change the species" aria-label="Change the species">⚙</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ---------------------------------------------------------------------------
+   SCENE 02 — acid + metal hydroxide,  MOH + acid → salt + H₂O
+
+   Neutralisation. The simplest cast in the set, and the one whose point is
+   easiest to miss: the metal ion and the acid's anion do nothing at all. They
+   are dissolved before, dissolved after, and never bond to anything. The
+   whole reaction is H⁺ + OH⁻ → H₂O, which is why that ionic equation is the
+   second-to-last caption.
+
+   Acts:
+     0  – 7   macro: the beaker of alkali, the burette above it
+     7  – 15  micro 1: the alkali — metal ions and hydroxide ions
+    15  – 28  macro: run the acid in; the indicator turns at the end point
+    28  – end micro 2: H⁺ meets OH⁻, twice over if the acid is sulfuric
+
+   A diprotic acid changes the cast, not the timings: sulfuric acid brings two
+   H⁺, so it needs two OH⁻ and makes two molecules of water side by side.
+
+   Everything is a closed-form function of t — no particle sim.
+--------------------------------------------------------------------------- */
+
+/* ======================= the species tables ======================= */
+
+const EL = {               // the same palette as every other scene here
+  O:  {name:'oxygen',   col:0x2f47b8, r:0.50},
+  H:  {name:'hydrogen', col:0xd8402f, r:0.34},
+  S:  {name:'sulfur',   col:0xe8c33a, r:0.60},
+  N:  {name:'nitrogen', col:0x8f6fd8, r:0.55},
+  Cl: {name:'chlorine', col:0x4fbf72, r:0.62}
+};
+
+/* Group 1 hydroxides: all fully soluble, and every salt they make with these
+   three acids is soluble too, so the scene never has to hedge. */
+const ALKALIS = {
+  LiOH: {sym:'Li', name:'lithium', full:'lithium', ion:'Li⁺', formula:'LiOH',
+         solid:'lithium hydroxide', col:0xdde3e8, r:0.60, lblCol:'#e8eef2'},
+  NaOH: {sym:'Na', name:'sodium', full:'sodium', ion:'Na⁺', formula:'NaOH',
+         solid:'sodium hydroxide', col:0xd9cbb0, r:0.66, lblCol:'#ece0c8'},
+  KOH:  {sym:'K',  name:'potassium', full:'potassium', ion:'K⁺', formula:'KOH',
+         solid:'potassium hydroxide', col:0xcbb8d4, r:0.74, lblCol:'#e0d0e8'}
+};
+
+const ACIDS = {
+  HCl:  {name:'hydrochloric acid', formula:'HCl', nH:1,
+         anion:{label:'Cl⁻', name:'chloride', kind:'chloride', charge:-1,
+                lblCol:'#8fe0a8', labelY:1.25, extras:['Cl']},
+         saltTail:'Cl', saltName:'chloride'},
+  HNO3: {name:'nitric acid', formula:'HNO₃', nH:1,
+         anion:{label:'NO₃⁻', name:'nitrate', kind:'nitrate', charge:-1,
+                lblCol:'#c7b4f0', labelY:1.85, extras:['N','O']},
+         saltTail:'NO₃', saltName:'nitrate'},
+  H2SO4:{name:'sulfuric acid', formula:'H₂SO₄', nH:2,
+         anion:{label:'SO₄²⁻', name:'sulfate', kind:'sulfate', charge:-2,
+                lblCol:'#f0dc86', labelY:2.1, extras:['S','O']},
+         saltTail:'SO₄', saltName:'sulfate'}
+};
+
+/* The indicator only changes colours and wording — but "none" is offered on
+   purpose, because not being able to see the end point is the reason
+   indicators exist. */
+const INDICATORS = {
+  phenolphthalein: {name:'phenolphthalein', alk:[0.90,0.33,0.62], neu:[0.87,0.91,0.96],
+                    alkWord:'bright pink', neuWord:'colourless', swatch:'#e6559f'},
+  universal:       {name:'universal indicator', alk:[0.55,0.30,0.72], neu:[0.38,0.72,0.42],
+                    alkWord:'purple', neuWord:'green', swatch:'#8c4cb8'},
+  none:            {name:'no indicator', alk:[0.87,0.91,0.96], neu:[0.87,0.91,0.96],
+                    alkWord:'colourless', neuWord:'colourless', swatch:'#dfe9f5'}
+};
+
+const qs = new URLSearchParams(location.search);
+let alkaliKey = ALKALIS[qs.get('alkali')] ? qs.get('alkali') : 'NaOH';
+let acidKey   = ACIDS[qs.get('acid')]     ? qs.get('acid')   : 'HCl';
+let indKey    = INDICATORS[qs.get('ind')] ? qs.get('ind')    : 'phenolphthalein';
+let AL, AC, AN, IND, NH;
+
+function derive(){
+  AL = ALKALIS[alkaliKey];
+  AC = ACIDS[acidKey];
+  AN = AC.anion;
+  IND = INDICATORS[indKey];
+  NH = AC.nH;                 // protons, hydroxides, cations and waters all = NH
+}
+
+const cap1 = s => s.charAt(0).toUpperCase() + s.slice(1);
+const SUB2 = '₂';
+const saltFormula = () => NH>1 ? `${AL.sym}${SUB2}${AC.saltTail}` : `${AL.sym}${AC.saltTail}`;
+const saltName    = () => `${AL.full} ${AC.saltName}`;
+const equation    = () => NH>1
+  ? `2${AL.formula} + ${AC.formula} → ${saltFormula()} + 2H₂O`
+  : `${AL.formula} + ${AC.formula} → ${saltFormula()} + H₂O`;
+const ionicEq     = () => 'H⁺ + OH⁻ → H₂O';
+const hasColour   = () => indKey !== 'none';
+
+const MICRO1_Y =  400;   // the alkali
+const MICRO2_Y = -400;   // the reaction
+
+/* ---------- renderer / scene ---------- */
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+document.getElementById('stage').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x080b11);
+
+const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.05, 2000);
+
+scene.add(new THREE.HemisphereLight(0x9fb4d0, 0x0a0d13, 0.6));
+const keyL = new THREE.DirectionalLight(0xffffff, 0.95); keyL.position.set(6,11,8); scene.add(keyL);
+const fill = new THREE.DirectionalLight(0x9ec3ff, 0.4); fill.position.set(-8,4,-6); scene.add(fill);
+const rim  = new THREE.DirectionalLight(0xffd9b0, 0.35); rim.position.set(0,3,-10); scene.add(rim);
+
+(function environment(){
+  const env = new THREE.Scene();
+  const box = new THREE.BoxGeometry(1,1,1);
+  env.add(new THREE.Mesh(new THREE.BoxGeometry(24,14,24),
+    new THREE.MeshBasicMaterial({color:0x1d2634, side:THREE.BackSide})));
+  const panel=(hex,gain,x,y,z,sx,sy,sz)=>{
+    const m=new THREE.Mesh(box,new THREE.MeshBasicMaterial({color:hex}));
+    m.material.color.multiplyScalar(gain);
+    m.position.set(x,y,z); m.scale.set(sx,sy,sz); env.add(m);
+  };
+  panel(0xffffff,3.2,  0, 6.6,  0, 11,0.1,11);
+  panel(0xbcd6ff,1.3, -9, 1.0,  0, 0.1,9,16);
+  panel(0xffd7b0,0.9,  9, 1.0,  2, 0.1,9,16);
+  panel(0x8fb0e0,0.5,  0, 0.0,-10, 18,9,0.1);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(env, 0.04).texture;
+  pmrem.dispose();
+})();
+
+/* ---------- shared helpers ---------- */
+const SPH = new THREE.SphereGeometry(1,32,24);
+const SPH_LO = new THREE.SphereGeometry(1,16,12);
+const CYL = new THREE.CylinderGeometry(1,1,1,20,1,false);
+
+function atom(color, radius, opts={}){
+  const mat = new THREE.MeshStandardMaterial({
+    color, roughness: opts.rough ?? 0.35, metalness: opts.metal ?? 0.25,
+    emissive: new THREE.Color(color).multiplyScalar(0.06)
+  });
+  if(opts.op !== undefined && opts.op < 1){ mat.transparent = true; mat.opacity = opts.op; }
+  const m = new THREE.Mesh(opts.lo?SPH_LO:SPH, mat);
+  m.scale.setScalar(radius);
+  return m;
+}
+
+function bond(color=0xa9b6c6, radius=0.13){
+  const m = new THREE.Mesh(CYL, new THREE.MeshStandardMaterial({
+    color, roughness:0.5, metalness:0.1, transparent:true, opacity:1
+  }));
+  m.userData.radius = radius;
+  return m;
+}
+const _v1=new THREE.Vector3(), _up=new THREE.Vector3(0,1,0);
+function placeBond(mesh, a, b, shrink=0){
+  const dir = new THREE.Vector3().subVectors(b,a);
+  const len = Math.max(dir.length()-shrink*2, 0.001);
+  mesh.position.copy(a).addScaledVector(dir,0.5);
+  mesh.scale.set(mesh.userData.radius, len, mesh.userData.radius);
+  mesh.quaternion.setFromUnitVectors(_up, dir.normalize());
+}
+
+function label(text, color='#eef2f7', size=54){
+  const pad=16, c=document.createElement('canvas'), ctx=c.getContext('2d');
+  const font = `600 ${size}px "Iowan Old Style", Charter, Georgia, serif`;
+  ctx.font=font; const w=Math.ceil(ctx.measureText(text).width)+pad*2;
+  c.width=w; c.height=size+pad*2;
+  ctx.font=font; ctx.textBaseline='middle'; ctx.textAlign='center';
+  ctx.shadowColor='rgba(0,0,0,.9)'; ctx.shadowBlur=14;
+  ctx.fillStyle=color; ctx.fillText(text, c.width/2, c.height/2);
+  const tex = new THREE.CanvasTexture(c); tex.anisotropy=4;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:false, opacity:0}));
+  sp.renderOrder = 10;
+  sp.scale.set(c.width/c.height*0.62, 0.62, 1);
+  return sp;
+}
+function lerp(a,b,t){ return a+(b-a)*t; }
+function clamp01(x){ return Math.max(0,Math.min(1,x)); }
+function smooth(x){ x=clamp01(x); return x*x*(3-2*x); }
+function ramp(t,a,b){ return smooth((t-a)/(b-a)); }
+
+function clearGroup(g){
+  for(let i=g.children.length-1;i>=0;i--){
+    const c = g.children[i];
+    g.remove(c);
+    c.traverse(o=>{
+      if(o.material){
+        if(o.material.map) o.material.map.dispose();
+        o.material.dispose();
+      }
+    });
+  }
+}
+
+function rng(seed){
+  let s = seed>>>0;
+  return ()=>{ s = (s*1664525 + 1013904223)>>>0; return s/4294967296; };
+}
+
+/* =====================================================================
+   MACRO WORLD — bench, beaker of alkali, burette of acid on a stand
+===================================================================== */
+const macro = new THREE.Group(); scene.add(macro);
+
+const bench = new THREE.Mesh(
+  new THREE.CylinderGeometry(9,9,0.35,64),
+  new THREE.MeshStandardMaterial({color:0x11151d, roughness:0.95, metalness:0})
+);
+bench.position.y=-0.175; macro.add(bench);
+
+const BEAKER_X = 1.7, R_IN = 1.18, LIQ_TOP = 1.75;
+const beaker = new THREE.Group(); beaker.position.set(BEAKER_X,0,0); macro.add(beaker);
+
+const glassMat = new THREE.MeshStandardMaterial({
+  color:0xbfd6e8, roughness:0.08, metalness:0.0,
+  transparent:true, opacity:0.2, side:THREE.DoubleSide
+});
+const wall = new THREE.Mesh(new THREE.CylinderGeometry(1.25,1.25,2.7,56,1,true), glassMat);
+wall.position.y=1.35; beaker.add(wall);
+const base = new THREE.Mesh(new THREE.CylinderGeometry(1.25,1.25,0.07,56), glassMat);
+base.position.y=0.035; beaker.add(base);
+const rimRing = new THREE.Mesh(new THREE.TorusGeometry(1.25,0.035,10,60),
+  new THREE.MeshStandardMaterial({color:0xd8e6f2, roughness:0.15, metalness:0.1, transparent:true, opacity:0.5}));
+rimRing.rotation.x=Math.PI/2; rimRing.position.y=2.7; beaker.add(rimRing);
+
+const liquidMat = new THREE.MeshStandardMaterial({
+  color:0xdfe9f5, roughness:0.12, metalness:0.0, transparent:true, opacity:0.5
+});
+const liquid = new THREE.Mesh(new THREE.CylinderGeometry(R_IN,R_IN,LIQ_TOP,56), liquidMat);
+liquid.position.y=LIQ_TOP/2; beaker.add(liquid);
+const surface = new THREE.Mesh(new THREE.CircleGeometry(R_IN,56),
+  new THREE.MeshStandardMaterial({color:0xeaf3ff, roughness:0.05, metalness:0.2, transparent:true, opacity:0.4}));
+surface.rotation.x=-Math.PI/2; surface.position.y=LIQ_TOP; beaker.add(surface);
+
+/* --- the stand --- */
+const steel = new THREE.MeshStandardMaterial({color:0xb9c3cf, metalness:0.9, roughness:0.25});
+const standX = BEAKER_X + 1.05;
+const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.055,5.6,16), steel);
+rod.position.set(standX, 2.8, -0.5); macro.add(rod);
+const standBase = new THREE.Mesh(new THREE.BoxGeometry(1.0,0.09,0.7),
+  new THREE.MeshStandardMaterial({color:0x2a3140, metalness:0.55, roughness:0.5}));
+standBase.position.set(standX, 0.045, -0.5); macro.add(standBase);
+const boss = new THREE.Mesh(new THREE.BoxGeometry(1.05,0.14,0.16), steel);
+boss.position.set(BEAKER_X+0.52, 4.35, -0.26); macro.add(boss);
+
+/* --- the burette --- */
+const BUR_X = BEAKER_X, BUR_BOT = 3.30, BUR_TOP = 6.30;
+const burTube = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.115,0.115,BUR_TOP-BUR_BOT,24,1,true), glassMat);
+burTube.position.set(BUR_X,(BUR_TOP+BUR_BOT)/2,0); macro.add(burTube);
+const burTip = new THREE.Mesh(new THREE.CylinderGeometry(0.018,0.055,0.34,14), glassMat);
+burTip.position.set(BUR_X, BUR_BOT-0.30, 0); macro.add(burTip);
+const burTap = new THREE.Mesh(new THREE.CylinderGeometry(0.075,0.075,0.34,14), glassMat);
+burTap.rotation.z = Math.PI/2; burTap.position.set(BUR_X, BUR_BOT-0.05, 0); macro.add(burTap);
+const tapHandle = new THREE.Mesh(new THREE.BoxGeometry(0.30,0.12,0.04),
+  new THREE.MeshStandardMaterial({color:0xdfe8f2, roughness:0.3, metalness:0.1}));
+tapHandle.position.set(BUR_X+0.17, BUR_BOT-0.05, 0); macro.add(tapHandle);
+
+// the acid inside it, whose level falls as it is delivered
+const burLiqMat = new THREE.MeshStandardMaterial({
+  color:0xdfe9f5, roughness:0.1, metalness:0, transparent:true, opacity:0.40
+});
+const burLiquid = new THREE.Mesh(new THREE.CylinderGeometry(0.095,0.095,1,20), burLiqMat);
+macro.add(burLiquid);
+const BUR_FULL = 2.55, BUR_LOW = 0.85;
+
+/* --- drops of acid, each a closed-form function of t --- */
+const dropGrp = new THREE.Group(); macro.add(dropGrp);
+const DROP_A = 17.2, DROP_B = 24.2;
+let drops = [];
+function buildDrops(){
+  clearGroup(dropGrp);
+  drops = [];
+  const rand = rng(20240902);
+  for(let i=0;i<34;i++){
+    const m = new THREE.Mesh(SPH_LO, new THREE.MeshStandardMaterial({
+      color:0xe6f0fb, roughness:0.06, metalness:0.1, transparent:true, opacity:0.72
+    }));
+    m.scale.set(0.055,0.075,0.055);
+    drops.push({m, birth: DROP_A + (i/34)*(DROP_B-DROP_A) + rand()*0.06, fall:0.40});
+    dropGrp.add(m);
+  }
+}
+function updateDrops(t){
+  for(const d of drops){
+    const age = t - d.birth;
+    if(age < 0 || age > d.fall){ d.m.visible = false; continue; }
+    d.m.visible = true;
+    const u = age/d.fall;
+    d.m.position.set(BUR_X, lerp(BUR_BOT-0.46, LIQ_TOP, u*u), 0);
+    d.m.material.opacity = 0.72*(1-u*u*0.4);
+  }
+}
+
+/* =====================================================================
+   MOLECULE BUILDERS
+===================================================================== */
+function makeSulfate(){
+  const g = new THREE.Group();
+  g.add(atom(EL.S.col, EL.S.r, {rough:0.4, metal:0.2}));
+  const d=1.28, k=d/Math.sqrt(3);
+  [[k,k,k],[k,-k,-k],[-k,k,-k],[-k,-k,k]].forEach(p=>{
+    const o = atom(EL.O.col, 0.46, {rough:0.28, metal:0.1});
+    o.position.set(p[0],p[1],p[2]);
+    const b = bond(0xa9b6c6, 0.12); placeBond(b, new THREE.Vector3(), o.position, 0.05);
+    g.add(o,b);
+  });
+  return g;
+}
+function makeNitrate(){
+  const g = new THREE.Group();
+  g.add(atom(EL.N.col, EL.N.r, {rough:0.4, metal:0.15}));
+  const d=1.18;
+  [90,210,330].forEach(deg=>{
+    const a = deg*Math.PI/180;
+    const o = atom(EL.O.col, 0.46, {rough:0.28, metal:0.1});
+    o.position.set(Math.cos(a)*d, Math.sin(a)*d, 0);
+    const b = bond(0xa9b6c6, 0.12); placeBond(b, new THREE.Vector3(), o.position, 0.05);
+    g.add(o,b);
+  });
+  return g;
+}
+function makeChloride(){
+  const g = new THREE.Group();
+  g.add(atom(EL.Cl.col, EL.Cl.r, {rough:0.3, metal:0.12}));
+  return g;
+}
+function makeAnion(){
+  if(AN.kind==='sulfate') return makeSulfate();
+  if(AN.kind==='nitrate') return makeNitrate();
+  return makeChloride();
+}
+
+/* a hydroxide ion: one oxygen, one hydrogen, and a space where the
+   second hydrogen is going to go */
+const OH_H   = new THREE.Vector3( 0.62, 0.46, 0);
+const OH_GAP = new THREE.Vector3(-0.62, 0.46, 0);
+function makeHydroxide(){
+  const g = new THREE.Group();
+  g.add(atom(EL.O.col, EL.O.r, {rough:0.28, metal:0.1}));
+  const h = atom(EL.H.col, EL.H.r, {rough:0.3, metal:0.1});
+  h.position.copy(OH_H);
+  const b = bond(0xa9b6c6, 0.10);
+  placeBond(b, new THREE.Vector3(), OH_H, 0.05);
+  g.add(h,b);
+  return g;
+}
+
+/* =====================================================================
+   MICRO 1 — the alkali: metal ions and hydroxide ions in water
+===================================================================== */
+const micro1 = new THREE.Group(); micro1.position.y=MICRO1_Y; scene.add(micro1);
+let M1 = {};
+
+function makeWater(op){
+  const g = new THREE.Group();
+  g.add(atom(EL.O.col, 0.40, {rough:0.3, op}));
+  const ang = 104.5*Math.PI/360;
+  [-1,1].forEach(s=>{
+    const h = atom(EL.H.col, 0.24, {rough:0.3, op, lo:true});
+    h.position.set(Math.sin(ang)*s*0.78, Math.cos(ang)*0.78, 0);
+    const b = bond(0x8c99aa, 0.07);
+    b.material.transparent = true; b.material.opacity = op;
+    placeBond(b, new THREE.Vector3(), h.position, 0.04);
+    g.add(h,b);
+  });
+  return g;
+}
+
+function buildMicro1(){
+  clearGroup(micro1);
+  const drifters = [];
+  for(let i=0;i<12;i++){
+    const w = makeWater(0.15); w.scale.setScalar(0.8);
+    w.userData = {c:new THREE.Vector3((Math.random()-0.5)*13,(Math.random()-0.5)*9,-3-Math.random()*7),
+                  a:0.9+Math.random()*0.9, ph:Math.random()*6.283, sp:0.3+Math.random()*0.5};
+    micro1.add(w); drifters.push(w);
+  }
+  for(let i=0;i<6;i++){
+    const c = atom(AL.col, AL.r*0.86, {rough:0.3, metal:0.5, lo:true});
+    c.userData = {c:new THREE.Vector3((Math.random()-0.5)*12,(Math.random()-0.5)*8,-1-Math.random()*6),
+                  a:0.7+Math.random()*0.9, ph:Math.random()*6.283, sp:0.35+Math.random()*0.5};
+    micro1.add(c); drifters.push(c);
+  }
+  for(let i=0;i<6;i++){
+    const oh = makeHydroxide(); oh.scale.setScalar(0.85);
+    oh.userData = {c:new THREE.Vector3((Math.random()-0.5)*12,(Math.random()-0.5)*8,-2-Math.random()*6),
+                   a:0.7+Math.random()*0.8, ph:Math.random()*6.283, sp:0.3+Math.random()*0.5};
+    micro1.add(oh); drifters.push(oh);
+  }
+
+  const heroC = atom(AL.col, AL.r, {rough:0.28, metal:0.55});
+  heroC.position.set(-1.9, 0.1, 4.4); micro1.add(heroC);
+  const heroOH = makeHydroxide();
+  heroOH.position.set(1.6, -0.1, 4.2); micro1.add(heroOH);
+
+  const lblC  = label(AL.ion, AL.lblCol);      lblC.position.set(-1.9, 1.4, 4.4);
+  const lblOH = label('OH⁻','#9db4ff');        lblOH.position.set(1.9, 1.6, 4.2);
+  const lblAlk= label(`${AL.solid} solution — an alkali`,'#dfe7f2',40);
+  lblAlk.position.set(0,-2.0,4.3);
+  micro1.add(lblC,lblOH,lblAlk);
+
+  M1 = {drifters, heroC, heroOH, lblC, lblOH, lblAlk};
+}
+
+function updateMicro1(t){
+  const {drifters, heroC, heroOH, lblC, lblOH, lblAlk} = M1;
+  drifters.forEach(o=>{
+    const d = o.userData;
+    o.position.set(
+      d.c.x + Math.sin(t*0.4*d.sp+d.ph)*d.a*1.6,
+      d.c.y + Math.cos(t*0.34*d.sp+d.ph*1.3)*d.a*1.3,
+      d.c.z + Math.sin(t*0.29*d.sp+d.ph*0.7)*d.a
+    );
+    o.rotation.y = t*0.22*d.sp;
+    o.rotation.x = Math.sin(t*0.26+d.ph)*0.4;
+  });
+  const u = t - 7.0;
+  heroC.position.y  =  0.1 + Math.sin(u*0.8)*0.12;
+  heroOH.position.y = -0.1 + Math.cos(u*0.7)*0.12;
+  heroOH.rotation.y = u*0.35;
+  heroOH.rotation.z = Math.sin(u*0.5)*0.25;
+
+  const off = 1-ramp(t,12.6,13.6);
+  lblC.material.opacity   = ramp(t,8.0,9.0)*off;
+  lblOH.material.opacity  = ramp(t,8.6,9.6)*off;
+  lblAlk.material.opacity = ramp(t,10.4,11.4)*off;
+}
+
+/* =====================================================================
+   MICRO 2 — H⁺ meets OH⁻.  One pair, or two if the acid is diprotic.
+===================================================================== */
+const micro2 = new THREE.Group(); micro2.position.y=MICRO2_Y; scene.add(micro2);
+let M2 = {};
+
+const V = (x,y,z)=>new THREE.Vector3(x,y,z);
+
+/* one slot per water molecule that is going to be made */
+const SLOTS = {
+  1:[{h:[ 4.4, 2.8, 1.3], oh:[-4.6,-1.2, 0.6], meet:[ 0.00, 0.10, 0.00], cat:[-3.2, 2.3,-1.2]}],
+  2:[{h:[ 4.8, 3.6, 1.5], oh:[-4.9, 1.4, 0.5], meet:[ 0.25, 1.95, 0.15], cat:[-3.6, 3.4,-1.4]},
+     {h:[ 4.4,-3.8, 1.1], oh:[-4.5,-1.6, 0.7], meet:[-0.25,-1.95, 0.10], cat:[-3.2,-3.6,-1.2]}]
+};
+const ANION_TRACK = {
+  s:[ 6.6,-0.4,-2.6], m:[ 1.8,-0.8,-3.0], e:[-2.2,-0.2,-2.8]
+};
+
+function buildMicro2(){
+  clearGroup(micro2);
+
+  const pairs = [];
+  SLOTS[NH].forEach(slot=>{
+    const oh = makeHydroxide();
+    const h  = atom(EL.H.col, EL.H.r, {rough:0.3, metal:0.1});
+    const nb = bond(0xa9b6c6, 0.10); nb.material.opacity = 0;   // the new O–H bond
+    micro2.add(oh,h,nb);
+    pairs.push({
+      oh, h, nb,
+      hFrom:V(...slot.h), ohFrom:V(...slot.oh), meet:V(...slot.meet),
+      lblOH: label('OH⁻','#9db4ff'),
+      lblH:  label('H⁺','#ff9c8e'),
+      lblW:  label('H₂O','#a9c4ff',46)
+    });
+  });
+  pairs.forEach(p=> micro2.add(p.lblOH, p.lblH, p.lblW));
+
+  // the spectators: one metal ion per water, and the acid's anion
+  const cations = [], lblCat = [];
+  SLOTS[NH].forEach(slot=>{
+    const c = atom(AL.col, AL.r, {rough:0.3, metal:0.5});
+    c.userData.home = V(...slot.cat);
+    micro2.add(c); cations.push(c);
+    const lb = label(AL.ion, AL.lblCol); micro2.add(lb); lblCat.push(lb);
+  });
+  const anion = makeAnion(); micro2.add(anion);
+  const lblAn = label(AN.label, AN.lblCol); micro2.add(lblAn);
+  const lblSpect = label('spectators — they never bond to anything','#7f8ca0',36);
+  micro2.add(lblSpect);
+
+  // background crowd
+  const crowd = [];
+  for(let i=0;i<8;i++){
+    const w = makeWater(0.13); w.scale.setScalar(0.75);
+    w.userData = {base:V((Math.random()-0.5)*16,(Math.random()-0.5)*10,-5-Math.random()*7),
+                  ph:Math.random()*6.283, sp:0.3+Math.random()*0.6};
+    micro2.add(w); crowd.push(w);
+  }
+
+  M2 = {pairs, cations, lblCat, anion, lblAn, lblSpect, crowd};
+}
+
+function path3(out, A,B,C, t, t0,t1,t2){
+  if(t<=t1) out.lerpVectors(A,B,smooth((t-t0)/(t1-t0)));
+  else out.lerpVectors(B,C,smooth((t-t1)/(t2-t1)));
+}
+const _pa=new THREE.Vector3(), _pb=new THREE.Vector3(), _pt=new THREE.Vector3();
+
+function updateMicro2(t){
+  const {pairs, cations, lblCat, anion, lblAn, lblSpect, crowd} = M2;
+
+  /* the approach 31 → 37.5, the join 37.5 → 40.5, then water drifts */
+  const close = ramp(t,31.0,37.5);
+  const join  = ramp(t,37.8,40.5);
+  const bondOn= ramp(t,39.6,40.8);
+
+  pairs.forEach((p,i)=>{
+    const sway = Math.sin(t*0.9 + i*2.1);
+
+    // the hydroxide drifts in from the left and stops at the meeting point
+    _pa.lerpVectors(p.ohFrom, p.meet, close);
+    _pa.y += sway*0.12*(1-join);
+    p.oh.position.copy(_pa);
+    p.oh.rotation.y = t*0.3 + i;
+    p.oh.rotation.z = Math.sin(t*0.5+i)*0.22*(1-join);
+
+    // the proton comes in from the right and takes the empty place on the oxygen
+    _pt.copy(_pa).add(OH_GAP.clone().applyEuler(p.oh.rotation));
+    _pb.lerpVectors(p.hFrom, _pt, Math.max(close*0.55, join));
+    if(join < 1){
+      _pb.x += Math.cos(t*1.3+i)*0.22*(1-join);
+      _pb.y += Math.sin(t*1.5+i)*0.18*(1-join);
+    }
+    p.h.position.copy(_pb);
+
+    p.nb.material.opacity = bondOn;
+    p.nb.visible = bondOn > 0.01;
+    if(p.nb.visible) placeBond(p.nb, p.oh.position, p.h.position, 0.05);
+
+    // once it is water it wobbles, and drifts gently apart from its twin
+    if(t > 41.0){
+      const w = Math.sin(t*1.5+i)*0.05;
+      p.oh.position.y += w*0.4;
+      p.oh.rotation.z += Math.sin(t*0.8+i)*0.06;
+      const away = ramp(t,44.0,52.0);
+      p.oh.position.x += away*(i? -1.0:1.0)*0.5;
+      p.oh.position.y += away*0.35;
+      p.h.position.copy(p.oh.position).add(OH_GAP.clone().applyEuler(p.oh.rotation));
+      if(p.nb.visible) placeBond(p.nb, p.oh.position, p.h.position, 0.05);
+    }
+
+    // labels: OH⁻ and H⁺ until they join, then H₂O
+    const named = ramp(t,28.8,29.8);
+    const gone  = ramp(t,39.8,40.8);
+    p.lblOH.material.opacity = named*(1-gone);
+    p.lblH.material.opacity  = named*(1-gone);
+    p.lblW.material.opacity  = ramp(t,40.8,41.8)*(1-ramp(t,48.6,49.6));
+    p.lblOH.position.copy(p.oh.position).add(_v1.set(0,1.05,0));
+    p.lblH.position.copy(p.h.position).add(_v1.set(0,0.8,0));
+    p.lblW.position.copy(p.oh.position).add(_v1.set(0,1.25,0));
+  });
+
+  /* the spectators. They drift, they are labelled, and that is all they do. */
+  cations.forEach((c,i)=>{
+    const h = c.userData.home;
+    c.position.set(
+      h.x + Math.sin(t*0.45+i*1.7)*0.9,
+      h.y + Math.cos(t*0.38+i*1.3)*0.7,
+      h.z + Math.sin(t*0.3+i)*0.6
+    );
+    lblCat[i].position.copy(c.position).add(_v1.set(0,AL.r+0.8,0));
+    lblCat[i].material.opacity = ramp(t,29.4,30.4);
+  });
+  path3(_pa, V(...ANION_TRACK.s), V(...ANION_TRACK.m), V(...ANION_TRACK.e), t, 28, 40, 54);
+  _pa.y += Math.sin(t*0.5)*0.2;
+  anion.position.copy(_pa);
+  anion.rotation.y = t*0.3; anion.rotation.x = Math.sin(t*0.35)*0.3;
+  lblAn.position.set(_pa.x, _pa.y+AN.labelY, _pa.z);
+  lblAn.material.opacity = ramp(t,29.4,30.4);
+
+  // called out by name at the moment the captions talk about them
+  lblSpect.material.opacity = ramp(t,43.8,44.8)*(1-ramp(t,48.8,49.8))*0.95;
+  lblSpect.position.set(cations[0].position.x + 1.2, cations[0].position.y - 1.25, cations[0].position.z);
+
+  crowd.forEach(o=>{
+    const u = o.userData;
+    o.position.set(
+      u.base.x + Math.sin(t*0.42*u.sp+u.ph)*1.5,
+      u.base.y + Math.cos(t*0.35*u.sp+u.ph)*1.2,
+      u.base.z + Math.sin(t*0.28*u.sp+u.ph*1.7)*1.2
+    );
+    o.rotation.y = t*0.25*u.sp;
+    o.rotation.x = Math.sin(t*0.3+u.ph)*0.5;
+  });
+}
+
+/* =====================================================================
+   TIMELINE
+===================================================================== */
+const TOTAL = 54;
+let SEGS = [];
+
+function buildCaptions(){
+  const nW = NH>1 ? 'two molecules of water' : 'a molecule of water';
+  const endLine = hasColour()
+    ? `Gone — ${IND.neuWord}. That is the end point: neutral.`
+    : `And… nothing. Without an indicator there is no way to see when to stop.`;
+  SEGS = [
+    {t:0,    c: hasColour()
+      ? `${cap1(AL.solid)} solution, ${IND.alkWord} with ${IND.name}.`
+      : `${cap1(AL.solid)} solution — and no indicator in it.`},
+    {t:3.5,  c:'Into the liquid first.'},
+    {t:7.0,  c:`${AL.ion} ions and hydroxide ions, OH⁻, drifting in water.`},
+    {t:10.4, c:'The hydroxide ions are what make it an alkali.'},
+    {t:13.0, c:'Back to the bench.'},
+    {t:15.0, c:`Dilute ${AC.name} in the burette above.`},
+    {t:17.5, c:'Run it in, drop by drop.'},
+    {t:21.0, c: hasColour()
+      ? `The ${IND.alkWord} starts to go.`
+      : `Drop after drop. Nothing looks any different.`},
+    {t:24.5, c: endLine},
+    {t:28.0, c:`Down into the liquid, just before the end point.`},
+    {t:31.0, c:`H⁺ from the acid. OH⁻ from the alkali.${NH>1?' Two of each, because sulfuric acid brings two.':''}`},
+    {t:34.0, c:'They are drawn straight to each other.'},
+    {t:37.5, c:'An H⁺ is a bare proton. There is a space on the oxygen, and it simply takes it.'},
+    {t:40.8, c:`And that is ${nW}.`},
+    {t:43.8, c:`Meanwhile ${AL.ion} and ${AN.label} have done nothing whatsoever.`},
+    {t:46.8, c:`Dissolved before, dissolved after. Those two ions are the ${saltName()}.`},
+    {t:49.8, c:`So the reaction is only ever this:  ${ionicEq()}`},
+    {t:52.0, c: equation()}
+  ];
+}
+
+const TRANSITIONS = [7.0, 15.0, 28.0];
+const FADE = 0.55;
+
+function worldAt(t){
+  if(t < 7.0)  return 'macro';
+  if(t < 15.0) return 'micro1';
+  if(t < 28.0) return 'macro';
+  return 'micro2';
+}
+
+const CAM = {
+  macro:[
+    {t:0,    p:[2.3,4.9,5.2],  l:[1.5,2.7,0]},
+    {t:3.5,  p:[1.5,3.2,3.0],  l:[1.6,1.75,0]},
+    {t:7.0,  p:[1.85,2.3,1.9], l:[1.7,1.6,0]},
+    {t:15.0, p:[2.5,5.4,8.2],  l:[1.5,3.2,0]},
+    {t:17.5, p:[2.7,4.4,5.4],  l:[1.7,2.6,0]},
+    {t:21.0, p:[2.35,3.4,4.4], l:[1.7,1.9,0]},
+    {t:24.5, p:[2.0,2.9,3.8],  l:[1.7,1.6,0]},
+    {t:28.0, p:[1.9,1.9,1.7],  l:[1.7,1.4,0]}
+  ],
+  micro1:[
+    {t:7.0,  p:[0,0.6,9.0],   l:[0,0,3.2]},
+    {t:10.4, p:[2.4,1.6,9.4], l:[0,0,1.4]},
+    {t:13.0, p:[1.6,2.6,12.0],l:[0,0,0]},
+    {t:15.0, p:[0,5.0,22.0],  l:[0,0,0]}
+  ],
+  micro2:[
+    {t:28.0, p:[0,1.4,13.0],   l:[0,0.2,0]},
+    {t:31.0, p:[0,1.0,11.2],   l:[0,0.1,0]},
+    {t:34.0, p:[-0.8,0.8,9.0], l:[-0.2,0.1,0]},
+    {t:37.5, p:[0.9,0.6,7.2],  l:[0.1,0.1,0.1]},
+    {t:40.8, p:[0.4,0.8,7.6],  l:[0,0.2,0]},
+    {t:43.8, p:[-1.6,1.2,9.8], l:[-1.4,0.6,0]},
+    {t:46.8, p:[-1.2,1.0,11.0],l:[-0.6,0.3,0]},
+    {t:49.8, p:[0.2,1.6,12.2], l:[0,0.4,0]},
+    {t:54.0, p:[1.4,2.0,13.6], l:[0.2,0.4,0]}
+  ]
+};
+
+const camPos=new THREE.Vector3(), camTgt=new THREE.Vector3();
+function sampleCam(t){
+  const w = worldAt(t), keys = CAM[w];
+  let i=0; while(i<keys.length-2 && t>=keys[i+1].t) i++;
+  const a=keys[i], b=keys[Math.min(i+1,keys.length-1)];
+  const u = b.t===a.t?0:smooth((t-a.t)/(b.t-a.t));
+  const off = w==='micro1'?MICRO1_Y : w==='micro2'?MICRO2_Y : 0;
+  camPos.set(lerp(a.p[0],b.p[0],u), lerp(a.p[1],b.p[1],u)+off, lerp(a.p[2],b.p[2],u));
+  camTgt.set(lerp(a.l[0],b.l[0],u), lerp(a.l[1],b.l[1],u)+off, lerp(a.l[2],b.l[2],u));
+}
+
+/* ---------- macro animation ---------- */
+function updateMacro(t){
+  // the tap opens at 17.0 and the level falls while acid runs out
+  const run = clamp01((t-DROP_A)/(DROP_B-DROP_A));
+  tapHandle.rotation.x = -ramp(t,16.8,17.3)*1.2;
+  const h = lerp(BUR_FULL, BUR_LOW, run);
+  burLiquid.scale.y = h;
+  burLiquid.position.set(BUR_X, BUR_BOT + h/2, 0);
+  // the acid in the burette is the acid's own colour: none
+  burLiqMat.color.setRGB(0.90,0.94,0.99);
+
+  /* the indicator. A little colour drains as the acid is swirled in, then the
+     end point arrives all at once — which is what makes titration work. */
+  const early = ramp(t,19.0,23.0)*0.22;
+  const turn  = ramp(t,23.4,24.7);
+  const mix = clamp01(early + turn*(1-0.22));
+  const a = IND.alk, b = IND.neu;
+  liquidMat.color.setRGB(lerp(a[0],b[0],mix), lerp(a[1],b[1],mix), lerp(a[2],b[2],mix));
+  const opA = hasColour()?0.62:0.36, opB = indKey==='universal'?0.58:0.36;
+  liquidMat.opacity = lerp(opA, opB, mix);
+  surface.material.opacity = lerp(hasColour()?0.3:0.42, indKey==='universal'?0.3:0.42, mix);
+
+  updateDrops(t);
+}
+
+/* =====================================================================
+   ORBIT-ISH DRAG
+===================================================================== */
+let yaw=0, pitch=0, dragging=false, lx=0, ly=0;
+const el = renderer.domElement;
+function down(x,y){dragging=true;lx=x;ly=y;el.style.cursor='grabbing';}
+function move(x,y){
+  if(!dragging) return;
+  yaw   -= (x-lx)*0.005;
+  pitch  = Math.max(-0.9, Math.min(0.9, pitch + (y-ly)*0.004));
+  lx=x; ly=y;
+}
+function up(){dragging=false; el.style.cursor='grab';}
+el.style.cursor='grab';
+el.addEventListener('mousedown',e=>down(e.clientX,e.clientY));
+addEventListener('mousemove',e=>move(e.clientX,e.clientY));
+addEventListener('mouseup',up);
+el.addEventListener('touchstart',e=>{down(e.touches[0].clientX,e.touches[0].clientY);},{passive:true});
+el.addEventListener('touchmove',e=>{move(e.touches[0].clientX,e.touches[0].clientY);},{passive:true});
+addEventListener('touchend',up);
+
+const _sph = new THREE.Spherical();
+function applyCamera(){
+  const dir = camPos.clone().sub(camTgt);
+  _sph.setFromVector3(dir);
+  _sph.theta += yaw;
+  _sph.phi = Math.max(0.12, Math.min(Math.PI-0.12, _sph.phi - pitch));
+  dir.setFromSpherical(_sph);
+  camera.position.copy(camTgt).add(dir);
+  camera.lookAt(camTgt);
+}
+
+/* =====================================================================
+   UI
+===================================================================== */
+const capEl  = document.getElementById('caption');
+const fadeEl = document.getElementById('fade');
+const playBtn= document.getElementById('play');
+const scrub  = document.getElementById('scrub');
+const clock  = document.getElementById('clock');
+const keyEl  = document.getElementById('key');
+const menuEl = document.getElementById('menu');
+const gearEl = document.getElementById('gear');
+
+let t = 0, playing = true, lastFrame = performance.now(), curSeg = -1;
+
+playBtn.onclick = ()=>{ playing=!playing; playBtn.textContent = playing?'Pause':'Play'; };
+document.getElementById('restart').onclick = ()=>{ t=0; curSeg=-1; playing=true; playBtn.textContent='Pause'; };
+scrub.oninput = ()=>{ t = parseFloat(scrub.value); curSeg=-1; };
+addEventListener('keydown', e=>{
+  if(e.code==='Space'){ e.preventDefault(); playBtn.click(); }
+  if(e.code==='ArrowRight'){ t = Math.min(TOTAL, t+2); curSeg=-1; }
+  if(e.code==='ArrowLeft'){  t = Math.max(0, t-2);     curSeg=-1; }
+  if(e.code==='Escape') setMenu(false);
+});
+
+function captionFor(time){
+  let i=0; for(let k=0;k<SEGS.length;k++) if(time>=SEGS[k].t) i=k;
+  return i;
+}
+function fadeAmount(time){
+  let f=0;
+  for(const T of TRANSITIONS) f = Math.max(f, 1 - Math.min(1, Math.abs(time-T)/FADE));
+  return f;
+}
+
+const hexCss = n => '#'+n.toString(16).padStart(6,'0');
+
+function buildLegend(){
+  const rows = [
+    {sym:AL.sym, name:AL.name, col:AL.col},
+    {sym:'O', name:'oxygen',   col:EL.O.col},
+    {sym:'H', name:'hydrogen', col:EL.H.col}
+  ];
+  AN.extras.forEach(s=>{ if(!rows.some(r=>r.sym===s)) rows.push({sym:s, name:EL[s].name, col:EL[s].col}); });
+  keyEl.innerHTML = rows.map(r=>
+    `<div><span class="dot" style="background:${hexCss(r.col)}"></span><b>${r.sym}</b> ${r.name}</div>`
+  ).join('');
+}
+
+function buildMenu(){
+  const mk = (obj, cur, group, fmt) => Object.keys(obj).map(k=>
+    `<button class="opt ${k===cur?'on':''}" data-group="${group}" data-key="${k}">${fmt(obj[k])}</button>`
+  ).join('');
+  document.getElementById('alkaliOpts').innerHTML =
+    mk(ALKALIS, alkaliKey, 'alkali', a=>`<span class="f">${a.formula}</span> · ${a.name}`);
+  document.getElementById('acidOpts').innerHTML =
+    mk(ACIDS, acidKey, 'acid', a=>`<span class="f">${a.formula}</span>`);
+  document.getElementById('indOpts').innerHTML =
+    mk(INDICATORS, indKey, 'ind', i=>`<span class="swatch" style="background:${i.swatch}"></span>${i.name}`);
+
+  const ratio = NH>1
+    ? `Sulfuric acid gives up two H⁺, so it needs <i>two</i> ${AL.formula} and makes <i>two</i> waters.`
+    : `One H⁺, one OH⁻, one water.`;
+  document.getElementById('menuEq').innerHTML =
+    `${equation()}<span>${ratio} Whichever pair you choose, the reaction itself is always ` +
+    `<i>${ionicEq()}</i> — the ${AL.ion} and the ${AN.label} are spectators.` +
+    (hasColour()? '' : ' With no indicator there is nothing to watch for at the end point.') +
+    `</span>`;
+
+  menuEl.querySelectorAll('.opt').forEach(b=>{
+    b.onclick = ()=>{
+      const g = b.dataset.group;
+      if(g==='alkali') alkaliKey = b.dataset.key;
+      else if(g==='acid') acidKey = b.dataset.key;
+      else indKey = b.dataset.key;
+      build();
+      playing = true; playBtn.textContent = 'Pause';
+    };
+  });
+}
+
+function setMenu(open){
+  menuEl.classList.toggle('open', open);
+  gearEl.classList.toggle('open', open);
+  if(open) buildMenu();
+}
+gearEl.onclick = ()=> setMenu(!menuEl.classList.contains('open'));
+
+/* ---------- rebuild everything that depends on the species ---------- */
+function build(){
+  derive();
+  buildDrops();
+  buildMicro1();
+  buildMicro2();
+  buildCaptions();
+  buildLegend();
+
+  document.title = `${cap1(AL.solid)} + ${AC.name}`;
+  document.getElementById('h1').textContent = `${cap1(AL.solid)} meets ${AC.name}`;
+  document.getElementById('subtitle').textContent = equation();
+  scrub.style.setProperty('--hl', hexCss(AL.col));
+
+  if(menuEl.classList.contains('open')) buildMenu();
+  history.replaceState(null,'',`?alkali=${alkaliKey}&acid=${acidKey}&ind=${indKey}`);
+
+  t = 0; curSeg = -1;
+}
+build();
+
+/* =====================================================================
+   LOOP
+===================================================================== */
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt = Math.min((now-lastFrame)/1000, 1/24);
+  lastFrame = now;
+
+  if(playing){
+    t += dt;
+    if(t >= TOTAL){ t = TOTAL; playing=false; playBtn.textContent='Play'; }
+  }
+
+  updateMacro(t);
+  updateMicro1(t);
+  updateMicro2(t);
+  sampleCam(t);
+  applyCamera();
+
+  const f = fadeAmount(t);
+  fadeEl.style.opacity = f;
+  const seg = captionFor(t);
+  if(seg !== curSeg){ curSeg = seg; capEl.textContent = SEGS[seg].c; }
+  capEl.style.opacity = 1 - f;
+  scrub.value = t;
+  scrub.style.setProperty('--p', (t/TOTAL*100)+'%');
+  clock.textContent = t.toFixed(1)+' / '+TOTAL.toFixed(1)+'s';
+
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(frame);
+
+addEventListener('resize', ()=>{
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The blast furnace</title>
+<style>
+  :root{
+    --ink:#eef2f7;
+    --dim:#93a2b6;
+    --panel:rgba(10,14,21,.72);
+    --line:rgba(147,162,182,.22);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;background:#080b11;color:var(--ink);
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;overflow:hidden;}
+  #stage{position:fixed;inset:0;}
+  canvas{display:block;}
+
+  #fade{position:fixed;inset:0;background:#080b11;pointer-events:none;opacity:0;}
+
+  .title{position:fixed;top:22px;left:26px;max-width:min(46ch,60vw);pointer-events:none;}
+  .title h1{
+    margin:0;
+    font-family:"Iowan Old Style","Charter","Palatino Linotype",Georgia,serif;
+    font-weight:600;font-size:23px;letter-spacing:.2px;line-height:1.25;
+  }
+  .title p{margin:6px 0 0;font-size:13px;line-height:1.5;color:var(--dim);}
+  .eq{font-variant-numeric:tabular-nums;}
+  .title a{pointer-events:auto;color:var(--dim);text-decoration:none;font-size:12px;
+    border-bottom:1px solid rgba(147,162,182,.3);}
+  .title a:hover{color:var(--ink);}
+
+  #caption{
+    position:fixed;left:50%;transform:translateX(-50%);
+    bottom:112px;width:min(680px,92vw);text-align:center;pointer-events:none;
+    font-family:"Iowan Old Style","Charter","Palatino Linotype",Georgia,serif;
+    font-size:19px;line-height:1.45;
+    text-shadow:0 2px 18px rgba(0,0,0,.85);
+    transition:opacity .35s ease;
+  }
+  #step{
+    position:fixed;left:50%;transform:translateX(-50%);
+    bottom:158px;pointer-events:none;
+    font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:#ffc98a;opacity:0;transition:opacity .3s ease;
+  }
+
+  #bar{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:20px;
+    width:min(720px,94vw);
+    background:var(--panel);backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:14px;
+    padding:12px 14px;display:flex;align-items:center;gap:12px;
+  }
+  button{
+    font:inherit;font-size:13px;color:var(--ink);
+    background:rgba(255,255,255,.06);border:1px solid var(--line);
+    border-radius:9px;padding:7px 13px;cursor:pointer;
+    transition:background .15s ease,border-color .15s ease;
+  }
+  button:hover{background:rgba(255,255,255,.12);}
+  button:focus-visible{outline:2px solid #7fb0ff;outline-offset:2px;}
+  #play{min-width:74px;}
+  #gear{padding:7px 11px;font-size:15px;line-height:1;}
+  #gear.open{background:rgba(127,176,255,.2);border-color:rgba(127,176,255,.5);}
+  #scrub{
+    flex:1;appearance:none;height:4px;border-radius:4px;
+    background:linear-gradient(90deg,var(--hl,#c4622e) 0%,var(--hl,#c4622e) var(--p,0%),rgba(255,255,255,.14) var(--p,0%));
+    cursor:pointer;
+  }
+  #scrub::-webkit-slider-thumb{appearance:none;width:14px;height:14px;border-radius:50%;
+    background:var(--ink);border:none;box-shadow:0 0 0 3px rgba(8,11,17,.6);}
+  #scrub::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--ink);border:none;}
+  #clock{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums;min-width:74px;text-align:right;}
+
+  #key{
+    position:fixed;right:24px;top:22px;
+    background:var(--panel);backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:12px;padding:11px 13px;
+    font-size:12.5px;line-height:1.9;color:var(--dim);
+  }
+  #key div{display:flex;align-items:center;gap:8px;}
+  .dot{width:11px;height:11px;border-radius:50%;flex:none;box-shadow:inset -2px -2px 3px rgba(0,0,0,.45);}
+  #key b{color:var(--ink);font-weight:600;}
+  #hint{position:fixed;bottom:90px;right:24px;font-size:11.5px;color:var(--dim);opacity:.75;}
+
+  /* ---- menu ---- */
+  #menu{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:86px;
+    width:min(740px,94vw);
+    background:var(--panel);backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:14px;
+    padding:16px 18px;display:none;gap:18px;
+  }
+  #menu.open{display:flex;flex-wrap:wrap;}
+  #menu fieldset{border:none;margin:0;padding:0;flex:1;min-width:210px;}
+  #menu legend{
+    font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+    color:#64748b;padding:0 0 8px;
+  }
+  .opts{display:flex;flex-wrap:wrap;gap:6px;}
+  .opt{
+    font:inherit;font-size:12.5px;padding:6px 11px;border-radius:8px;
+    background:rgba(255,255,255,.05);border:1px solid var(--line);
+    color:var(--dim);cursor:pointer;
+  }
+  .opt:hover{background:rgba(255,255,255,.1);color:var(--ink);}
+  .opt.on{background:rgba(127,176,255,.18);border-color:rgba(127,176,255,.5);color:#dce9ff;}
+  .opt .f{font-family:"Iowan Old Style","Charter",Georgia,serif;font-variant-numeric:tabular-nums;}
+  #steps{
+    flex-basis:100%;border-top:1px solid var(--line);padding-top:12px;margin:0;
+    font-family:"Iowan Old Style","Charter",Georgia,serif;font-size:14.5px;
+    color:var(--dim);font-variant-numeric:tabular-nums;line-height:1.95;
+  }
+  #steps b{color:#ffc98a;font-weight:600;font-size:11px;letter-spacing:.1em;
+    font-family:ui-sans-serif,system-ui,sans-serif;margin-right:8px;}
+  #steps .tot{color:var(--ink);}
+  #steps em{color:#64748b;font-style:normal;font-size:12px;
+    font-family:ui-sans-serif,system-ui,sans-serif;}
+
+  @media (max-width:640px){
+    .title h1{font-size:18px;} .title p{display:none;}
+    #key{right:14px;top:14px;padding:8px 10px;font-size:11px;line-height:1.7;}
+    #caption{font-size:16px;bottom:100px;}
+    #step{bottom:146px;}
+    #hint{display:none;}
+    #clock{display:none;}
+    #menu{bottom:82px;padding:13px 14px;}
+  }
+  @media (prefers-reduced-motion:reduce){#caption,#step{transition:none;}}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="fade"></div>
+
+<div class="title">
+  <h1 id="h1">The blast furnace</h1>
+  <p class="eq" id="subtitle">2Fe₂O₃ + 3C → 4Fe + 3CO₂</p>
+  <p><a href="index.html">← All fourteen reactions</a></p>
+</div>
+
+<div id="key"></div>
+
+<div id="step"></div>
+<div id="caption"></div>
+<div id="hint">Drag to look around</div>
+
+<div id="menu">
+  <fieldset>
+    <legend>Iron ore</legend>
+    <div class="opts" id="oreOpts"></div>
+  </fieldset>
+  <fieldset>
+    <legend>Limestone, to take out the sand</legend>
+    <div class="opts" id="fluxOpts"></div>
+  </fieldset>
+  <p id="steps"></p>
+</div>
+
+<div id="bar">
+  <button id="play">Pause</button>
+  <button id="restart">Restart</button>
+  <input id="scrub" type="range" min="0" max="64" step="0.01" value="0" aria-label="Timeline">
+  <span id="clock">0.0 / 64.0s</span>
+  <button id="gear" title="Change the ore" aria-label="Change the ore">⚙</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ---------------------------------------------------------------------------
+   THE BLAST FURNACE — extracting iron,  2Fe₂O₃ + 3C → 4Fe + 3CO₂
+
+   Carbon does reduce iron oxide, but not on a bench: this needs about 1500 °C,
+   and it does not happen in one step. The reducing agent is carbon MONOXIDE,
+   made inside the furnace from the coke, and the three steps happen at three
+   different heights — which is why micro world 2 is a vertical column and the
+   camera climbs it, following the gas up exactly as the gas really goes.
+
+     1  at the bottom   C + O₂ → CO₂            the coke burns in the blast
+     2  a little higher  CO₂ + C → 2CO           and is reduced by more coke
+     3  higher again     ore + CO → Fe + CO₂     the reduction that matters
+
+   Limestone is optional, and the difference is real: with it, CaCO₃ decomposes
+   to CaO which takes the sand out as slag. Without it the sand stays.
+
+   Acts:
+     0  – 7   macro: the furnace, cut away, charge going in at the top
+     7  – 14  micro 1: the ore itself
+    14  – 30  macro: the blast, the descent, the tap
+    30  – end micro 2: the three steps, bottom to top
+
+   Everything is a closed-form function of t — no particle sim.
+--------------------------------------------------------------------------- */
+
+/* ======================= the species tables ======================= */
+
+const EL = {               // the same palette as every other scene here
+  O:  {name:'oxygen',   col:0x2f47b8, r:0.50},
+  C:  {name:'carbon',   col:0x4d5560, r:0.58},
+  Fe: {name:'iron',     col:0x8f9298, r:0.64},
+  Ca: {name:'calcium',  col:0xd6d9c2, r:0.72},
+  Si: {name:'silicon',  col:0xb08a54, r:0.60}
+};
+
+const ORES = {
+  Fe2O3: {formula:'Fe₂O₃', name:'haematite', ion:'Fe³⁺', nFe:2, nO:3, nCO:3,
+          lump:0x9e4a30, lumpWord:'rust red', coke:3, fe:4, oreCoef:2,
+          note:'iron(III) oxide — the common one'},
+  Fe3O4: {formula:'Fe₃O₄', name:'magnetite', ion:'Fe²⁺ and Fe³⁺', nFe:3, nO:4, nCO:4,
+          lump:0x3a3a40, lumpWord:'almost black', coke:2, fe:3, oreCoef:1,
+          note:'a mixture of iron(II) and iron(III) — and magnetic'}
+};
+
+const qs = new URLSearchParams(location.search);
+let oreKey = ORES[qs.get('ore')] ? qs.get('ore') : 'Fe2O3';
+let fluxOn = qs.get('flux') !== 'off';
+let OR;
+function derive(){ OR = ORES[oreKey]; }
+
+const cap1 = s => s.charAt(0).toUpperCase() + s.slice(1);
+const n = k => k > 1 ? String(k) : '';
+const stepBurn = () => 'C + O₂ → CO₂';
+const stepCO   = () => 'CO₂ + C → 2CO';
+const stepRed  = () => `${OR.formula} + ${n(OR.nCO)}CO → ${n(OR.nFe)}Fe + ${n(OR.nCO)}CO₂`;
+const stepLime = () => 'CaCO₃ → CaO + CO₂';
+const stepSlag = () => 'CaO + SiO₂ → CaSiO₃';
+const overall  = () =>
+  `${n(OR.oreCoef)}${OR.formula} + ${n(OR.coke)}C → ${n(OR.fe)}Fe + ${n(OR.coke)}CO₂`;
+
+const MICRO1_Y =  400;   // the ore
+const MICRO2_Y = -400;   // the three steps
+
+/* ---------- renderer / scene ---------- */
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+document.getElementById('stage').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x080b11);
+
+const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.05, 2000);
+
+scene.add(new THREE.HemisphereLight(0x9fb4d0, 0x0a0d13, 0.55));
+const keyL = new THREE.DirectionalLight(0xffffff, 0.8); keyL.position.set(6,11,8); scene.add(keyL);
+const fill = new THREE.DirectionalLight(0x9ec3ff, 0.35); fill.position.set(-8,4,-6); scene.add(fill);
+const rim  = new THREE.DirectionalLight(0xffd9b0, 0.3); rim.position.set(0,3,-10); scene.add(rim);
+/* the furnace lights itself */
+const hearthLight = new THREE.PointLight(0xff7a28, 0, 14); scene.add(hearthLight);
+const tapLight    = new THREE.PointLight(0xffb03a, 0, 9);  scene.add(tapLight);
+
+(function environment(){
+  const env = new THREE.Scene();
+  const box = new THREE.BoxGeometry(1,1,1);
+  env.add(new THREE.Mesh(new THREE.BoxGeometry(40,26,40),
+    new THREE.MeshBasicMaterial({color:0x161d28, side:THREE.BackSide})));
+  const panel=(hex,gain,x,y,z,sx,sy,sz)=>{
+    const m=new THREE.Mesh(box,new THREE.MeshBasicMaterial({color:hex}));
+    m.material.color.multiplyScalar(gain);
+    m.position.set(x,y,z); m.scale.set(sx,sy,sz); env.add(m);
+  };
+  panel(0xffffff,2.2,  0, 12.0, 0, 18,0.1,18);
+  panel(0xbcd6ff,1.0,-14, 4.0,  0, 0.1,14,26);
+  panel(0xff9a50,0.8, 14, 2.0,  2, 0.1,14,26);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(env, 0.05).texture;
+  pmrem.dispose();
+})();
+
+/* ---------- shared helpers ---------- */
+const SPH = new THREE.SphereGeometry(1,32,24);
+const SPH_LO = new THREE.SphereGeometry(1,16,12);
+const CYL = new THREE.CylinderGeometry(1,1,1,20,1,false);
+const ORIGIN = new THREE.Vector3();
+
+function atom(color, radius, opts={}){
+  const mat = new THREE.MeshStandardMaterial({
+    color, roughness: opts.rough ?? 0.35, metalness: opts.metal ?? 0.25,
+    emissive: new THREE.Color(color).multiplyScalar(opts.glow ?? 0.06)
+  });
+  if(opts.op !== undefined && opts.op < 1){ mat.transparent = true; mat.opacity = opts.op; }
+  const m = new THREE.Mesh(opts.lo?SPH_LO:SPH, mat);
+  m.scale.setScalar(radius);
+  return m;
+}
+
+function bond(color=0xa9b6c6, radius=0.13){
+  const m = new THREE.Mesh(CYL, new THREE.MeshStandardMaterial({
+    color, roughness:0.5, metalness:0.1, transparent:true, opacity:1
+  }));
+  m.userData.radius = radius;
+  return m;
+}
+const _v1=new THREE.Vector3(), _up=new THREE.Vector3(0,1,0);
+function placeBond(mesh, a, b, shrink=0){
+  const dir = new THREE.Vector3().subVectors(b,a);
+  const len = Math.max(dir.length()-shrink*2, 0.001);
+  mesh.position.copy(a).addScaledVector(dir,0.5);
+  mesh.scale.set(mesh.userData.radius, len, mesh.userData.radius);
+  mesh.quaternion.setFromUnitVectors(_up, dir.normalize());
+}
+
+function label(text, color='#eef2f7', size=54){
+  const pad=16, c=document.createElement('canvas'), ctx=c.getContext('2d');
+  const font = `600 ${size}px "Iowan Old Style", Charter, Georgia, serif`;
+  ctx.font=font; const w=Math.ceil(ctx.measureText(text).width)+pad*2;
+  c.width=w; c.height=size+pad*2;
+  ctx.font=font; ctx.textBaseline='middle'; ctx.textAlign='center';
+  ctx.shadowColor='rgba(0,0,0,.9)'; ctx.shadowBlur=14;
+  ctx.fillStyle=color; ctx.fillText(text, c.width/2, c.height/2);
+  const tex = new THREE.CanvasTexture(c); tex.anisotropy=4;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:false, opacity:0}));
+  sp.renderOrder = 10;
+  sp.scale.set(c.width/c.height*0.62, 0.62, 1);
+  return sp;
+}
+
+const GLOW_TEX = (function(){
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(64,64,0,64,64,64);
+  g.addColorStop(0,   'rgba(255,255,255,1)');
+  g.addColorStop(0.22,'rgba(255,225,170,.8)');
+  g.addColorStop(0.6, 'rgba(255,140,40,.3)');
+  g.addColorStop(1,   'rgba(200,80,10,0)');
+  ctx.fillStyle = g; ctx.fillRect(0,0,128,128);
+  return new THREE.CanvasTexture(c);
+})();
+
+function lerp(a,b,t){ return a+(b-a)*t; }
+function clamp01(x){ return Math.max(0,Math.min(1,x)); }
+function smooth(x){ x=clamp01(x); return x*x*(3-2*x); }
+function ramp(t,a,b){ return smooth((t-a)/(b-a)); }
+
+function clearGroup(g){
+  for(let i=g.children.length-1;i>=0;i--){
+    const c = g.children[i];
+    g.remove(c);
+    c.traverse(o=>{
+      if(o.material){
+        if(o.material.map && o.material.map !== GLOW_TEX) o.material.map.dispose();
+        o.material.dispose();
+      }
+    });
+  }
+}
+function rng(seed){
+  let s = seed>>>0;
+  return ()=>{ s = (s*1664525 + 1013904223)>>>0; return s/4294967296; };
+}
+
+/* =====================================================================
+   MACRO WORLD — the furnace, cut away.  The shell is drawn BackSide only,
+   so whichever way you turn it you are always looking at the far wall and
+   straight into the inside.
+===================================================================== */
+const macro = new THREE.Group(); scene.add(macro);
+
+const ground = new THREE.Mesh(
+  new THREE.CylinderGeometry(22,22,0.4,64),
+  new THREE.MeshStandardMaterial({color:0x14181f, roughness:0.95, metalness:0})
+);
+ground.position.y=-0.2; macro.add(ground);
+
+const F_R = 2.35, HEARTH_Y = 0.9, STACK_Y = 9.4, THROAT_R = 1.25;
+const refractory = new THREE.MeshStandardMaterial({
+  color:0x4a4036, roughness:0.92, metalness:0.04, side:THREE.BackSide
+});
+/* the stack */
+const stack = new THREE.Mesh(
+  new THREE.CylinderGeometry(THROAT_R, F_R, STACK_Y-3.2, 48, 1, true), refractory);
+stack.position.y = 3.2 + (STACK_Y-3.2)/2; macro.add(stack);
+/* the belly and the hearth below it */
+const belly = new THREE.Mesh(
+  new THREE.CylinderGeometry(F_R, 1.55, 3.2-HEARTH_Y, 48, 1, true), refractory);
+belly.position.y = HEARTH_Y + (3.2-HEARTH_Y)/2; macro.add(belly);
+const hearth = new THREE.Mesh(
+  new THREE.CylinderGeometry(1.55, 1.55, HEARTH_Y, 48, 1, true), refractory);
+hearth.position.y = HEARTH_Y/2; macro.add(hearth);
+const hearthFloor = new THREE.Mesh(new THREE.CircleGeometry(1.55, 48),
+  new THREE.MeshStandardMaterial({color:0x3b332b, roughness:0.9, metalness:0.05}));
+hearthFloor.rotation.x = -Math.PI/2; hearthFloor.position.y = 0.02; macro.add(hearthFloor);
+
+/* the outer steel casing, only at the back, so the cutaway reads as deliberate */
+const casing = new THREE.Mesh(
+  new THREE.CylinderGeometry(THROAT_R+0.14, F_R+0.14, STACK_Y-3.0, 48, 1, true),
+  new THREE.MeshStandardMaterial({color:0x2c3340, roughness:0.6, metalness:0.55,
+    side:THREE.BackSide}));
+casing.position.y = 3.0 + (STACK_Y-3.0)/2; macro.add(casing);
+
+/* the throat, the hopper and a skip of charge waiting to go in */
+const throat = new THREE.Mesh(new THREE.CylinderGeometry(THROAT_R,THROAT_R,0.5,40,1,true),
+  refractory);
+throat.position.y = STACK_Y + 0.25; macro.add(throat);
+const hopper = new THREE.Mesh(new THREE.CylinderGeometry(1.75,0.85,1.05,32,1,true),
+  new THREE.MeshStandardMaterial({color:0x343c49, roughness:0.65, metalness:0.5,
+    side:THREE.DoubleSide}));
+hopper.position.y = STACK_Y + 1.1; macro.add(hopper);
+
+/* the tuyères: pipes round the hearth blowing hot air in */
+const TUYERE_Y = 1.35;
+const pipeMat = new THREE.MeshStandardMaterial({color:0x3a4250, roughness:0.55, metalness:0.6});
+const jets = [];
+[-0.62, 0, 0.62].forEach((a,i)=>{
+  const ang = Math.PI + a;               // round the back, pointing inward
+  const x = Math.cos(ang)*2.1, z = Math.sin(ang)*2.1;
+  const p = new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.14,1.0,16), pipeMat);
+  p.position.set(x*1.15, TUYERE_Y, z*1.15);
+  p.rotation.z = Math.PI/2;
+  p.rotation.y = -ang;
+  macro.add(p);
+  const jet = new THREE.Sprite(new THREE.SpriteMaterial({
+    map:GLOW_TEX, color:0xffd9a0, transparent:true, opacity:0,
+    blending:THREE.AdditiveBlending, depthWrite:false, depthTest:false}));
+  jet.position.set(x*0.62, TUYERE_Y, z*0.62);
+  jet.scale.setScalar(1.5);
+  macro.add(jet); jets.push(jet);
+});
+
+/* the molten iron pooling in the hearth, with slag floating on it */
+const ironMat = new THREE.MeshStandardMaterial({
+  color:0xff8a2a, roughness:0.34, metalness:0.5, emissive:0xff5a10,
+  emissiveIntensity:1.0
+});
+const ironPool = new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.5,1,40), ironMat);
+macro.add(ironPool);
+const slagMat = new THREE.MeshStandardMaterial({
+  color:0x6e5a46, roughness:0.75, metalness:0.15, emissive:0x3a1e08,
+  emissiveIntensity:0.8
+});
+const slagPool = new THREE.Mesh(new THREE.CylinderGeometry(1.48,1.48,1,40), slagMat);
+macro.add(slagPool);
+
+/* the tap hole, the stream of iron and the mould it runs into */
+const TAP = new THREE.Vector3(1.52, 0.34, 0);
+const stream = new THREE.Mesh(CYL, new THREE.MeshStandardMaterial({
+  color:0xffb03a, emissive:0xff7a1c, emissiveIntensity:1.4,
+  roughness:0.3, metalness:0.4, transparent:true, opacity:0
+}));
+stream.userData.radius = 0.085; macro.add(stream);
+const mould = new THREE.Mesh(new THREE.CylinderGeometry(0.95,0.8,0.5,28,1,true),
+  new THREE.MeshStandardMaterial({color:0x2a2f38, roughness:0.85, metalness:0.2,
+    side:THREE.DoubleSide}));
+mould.position.set(3.5,0.25,0); macro.add(mould);
+const mouldIron = new THREE.Mesh(new THREE.CylinderGeometry(0.88,0.78,1,28), ironMat);
+macro.add(mouldIron);
+
+/* the charge: layers of ore, coke and limestone, sinking slowly */
+const chargeGrp = new THREE.Group(); macro.add(chargeGrp);
+const lumpGeo = new THREE.IcosahedronGeometry(0.13,0);
+let lumps = [];
+const CHARGE_TOP = STACK_Y - 0.4, CHARGE_BOT = 2.2;
+function buildCharge(){
+  clearGroup(chargeGrp);
+  lumps = [];
+  const rand = rng(20240915);
+  const kinds = fluxOn
+    ? [{c:OR.lump, k:'ore'},{c:0x1b1d20, k:'coke'},{c:0xe4e2d6, k:'lime'}]
+    : [{c:OR.lump, k:'ore'},{c:0x1b1d20, k:'coke'}];
+  for(let i=0;i<150;i++){
+    const band = Math.floor(rand()*9);                 // charged in layers
+    const kind = kinds[band % kinds.length];
+    const m = new THREE.Mesh(lumpGeo, new THREE.MeshStandardMaterial({
+      color:new THREE.Color(kind.c).offsetHSL(0,0,(rand()-0.5)*0.10),
+      roughness:0.92, metalness:0.06
+    }));
+    m.scale.setScalar(0.7+rand()*0.8);
+    const y0 = CHARGE_BOT + (band/9)*(CHARGE_TOP-CHARGE_BOT) + rand()*0.5;
+    const rAt = lerp(1.5, THROAT_R, clamp01((y0-HEARTH_Y)/(STACK_Y-HEARTH_Y)));
+    const a = rand()*Math.PI*2, r = Math.sqrt(rand())*rAt*0.86;
+    m.userData = {x:Math.cos(a)*r, z:Math.sin(a)*r, y0,
+                  spin:rand()*6.283, kind:kind.k, ph:rand()*6.283};
+    chargeGrp.add(m); lumps.push(m);
+  }
+}
+function updateCharge(t){
+  // the whole column sinks once the furnace is working, and lumps vanish
+  // into the melt at the bottom
+  const sink = ramp(t, 17.0, 30.0) * 2.4;
+  const heat = ramp(t, 16.0, 22.0);
+  for(const m of lumps){
+    const d = m.userData;
+    const y = d.y0 - sink;
+    if(y < HEARTH_Y + 0.5){ m.visible = false; continue; }
+    m.visible = true;
+    m.position.set(d.x + Math.sin(t*0.6+d.ph)*0.04, y, d.z + Math.cos(t*0.5+d.ph)*0.04);
+    m.rotation.set(d.spin, d.spin*1.6 + t*0.1, d.spin*0.7);
+    // it glows more the lower it is — the furnace has a temperature gradient
+    const hot = heat * clamp01(1 - (y - HEARTH_Y)/(STACK_Y*0.72));
+    m.material.emissive.setRGB(hot*0.85, hot*0.26, hot*0.03);
+  }
+}
+
+/* gas leaving the top */
+const gasGrp = new THREE.Group(); macro.add(gasGrp);
+let gases = [];
+function buildGas(){
+  clearGroup(gasGrp);
+  gases = [];
+  const rand = rng(20240925);
+  for(let i=0;i<40;i++){
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({
+      map:GLOW_TEX, color:0x9aa4b2, transparent:true, opacity:0,
+      blending:THREE.AdditiveBlending, depthWrite:false, depthTest:false}));
+    gases.push({s, birth: 18.0 + rand()*11.0, life:2.6+rand()*1.6,
+                x:(rand()-0.5)*1.5, z:(rand()-0.5)*1.5, sp:0.7+rand()*0.6, sz:0.8+rand()*0.9});
+    gasGrp.add(s);
+  }
+}
+function updateGas(t){
+  for(const g of gases){
+    const age = t - g.birth;
+    if(age < 0 || age > g.life){ g.s.visible = false; continue; }
+    g.s.visible = true;
+    const u = age/g.life;
+    g.s.position.set(g.x*(1+u), STACK_Y + 1.4 + u*g.sp*3.4, g.z*(1+u));
+    g.s.scale.setScalar(g.sz*(1+u*1.6));
+    g.s.material.opacity = 0.30*Math.sin(u*Math.PI);
+  }
+}
+
+/* =====================================================================
+   MICRO 1 — the ore
+===================================================================== */
+const micro1 = new THREE.Group(); micro1.position.y=MICRO1_Y; scene.add(micro1);
+let M1 = {};
+
+function buildMicro1(){
+  clearGroup(micro1);
+  const lattice = new THREE.Group(); micro1.add(lattice);
+  const units = [];
+  const rand = rng(20240935);
+  for(let ix=-1;ix<=1;ix++) for(let iy=-1;iy<=1;iy++) for(let iz=-1;iz<=0;iz++){
+    const u = new THREE.Group();
+    u.position.set(ix*3.0, iy*2.8, iz*2.9+1.2);
+    // iron ions and oxide ions, in the ratio the formula says
+    for(let k=0;k<OR.nFe;k++){
+      const fe = atom(EL.Fe.col, EL.Fe.r*0.82, {rough:0.3, metal:0.55, lo:true});
+      fe.position.set(-0.85, (k-(OR.nFe-1)/2)*0.95, 0);
+      u.add(fe);
+    }
+    for(let k=0;k<OR.nO;k++){
+      const o = atom(EL.O.col, EL.O.r, {rough:0.28, metal:0.1, lo:true});
+      o.position.set(0.85, (k-(OR.nO-1)/2)*0.95, 0.2);
+      u.add(o);
+    }
+    u.rotation.set(rand()*0.4, rand()*Math.PI, rand()*0.3);
+    u.userData.ph = rand()*6.283;
+    lattice.add(u); units.push(u);
+  }
+  const front = units.pop();
+  lattice.remove(front); micro1.add(front);
+  front.position.set(0,0,5.4); front.rotation.set(0,0,0); front.scale.setScalar(1.2);
+
+  const lblFe = label(OR.ion, '#c8cdd4');   lblFe.position.set(-2.1, 1.9, 5.4);
+  const lblO  = label('O²⁻','#9db4ff');     lblO.position.set( 2.0, 1.9, 5.4);
+  const lblOre= label(`${OR.name} — ${OR.formula}`,'#dfe7f2',42);
+  lblOre.position.set(0, -2.6, 5.4);
+  const lblNote = label(OR.note, '#8c97a6', 36);
+  lblNote.position.set(0, -3.4, 5.4);
+  micro1.add(lblFe,lblO,lblOre,lblNote);
+
+  M1 = {lattice, units, front, lblFe, lblO, lblOre, lblNote};
+}
+
+function updateMicro1(t){
+  const {lattice, units, front, lblFe, lblO, lblOre, lblNote} = M1;
+  const u = t - 7.0;
+  lattice.rotation.y = 0.12 + u*0.05;
+  lattice.rotation.x = Math.sin(u*0.22)*0.08;
+  units.forEach(g=>{ g.position.y += Math.sin(t*1.1+g.userData.ph)*0.0009; });
+  front.position.y = Math.sin(u*0.8)*0.10;
+  front.rotation.y = Math.sin(u*0.3)*0.3;
+  const off = 1-ramp(t,12.0,13.0);
+  lblFe.material.opacity  = ramp(t,8.0,9.0)*off;
+  lblO.material.opacity   = ramp(t,8.4,9.4)*off;
+  lblOre.material.opacity = ramp(t,9.8,10.8)*off;
+  lblNote.material.opacity= ramp(t,10.6,11.6)*off*0.9;
+}
+
+/* =====================================================================
+   MICRO 2 — the three steps, stacked vertically.  Step 1 at the bottom
+   where the air comes in, step 2 a little higher, step 3 higher again —
+   and the camera climbs, following the gas.
+===================================================================== */
+const micro2 = new THREE.Group(); micro2.position.y=MICRO2_Y; scene.add(micro2);
+let M2 = {};
+
+const V = (x,y,z)=>new THREE.Vector3(x,y,z);
+const CO2_LEN = 1.16, CO_LEN = 1.10;
+const Z = {
+  burn: V( 0.0, -9.0, 0.0),     // step 1
+  make: V( 0.0, -1.0, 0.0),     // step 2
+  ore:  V( 0.0,  7.4, 0.0)      // step 3
+};
+
+function buildMicro2(){
+  clearGroup(micro2);
+
+  /* ---- step 1: a carbon atom and an oxygen molecule ---- */
+  const c1  = atom(EL.C.col, EL.C.r, {rough:0.45, metal:0.1, glow:0.2});
+  const o1a = atom(EL.O.col, EL.O.r, {rough:0.28, metal:0.1});
+  const o1b = atom(EL.O.col, EL.O.r, {rough:0.28, metal:0.1});
+  const oo  = bond(0xa9b6c6, 0.12);                       // the O=O bond
+  const b1a = bond(0xa9b6c6, 0.12), b1b = bond(0xa9b6c6, 0.12);
+  b1a.material.opacity = 0; b1b.material.opacity = 0;
+  micro2.add(c1,o1a,o1b,oo,b1a,b1b);
+
+  /* ---- step 2: a second carbon, which splits that CO₂ into two CO ---- */
+  const c2 = atom(EL.C.col, EL.C.r, {rough:0.45, metal:0.1, glow:0.2});
+  const b2 = bond(0xa9b6c6, 0.12); b2.material.opacity = 0;
+  micro2.add(c2,b2);
+
+  /* ---- step 3: the ore, and the CO molecules that come up to it ---- */
+  const fes = [], oreO = [], oreB = [];
+  for(let k=0;k<OR.nFe;k++){
+    const fe = atom(EL.Fe.col, EL.Fe.r, {rough:0.3, metal:0.6});
+    micro2.add(fe); fes.push(fe);
+  }
+  for(let k=0;k<OR.nO;k++){
+    const o = atom(EL.O.col, EL.O.r, {rough:0.28, metal:0.1});
+    const b = bond(0x9aa8bb, 0.11);
+    micro2.add(o,b); oreO.push(o); oreB.push(b);
+  }
+  /* The carbon monoxides.  The first two ARE the molecules step 2 just made —
+     the same meshes, not copies of them — so the gas you follow up the furnace
+     is the gas you watched being formed.  Any others are extras already
+     circulating, because the equation needs more than two. */
+  const cos = [];
+  const second = () => { const b = bond(0xa9b6c6, 0.075); b.material.opacity = 0; micro2.add(b); return b; };
+  cos.push({c:c1, o:o1a, b:b1a, b2nd:second(), made:true});
+  cos.push({c:c2, o:o1b, b:b2,  b2nd:second(), made:true});
+  for(let k=2;k<OR.nCO;k++){
+    const c = atom(EL.C.col, EL.C.r, {rough:0.45, metal:0.1, glow:0.18});
+    const o = atom(EL.O.col, EL.O.r, {rough:0.28, metal:0.1});
+    const b = bond(0xa9b6c6, 0.12);
+    micro2.add(c,o,b);
+    cos.push({c,o,b,b2nd:second(), made:false});
+  }
+
+  /* ---- the flux, off to one side ---- */
+  const limeCa = atom(EL.Ca.col, EL.Ca.r, {rough:0.3, metal:0.45});
+  const limeO  = atom(EL.O.col, EL.O.r, {rough:0.28, metal:0.1});
+  const limeB  = bond(0x9aa8bb, 0.11);
+  const siO    = atom(EL.Si.col, EL.Si.r, {rough:0.5, metal:0.2});
+  const slagB  = bond(0x9aa8bb, 0.10); slagB.material.opacity = 0;
+  micro2.add(limeCa,limeO,limeB,siO,slagB);
+
+  const lbl = {
+    c1:   label('C','#c8ced6'),
+    o2:   label('O₂','#9db4ff'),
+    co2a: label('CO₂','#a9c4ff',48),
+    c2:   label('C','#c8ced6'),
+    co:   label('CO','#ffd0a8',48),
+    co2:  label('CO₂','#a9c4ff',48),
+    ore:  label(OR.formula,'#dfe7f2',46),
+    fe:   label('iron','#c8cdd4',46),
+    lime: label('CaO','#e6e8d8',44),
+    sand: label('SiO₂','#e0bc86',44),
+    slag: label('slag — CaSiO₃','#d8c8a8',40)
+  };
+  Object.values(lbl).forEach(l=>micro2.add(l));
+
+  M2 = {c1,o1a,o1b,oo,b1a,b1b,c2,b2,fes,oreO,oreB,cos,
+        limeCa,limeO,limeB,siO,slagB,lbl};
+}
+
+const _pa=new THREE.Vector3(), _pb=new THREE.Vector3();
+function oreOPos(k, out){
+  const a = (k/OR.nO)*Math.PI*2;
+  out.set(Z.ore.x + 1.35 + Math.cos(a)*0.35,
+          Z.ore.y + Math.sin(a)*1.45,
+          Math.cos(a)*0.5);
+  return out;
+}
+function oreFePos(k, out){
+  out.set(Z.ore.x - 1.35, Z.ore.y + (k-(OR.nFe-1)/2)*1.25, 0);
+  return out;
+}
+
+function updateMicro2(t){
+  const {c1,o1a,o1b,oo,b1a,b1b,c2,b2,fes,oreO,oreB,cos,
+         limeCa,limeO,limeB,siO,slagB,lbl} = M2;
+
+  /* ================= step 1: C + O₂ → CO₂ ================= */
+  const meet1 = ramp(t, 33.2, 36.0);        // the O₂ comes to the carbon
+  const split = ramp(t, 35.6, 37.6);        // the O=O bond goes
+  const co2on = ramp(t, 36.4, 38.0);        // the two C=O bonds arrive
+  const lift1 = ramp(t, 38.4, 42.4);        // and the CO₂ rises to step 2
+
+  _pa.copy(Z.burn);
+  _pa.y += Math.sin(t*1.1)*0.10;
+  _pa.lerp(Z.make, lift1);
+  c1.position.copy(_pa);
+
+  // the two oxygens: a molecule, then either side of the carbon
+  const sep = lerp(0.62, CO2_LEN, co2on);
+  _pb.set(_pa.x + 3.2 - meet1*3.2, _pa.y + 1.2 - meet1*1.2, 0);
+  const o1A = _pb.clone().add(V(0,  sep*(1-co2on) + sep*co2on, 0));
+  const o1B = _pb.clone().add(V(0, -sep*(1-co2on) - sep*co2on, 0));
+  // once bonded they sit on the carbon, 180° apart
+  o1A.lerp(_v1.copy(_pa).add(V( CO2_LEN, 0, 0)), co2on);
+  o1B.lerp(_v1.copy(_pa).add(V(-CO2_LEN, 0, 0)), co2on);
+  o1a.position.copy(o1A); o1b.position.copy(o1B);
+
+  oo.material.opacity = 1 - split;
+  oo.visible = split < 0.99;
+  if(oo.visible) placeBond(oo, o1A, o1B, 0.08);
+  b1a.material.opacity = co2on; b1b.material.opacity = co2on;
+  b1a.visible = b1b.visible = co2on > 0.01;
+  if(b1a.visible){ placeBond(b1a, _pa, o1A, 0.05); placeBond(b1b, _pa, o1B, 0.05); }
+
+  /* ================= step 2: CO₂ + C → 2CO ================= */
+  const meet2  = ramp(t, 41.4, 43.4);       // the second carbon arrives
+  const handed = ramp(t, 43.2, 45.6);       // one oxygen crosses to it
+  const part   = ramp(t, 45.4, 48.6);       // and the two CO separate and rise
+
+  _pb.copy(Z.make).add(V(3.0, -1.6, 0.4));
+  _pb.lerp(_v1.copy(Z.make).add(V(1.4, -0.3, 0.2)), meet2);
+  // after the handover this carbon carries o1B away as a CO
+  const c2Target = _v1.copy(Z.ore).add(V(2.0, -1.6, 0.5));
+  _pb.lerp(c2Target, part);
+  c2.position.copy(_pb);
+
+  // o1B migrates from c1 to c2
+  if(handed > 0){
+    _v1.copy(_pb).add(V(CO_LEN*0.85, CO_LEN*0.52, 0));
+    o1b.position.lerp(_v1, handed);
+  }
+  b1b.material.opacity = co2on * (1 - handed);
+  b1b.visible = b1b.material.opacity > 0.01;
+  if(b1b.visible) placeBond(b1b, c1.position, o1b.position, 0.05);
+  b2.material.opacity = handed;
+  b2.visible = handed > 0.01;
+  if(b2.visible) placeBond(b2, _pb, o1b.position, 0.05);
+
+  // and c1, now a CO itself, rises too
+  if(part > 0){
+    _v1.copy(Z.ore).add(V(2.6, -2.4, -0.4));
+    c1.position.lerp(_v1, part);
+    o1a.position.lerp(_v1.clone().add(V(CO_LEN*0.9, CO_LEN*0.5, 0)), part);
+    if(b1a.visible) placeBond(b1a, c1.position, o1a.position, 0.05);
+  }
+
+  /* ================= step 3: ore + CO → Fe + CO₂ ================= */
+  const arrive = ramp(t, 47.0, 50.0);
+  const taken  = [];
+  for(let k=0;k<OR.nCO;k++) taken.push(ramp(t, 49.4 + k*0.7, 52.2 + k*0.7));
+  const freed  = ramp(t, 52.0, 55.0);       // the iron comes loose
+  const fall   = ramp(t, 54.0, 58.5);       // and runs down
+  const away   = ramp(t, 53.2, 58.0);       // the CO₂ goes up
+
+  // the iron ions, which become iron atoms and sink
+  fes.forEach((fe,k)=>{
+    oreFePos(k, _pa);
+    _pa.x += Math.sin(t*1.3+k)*0.07;
+    _pa.y -= fall*7.0;
+    _pa.x += fall*0.4;
+    fe.position.copy(_pa);
+    fe.scale.setScalar(lerp(EL.Fe.r*0.82, EL.Fe.r, freed));
+    fe.material.metalness = lerp(0.55, 0.85, freed);
+    fe.material.emissive.setRGB(freed*0.5, freed*0.16, freed*0.02);
+  });
+
+  // each CO comes up, takes one oxygen, and leaves as CO₂
+  cos.forEach((m,k)=>{
+    const tk = taken[k];
+    // where it starts depends on whether step 2 actually made it
+    const start = m.made
+      ? (k === 0 ? c1.position.clone() : c2.position.clone())
+      : V(2.2 + k*0.55, Z.make.y - 3.0 - k*0.8, 0.7 + k*0.2);
+    oreOPos(k, _pa);
+    _pb.copy(_pa).add(V(1.5, -0.2, 0.3));              // docked beside its oxygen
+    const p = start.lerp(_pb, m.made ? arrive : ramp(t, 45.0 + k*0.5, 50.0));
+    // once it has the oxygen it is CO₂ and it rises
+    if(tk > 0){ p.y += tk*0.4; p.y += away*9.0; p.x += away*(0.5 + k*0.25); }
+    m.c.position.copy(p);
+
+    // its own oxygen, on the far side
+    _v1.copy(p).add(V(CO_LEN*0.92, CO_LEN*0.48, 0));
+    if(tk > 0) _v1.lerp(_v1.clone().set(p.x - CO2_LEN, p.y, p.z), tk);
+    m.o.position.copy(_v1);
+    placeBond(m.b, p, _v1, 0.05);
+    m.b.material.opacity = 1;
+
+    // the oxygen it takes from the ore
+    const oo2 = oreO[k];
+    oreOPos(k, _pa);
+    _pa.x += Math.sin(t*1.4+k*1.7)*0.07;
+    if(tk > 0) _pa.lerp(_v1.copy(p).add(V(CO2_LEN, 0, 0)), tk);
+    oo2.position.copy(_pa);
+    // the Fe–O bond goes as it leaves
+    oreB[k].material.opacity = 1 - tk;
+    oreB[k].visible = tk < 0.99;
+    if(oreB[k].visible){
+      oreFePos(Math.min(k, OR.nFe-1), _pb);
+      placeBond(oreB[k], _pb, _pa, 0.06);
+    }
+    // and a second line once it is a proper CO₂
+    m.b2nd.material.opacity = tk;
+    m.b2nd.visible = tk > 0.01;
+    if(m.b2nd.visible) placeBond(m.b2nd, p, _pa, 0.05);
+  });
+
+  /* ================= the flux ================= */
+  const limeGo = fluxOn ? ramp(t, 55.6, 58.2) : 0;
+  const slagGo = fluxOn ? ramp(t, 58.0, 61.0) : 0;
+  _pa.copy(Z.ore).add(V(-4.6, -4.4, -1.2));
+  _pa.y += Math.sin(t*0.8)*0.1;
+  limeCa.position.copy(_pa);
+  limeO.position.copy(_pa).add(V(1.25, 0.1, 0));
+  placeBond(limeB, limeCa.position, limeO.position, 0.06);
+  limeCa.visible = limeO.visible = limeB.visible = fluxOn;
+  _pb.copy(_pa).add(V(3.2 - slagGo*1.5, -1.5 + slagGo*0.8, 0.4));
+  siO.position.copy(_pb);
+  siO.visible = fluxOn;
+  slagB.material.opacity = slagGo;
+  slagB.visible = fluxOn && slagGo > 0.01;
+  if(slagB.visible) placeBond(slagB, limeO.position, _pb, 0.06);
+
+  /* ================= labels ================= */
+  const L = lbl;
+  L.c1.material.opacity = ramp(t,32.6,33.6)*(1-ramp(t,37.4,38.2));
+  L.c1.position.copy(c1.position).add(_v1.set(-0.9,0.3,0));
+  L.o2.material.opacity = ramp(t,32.6,33.6)*(1-ramp(t,36.0,36.8));
+  L.o2.position.copy(o1a.position).add(_v1.set(0.9,0.5,0));
+  L.co2a.material.opacity = ramp(t,38.0,39.0)*(1-ramp(t,44.0,44.8));
+  L.co2a.position.copy(c1.position).add(_v1.set(0,1.3,0));
+  L.c2.material.opacity = ramp(t,41.8,42.8)*(1-ramp(t,45.6,46.4));
+  L.c2.position.copy(c2.position).add(_v1.set(0.9,-0.5,0));
+  L.co.material.opacity = ramp(t,46.0,47.0)*(1-ramp(t,51.6,52.4));
+  L.co.position.copy(c2.position).add(_v1.set(-1.0,0.9,0));
+  L.ore.material.opacity = ramp(t,46.6,47.6)*(1-ramp(t,52.6,53.4));
+  oreFePos(0,_pa); L.ore.position.set(_pa.x-1.6, Z.ore.y+2.3, 0);
+  L.co2.material.opacity = ramp(t,53.4,54.4)*(1-ramp(t,58.6,59.4));
+  L.co2.position.copy(cos[0].c.position).add(_v1.set(0,1.4,0));
+  L.fe.material.opacity = ramp(t,55.2,56.2)*(1-ramp(t,61.6,62.4));
+  L.fe.position.copy(fes[0].position).add(_v1.set(-1.5,0.2,0));
+  L.lime.material.opacity = fluxOn ? limeGo*(1-ramp(t,62.0,62.8)) : 0;
+  L.lime.position.copy(limeCa.position).add(_v1.set(-0.4,1.1,0));
+  L.sand.material.opacity = fluxOn ? ramp(t,56.4,57.4)*(1-ramp(t,62.0,62.8)) : 0;
+  L.sand.position.copy(siO.position).add(_v1.set(0.5,0.9,0));
+  L.slag.material.opacity = fluxOn ? ramp(t,59.8,60.8)*(1-ramp(t,63.2,64.0)) : 0;
+  L.slag.position.copy(siO.position).add(_v1.set(-0.4,-1.3,0));
+}
+
+/* =====================================================================
+   TIMELINE
+===================================================================== */
+const TOTAL = 64;
+let SEGS = [];
+/* the little step marker above the caption */
+const STEP_BANDS = [
+  {a:33.0, b:39.0, s:'step 1 — the coke burns'},
+  {a:41.0, b:46.8, s:'step 2 — carbon monoxide is made'},
+  {a:46.8, b:56.0, s:'step 3 — the ore is reduced'},
+  {a:56.0, b:61.5, s:'the flux — taking out the sand'}
+];
+
+function buildCaptions(){
+  SEGS = [
+    {t:0,    c:'A blast furnace, cut open. It is about thirty metres tall and it never stops.'},
+    {t:3.5,  c:`In at the top: ${OR.name} ore, coke${fluxOn?', and limestone':' — and nothing else'}.`},
+    {t:7.0,  c:`The ore first. ${OR.ion} ions and oxide ions — the iron is locked to oxygen.`},
+    {t:10.6, c:'To get the iron out, something has to take that oxygen away.'},
+    {t:14.0, c:'Back to the furnace. Now turn on the blast.'},
+    {t:17.0, c:'Hot air, roaring in at the bottom through those pipes.'},
+    {t:20.5, c:'The charge sinks as it is eaten away, and glows hotter the further down it goes.'},
+    {t:24.0, c:'About fifteen hundred degrees at the bottom — and molten iron collecting in the hearth.'},
+    {t:27.0, c: fluxOn
+      ? 'Tapped off at the base, with the slag floating on top of it.'
+      : 'Tapped off at the base — though without limestone the sand stays in with it.'},
+    {t:30.0, c:'Now inside, right down at the bottom, where the air comes in.'},
+    {t:33.2, c:'A lump of coke meets the oxygen in the blast.'},
+    {t:36.6, c:`${stepBurn()} — and this is where all the heat comes from.`},
+    {t:39.4, c:'The carbon dioxide rises, and meets more hot coke on the way up.'},
+    {t:43.2, c:'Which takes one of its oxygens off it.'},
+    {t:45.8, c:`${stepCO()} — two molecules of carbon monoxide. This is the one that matters.`},
+    {t:48.6, c:'Up they go, into the ore.'},
+    {t:51.4, c:'And carbon monoxide wants oxygen badly enough to take it off the iron.'},
+    {t:54.4, c:`${stepRed()}`},
+    {t:56.4, c: fluxOn
+      ? `And the limestone? It decomposes to lime, and the lime grabs the sand: ${stepSlag()}.`
+      : 'The sand in the ore has nothing to react with, so it simply stays — which is why limestone is normally added.'},
+    {t:59.6, c: fluxOn
+      ? 'That is the slag, floating on the iron, and tapped off separately.'
+      : 'Iron with sand still in it is not much use. Add the limestone and the sand leaves as slag.'},
+    {t:61.8, c: overall()}
+  ];
+}
+
+const TRANSITIONS = [7.0, 14.0, 30.0];
+const FADE = 0.55;
+
+function worldAt(t){
+  if(t < 7.0)  return 'macro';
+  if(t < 14.0) return 'micro1';
+  if(t < 30.0) return 'macro';
+  return 'micro2';
+}
+
+const CAM = {
+  macro:[
+    {t:0,    p:[10.0,8.0,17.0], l:[0,5.0,0]},
+    {t:3.5,  p:[3.4,11.6,9.0],  l:[0,9.4,0]},
+    {t:7.0,  p:[2.0,11.0,6.4],  l:[0,9.6,0]},
+    {t:14.0, p:[9.0,7.0,15.0],  l:[0,4.6,0]},
+    {t:17.0, p:[5.4,2.4,7.6],   l:[0,1.5,0]},
+    {t:20.5, p:[7.0,5.6,11.0],  l:[0,4.0,0]},
+    {t:24.0, p:[4.6,1.8,6.4],   l:[0.2,1.1,0]},
+    {t:27.0, p:[4.4,1.2,5.0],   l:[2.0,0.5,0]},
+    {t:30.0, p:[3.6,1.2,4.2],   l:[1.2,0.7,0]}
+  ],
+  micro1:[
+    {t:7.0,  p:[0,0.8,11.0],  l:[0,0,4.4]},
+    {t:10.6, p:[3.2,2.0,11.4],l:[0,0,2.0]},
+    {t:12.6, p:[2.2,3.0,14.6],l:[0,0,0]},
+    {t:14.0, p:[0,6.4,28.0],  l:[0,0,0]}
+  ],
+  /* the camera climbs the column, step by step, as the gas does */
+  micro2:[
+    {t:30.0, p:[2.0,-8.0,15.0],  l:[0,-9.0,0]},
+    {t:33.2, p:[3.6,-8.6,8.6],   l:[0.6,-9.0,0]},
+    {t:36.6, p:[1.6,-8.4,7.4],   l:[0,-8.9,0]},
+    {t:39.4, p:[2.2,-5.4,9.6],   l:[0,-5.4,0]},
+    {t:43.2, p:[3.0,-1.4,7.8],   l:[0.8,-1.2,0]},
+    {t:45.8, p:[1.4,-0.8,8.4],   l:[0.4,-0.8,0]},
+    {t:48.6, p:[2.4,3.0,10.6],   l:[0.4,3.2,0]},
+    {t:51.4, p:[3.0,7.0,8.4],    l:[0.8,7.2,0]},
+    {t:54.4, p:[1.0,7.2,9.6],    l:[0,7.2,0]},
+    {t:56.4, p:[-2.6,3.6,10.6],  l:[-3.2,3.2,0]},
+    {t:59.6, p:[-2.2,2.2,9.8],   l:[-2.4,2.0,0]},
+    {t:64.0, p:[1.0,1.0,16.0],   l:[0,1.0,0]}
+  ]
+};
+
+const camPos=new THREE.Vector3(), camTgt=new THREE.Vector3();
+function sampleCam(t){
+  const w = worldAt(t), keys = CAM[w];
+  let i=0; while(i<keys.length-2 && t>=keys[i+1].t) i++;
+  const a=keys[i], b=keys[Math.min(i+1,keys.length-1)];
+  const u = b.t===a.t?0:smooth((t-a.t)/(b.t-a.t));
+  const off = w==='micro1'?MICRO1_Y : w==='micro2'?MICRO2_Y : 0;
+  camPos.set(lerp(a.p[0],b.p[0],u), lerp(a.p[1],b.p[1],u)+off, lerp(a.p[2],b.p[2],u));
+  camTgt.set(lerp(a.l[0],b.l[0],u), lerp(a.l[1],b.l[1],u)+off, lerp(a.l[2],b.l[2],u));
+}
+
+/* ---------- macro animation ---------- */
+const BLAST_A = 16.4, BLAST_B = 17.6, TAP_A = 26.4;
+function updateMacro(t){
+  /* the blast */
+  const blast = ramp(t, BLAST_A, BLAST_B);
+  const flick = 0.85 + Math.sin(t*19)*0.09 + Math.sin(t*31)*0.06;
+  jets.forEach((j,i)=>{
+    j.material.opacity = blast*0.85*(0.85+Math.sin(t*13+i*2)*0.15);
+    j.scale.setScalar(1.5*(0.9+Math.sin(t*16+i)*0.12));
+  });
+  hearthLight.position.set(0, 1.2, 0);
+  hearthLight.intensity = blast*5.2*flick;
+
+  /* the molten iron pooling, and slag on top of it */
+  const pool = ramp(t, 19.0, 29.0);
+  const ironH = 0.05 + pool*0.48;
+  ironPool.scale.y = ironH;
+  ironPool.position.set(0, ironH/2 + 0.02, 0);
+  ironPool.visible = pool > 0.02;
+  ironMat.emissiveIntensity = 0.6 + blast*0.9*flick;
+  const slagH = fluxOn ? 0.04 + pool*0.20 : 0.0;
+  slagPool.scale.y = Math.max(slagH, 0.001);
+  slagPool.position.set(0, ironH + slagH/2 + 0.02, 0);
+  slagPool.visible = fluxOn && pool > 0.05;
+
+  /* tapping: a stream of iron out of the hole into the mould */
+  const tap = ramp(t, TAP_A, TAP_A+1.2) * (1 - ramp(t, 31.0, 32.0));
+  stream.material.opacity = tap;
+  stream.visible = tap > 0.02;
+  if(stream.visible){
+    _v1.set(3.5, 0.30, 0);
+    placeBond(stream, TAP, _v1, 0);
+  }
+  const filled = ramp(t, TAP_A+0.4, 31.0);
+  mouldIron.scale.y = Math.max(filled*0.42, 0.001);
+  mouldIron.position.set(3.5, 0.04 + filled*0.21, 0);
+  mouldIron.visible = filled > 0.02;
+  tapLight.position.set(3.0, 0.5, 0);
+  tapLight.intensity = tap*3.4*flick;
+
+  updateCharge(t);
+  updateGas(t);
+}
+
+/* =====================================================================
+   ORBIT-ISH DRAG
+===================================================================== */
+let yaw=0, pitch=0, dragging=false, lx=0, ly=0;
+const el = renderer.domElement;
+function down(x,y){dragging=true;lx=x;ly=y;el.style.cursor='grabbing';}
+function move(x,y){
+  if(!dragging) return;
+  yaw   -= (x-lx)*0.005;
+  pitch  = Math.max(-0.9, Math.min(0.9, pitch + (y-ly)*0.004));
+  lx=x; ly=y;
+}
+function up(){dragging=false; el.style.cursor='grab';}
+el.style.cursor='grab';
+el.addEventListener('mousedown',e=>down(e.clientX,e.clientY));
+addEventListener('mousemove',e=>move(e.clientX,e.clientY));
+addEventListener('mouseup',up);
+el.addEventListener('touchstart',e=>{down(e.touches[0].clientX,e.touches[0].clientY);},{passive:true});
+el.addEventListener('touchmove',e=>{move(e.touches[0].clientX,e.touches[0].clientY);},{passive:true});
+addEventListener('touchend',up);
+
+const _sph = new THREE.Spherical();
+function applyCamera(){
+  const dir = camPos.clone().sub(camTgt);
+  _sph.setFromVector3(dir);
+  _sph.theta += yaw;
+  _sph.phi = Math.max(0.12, Math.min(Math.PI-0.12, _sph.phi - pitch));
+  dir.setFromSpherical(_sph);
+  camera.position.copy(camTgt).add(dir);
+  camera.lookAt(camTgt);
+}
+
+/* =====================================================================
+   UI
+===================================================================== */
+const capEl  = document.getElementById('caption');
+const stepEl = document.getElementById('step');
+const fadeEl = document.getElementById('fade');
+const playBtn= document.getElementById('play');
+const scrub  = document.getElementById('scrub');
+const clock  = document.getElementById('clock');
+const keyEl  = document.getElementById('key');
+const menuEl = document.getElementById('menu');
+const gearEl = document.getElementById('gear');
+
+let t = 0, playing = true, lastFrame = performance.now(), curSeg = -1, curStep = null;
+
+playBtn.onclick = ()=>{ playing=!playing; playBtn.textContent = playing?'Pause':'Play'; };
+document.getElementById('restart').onclick = ()=>{ t=0; curSeg=-1; playing=true; playBtn.textContent='Pause'; };
+scrub.oninput = ()=>{ t = parseFloat(scrub.value); curSeg=-1; };
+addEventListener('keydown', e=>{
+  if(e.code==='Space'){ e.preventDefault(); playBtn.click(); }
+  if(e.code==='ArrowRight'){ t = Math.min(TOTAL, t+2); curSeg=-1; }
+  if(e.code==='ArrowLeft'){  t = Math.max(0, t-2);     curSeg=-1; }
+  if(e.code==='Escape') setMenu(false);
+});
+
+function captionFor(time){
+  let i=0; for(let k=0;k<SEGS.length;k++) if(time>=SEGS[k].t) i=k;
+  return i;
+}
+function stepFor(time){
+  for(const b of STEP_BANDS) if(time >= b.a && time < b.b) return b.s;
+  return null;
+}
+function fadeAmount(time){
+  let f=0;
+  for(const T of TRANSITIONS) f = Math.max(f, 1 - Math.min(1, Math.abs(time-T)/FADE));
+  return f;
+}
+
+const hexCss = n2 => '#'+n2.toString(16).padStart(6,'0');
+
+function buildLegend(){
+  const rows = [
+    {sym:'Fe', name:'iron', col:EL.Fe.col},
+    {sym:'C', name:'carbon', col:EL.C.col},
+    {sym:'O', name:'oxygen', col:EL.O.col}
+  ];
+  if(fluxOn){
+    rows.push({sym:'Ca', name:'calcium', col:EL.Ca.col});
+    rows.push({sym:'Si', name:'silicon', col:EL.Si.col});
+  }
+  keyEl.innerHTML = rows.map(r=>
+    `<div><span class="dot" style="background:${hexCss(r.col)}"></span><b>${r.sym}</b> ${r.name}</div>`
+  ).join('');
+}
+
+function buildMenu(){
+  document.getElementById('oreOpts').innerHTML = Object.keys(ORES).map(k=>
+    `<button class="opt ${k===oreKey?'on':''}" data-group="ore" data-key="${k}">` +
+    `<span class="f">${ORES[k].formula}</span> · ${ORES[k].name}</button>`
+  ).join('');
+  document.getElementById('fluxOpts').innerHTML =
+    [['on','with limestone'],['off','without']].map(([v,lab])=>
+      `<button class="opt ${((v==='on')===fluxOn)?'on':''}" data-group="flux" data-key="${v}">${lab}</button>`
+    ).join('');
+  document.getElementById('steps').innerHTML =
+    `<b>1</b>${stepBurn()}<br>` +
+    `<b>2</b>${stepCO()}<br>` +
+    `<b>3</b>${stepRed()}<br>` +
+    (fluxOn ? `<b>4</b>${stepLime()}<br><b>5</b>${stepSlag()}<br>` : ``) +
+    `<span class="tot"><b>all</b>${overall()}</span>` +
+    `<br><em>Carbon monoxide does the reducing, not the carbon — and it is made inside ` +
+    `the furnace by steps 1 and 2.` +
+    (fluxOn ? ` The limestone is there for the sand, not the iron.`
+            : ` With no limestone the sand stays in the iron.`) + `</em>`;
+
+  menuEl.querySelectorAll('.opt').forEach(b=>{
+    b.onclick = ()=>{
+      if(b.dataset.group==='ore') oreKey = b.dataset.key;
+      else fluxOn = b.dataset.key === 'on';
+      build();
+      playing = true; playBtn.textContent = 'Pause';
+    };
+  });
+}
+
+function setMenu(open){
+  menuEl.classList.toggle('open', open);
+  gearEl.classList.toggle('open', open);
+  if(open) buildMenu();
+}
+gearEl.onclick = ()=> setMenu(!menuEl.classList.contains('open'));
+
+/* ---------- rebuild everything that depends on the choices ---------- */
+function build(){
+  derive();
+  buildCharge();
+  buildGas();
+  buildMicro1();
+  buildMicro2();
+  buildCaptions();
+  buildLegend();
+
+  document.title = `The blast furnace — ${OR.name}`;
+  document.getElementById('h1').textContent = 'The blast furnace';
+  document.getElementById('subtitle').textContent = overall();
+  scrub.style.setProperty('--hl', hexCss(OR.lump));
+
+  if(menuEl.classList.contains('open')) buildMenu();
+  history.replaceState(null,'',`?ore=${oreKey}&flux=${fluxOn?'on':'off'}`);
+
+  t = 0; curSeg = -1; curStep = null;
+}
+build();
+
+/* =====================================================================
+   LOOP
+===================================================================== */
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt = Math.min((now-lastFrame)/1000, 1/24);
+  lastFrame = now;
+
+  if(playing){
+    t += dt;
+    if(t >= TOTAL){ t = TOTAL; playing=false; playBtn.textContent='Play'; }
+  }
+
+  updateMacro(t);
+  updateMicro1(t);
+  updateMicro2(t);
+  sampleCam(t);
+  applyCamera();
+
+  const f = fadeAmount(t);
+  fadeEl.style.opacity = f;
+  const seg = captionFor(t);
+  if(seg !== curSeg){ curSeg = seg; capEl.textContent = SEGS[seg].c; }
+  capEl.style.opacity = 1 - f;
+  const st = stepFor(t);
+  if(st !== curStep){ curStep = st; if(st) stepEl.textContent = st; }
+  stepEl.style.opacity = st ? (1-f)*0.95 : 0;
+  scrub.value = t;
+  scrub.style.setProperty('--p', (t/TOTAL*100)+'%');
+  clock.textContent = t.toFixed(1)+' / '+TOTAL.toFixed(1)+'s';
+
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(frame);
+
+addEventListener('resize', ()=>{
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+</script>
+</body>
+</html>
