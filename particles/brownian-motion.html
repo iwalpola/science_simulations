@@ -1102,6 +1102,41 @@ const leafTex = (function(){
 const leafMat = new THREE.MeshStandardMaterial({color:0x3d6f39, roughness:0.82, metalness:0.02,
   envMapIntensity:0.28, map:leafTex, bumpMap:leafTex, bumpScale:0.006});
 
+/* The blade's own outline — a leaf shape, not a squashed sphere.  A sphere
+   scaled thin and wide reads as an oval with rounded ends no matter how far
+   it is squashed; what a leaf actually wants is a vesica: two arcs meeting at
+   sharp points at either end, with the width held out flat across the middle
+   rather than bulging into a curve the way an ellipse does. So the control
+   points sit close to the long axis until near each end, where they sweep
+   out and back in to the point — the same bezier-outline approach as
+   petalGeo below, just with a shape drawn to look like a leaf instead of a
+   petal, and centred on the origin so it drops into the same frame the
+   sphere used to occupy. Built once and shared by both leaves. */
+const leafGeo = (function(){
+  const s = new THREE.Shape();
+  s.moveTo(-0.5, 0);
+  s.bezierCurveTo(-0.40, 0.155, 0.12, 0.145, 0.5, 0);
+  s.bezierCurveTo(0.12, -0.145, -0.40, -0.155, -0.5, 0);
+  const g = new THREE.ExtrudeGeometry(s, {
+    depth: 0.010, bevelEnabled: true, bevelThickness: 0.005,
+    bevelSize: 0.010, bevelSegments: 2, curveSegments: 20
+  });
+  /* the same cupping trick as the petal, but held near-flat across the
+     middle of the blade and only curling up close to the two points — a
+     real leaf's midrib is close to straight, and it is the curl near the
+     ends that reads as "leaf" rather than "flat cut-out". The extrusion
+     axis is "up" once the blade is laid flat (rotation.x below), so z is
+     the direction this lifts. */
+  const p = g.attributes.position, v = new THREE.Vector3();
+  for(let i=0;i<p.count;i++){
+    v.fromBufferAttribute(p, i);
+    const edge = Math.pow(Math.abs(v.x) * 2, 4);      // ~0 across the middle, 1 at the tips
+    p.setZ(i, v.z + edge*0.05 + 0.35*v.y*v.y);
+  }
+  g.computeVertexNormals();
+  return g;
+})();
+
 /* Each leaf is a group carrying the blade, rather than one squashed sphere
    doing both jobs.  Where a leaf sits and which way it points then has nothing
    to do with how flat and long the blade is — and a gizmo dragged on an
@@ -1113,8 +1148,10 @@ const leaves = [], leafBlades = [];
   leaf.position.set(dx*0.55, y, dz*0.5);
   leaf.rotation.set(0.1, Math.atan2(dz,dx), dx>0? -0.35 : 0.35);
   flower.add(leaf);
-  const blade = new THREE.Mesh(SPH, leafMat);
-  blade.scale.set(0.42, 0.05, 0.20);
+  const blade = new THREE.Mesh(leafGeo, leafMat);
+  blade.rotation.x = -Math.PI/2;                       // lay it flat — same trick as the petal
+  blade.scale.set(0.84, 1, 1.30);
+  blade.castShadow = true; blade.receiveShadow = true;
   leaf.add(blade);
   leaves.push(leaf); leafBlades.push(blade);
 });
