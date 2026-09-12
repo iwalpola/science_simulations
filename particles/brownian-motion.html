@@ -253,6 +253,17 @@ const FIELD_R = 9.0;               // how wide that field is
 const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.setSize(innerWidth,innerHeight);
+/* Colour management.  three.js renders in linear space; without this the output
+   is never converted back to sRGB, so every colour comes out darker and flatter
+   than it was chosen to be.  This single line does more for the look than any
+   amount of extra geometry.  (r128 spelling — it became outputColorSpace later.) */
+renderer.outputEncoding = THREE.sRGBEncoding;
+/* Tone mapping, so the additive glows roll off instead of clipping to white. */
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.08;
+/* Shadows, which is what stops props looking like they are hovering. */
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.getElementById('stage').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -260,32 +271,94 @@ scene.background = new THREE.Color(0x080b11);
 
 const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.05, 2000);
 
-scene.add(new THREE.HemisphereLight(0x9fb4d0, 0x0a0d13, 0.6));
-const keyL = new THREE.DirectionalLight(0xffffff, 0.95); keyL.position.set(6,11,8); scene.add(keyL);
-const fillL = new THREE.DirectionalLight(0x9ec3ff, 0.4); fillL.position.set(-8,4,-6); scene.add(fillL);
-const rimL  = new THREE.DirectionalLight(0xffd9b0, 0.35); rimL.position.set(0,3,-10); scene.add(rimL);
+scene.add(new THREE.HemisphereLight(0x8ea6c2, 0x0a0d13, 0.22));
+const keyL = new THREE.DirectionalLight(0xffffff, 1.05); keyL.position.set(5,9,6); scene.add(keyL);
+const fillL = new THREE.DirectionalLight(0x9ec3ff, 0.35); fillL.position.set(-8,4,-6); scene.add(fillL);
+const rimL  = new THREE.DirectionalLight(0xffd9b0, 0.30); rimL.position.set(0,3,-10); scene.add(rimL);
+/* Only the key light casts.  Its shadow camera has to be told how much of the
+   world to cover — the default box is far too big for a bench, which is the
+   usual reason a first attempt at shadows comes out as blurred mush. */
+keyL.castShadow = true;
+keyL.shadow.mapSize.set(2048, 2048);
+keyL.shadow.camera.near = 1;
+keyL.shadow.camera.far = 24;
+keyL.shadow.camera.left = -6; keyL.shadow.camera.right = 6;
+keyL.shadow.camera.top = 6;   keyL.shadow.camera.bottom = -6;
+keyL.shadow.bias = -0.0008;          // stops the self-shadowing stripes
+keyL.shadow.normalBias = 0.02;
 /* the microscope lamp, under the stage — and the light in the field of view */
 const stageLight = new THREE.PointLight(0xfff0c8, 0, 4); scene.add(stageLight);
 const fieldLight = new THREE.PointLight(0xdce8ff, 0, 40);
 fieldLight.position.set(0, FIELD_Y - 14, 6); scene.add(fieldLight);
 
+/* ---------------------------------------------------------------------------
+   The environment map — what the glass and metal actually reflect.
+
+   The other scenes build a little room out of six flat boxes and bake that.
+   It works, but the reflections are six hard-edged slabs, which is why polished
+   surfaces there look slightly cheap. This paints a proper equirectangular
+   panorama on a canvas instead: a smooth gradient for the room, soft blobs for
+   the lights, and one small bright spot to give metal a crisp glint.
+
+   It costs one canvas and no network request, so the file stays standalone —
+   which is the main reason not to just load an .hdr. If you do want a real one,
+   it is a two-line swap and the URL is in the note below.
+--------------------------------------------------------------------------- */
 (function environment(){
-  const env = new THREE.Scene();
-  const box = new THREE.BoxGeometry(1,1,1);
-  env.add(new THREE.Mesh(new THREE.BoxGeometry(24,14,24),
-    new THREE.MeshBasicMaterial({color:0x1d2634, side:THREE.BackSide})));
-  const panel=(hex,gain,x,y,z,sx,sy,sz)=>{
-    const m=new THREE.Mesh(box,new THREE.MeshBasicMaterial({color:hex}));
-    m.material.color.multiplyScalar(gain);
-    m.position.set(x,y,z); m.scale.set(sx,sy,sz); env.add(m);
+  const W = 1024, H = 512;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const x = c.getContext('2d');
+
+  /* The room, and it has to be DARK.  An environment map is not just
+     reflections: every surface takes diffuse light from it too, so a bright
+     panorama behaves like a floodlight with no off switch. A first attempt at
+     this washed the whole scene out — a near-black microscope came out white —
+     because the gradient was painted at the brightness of a real sky.
+     What is wanted is a dim room with a few small bright sources in it. */
+  const sky = x.createLinearGradient(0,0,0,H);
+  sky.addColorStop(0.00, '#0d131c');
+  sky.addColorStop(0.34, '#18202b');
+  sky.addColorStop(0.49, '#2b3542');
+  sky.addColorStop(0.52, '#121821');
+  sky.addColorStop(1.00, '#06080b');
+  x.fillStyle = sky; x.fillRect(0,0,W,H);
+
+  /* the lights, added rather than painted over, so they read as emission.
+     Small and bright beats large and dim: a tight source gives a crisp
+     highlight on metal without lifting everything else. */
+  x.globalCompositeOperation = 'lighter';
+  const blob = (cx, cy, r, col, a)=>{
+    const g = x.createRadialGradient(cx*W, cy*H, 0, cx*W, cy*H, r*W);
+    g.addColorStop(0, `rgba(${col},${a})`);
+    g.addColorStop(0.45, `rgba(${col},${a*0.30})`);
+    g.addColorStop(1, `rgba(${col},0)`);
+    x.fillStyle = g; x.fillRect(0,0,W,H);
   };
-  panel(0xffffff,3.2,  0, 6.6,  0, 11,0.1,11);
-  panel(0xbcd6ff,1.3, -9, 1.0,  0, 0.1,9,16);
-  panel(0xffd7b0,0.9,  9, 1.0,  2, 0.1,9,16);
-  panel(0x8fb0e0,0.5,  0, 0.0,-10, 18,9,0.1);
+  blob(0.50, 0.12, 0.17, '255,252,246', 0.85);   // the overhead softbox
+  blob(0.17, 0.40, 0.13, '150,185,235', 0.26);   // cool fill, one side
+  blob(0.83, 0.44, 0.12, '235,190,150', 0.20);   // warm fill, the other
+  blob(0.64, 0.09, 0.035,'255,255,255', 1.00);   // a small hard glint
+  x.globalCompositeOperation = 'source-over';
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.mapping  = THREE.EquirectangularReflectionMapping;
+  tex.encoding = THREE.sRGBEncoding;
+
   const pmrem = new THREE.PMREMGenerator(renderer);
-  scene.environment = pmrem.fromScene(env, 0.04).texture;
+  pmrem.compileEquirectangularShader();
+  scene.environment = pmrem.fromEquirectangular(tex).texture;
   pmrem.dispose();
+  tex.dispose();
+  /* To use a real HDRI instead, add the RGBELoader script for r128 and:
+       new THREE.RGBELoader().load(URL, t => {
+         t.mapping = THREE.EquirectangularReflectionMapping;
+         scene.environment = pmrem.fromEquirectangular(t).texture;
+       });
+     A CORS-friendly one to try:
+       https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/textures/
+         equirectangular/royal_esplanade_1k.hdr
+     Note that this breaks opening the file straight off disk. */
 })();
 
 /* ---------- shared helpers ---------- */
@@ -303,13 +376,28 @@ function ball(color, radius, opts={}){
   m.scale.setScalar(radius);
   return m;
 }
-/* a pollen grain: knobbly, as they really are */
+/* A pollen grain.  Real ones are lumpy and sculptured, not spheres, so every
+   vertex is pushed out by an amount that depends only on the DIRECTION it sits
+   in — which means vertices that share a position get the same displacement and
+   the surface stays watertight. Doing it from a random number per vertex would
+   tear the mesh open along every seam, which is the usual trap here. */
 function grainMesh(radius, detail){
   const g = new THREE.IcosahedronGeometry(radius, detail ?? 1);
+  const p = g.attributes.position;
+  const v = new THREE.Vector3();
+  for(let i=0;i<p.count;i++){
+    v.fromBufferAttribute(p, i).normalize();
+    const lump = 1
+      + 0.17*Math.sin(5.1*v.x + 1.3)*Math.sin(4.7*v.y + 2.1)*Math.sin(5.4*v.z + 0.7)
+      + 0.07*Math.sin(9.3*v.y + 0.4)*Math.sin(8.6*v.z + 1.9);
+    p.setXYZ(i, v.x*radius*lump, v.y*radius*lump, v.z*radius*lump);
+  }
+  g.computeVertexNormals();
   const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({
-    color:POLLEN_COL, roughness:0.62, metalness:0.08, flatShading:true,
-    emissive:new THREE.Color(POLLEN_COL).multiplyScalar(0.07)
+    color:POLLEN_COL, roughness:0.52, metalness:0.10,
+    emissive:new THREE.Color(POLLEN_COL).multiplyScalar(0.05)
   }));
+  m.castShadow = true;
   return m;
 }
 function rod(color, r, h, opts={}){
@@ -342,6 +430,7 @@ function label(text, color='#eef2f7', size=54){
   ctx.shadowColor='rgba(0,0,0,.9)'; ctx.shadowBlur=14;
   ctx.fillStyle=color; ctx.fillText(text, c.width/2, c.height/2);
   const tex = new THREE.CanvasTexture(c); tex.anisotropy=4;
+  tex.encoding = THREE.sRGBEncoding;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true,
     depthTest:false, opacity:0}));
   sp.renderOrder = 10;
@@ -357,8 +446,37 @@ const GLOW_TEX = (function(){
   g.addColorStop(0.3,'rgba(255,245,220,.55)');
   g.addColorStop(1,'rgba(255,220,160,0)');
   ctx.fillStyle = g; ctx.fillRect(0,0,128,128);
-  return new THREE.CanvasTexture(c);
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
 })();
+
+/* ---------------------------------------------------------------------------
+   The other half of colour management, and the half that is easy to miss.
+
+   In r128 a material colour is used in the lighting maths AS IF it were already
+   linear.  But hex codes get picked by eye, which means they are sRGB.  So a
+   deep green like 0x3d6f39 is fed in as though it were far brighter than it
+   looks, and comes out of the renderer as mint.  Every colour in the scene ends
+   up too light and too desaturated — which is exactly what was happening here.
+
+   Converting once, after everything is built, fixes the lot.  The flag makes it
+   idempotent so a rebuild cannot double-convert and wash the scene out again.
+   (Anything whose colour is animated at runtime would have to be set in linear
+   space instead — nothing in this scene is.)
+--------------------------------------------------------------------------- */
+function linearise(root){
+  root.traverse(o=>{
+    if(!o.material) return;
+    const list = Array.isArray(o.material) ? o.material : [o.material];
+    list.forEach(m=>{
+      if(!m || m.userData.__lin) return;
+      m.userData.__lin = true;
+      if(m.color)    m.color.convertSRGBToLinear();
+      if(m.emissive) m.emissive.convertSRGBToLinear();
+    });
+  });
+}
 
 function lerp(a,b,t){ return a+(b-a)*t; }
 function clamp01(x){ return Math.max(0,Math.min(1,x)); }
@@ -442,31 +560,78 @@ function tri(x, half){
 ===================================================================== */
 const lab = new THREE.Group(); scene.add(lab);
 
+/* The bench.  Making it near-black is not enough on its own: once the output is
+   correctly sRGB-encoded, even a very dark albedo lifts to a visible grey, and
+   an eighteen-metre flat disc then sweeps across the frame as a pale dome.
+   So it gets a radial falloff painted into its colour map — a pool of light
+   around the apparatus, fading to nothing at the edges. That is both what a
+   bench under a lamp actually looks like and what keeps the eye on the props.
+   A cylinder's cap UVs are a circle inscribed in the 0..1 square, so a radial
+   gradient lands exactly on the disc. */
+const benchMap = (function(){
+  const S = 512, c = document.createElement('canvas');
+  c.width = c.height = S;
+  const x = c.getContext('2d');
+  x.fillStyle = '#000'; x.fillRect(0,0,S,S);
+  const g = x.createRadialGradient(S/2,S/2,0, S/2,S/2,S*0.5);
+  g.addColorStop(0.00, 'rgba(255,255,255,1)');
+  g.addColorStop(0.10, 'rgba(232,236,244,0.86)');
+  g.addColorStop(0.22, 'rgba(150,160,178,0.30)');
+  g.addColorStop(0.34, 'rgba(60,68,82,0.07)');
+  g.addColorStop(0.50, 'rgba(0,0,0,0)');
+  x.fillStyle = g; x.fillRect(0,0,S,S);
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+})();
 const bench = new THREE.Mesh(
   new THREE.CylinderGeometry(9,9,0.35,64),
-  new THREE.MeshStandardMaterial({color:0x11151d, roughness:0.95, metalness:0})
+  new THREE.MeshStandardMaterial({color:0x525a68, map:benchMap,
+    roughness:0.92, metalness:0, envMapIntensity:0.10})
 );
-bench.position.y=-0.175; lab.add(bench);
+bench.position.y=-0.175; bench.receiveShadow = true; lab.add(bench);
 
 const glassMat = new THREE.MeshStandardMaterial({
-  color:0xcfe0ee, roughness:0.06, metalness:0.0,
-  transparent:true, opacity:0.28, side:THREE.DoubleSide
+  color:0xcfe0ee, roughness:0.04, metalness:0.0,
+  transparent:true, opacity:0.22, side:THREE.DoubleSide,
+  envMapIntensity:1.4          // glass is mostly what it reflects
 });
-const steel = new THREE.MeshStandardMaterial({color:0xaeb8c6, metalness:0.85, roughness:0.3});
-const darkMetal = new THREE.MeshStandardMaterial({color:0x2a3038, metalness:0.6, roughness:0.45});
+const steel = new THREE.MeshStandardMaterial({color:0x9aa4b2, metalness:0.88, roughness:0.26,
+  envMapIntensity:0.9});
+const darkMetal = new THREE.MeshStandardMaterial({color:0x232932, metalness:0.55, roughness:0.5,
+  envMapIntensity:0.55});
+
+/* Spin a 2D silhouette to make glassware.  This is the primitive I should have
+   been using all along: a handful of points gives a rolled lip, a shaped body
+   and a rounded base, where a plain cylinder gives a tube with flat ends. */
+function lathe(profile, mat, seg){
+  const pts = profile.map(([x,y])=> new THREE.Vector2(x,y));
+  const m = new THREE.Mesh(new THREE.LatheGeometry(pts, seg ?? 48), mat);
+  return m;
+}
 
 /* ---- the flower ---- */
 const FLOWER_X = -2.75, HEAD_Y = 3.05;
 const flower = new THREE.Group(); flower.position.set(FLOWER_X,0,0); lab.add(flower);
 
-const vase = new THREE.Mesh(new THREE.CylinderGeometry(0.30,0.22,0.78,28,1,true), glassMat);
-vase.position.y = 0.39; flower.add(vase);
-const vaseWater = new THREE.Mesh(new THREE.CylinderGeometry(0.27,0.21,0.52,24),
-  new THREE.MeshStandardMaterial({color:0xbfd8ee, roughness:0.12, transparent:true, opacity:0.45}));
-vaseWater.position.y = 0.28; flower.add(vaseWater);
+/* the vase: a waisted body with a flared rim and a rounded foot */
+const vase = lathe([
+  [0.000,0.00],[0.150,0.00],[0.205,0.020],[0.225,0.060],
+  [0.228,0.22],[0.208,0.40],[0.214,0.56],[0.252,0.70],
+  [0.286,0.78],[0.300,0.80],[0.292,0.815]
+], glassMat);
+vase.position.y = 0; vase.castShadow = true; flower.add(vase);
+/* the last point comes back to x=0 so the top is capped — a lathe is an open
+   surface of revolution, so without that you would see straight into the vase */
+const vaseWater = lathe([
+  [0.000,0.02],[0.190,0.02],[0.210,0.10],[0.200,0.40],[0.206,0.56],[0.000,0.56]
+], new THREE.MeshStandardMaterial({color:0xbfd8ee, roughness:0.07, metalness:0.05,
+  transparent:true, opacity:0.42, envMapIntensity:1.4}));
+flower.add(vaseWater);
 
-const green = new THREE.MeshStandardMaterial({color:0x4e8a48, roughness:0.72, metalness:0.05});
-const stem = rod(0x4e8a48, 0.055, HEAD_Y-0.2, {rough:0.72, metal:0.05});
+const green = new THREE.MeshStandardMaterial({color:0x3d6f39, roughness:0.82, metalness:0.02,
+  envMapIntensity:0.28});
+const stem = rod(0x3d6f39, 0.048, HEAD_Y-0.2, {rough:0.82, metal:0.02});
 stem.position.y = (HEAD_Y-0.2)/2 + 0.2; flower.add(stem);
 [[0.7, 1.25, 0.5],[-0.72, 1.85, -0.4]].forEach(([dx,y,dz])=>{
   const leaf = new THREE.Mesh(SPH, green);
@@ -476,53 +641,93 @@ stem.position.y = (HEAD_Y-0.2)/2 + 0.2; flower.add(stem);
   flower.add(leaf);
 });
 const receptacle = new THREE.Mesh(SPH, green);
-receptacle.scale.setScalar(0.16); receptacle.position.y = HEAD_Y-0.18; flower.add(receptacle);
+receptacle.scale.set(0.115,0.085,0.115); receptacle.position.y = HEAD_Y-0.13; flower.add(receptacle);
 
 /* petals */
 const petalMat = new THREE.MeshStandardMaterial({
-  color:0xe8a6c4, roughness:0.66, metalness:0.02, side:THREE.DoubleSide,
-  emissive:0x2a0f1c
+  color:0xd9739c, roughness:0.62, metalness:0.02, side:THREE.DoubleSide,
+  emissive:0x1a0810, envMapIntensity:0.25
 });
+/* A petal, as an outline that is extruded and bevelled rather than a squashed
+   sphere.  Built once and shared by all seven — same geometry, different
+   transform, which is both tidier and cheaper. */
+const petalGeo = (function(){
+  const s = new THREE.Shape();
+  s.moveTo(0, 0);
+  s.bezierCurveTo(0.18, 0.17, 0.62, 0.23, 0.95, 0.09);
+  s.bezierCurveTo(1.06, 0.035, 1.06, -0.035, 0.95, -0.09);
+  s.bezierCurveTo(0.62, -0.23, 0.18, -0.17, 0, 0);
+  const g = new THREE.ExtrudeGeometry(s, {
+    depth: 0.010, bevelEnabled: true, bevelThickness: 0.006,
+    bevelSize: 0.012, bevelSegments: 2, curveSegments: 16
+  });
+  /* cup it: lift the tip, and raise the two edges, so it is a curved surface
+     instead of a flat cut-out.  The extrusion axis becomes "up" once the petal
+     is laid flat, so displacing z here is what curves it. */
+  const p = g.attributes.position, v = new THREE.Vector3();
+  for(let i=0;i<p.count;i++){
+    v.fromBufferAttribute(p, i);
+    p.setZ(i, v.z + 0.26*v.x*v.x + 0.55*v.y*v.y);
+  }
+  g.computeVertexNormals();
+  return g;
+})();
+
 for(let i=0;i<7;i++){
   const a = (i/7)*Math.PI*2;
-  const p = new THREE.Mesh(SPH, petalMat);
-  p.scale.set(0.46, 0.045, 0.26);
-  p.position.set(Math.cos(a)*0.46, HEAD_Y-0.05, Math.sin(a)*0.46);
-  p.rotation.y = -a;
-  p.rotation.z = 0.30;
-  p.rotation.x = Math.sin(a)*0.1;
-  flower.add(p);
+  /* two nested groups: the outer one chooses which way the petal points, the
+     inner one how far it lifts.  Doing both with Euler angles on one object
+     fights the rotation order and is how petals end up skewed. */
+  const yaw = new THREE.Group();
+  yaw.position.set(0, HEAD_Y-0.04, 0);
+  yaw.rotation.y = -a;
+  const tilt = new THREE.Group();
+  tilt.rotation.z = 0.30 + Math.sin(i*1.7)*0.07;      // a little variation
+  tilt.rotation.x = Math.cos(i*2.3)*0.06;
+  yaw.add(tilt);
+  const p = new THREE.Mesh(petalGeo, petalMat);
+  p.rotation.x = -Math.PI/2;                          // lay it flat
+  p.scale.setScalar(0.52);
+  p.castShadow = true; p.receiveShadow = true;
+  tilt.add(p);
+  flower.add(yaw);
 }
 /* the centre, the stamens, and the pollen on the anthers */
 const centre = new THREE.Mesh(SPH,
-  new THREE.MeshStandardMaterial({color:0xe8d06a, roughness:0.8, metalness:0.05}));
+  new THREE.MeshStandardMaterial({color:0xc9a83f, roughness:0.85, metalness:0.04,
+    envMapIntensity:0.3}));
 centre.scale.set(0.17,0.07,0.17); centre.position.y = HEAD_Y+0.02; flower.add(centre);
 
 const anthers = [];
 for(let i=0;i<6;i++){
   const a = (i/6)*Math.PI*2 + 0.3;
-  const fil = rod(0xd8cf9a, 0.018, 0.42, {rough:0.7, metal:0.05});
-  fil.position.set(Math.cos(a)*0.12, HEAD_Y+0.20, Math.sin(a)*0.12);
+  const fil = rod(0xb9ae7e, 0.014, 0.32, {rough:0.8, metal:0.03});
+  fil.position.set(Math.cos(a)*0.11, HEAD_Y+0.17, Math.sin(a)*0.11);
   fil.rotation.z = -Math.cos(a)*0.30;
   fil.rotation.x =  Math.sin(a)*0.30;
   flower.add(fil);
+  /* the anther is deliberately darker than the pollen on it — otherwise the
+     two merge into one cream-coloured lump at close range */
   const anth = new THREE.Mesh(SPH,
-    new THREE.MeshStandardMaterial({color:0xb8862e, roughness:0.75, metalness:0.08}));
-  anth.scale.set(0.075,0.045,0.045);
-  anth.position.set(Math.cos(a)*0.24, HEAD_Y+0.40, Math.sin(a)*0.24);
+    new THREE.MeshStandardMaterial({color:0x7a5418, roughness:0.85, metalness:0.05,
+      envMapIntensity:0.35}));
+  anth.scale.set(0.058,0.036,0.036);
+  anth.position.set(Math.cos(a)*0.22, HEAD_Y+0.32, Math.sin(a)*0.22);
   anth.rotation.y = -a;
   flower.add(anth);
   anthers.push(anth);
 }
-/* pollen dust sitting on the anthers */
+/* Pollen dust on the anthers.  Smaller and far more numerous than before, and
+   at detail 1 rather than 0 — at 20 flat faces each they read as broken
+   polystyrene rather than as grains. */
 const dustGrp = new THREE.Group(); flower.add(dustGrp);
 (function dust(){
   const rand = rng(77001);
   anthers.forEach(anth=>{
-    for(let k=0;k<9;k++){
-      const d = grainMesh(0.016 + rand()*0.012, 0);
+    for(let k=0;k<18;k++){
+      const d = grainMesh(0.0075 + rand()*0.006, 1);
       d.position.copy(anth.position).add(new THREE.Vector3(
-        (rand()-0.5)*0.13, 0.035+rand()*0.025, (rand()-0.5)*0.08));
+        (rand()-0.5)*0.105, 0.024+rand()*0.020, (rand()-0.5)*0.062));
       d.rotation.set(rand()*3, rand()*3, rand()*3);
       dustGrp.add(d);
     }
@@ -616,6 +821,17 @@ knob.rotation.z = Math.PI/2; knob.position.set(0.50, STAGE_Y+0.45, -0.30); scope
 
 const STAGE_POS = new THREE.Vector3(SC_X-0.05, STAGE_Y+0.06, 0);
 
+/* Shadows, set once the lab is assembled rather than flag by flag.  Transparent
+   things are deliberately skipped: the shadow map has no idea the glass is
+   see-through, so a beaker would cast a solid black disc, which looks worse
+   than casting nothing. Only the lab needs this — the field of view is lit on
+   its own terms. */
+lab.traverse(o=>{
+  if(!o.isMesh) return;
+  o.receiveShadow = true;
+  if(!o.material.transparent) o.castShadow = true;
+});
+
 /* =====================================================================
    THE FIELD OF VIEW — what you actually see down the eyepiece
 ===================================================================== */
@@ -639,7 +855,7 @@ function buildField(){
   for(let i=0;i<nG;i++){
     const hero = (i === 0);
     const r = GR.r * (hero ? 1 : 0.62 + (i%3)*0.18);
-    const m = grainMesh(r, 1);
+    const m = grainMesh(r, 2);
     /* each grain gets its own walk, and a smaller grain is kicked further */
     const step = 0.55 * JIG * (hero ? 1 : GR.r/r);
     const w = makeWalk(9100 + i*37, 420, step, 0.52, FIELD_R*0.62);
@@ -754,7 +970,7 @@ function updateField(t){
 
   /* --- the trail: where the hero grain has actually been --- */
   const trailOn = ramp(t, 29.0, 31.0);
-  trail.material.opacity = trailOn * 0.55;
+  trail.material.opacity = trailOn * 0.85;
   trail.visible = trailOn > 0.02;
   if(trail.visible){
     const pos = trailGeo.attributes.position.array;
@@ -778,7 +994,7 @@ function updateField(t){
   L.walk.material.opacity = ramp(t,31.0,32.0)*(1-ramp(t,35.0,36.0));
   L.walk.position.copy(hero.position).add(_v1.set(1.9, -hero.userData.r-0.9, 0));
   L.water.material.opacity = ramp(t,45.0,46.2)*(1-ramp(t,49.5,50.5));
-  L.water.position.set(0, FIELD_R*0.82, 2);
+  L.water.position.set(-4.4, 3.5, 2);   // off to one side, clear of the grain
   L.uneven.material.opacity = ramp(t,54.0,55.0)*(1-ramp(t,58.0,59.0));
   L.uneven.position.copy(flash.position).add(_v1.set(0, -1.25, 0));
 }
@@ -1034,6 +1250,7 @@ function build(){
   buildField();
   buildCaptions();
   buildLegend();
+  linearise(scene);          // authored colours are sRGB; the renderer wants linear
   if(menuEl.classList.contains('open')) buildMenu();
   history.replaceState(null,'',`?grain=${grainKey}&temp=${tempKey}`);
   t = 0; curSeg = -1;
@@ -1061,6 +1278,10 @@ function frame(now){
   /* the field of view is lit only once we are looking through it */
   const inField = worldAt(t) === 'field';
   fieldLight.intensity = inField ? 2.4 : 0;
+  /* Two thirds of the runtime is spent inside the microscope, where the lab is
+     off camera — so stop re-rendering its shadow map every frame once we are
+     down there. It keeps whatever it last drew, which nobody can see. */
+  renderer.shadowMap.autoUpdate = !inField;
 
   const f = fadeAmount(t);
   fadeEl.style.opacity = f;

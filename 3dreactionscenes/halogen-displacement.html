@@ -241,6 +241,12 @@ const MICRO2_Y = -400;   // the swap
 const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.setSize(innerWidth,innerHeight);
+/* Colour management. Without outputEncoding the render is never converted back
+   to sRGB, so every colour comes out darker and flatter than it was chosen to
+   be. r128 spelling — this became outputColorSpace in later versions. */
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
 document.getElementById('stage').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -263,7 +269,7 @@ const rim  = new THREE.DirectionalLight(0xffd9b0, 0.35); rim.position.set(0,3,-1
     m.material.color.multiplyScalar(gain);
     m.position.set(x,y,z); m.scale.set(sx,sy,sz); env.add(m);
   };
-  panel(0xffffff,3.2,  0, 6.6,  0, 11,0.1,11);
+  panel(0xffffff,1.1,  0, 6.6,  0, 11,0.1,11);
   panel(0xbcd6ff,1.3, -9, 1.0,  0, 0.1,9,16);
   panel(0xffd7b0,0.9,  9, 1.0,  2, 0.1,9,16);
   panel(0x8fb0e0,0.5,  0, 0.0,-10, 18,9,0.1);
@@ -345,6 +351,24 @@ function clamp01(x){ return Math.max(0,Math.min(1,x)); }
 function smooth(x){ x=clamp01(x); return x*x*(3-2*x); }
 function ramp(t,a,b){ return smooth((t-a)/(b-a)); }
 
+/* The other half of colour management. r128 uses a material colour in the
+   lighting maths as if it were already linear, but hex codes are picked by eye
+   and so are sRGB. Setting outputEncoding WITHOUT this leaves everything too
+   light and desaturated. The flag keeps it idempotent, so rebuilding on a
+   species change cannot double-convert. Colours rewritten every frame convert
+   at the point of assignment instead. */
+function linearise(root){
+  root.traverse(o=>{
+    if(!o.material) return;
+    (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{
+      if(!m || m.userData.__lin) return;
+      m.userData.__lin = true;
+      if(m.color)    m.color.convertSRGBToLinear();
+      if(m.emissive) m.emissive.convertSRGBToLinear();
+    });
+  });
+}
+
 function clearGroup(g){
   for(let i=g.children.length-1;i>=0;i--){
     const c = g.children[i];
@@ -367,9 +391,32 @@ function rng(seed){
 ===================================================================== */
 const macro = new THREE.Group(); scene.add(macro);
 
+/* The bench gets a radial falloff painted into its colour map. Once the output
+   is correctly sRGB-encoded even a near-black albedo lifts to a visible grey,
+   and a flat 18-metre disc then sweeps across the lower frame as a pale dome.
+   Darkening it further is not the fix; making it a pool of light is. A
+   cylinder's cap UVs are a circle inscribed in the 0..1 square, so a radial
+   gradient lands exactly on the disc. */
+const benchMap = (function(){
+  const S = 512, c = document.createElement('canvas');
+  c.width = c.height = S;
+  const x = c.getContext('2d');
+  x.fillStyle = '#000'; x.fillRect(0,0,S,S);
+  const g = x.createRadialGradient(S/2,S/2,0, S/2,S/2,S*0.5);
+  g.addColorStop(0.00, 'rgba(255,255,255,1)');
+  g.addColorStop(0.11, 'rgba(226,232,242,0.80)');
+  g.addColorStop(0.24, 'rgba(140,152,172,0.26)');
+  g.addColorStop(0.36, 'rgba(56,64,78,0.06)');
+  g.addColorStop(0.50, 'rgba(0,0,0,0)');
+  x.fillStyle = g; x.fillRect(0,0,S,S);
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+})();
 const bench = new THREE.Mesh(
   new THREE.CylinderGeometry(9,9,0.35,64),
-  new THREE.MeshStandardMaterial({color:0x11151d, roughness:0.95, metalness:0})
+  new THREE.MeshStandardMaterial({color:0x4a515d, map:benchMap,
+    roughness:0.94, metalness:0, envMapIntensity:0.10})
 );
 bench.position.y=-0.175; macro.add(bench);
 
@@ -399,7 +446,7 @@ const liqFoot = new THREE.Mesh(
 liqFoot.position.y = LIQ_BOT; tube.add(liqFoot);
 const liqTop = new THREE.Mesh(new THREE.CircleGeometry(TUBE_R-0.03,40),
   new THREE.MeshStandardMaterial({color:0xeaf3ff, roughness:0.05, metalness:0.2, transparent:true, opacity:0.4}));
-liqTop.rotation.x = -Math.PI/2; liqTop.position.y = LIQ_TOP; tube.add(liqTop);
+liqTop.rotation.x = -Math.PI/2; liqTop.position.y = LIQ_TOP+0.004; tube.add(liqTop);
 
 /* the rack it stands in */
 const wood = new THREE.MeshStandardMaterial({color:0x3a3026, roughness:0.8, metalness:0.05});
@@ -892,6 +939,7 @@ function updateMacro(t){
   pipFill.scale.y = lerp(1, 0.18, given);
   pipFill.position.y = 0.62 - (1-pipFill.scale.y)*0.35;
   pipFill.material.color.setRGB(HX.sol[0],HX.sol[1],HX.sol[2]);
+    pipFill.material.color.convertSRGBToLinear();   // rewritten each frame, so convert here
 
   /* the colour in the tube: first what you added, then what was displaced */
   const added = ramp(t,18.2,21.4);
@@ -899,6 +947,7 @@ function updateMacro(t){
   const a = COLOURLESS, b = HX.sol, c = HY.sol;
   const r1 = lerp(a[0],b[0],added), g1 = lerp(a[1],b[1],added), b1 = lerp(a[2],b[2],added);
   liqMat.color.setRGB(lerp(r1,c[0],made), lerp(g1,c[1],made), lerp(b1,c[2],made));
+    liqMat.color.convertSRGBToLinear();   // rewritten each frame, so convert here
   liqMat.opacity = lerp(lerp(0.42,0.52,added), 0.78, made);
   liqTop.material.opacity = lerp(0.4, 0.26, Math.max(added*0.5, made));
 
@@ -1028,6 +1077,7 @@ function build(){
   buildMicro2();
   buildCaptions();                      // sets TOTAL too
   buildLegend();
+  linearise(scene);      // authored colours are sRGB; the renderer wants linear
   CAM = {macro:CAM_MACRO, micro1:CAM_MICRO1, micro2: REACTS?CAM_SWAP:CAM_REFUSE};
 
   document.title = `${cap1(HX.name)} + potassium ${HY.halide}`;

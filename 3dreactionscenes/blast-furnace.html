@@ -237,6 +237,12 @@ const MICRO2_Y = -400;   // the three steps
 const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.setSize(innerWidth,innerHeight);
+/* Colour management. Without outputEncoding the render is never converted back
+   to sRGB, so every colour comes out darker and flatter than it was chosen to
+   be. r128 spelling — this became outputColorSpace in later versions. */
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
 document.getElementById('stage').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -262,7 +268,7 @@ const tapLight    = new THREE.PointLight(0xffb03a, 0, 9);  scene.add(tapLight);
     m.material.color.multiplyScalar(gain);
     m.position.set(x,y,z); m.scale.set(sx,sy,sz); env.add(m);
   };
-  panel(0xffffff,2.2,  0, 12.0, 0, 18,0.1,18);
+  panel(0xffffff,0.9,  0, 12.0, 0, 18,0.1,18);
   panel(0xbcd6ff,1.0,-14, 4.0,  0, 0.1,14,26);
   panel(0xff9a50,0.8, 14, 2.0,  2, 0.1,14,26);
   const pmrem = new THREE.PMREMGenerator(renderer);
@@ -335,6 +341,24 @@ function clamp01(x){ return Math.max(0,Math.min(1,x)); }
 function smooth(x){ x=clamp01(x); return x*x*(3-2*x); }
 function ramp(t,a,b){ return smooth((t-a)/(b-a)); }
 
+/* The other half of colour management. r128 uses a material colour in the
+   lighting maths as if it were already linear, but hex codes are picked by eye
+   and so are sRGB. Setting outputEncoding WITHOUT this leaves everything too
+   light and desaturated. The flag keeps it idempotent, so rebuilding on a
+   species change cannot double-convert. Colours rewritten every frame convert
+   at the point of assignment instead. */
+function linearise(root){
+  root.traverse(o=>{
+    if(!o.material) return;
+    (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{
+      if(!m || m.userData.__lin) return;
+      m.userData.__lin = true;
+      if(m.color)    m.color.convertSRGBToLinear();
+      if(m.emissive) m.emissive.convertSRGBToLinear();
+    });
+  });
+}
+
 function clearGroup(g){
   for(let i=g.children.length-1;i>=0;i--){
     const c = g.children[i];
@@ -359,9 +383,28 @@ function rng(seed){
 ===================================================================== */
 const macro = new THREE.Group(); scene.add(macro);
 
+/* the foundry floor is lit by the furnace itself, so the light pool sits close
+   in around the hearth and the far floor falls away into the dark */
+const groundMap = (function(){
+  const S = 512, c = document.createElement("canvas");
+  c.width = c.height = S;
+  const x = c.getContext("2d");
+  x.fillStyle = "#000"; x.fillRect(0,0,S,S);
+  const g = x.createRadialGradient(S/2,S/2,0, S/2,S/2,S*0.5);
+  g.addColorStop(0.00, "rgba(255,236,208,1)");
+  g.addColorStop(0.09, "rgba(214,176,140,0.72)");
+  g.addColorStop(0.19, "rgba(120,104,92,0.22)");
+  g.addColorStop(0.30, "rgba(44,44,48,0.05)");
+  g.addColorStop(0.44, "rgba(0,0,0,0)");
+  x.fillStyle = g; x.fillRect(0,0,S,S);
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+})();
 const ground = new THREE.Mesh(
   new THREE.CylinderGeometry(22,22,0.4,64),
-  new THREE.MeshStandardMaterial({color:0x14181f, roughness:0.95, metalness:0})
+  new THREE.MeshStandardMaterial({color:0x14181f, map:groundMap,
+    roughness:0.95, metalness:0, envMapIntensity:0.08})
 );
 ground.position.y=-0.2; macro.add(ground);
 
@@ -422,8 +465,8 @@ const jets = [];
 
 /* the molten iron pooling in the hearth, with slag floating on it */
 const ironMat = new THREE.MeshStandardMaterial({
-  color:0xff8a2a, roughness:0.34, metalness:0.5, emissive:0xff5a10,
-  emissiveIntensity:1.0
+  color:0x4a1400, roughness:0.42, metalness:0.2, emissive:0xff6a18,
+  emissiveIntensity:1.0, envMapIntensity:0.12
 });
 const ironPool = new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.5,1,40), ironMat);
 macro.add(ironPool);
@@ -491,6 +534,7 @@ function updateCharge(t){
     // it glows more the lower it is — the furnace has a temperature gradient
     const hot = heat * clamp01(1 - (y - HEARTH_Y)/(STACK_Y*0.72));
     m.material.emissive.setRGB(hot*0.85, hot*0.26, hot*0.03);
+    m.material.emissive.convertSRGBToLinear();   // rewritten each frame, so convert here
   }
 }
 
@@ -763,6 +807,7 @@ function updateMicro2(t){
     fe.scale.setScalar(lerp(EL.Fe.r*0.82, EL.Fe.r, freed));
     fe.material.metalness = lerp(0.55, 0.85, freed);
     fe.material.emissive.setRGB(freed*0.5, freed*0.16, freed*0.02);
+    fe.material.emissive.convertSRGBToLinear();   // rewritten each frame, so convert here
   });
 
   // each CO comes up, takes one oxygen, and leaves as CO₂
@@ -967,7 +1012,7 @@ function updateMacro(t){
   ironPool.scale.y = ironH;
   ironPool.position.set(0, ironH/2 + 0.02, 0);
   ironPool.visible = pool > 0.02;
-  ironMat.emissiveIntensity = 0.6 + blast*0.9*flick;
+  ironMat.emissiveIntensity = 1.5 + blast*1.6*flick;
   const slagH = fluxOn ? 0.04 + pool*0.20 : 0.0;
   slagPool.scale.y = Math.max(slagH, 0.001);
   slagPool.position.set(0, ironH + slagH/2 + 0.02, 0);
@@ -1126,6 +1171,7 @@ function build(){
   buildMicro2();
   buildCaptions();
   buildLegend();
+  linearise(scene);      // authored colours are sRGB; the renderer wants linear
 
   document.title = `The blast furnace — ${OR.name}`;
   document.getElementById('h1').textContent = 'The blast furnace';

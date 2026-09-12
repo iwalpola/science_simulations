@@ -311,6 +311,12 @@ const MICRO2_Y = -400;   // the cell
 const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.setSize(innerWidth,innerHeight);
+/* Colour management. Without outputEncoding the render is never converted back
+   to sRGB, so every colour comes out darker and flatter than it was chosen to
+   be. r128 spelling — this became outputColorSpace in later versions. */
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
 document.getElementById('stage').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -334,7 +340,7 @@ const lampLight = new THREE.PointLight(0xffe9a0, 0, 5); scene.add(lampLight);
     m.material.color.multiplyScalar(gain);
     m.position.set(x,y,z); m.scale.set(sx,sy,sz); env.add(m);
   };
-  panel(0xffffff,3.2,  0, 6.6,  0, 11,0.1,11);
+  panel(0xffffff,1.1,  0, 6.6,  0, 11,0.1,11);
   panel(0xbcd6ff,1.3, -9, 1.0,  0, 0.1,9,16);
   panel(0xffd7b0,0.9,  9, 1.0,  2, 0.1,9,16);
   panel(0x8fb0e0,0.5,  0, 0.0,-10, 18,9,0.1);
@@ -434,6 +440,24 @@ function clamp01(x){ return Math.max(0,Math.min(1,x)); }
 function smooth(x){ x=clamp01(x); return x*x*(3-2*x); }
 function ramp(t,a,b){ return smooth((t-a)/(b-a)); }
 
+/* The other half of colour management. r128 uses a material colour in the
+   lighting maths as if it were already linear, but hex codes are picked by eye
+   and so are sRGB. Setting outputEncoding WITHOUT this leaves everything too
+   light and desaturated. The flag keeps it idempotent, so rebuilding on a
+   species change cannot double-convert. Colours rewritten every frame convert
+   at the point of assignment instead. */
+function linearise(root){
+  root.traverse(o=>{
+    if(!o.material) return;
+    (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{
+      if(!m || m.userData.__lin) return;
+      m.userData.__lin = true;
+      if(m.color)    m.color.convertSRGBToLinear();
+      if(m.emissive) m.emissive.convertSRGBToLinear();
+    });
+  });
+}
+
 function clearGroup(g){
   for(let i=g.children.length-1;i>=0;i--){
     const c = g.children[i];
@@ -456,9 +480,32 @@ function rng(seed){
 ===================================================================== */
 const macro = new THREE.Group(); scene.add(macro);
 
+/* The bench gets a radial falloff painted into its colour map. Once the output
+   is correctly sRGB-encoded even a near-black albedo lifts to a visible grey,
+   and a flat 18-metre disc then sweeps across the lower frame as a pale dome.
+   Darkening it further is not the fix; making it a pool of light is. A
+   cylinder's cap UVs are a circle inscribed in the 0..1 square, so a radial
+   gradient lands exactly on the disc. */
+const benchMap = (function(){
+  const S = 512, c = document.createElement('canvas');
+  c.width = c.height = S;
+  const x = c.getContext('2d');
+  x.fillStyle = '#000'; x.fillRect(0,0,S,S);
+  const g = x.createRadialGradient(S/2,S/2,0, S/2,S/2,S*0.5);
+  g.addColorStop(0.00, 'rgba(255,255,255,1)');
+  g.addColorStop(0.11, 'rgba(226,232,242,0.80)');
+  g.addColorStop(0.24, 'rgba(140,152,172,0.26)');
+  g.addColorStop(0.36, 'rgba(56,64,78,0.06)');
+  g.addColorStop(0.50, 'rgba(0,0,0,0)');
+  x.fillStyle = g; x.fillRect(0,0,S,S);
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+})();
 const bench = new THREE.Mesh(
   new THREE.CylinderGeometry(9,9,0.35,64),
-  new THREE.MeshStandardMaterial({color:0x11151d, roughness:0.95, metalness:0})
+  new THREE.MeshStandardMaterial({color:0x4a515d, map:benchMap,
+    roughness:0.94, metalness:0, envMapIntensity:0.10})
 );
 bench.position.y=-0.175; macro.add(bench);
 
@@ -1123,7 +1170,9 @@ function updateMacro(t){
   /* the lamp, on from the moment the supply is switched on */
   const lit = ramp(t, ON_AT-0.4, ON_AT+0.3);
   lamp.material.emissive.setRGB(lit*1.0, lit*0.85, lit*0.45);
+    lamp.material.emissive.convertSRGBToLinear();   // rewritten each frame, so convert here
   lamp.material.color.setRGB(lerp(0.48,1.0,lit), lerp(0.42,0.95,lit), lerp(0.26,0.7,lit));
+    lamp.material.color.convertSRGBToLinear();   // rewritten each frame, so convert here
   lampLight.position.copy(lamp.position);
   lampLight.intensity = lit*1.5;
 
@@ -1143,9 +1192,11 @@ function updateMacro(t){
   if(SO.sol){
     liqMat.color.setRGB(
       lerp(SO.sol[0],0.87,used), lerp(SO.sol[1],0.91,used), lerp(SO.sol[2],0.96,used));
+    liqMat.color.convertSRGBToLinear();   // rewritten each frame, so convert here
     liqMat.opacity = lerp(0.62,0.40,used);
   } else {
-    liqMat.color.setRGB(0.87,0.91,0.96);
+    liqMat.color.setRGB(0.58,0.72,0.84);
+    liqMat.color.convertSRGBToLinear();   // rewritten each frame, so convert here
     liqMat.opacity = 0.40;
   }
 
@@ -1289,6 +1340,7 @@ function build(){
   buildMicro2();
   buildCaptions();
   buildLegend();
+  linearise(scene);      // authored colours are sRGB; the renderer wants linear
   buildRules();
 
   document.title = solKey === 'NaCl' ? 'Electrolysis of brine'

@@ -248,6 +248,12 @@ const MICRO2_Y = -400;   // the decomposition
 const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.setSize(innerWidth,innerHeight);
+/* Colour management. Without outputEncoding the render is never converted back
+   to sRGB, so every colour comes out darker and flatter than it was chosen to
+   be. r128 spelling — this became outputColorSpace in later versions. */
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
 document.getElementById('stage').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -271,7 +277,7 @@ const flameLight = new THREE.PointLight(0x8fb4ff, 0, 7); scene.add(flameLight);
     m.material.color.multiplyScalar(gain);
     m.position.set(x,y,z); m.scale.set(sx,sy,sz); env.add(m);
   };
-  panel(0xffffff,3.2,  0, 6.6,  0, 11,0.1,11);
+  panel(0xffffff,1.1,  0, 6.6,  0, 11,0.1,11);
   panel(0xbcd6ff,1.3, -9, 1.0,  0, 0.1,9,16);
   panel(0xffd7b0,0.9,  9, 1.0,  2, 0.1,9,16);
   panel(0x8fb0e0,0.5,  0, 0.0,-10, 18,9,0.1);
@@ -352,6 +358,24 @@ function clamp01(x){ return Math.max(0,Math.min(1,x)); }
 function smooth(x){ x=clamp01(x); return x*x*(3-2*x); }
 function ramp(t,a,b){ return smooth((t-a)/(b-a)); }
 
+/* The other half of colour management. r128 uses a material colour in the
+   lighting maths as if it were already linear, but hex codes are picked by eye
+   and so are sRGB. Setting outputEncoding WITHOUT this leaves everything too
+   light and desaturated. The flag keeps it idempotent, so rebuilding on a
+   species change cannot double-convert. Colours rewritten every frame convert
+   at the point of assignment instead. */
+function linearise(root){
+  root.traverse(o=>{
+    if(!o.material) return;
+    (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{
+      if(!m || m.userData.__lin) return;
+      m.userData.__lin = true;
+      if(m.color)    m.color.convertSRGBToLinear();
+      if(m.emissive) m.emissive.convertSRGBToLinear();
+    });
+  });
+}
+
 function clearGroup(g){
   for(let i=g.children.length-1;i>=0;i--){
     const c = g.children[i];
@@ -375,9 +399,32 @@ function rng(seed){
 ===================================================================== */
 const macro = new THREE.Group(); scene.add(macro);
 
+/* The bench gets a radial falloff painted into its colour map. Once the output
+   is correctly sRGB-encoded even a near-black albedo lifts to a visible grey,
+   and a flat 18-metre disc then sweeps across the lower frame as a pale dome.
+   Darkening it further is not the fix; making it a pool of light is. A
+   cylinder's cap UVs are a circle inscribed in the 0..1 square, so a radial
+   gradient lands exactly on the disc. */
+const benchMap = (function(){
+  const S = 512, c = document.createElement('canvas');
+  c.width = c.height = S;
+  const x = c.getContext('2d');
+  x.fillStyle = '#000'; x.fillRect(0,0,S,S);
+  const g = x.createRadialGradient(S/2,S/2,0, S/2,S/2,S*0.5);
+  g.addColorStop(0.00, 'rgba(255,255,255,1)');
+  g.addColorStop(0.11, 'rgba(226,232,242,0.80)');
+  g.addColorStop(0.24, 'rgba(140,152,172,0.26)');
+  g.addColorStop(0.36, 'rgba(56,64,78,0.06)');
+  g.addColorStop(0.50, 'rgba(0,0,0,0)');
+  x.fillStyle = g; x.fillRect(0,0,S,S);
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+})();
 const bench = new THREE.Mesh(
   new THREE.CylinderGeometry(9,9,0.35,64),
-  new THREE.MeshStandardMaterial({color:0x11151d, roughness:0.95, metalness:0})
+  new THREE.MeshStandardMaterial({color:0x4a515d, map:benchMap,
+    roughness:0.94, metalness:0, envMapIntensity:0.10})
 );
 bench.position.y=-0.175; macro.add(bench);
 
@@ -447,8 +494,9 @@ function buildPowder(){
 function tintPowder(mix, glow){
   const from = new THREE.Color(CB.powder), to = new THREE.Color(CB.oxPowder);
   powder.children.forEach(c=>{
-    c.material.color.copy(from).lerp(to, mix);
+    c.material.color.copy(from).lerp(to, mix).convertSRGBToLinear();
     c.material.emissive.setRGB(glow*0.55, glow*0.17, glow*0.02);
+    c.material.emissive.convertSRGBToLinear();   // rewritten each frame, so convert here
   });
 }
 
@@ -924,7 +972,7 @@ const CAM_MACRO = [
   {t:7.0,  p:[-1.7,2.5,1.3],  l:[-1.6,1.85,0]},
   {t:15.0, p:[1.4,3.2,5.6],   l:[1.3,1.6,0]},
   {t:17.2, p:[-0.8,2.4,4.2],  l:[-1.4,1.5,0]},
-  {t:20.2, p:[0.4,2.2,3.6],   l:[0.2,1.5,0]},
+  {t:20.2, p:[2.2,2.5,4.3],   l:[2.45,1.45,0]},
   {t:24.0, p:[2.3,1.9,2.8],   l:[2.5,1.2,0]},
   {t:27.0, p:[-1.0,2.2,2.6],  l:[-1.5,1.8,0]},
   {t:30.0, p:[-1.45,2.0,1.5], l:[-1.55,1.85,0]}
@@ -987,6 +1035,7 @@ function updateMacro(t){
   /* the limewater goes milky once gas is coming through */
   const milky = DECOMPOSES ? ramp(t, FIZZ_A+1.4, FIZZ_B-1.0) : 0;
   limeMat.color.setRGB(lerp(0.89,0.97,milky), lerp(0.93,0.97,milky), lerp(0.97,0.96,milky));
+    limeMat.color.convertSRGBToLinear();   // rewritten each frame, so convert here
   limeMat.opacity = lerp(0.34, 0.92, milky);
 
   updateBubbles(t);
@@ -1111,6 +1160,7 @@ function build(){
   buildMicro2();
   buildCaptions();                    // sets TOTAL too
   buildLegend();
+  linearise(scene);      // authored colours are sRGB; the renderer wants linear
   CAM = {macro:CAM_MACRO, micro1:CAM_MICRO1, micro2: DECOMPOSES?CAM_BREAK:CAM_HOLD};
 
   document.title = `Heating ${CB.solid}`;
