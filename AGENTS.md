@@ -149,11 +149,20 @@ Every scene follows the same shape. Keep it.
   worlds parked far away (`MICRO1_Y = 400`, `MICRO2_Y = -400`). The camera
   teleports between them behind a fade at `TRANSITIONS`, rather than juggling
   visibility. `worldAt(t)` decides which.
-- **Everything is a pure function of `t`.** No stepped simulation, no
-  accumulated state. Particles use closed forms — analytic ballistics, triangle
-  waves for reflecting billiards, precomputed seeded waypoints for random walks.
-  This is what makes scrubbing instant and every frame reproducible. **Do not
-  introduce per-frame integration.**
+- **Everything is a pure function of `t`.** No accumulated state between
+  frames. Particles use closed forms — analytic ballistics, triangle waves for
+  reflecting billiards. This is what makes scrubbing instant and every frame
+  reproducible. **Do not introduce per-frame integration.**
+- **If a scene needs real dynamics, precompute it and leave a closed form
+  behind.** `particles/brownian-motion.html` does the one case of this: the
+  water is a hard-sphere gas and the pollen grains move because molecules hit
+  them, so there is genuine integration — but it happens once, in `runSim()`,
+  at build. What it records is analytic again (a molecule is a straight line
+  plus the moments a grain knocked it onto a new one; the grains' paths are
+  sampled and interpolated), so playback is still a lookup and scrubbing is
+  still instant. The hot loop is written with flat typed arrays and no
+  three.js in it, which is also what lets `test-particles.js` run it under
+  node and measure what it produces.
 - **Determinism.** Any randomness comes from the seeded `rng(seed)` so a rebuild
   looks identical. `Math.random()` at build time is tolerable for decorative
   scatter; never for anything the timeline depends on.
@@ -209,6 +218,14 @@ These are a teacher's materials. Accuracy is the product.
   blocked with the reason on the button (CaCO₃ + H₂SO₄ — insoluble) or omitted
   with a note (dilute HNO₃ with metals — it oxidises rather than giving H₂).
 - **Say when something is not to scale.** The Brownian scene puts a note on
-  screen the moment the water molecules appear.
+  screen the moment the water molecules appear — size, number AND mass, since
+  its molecules have to be thousands of times too heavy for a countable number
+  of them to move a grain at all.
+- **Prefer a number that emerges to a number that is typed in.** `GRAINS.jiggle`
+  and `TEMPS.jig` in the Brownian scene used to drive the animation; they are
+  now Einstein's prediction for how far a grain of that size wanders at that
+  temperature, and `test-particles.js` runs the simulation at all nine settings
+  and checks the prediction against what actually comes out. A trend that
+  emerges cannot silently disagree with the caption explaining it.
 - **Captions carry the teaching**, so they are per-species and written out in
   full. Roughly 16–21 per scene, checked for order and non-emptiness.

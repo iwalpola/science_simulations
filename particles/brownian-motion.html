@@ -160,8 +160,9 @@
 
 <div id="scale">
   <b>not to scale</b>
-  A water molecule is tens of thousands of times smaller across than a pollen grain.
-  Drawn this size so you can see one at all — and there would be billions in view.
+  A water molecule is tens of thousands of times smaller across than a pollen grain,
+  and there would be billions in view rather than a few thousand. Drawn big enough to
+  see, and heavy enough that a countable number of them can do the job.
 </div>
 
 <div id="caption"></div>
@@ -200,35 +201,80 @@
      4  the water molecules made visible, and the reason revealed — they are
         being struck from every side at once, but never quite evenly
 
-   Two things this has to get right to be worth anything:
+   Three things this has to get right to be worth anything:
 
-   Determinism.  The "random" walk is a precomputed set of waypoints from a
-   seeded generator, interpolated linearly — so the path is genuinely a random
-   walk with sharp kicks, and it is also a pure function of t. Scrubbing lands
-   on the same frame every time. The water molecules travel in straight lines
-   and reflect off the walls, which a triangle wave gives exactly.
+   The motion has to be caused.  Nothing here wobbles a grain by a scripted
+   amount. The water is a gas of hard spheres with Maxwell–Boltzmann speeds,
+   every impact on a grain is resolved as an elastic collision, and the walk,
+   the drag that stops it running away, and both of the trends a pupil is
+   asked to explain — smaller grain goes further, hotter water goes further —
+   emerge from that. See runSim(), and the numbers in GRAINS and TEMPS, which
+   are predictions the test suite checks rather than settings that drive it.
+
+   Determinism.  The collisions are worked out ONCE, at build. What is left
+   behind is closed form: a molecule is a straight line reflected off walls
+   (a triangle wave gives that exactly), so all that has to be recorded is
+   where a grain knocked it onto a new line; the grains' paths are recorded
+   and interpolated. So every frame is still a pure function of t, scrubbing
+   still lands on the same frame every time, and nothing integrates per frame.
 
    Honesty about scale.  A water molecule really is tens of thousands of times
-   smaller across than a pollen grain, and there would be billions of them in
-   view. It cannot be drawn to scale, so the scene says so on screen rather
-   than quietly leaving a wrong impression.
+   smaller across than a pollen grain, there would be billions of them in view
+   rather than a few thousand, and each real one carries a vanishing fraction
+   of the momentum these have to. None of that can be drawn, so the scene says
+   so on screen rather than quietly leaving a wrong impression.
 --------------------------------------------------------------------------- */
 
 /* ======================= the choices ======================= */
 
-/* A smaller grain is knocked further by the same collisions, because it has
-   less mass to shift — which is why the jiggle goes UP as the grain goes down. */
+/* A smaller grain is knocked further by the same collisions, and Einstein's
+   1905 relation says by how much: a grain's diffusion constant is D = kT/γ,
+   where γ is the drag on it, so the distance it wanders in a given time goes
+   as √D — and γ grows with the grain, so the jiggle goes UP as the grain goes
+   DOWN.
+
+   `jiggle` is that PREDICTION, normalised to the medium grain. It does not
+   drive anything. Nothing in this scene shoves a grain by a scripted amount
+   any more — the grains are moved by the water molecules that actually hit
+   them (see runSim below). These numbers are here so that the prediction can
+   be CHECKED: test-particles.js runs the simulation for all nine settings,
+   measures how far each grain really gets, and asserts it lands on them.
+
+   Why 1/r and not 1/√r.  A countable number of molecules, each bouncing
+   straight off, is the free-molecular limit, where γ goes as the grain's
+   area — so D ∝ 1/r² and the wander ∝ 1/r. Real water is the opposite
+   extreme, a continuum, where Stokes gives γ ∝ r, so D ∝ 1/r and the wander
+   ∝ 1/√r. The two happen to agree here because the drawn radii are
+   compressed: 1/r on the drawn 0.60/1.00/1.55 gives 1.67/1.00/0.65, and
+   1/√r on the real 1.5/5/15 µm radii gives 1.83/1.00/0.58. So the size trend
+   a pupil is asked to explain is the right one to about 10%, and for a
+   reason, rather than by being typed in. */
 const GRAINS = {
-  small:  {name:'small',  um:3,  jiggle:1.60, r:0.60, label:'3 µm'},
+  small:  {name:'small',  um:3,  jiggle:1.67, r:0.60, label:'3 µm'},
   medium: {name:'medium', um:10, jiggle:1.00, r:1.00, label:'10 µm'},
-  large:  {name:'large',  um:30, jiggle:0.56, r:1.55, label:'30 µm'}
+  large:  {name:'large',  um:30, jiggle:0.65, r:1.55, label:'30 µm'}
 };
 /* Hotter water means faster molecules, harder and more frequent collisions,
-   and so a livelier grain. */
+   and so a livelier grain.
+
+   `speed` is the real knob: it scales the width of the Maxwell–Boltzmann
+   distribution the molecular velocities are drawn from, and it is the only
+   thing temperature changes in the simulation. `jig` is again a prediction to
+   check against — D = kT/γ with γ ∝ v gives D ∝ speed, so the wander goes as
+   √speed, and √0.62/√1.00/√2.43 = 0.79/1.00/1.56.
+
+   Those speed factors are deliberately exaggerated, and it is worth knowing
+   why. Molecular speed itself only goes as √T, which over 5 → 60 °C is a 9%
+   change: invisible, and not what makes hot water so much livelier. The real
+   reason is that water's viscosity nearly halves over that range (1.52 →
+   1.00 → 0.47 mPa s), and D = kT/6πηr rises 0.62/1.00/2.42× because of it.
+   This simulation has no viscosity to turn down — the drag it has emerges
+   from the collisions — so the whole of that effect is folded into the one
+   knob it does have, which is how fast the molecules go. */
 const TEMPS = {
-  cold: {name:'cold',  C:5,  speed:0.60, jig:0.68, label:'5 °C',  word:'cold'},
+  cold: {name:'cold',  C:5,  speed:0.62, jig:0.79, label:'5 °C',  word:'cold'},
   room: {name:'room',  C:20, speed:1.00, jig:1.00, label:'20 °C', word:'room temperature'},
-  hot:  {name:'hot',   C:60, speed:1.55, jig:1.48, label:'60 °C', word:'hot'}
+  hot:  {name:'hot',   C:60, speed:2.43, jig:1.56, label:'60 °C', word:'hot'}
 };
 
 const qs = new URLSearchParams(location.search);
@@ -239,8 +285,8 @@ let GR, TP, JIG, SPEED;
 function derive(){
   GR = GRAINS[grainKey];
   TP = TEMPS[tempKey];
-  JIG   = GR.jiggle * TP.jig;      // how far the grain wanders
-  SPEED = TP.speed;                // how fast the water molecules go
+  JIG   = GR.jiggle * TP.jig;      // how far the grain is PREDICTED to wander
+  SPEED = TP.speed;                // how fast the water molecules actually go
 }
 
 const cap1 = s => s.charAt(0).toUpperCase() + s.slice(1);
@@ -368,19 +414,7 @@ fieldLight.position.set(0, FIELD_Y - 14, 6); scene.add(fieldLight);
 
 /* ---------- shared helpers ---------- */
 const SPH = new THREE.SphereGeometry(1,32,24);
-const SPH_LO = new THREE.SphereGeometry(1,14,10);
 const CYL = new THREE.CylinderGeometry(1,1,1,20,1,false);
-
-function ball(color, radius, opts={}){
-  const mat = new THREE.MeshStandardMaterial({
-    color, roughness: opts.rough ?? 0.4, metalness: opts.metal ?? 0.1,
-    emissive: new THREE.Color(color).multiplyScalar(opts.glow ?? 0.05)
-  });
-  if(opts.op !== undefined && opts.op < 1){ mat.transparent = true; mat.opacity = opts.op; }
-  const m = new THREE.Mesh(opts.lo?SPH_LO:SPH, mat);
-  m.scale.setScalar(radius);
-  return m;
-}
 /* A pollen grain.  Real ones are lumpy and sculptured, not spheres, so every
    vertex is pushed out by an amount that depends only on the DIRECTION it sits
    in — which means vertices that share a position get the same displacement and
@@ -536,7 +570,7 @@ function clearGroup(g){
     const c = g.children[i];
     g.remove(c);
     c.traverse(o=>{
-      if(o.geometry && o.geometry !== SPH && o.geometry !== SPH_LO && o.geometry !== CYL)
+      if(o.geometry && o.geometry !== SPH && o.geometry !== CYL)
         o.geometry.dispose();
       if(o.material){
         if(o.material.map && o.material.map !== GLOW_TEX) o.material.map.dispose();
@@ -550,57 +584,392 @@ function rng(seed){
   return ()=>{ s = (s*1664525 + 1013904223)>>>0; return s/4294967296; };
 }
 
-/* =====================================================================
-   THE RANDOM WALK — seeded, precomputed, and a pure function of t
-   Linear interpolation between waypoints, so the grain travels in a straight
-   line between kicks and turns sharply at each one.  That is what a kicked
-   particle actually does, and it is what makes the motion read as random
-   rather than as a wobble.
-===================================================================== */
-function makeWalk(seed, steps, step, dt, bound){
-  const rand = rng(seed);
-  const pts = [new THREE.Vector3(0,0,0)];
-  const dirs = [];
-  for(let i=1;i<steps;i++){
-    const prev = pts[i-1];
-    let a = rand()*Math.PI*2;
-    let r = step*(0.35 + rand()*1.3);
-    let nx = prev.x + Math.cos(a)*r;
-    let ny = prev.y + Math.sin(a)*r;
-    /* keep it in the field of view — a kick that would take it out of sight
-       is reflected back in, which is what the edge of the drop would do */
-    if(Math.hypot(nx,ny) > bound){
-      nx = prev.x - Math.cos(a)*r;
-      ny = prev.y - Math.sin(a)*r;
-    }
-    const p = new THREE.Vector3(nx, ny, prev.z + (rand()-0.5)*r*0.35);
-    pts.push(p);
-    dirs.push(new THREE.Vector3().subVectors(p, prev).normalize());
-  }
-  dirs.push(dirs[dirs.length-1] || new THREE.Vector3(1,0,0));
-  return {pts, dirs, dt};
-}
-/* where the walk is at time t0 seconds into it */
-function walkAt(w, t0, out){
-  const u = t0 / w.dt;
-  if(u <= 0) return out.copy(w.pts[0]);
-  const i = Math.floor(u);
-  if(i >= w.pts.length-1) return out.copy(w.pts[w.pts.length-1]);
-  return out.lerpVectors(w.pts[i], w.pts[i+1], u - i);
-}
-/* which kick we are in, and how long ago it landed — used to put the impact
-   flash on the side the grain was actually struck from */
-function walkKick(w, t0){
-  const u = t0 / w.dt;
-  const i = Math.max(0, Math.min(w.pts.length-2, Math.floor(u)));
-  return {i, age: (u - i) * w.dt, dir: w.dirs[i]};
-}
-
 /* a triangle wave: straight-line travel with perfect reflection off walls */
 function tri(x, half){
   const p = 4*half;
   let m = ((x + half) % p + p) % p;
   return m < 2*half ? m - half : 3*half - m;
+}
+/* the same wave's slope, which is the sign of the velocity: +1 while the
+   molecule is on its way out, −1 once it has bounced off the far wall. A
+   reflecting billiard never changes speed, only sign, so that is the whole
+   of it — and it is what lets the collision code below know how fast a
+   molecule is going without ever having integrated it. */
+function triSlope(x, half){
+  const p = 4*half;
+  let m = ((x + half) % p + p) % p;
+  return m < 2*half ? 1 : -1;
+}
+
+/* =====================================================================
+   THE WATER, AS A KINETIC GAS  —  the physics this scene is about
+
+   The grains are not wobbled by a script. They are moved by the water
+   molecules that hit them. Every impact is resolved as an elastic collision
+   between two hard spheres, so momentum and kinetic energy come out conserved
+   exactly, and everything the scene claims about the motion — that it is a
+   random walk, that it never runs away, that its spread grows like √t, that
+   a smaller grain goes further and hotter water sends it further still —
+   falls out of several thousand of those collisions rather than being typed
+   in anywhere.
+
+   HOW THIS KEEPS THE "PURE FUNCTION OF t" RULE.  The integration happens once,
+   at build, inside runSim(). What it leaves behind is closed form again:
+
+     · A molecule flies in a straight line and reflects off the walls, which
+       tri() gives exactly. So between collisions its position is analytic,
+       and all runSim() has to write down is the handful of moments when a
+       grain knocked it onto a new line.  (molAt)
+     · The grains' paths are recorded at a fixed rate and interpolated between
+       samples.  (grainAt)
+     · The impacts on the hero grain are kept as a list sorted by time and
+       searched by time.  (firstHit)
+
+   So scrubbing still lands on the same frame every time, the same seed still
+   gives the same scene, and not one thing integrates per frame.
+
+   WHERE IT IS HONEST ABOUT SCALE, AND WHERE IT CANNOT BE.
+
+     · SIZE.  A water molecule is about 0.3 nm across; a 10 µm grain is some
+       35,000 times wider. Drawn to scale a molecule would be a thousandth of
+       a pixel. Here it is about a fourteenth of the grain.
+     · NUMBER.  A drop this size holds of order 10¹³ molecules. Here there are
+       SIM.N of them.
+     · MASS.  The real ratio is around 10¹³ : 1. Here it is SIM.MASS : 1, and
+       it has to be: with a countable number of molecules on screen, their
+       kicks only add up to visible motion if each one carries the momentum
+       that a great many real ones would. The scale note on screen says all
+       three out loud rather than leaving a wrong impression.
+
+   What is NOT fudged: the collisions are exactly elastic, the velocities come
+   from the Maxwell–Boltzmann distribution for the chosen temperature, the
+   grain masses really do go as radius³ at one shared density, and the drag
+   that stops a grain running away is not a damping term anybody added — it is
+   the simple fact that a moving grain meets more molecules head-on than
+   behind. Take the collisions away and there is nothing left to move it.
+
+   Deliberately left out: molecule–molecule collisions. In real water they are
+   what keeps the speeds Maxwellian, and that distribution is imposed here
+   directly, so simulating them would cost a great deal and change nothing
+   that is on screen.
+===================================================================== */
+const SIM = {
+  /* The integration step, at room temperature. It is divided by SPEED, so
+     hotter water is stepped finer rather than less accurately: what has to be
+     resolved is the fastest molecule, and that is what temperature changes. */
+  DT:  1/120,
+  REC: 1/120,            // how often the grain paths are written down
+  /* How many molecules, and how fast they go, is not a free pair of choices.
+     Both the collision RATE and the grain's diffusion constant depend on the
+     two together — rate ∝ n·v and D ∝ v/n — so their product is fixed by the
+     speed alone. Wanting a dozen or so distinct hits a second AND a grain
+     that wanders a couple of grain-widths a minute pins both numbers down to
+     about here. Fewer, faster molecules and the hits become countable events;
+     more, slower ones and the grain barely moves. */
+  N:   2580,             // molecules
+  M:   1,                // molecular mass, in units of itself
+  R:   0.075,            // drawn radius of the oxygen
+  HR:  0.045,            // and of a hydrogen
+  OH:  0.115,            // the O–H distance, drawn to match
+  SIGMA: 1.95,           // RMS molecular speed per axis at room temp, units/s
+  MASS: 20,              // grain : molecule mass ratio, for a medium grain
+  BX: FIELD_R*1.06,      // the box the molecules reflect inside
+  BZ: 3.0,
+  /* The pool of water the grains stay inside. Wide enough that even the
+     smallest grain in the hottest water spends its minute wandering rather
+     than rattling off the sides — which matters, because a grain that keeps
+     meeting the wall has its spread cut short, and the size and temperature
+     trends the scene is about would flatten out at the lively end. */
+  DROP_R: FIELD_R*0.70,
+  DROP_Z: 1.8,
+  QUIET: 31.0,           // the companion grains have faded out by here
+  SHELL: 0.9,            // how far past contact the neighbour lists reach
+  REFRESH: 12            // ... and how many steps they last before a rebuild
+};
+
+/* ---------------------------------------------------------------------------
+   runSim — one pass of hard-sphere dynamics over the whole timeline.
+
+   Deliberately written with flat typed arrays and no THREE at all: it is the
+   hot loop (about 8,300 steps), and it is the part test-particles.js runs
+   under node, where there is no three.js to have.
+--------------------------------------------------------------------------- */
+function runSim(shape, t0, tEnd){
+  const rand = rng(9311);
+  /* Maxwell–Boltzmann.  Saying the SPEEDS are Maxwellian is the same as saying
+     each velocity COMPONENT is Gaussian with the same width, so that is how
+     they are drawn — Box–Muller, off the same seeded stream as everything
+     else, so a rebuild is identical. */
+  const gauss = ()=>{
+    const u = 1 - rand();                       // in (0,1], so log() is safe
+    return Math.sqrt(-2*Math.log(u)) * Math.cos(6.283185307179586*rand());
+  };
+
+  const N = SIM.N, m = SIM.M, sg = SIM.SIGMA*SPEED;
+  const DT = SIM.DT/Math.max(1, SPEED);
+  const BX = SIM.BX, BZ = SIM.BZ;
+  const nG = shape.length;
+  /* A grain marked `keep` is simulated for the whole run; the rest are dropped
+     once they are off screen (SIM.QUIET), which is most of the work in the
+     loop below. The kept ones have to come first in `shape`, so that "live"
+     is always a prefix. The scene keeps only the hero; the test harness keeps
+     all of them, because a measurement of six walks is worth six times one
+     and a frozen grain would quietly drag the average down. */
+  let nKeep = 0;
+  while(nKeep < nG && shape[nKeep].keep) nKeep++;
+  if(!nKeep) nKeep = 1;
+
+  /* --- the grains.  One density for all of them, so the mass really is
+     proportional to radius³; the absolute ratio to a molecule is the part
+     that had to be compressed. --- */
+  const gp = new Float64Array(nG*3), gv = new Float64Array(nG*3);
+  const gS = new Float64Array(nG), gC = new Float64Array(nG), gM = new Float64Array(nG);
+  for(let g=0; g<nG; g++){
+    const s = shape[g];
+    gp[g*3] = s.x; gp[g*3+1] = s.y; gp[g*3+2] = s.z;
+    gS[g] = s.r;                                 // the grain's own radius
+    gC[g] = s.r + SIM.R;                         // centre-to-centre at contact
+    gM[g] = m * SIM.MASS * Math.pow(s.r / GRAINS.medium.r, 3);
+    /* start each grain with the velocity equipartition says it should have,
+       rather than at rest — otherwise the first second of the scene is six
+       grains being spun up from nothing, which is not what a grain sitting in
+       water is doing */
+    const w = sg*Math.sqrt(m/gM[g]);
+    gv[g*3] = gauss()*w; gv[g*3+1] = gauss()*w; gv[g*3+2] = gauss()*w;
+  }
+
+  /* --- the molecules.  Each one is a point, a velocity and a start time;
+     tri() turns that into a reflecting billiard, so those three numbers ARE
+     its whole trajectory until a grain interrupts it. --- */
+  const p0 = new Float64Array(N*3), v0 = new Float64Array(N*3), tm = new Float64Array(N);
+  const ip = new Float64Array(N*3), iv = new Float64Array(N*3);
+  const ori = new Float32Array(N*6);             // the two O–H offsets, fixed per molecule
+  const log = new Array(N);                      // [t, px,py,pz, vx,vy,vz] per collision
+  const HALF = 104.5*Math.PI/360;                // half the bond angle
+  const cosH = Math.cos(HALF)*SIM.OH, sinH = Math.sin(HALF)*SIM.OH;
+  for(let i=0;i<N;i++){
+    /* somewhere in the box, but not inside a grain */
+    let x, y, z, tries = 0;
+    do {
+      x = (rand()-0.5)*2*BX; y = (rand()-0.5)*2*BX; z = (rand()-0.5)*2*BZ;
+      let clear = true;
+      for(let g=0; g<nG; g++){
+        const dx=x-gp[g*3], dy=y-gp[g*3+1], dz=z-gp[g*3+2];
+        if(dx*dx+dy*dy+dz*dz < gC[g]*gC[g]) { clear = false; break; }
+      }
+      if(clear) break;
+    } while(++tries < 24);
+    p0[i*3]=x; p0[i*3+1]=y; p0[i*3+2]=z;
+    v0[i*3]=gauss()*sg; v0[i*3+1]=gauss()*sg; v0[i*3+2]=gauss()*sg;
+    tm[i] = 0;
+    log[i] = [];
+
+    /* A fixed random orientation for the molecule, built without a rotation
+       matrix: a random unit bisector u, a random unit w perpendicular to it,
+       and then the two O–H bonds are cosθ·u ± sinθ·w. That gives the real
+       104.5° bend in a random direction, and since it never changes, the two
+       hydrogens can be drawn as a constant offset from the oxygen. */
+    const uz = rand()*2-1, up = Math.sqrt(Math.max(0,1-uz*uz)), ua = rand()*6.283185307179586;
+    const ux = up*Math.cos(ua), uy = up*Math.sin(ua);
+    /* any axis not parallel to u, crossed with it, gives a perpendicular */
+    const ax = Math.abs(uz) < 0.9 ? 0 : 1, az = Math.abs(uz) < 0.9 ? 1 : 0;
+    let e1x = uy*az - uz*0, e1y = uz*ax - ux*az, e1z = ux*0 - uy*ax;
+    const e1l = Math.hypot(e1x,e1y,e1z) || 1; e1x/=e1l; e1y/=e1l; e1z/=e1l;
+    const e2x = uy*e1z - uz*e1y, e2y = uz*e1x - ux*e1z, e2z = ux*e1y - uy*e1x;
+    const ps = rand()*6.283185307179586, cp = Math.cos(ps), sp = Math.sin(ps);
+    const wx = cp*e1x + sp*e2x, wy = cp*e1y + sp*e2y, wz = cp*e1z + sp*e2z;
+    ori[i*6]   = cosH*ux + sinH*wx; ori[i*6+1] = cosH*uy + sinH*wy; ori[i*6+2] = cosH*uz + sinH*wz;
+    ori[i*6+3] = cosH*ux - sinH*wx; ori[i*6+4] = cosH*uy - sinH*wy; ori[i*6+5] = cosH*uz - sinH*wz;
+  }
+
+  /* Take the bulk flow out.  Drawing N velocities at random leaves the gas
+     with a net momentum of order √N·mσ — small, but it is a current, and one
+     of the captions says in so many words that nothing is stirring the water.
+     Subtracting the mean costs three degrees of freedom out of 3N, so the
+     temperature is unchanged to a part in a thousand, and what is left is a
+     body of water that is genuinely still: every grain that moves does so
+     because it was hit, not because it was carried. */
+  let mx = 0, my = 0, mz = 0;
+  for(let i=0;i<N;i++){ mx += v0[i*3]; my += v0[i*3+1]; mz += v0[i*3+2]; }
+  mx /= N; my /= N; mz /= N;
+  for(let i=0;i<N;i++){
+    iv[i*3]   = v0[i*3]   -= mx;
+    iv[i*3+1] = v0[i*3+1] -= my;
+    iv[i*3+2] = v0[i*3+2] -= mz;
+    ip[i*3] = p0[i*3]; ip[i*3+1] = p0[i*3+1]; ip[i*3+2] = p0[i*3+2];
+  }
+
+  /* --- the run --- */
+  const steps = Math.round((tEnd - t0)/DT);
+  const rec = new Float32Array((Math.floor((tEnd - t0)/SIM.REC) + 2)*nG*3);
+  const hitT = [], hitN = [], hitJ = [];         // the impacts on the hero grain
+  const near = [];                               // one neighbour list per grain
+  for(let g=0; g<nG; g++) near.push([]);
+  let recAt = 0, nextRefresh = 0;
+
+  for(let s=0; s<=steps; s++){
+    const tau = s*DT;                            // seconds since the sim started
+    const now = t0 + tau;                        // ... and where that is on the timeline
+    /* Past SIM.QUIET the grains that are not kept have faded out, so there
+       is nothing to be gained from colliding with them. Their recorded paths
+       simply stop where they were, which nobody can see. */
+    const live = now < SIM.QUIET ? nG : nKeep;
+
+    /* Neighbour lists.  Checking every molecule against every grain on every
+       step is 24,000 tests a step and far and away the slowest thing here.
+       Instead each grain keeps a list of the molecules within SHELL of
+       contact, rebuilt every REFRESH steps — long enough to be cheap, short
+       enough that nothing can cross the shell unnoticed (the fastest
+       molecules cover about 0.4 units in that time, the shell is 0.9). */
+    if(s >= nextRefresh){
+      nextRefresh = s + SIM.REFRESH;
+      for(let g=0; g<live; g++) near[g].length = 0;
+      for(let i=0;i<N;i++){
+        const dt = tau - tm[i], i3 = i*3;
+        const x = tri(p0[i3]   + v0[i3]  *dt, BX);
+        const y = tri(p0[i3+1] + v0[i3+1]*dt, BX);
+        const z = tri(p0[i3+2] + v0[i3+2]*dt, BZ);
+        for(let g=0; g<live; g++){
+          const R = gC[g] + SIM.SHELL;
+          const dx = x-gp[g*3], dy = y-gp[g*3+1], dz = z-gp[g*3+2];
+          if(dx*dx + dy*dy + dz*dz < R*R) near[g].push(i);
+        }
+      }
+    }
+
+    /* --- molecule hits grain --- */
+    for(let g=0; g<live; g++){
+      const list = near[g], R2 = gC[g]*gC[g], M = gM[g], g3 = g*3;
+      for(let k=0;k<list.length;k++){
+        const i = list[k], i3 = i*3, dt = tau - tm[i];
+        /* where it is, and how fast — both straight off the closed form */
+        const ax = p0[i3] + v0[i3]*dt, ay = p0[i3+1] + v0[i3+1]*dt, az = p0[i3+2] + v0[i3+2]*dt;
+        const x = tri(ax,BX), y = tri(ay,BX), z = tri(az,BZ);
+        let nx = x-gp[g3], ny = y-gp[g3+1], nz = z-gp[g3+2];
+        const d2 = nx*nx+ny*ny+nz*nz;
+        if(d2 >= R2 || d2 === 0) continue;
+        const d = Math.sqrt(d2); nx/=d; ny/=d; nz/=d;      // the contact normal
+        const vx = v0[i3]*triSlope(ax,BX), vy = v0[i3+1]*triSlope(ay,BX),
+              vz = v0[i3+2]*triSlope(az,BZ);
+        /* the part of the approach that is along the normal.  If it is not
+           negative the two are already moving apart — they are still
+           overlapping from the step before, and hitting them again would
+           invent energy, so leave them alone. */
+        const rvn = (vx-gv[g3])*nx + (vy-gv[g3+1])*ny + (vz-gv[g3+2])*nz;
+        if(rvn >= 0) continue;
+        /* An elastic collision between two hard spheres: reverse the normal
+           part of the relative velocity, and split the impulse between the
+           masses. With e = 1 that is J = −2·rvn·mM/(m+M) along the normal,
+           which conserves momentum exactly (m·J/m − M·J/M = 0) and, because
+           the normal speed is only reversed, kinetic energy with it. */
+        const J = -2*rvn*m*M/(m+M);
+        gv[g3]   -= J/M*nx; gv[g3+1] -= J/M*ny; gv[g3+2] -= J/M*nz;
+        /* the molecule is now on a new straight line, starting here and now —
+           which also resets the phase of its wall bounces, as it must */
+        p0[i3]=x;   v0[i3]   = vx + J/m*nx;
+        p0[i3+1]=y; v0[i3+1] = vy + J/m*ny;
+        p0[i3+2]=z; v0[i3+2] = vz + J/m*nz;
+        tm[i] = tau;
+        log[i].push(tau, x, y, z, v0[i3], v0[i3+1], v0[i3+2]);
+        /* the hero's impacts are the ones the scene points at, so they are
+           kept: which way the blow came from, and how hard */
+        if(g === 0){ hitT.push(now); hitN.push(nx,ny,nz); hitJ.push(J); }
+      }
+    }
+
+    /* --- grain hits grain.  Only fifteen pairs, and they do collide. --- */
+    for(let a=0; a<live; a++) for(let b=a+1; b<live; b++){
+      const a3=a*3, b3=b*3, R = gS[a]+gS[b];
+      let nx = gp[b3]-gp[a3], ny = gp[b3+1]-gp[a3+1], nz = gp[b3+2]-gp[a3+2];
+      const d2 = nx*nx+ny*ny+nz*nz;
+      if(d2 >= R*R || d2 === 0) continue;
+      const d = Math.sqrt(d2); nx/=d; ny/=d; nz/=d;
+      const rvn = (gv[b3]-gv[a3])*nx + (gv[b3+1]-gv[a3+1])*ny + (gv[b3+2]-gv[a3+2])*nz;
+      if(rvn >= 0) continue;
+      const Ma = gM[a], Mb = gM[b], J = -2*rvn*Ma*Mb/(Ma+Mb);
+      gv[b3] += J/Mb*nx; gv[b3+1] += J/Mb*ny; gv[b3+2] += J/Mb*nz;
+      gv[a3] -= J/Ma*nx; gv[a3+1] -= J/Ma*ny; gv[a3+2] -= J/Ma*nz;
+    }
+
+    /* --- move the grains, and keep them in the drop --- */
+    for(let g=0; g<live; g++){
+      const g3 = g*3;
+      gp[g3] += gv[g3]*DT; gp[g3+1] += gv[g3+1]*DT; gp[g3+2] += gv[g3+2]*DT;
+      /* The water is a bead under a cover slip and the lit circle is only so
+         wide, so a grain that reaches the edge is turned back. Which is also
+         what keeps the hero in frame: over a minute a medium grain at room
+         temperature diffuses about three units, and the pool is five and a
+         half, so this is a backstop rather than something you watch happen. */
+      const rr = Math.hypot(gp[g3], gp[g3+1]), lim = SIM.DROP_R - gS[g];
+      if(rr > lim){
+        const nx = gp[g3]/rr, ny = gp[g3+1]/rr;
+        const vn = gv[g3]*nx + gv[g3+1]*ny;
+        if(vn > 0){ gv[g3] -= 2*vn*nx; gv[g3+1] -= 2*vn*ny; }
+        gp[g3] = nx*lim; gp[g3+1] = ny*lim;
+      }
+      const zl = SIM.DROP_Z - gS[g];
+      if(Math.abs(gp[g3+2]) > zl){
+        if(gp[g3+2]*gv[g3+2] > 0) gv[g3+2] = -gv[g3+2];
+        gp[g3+2] = (gp[g3+2] < 0 ? -1 : 1)*zl;
+      }
+    }
+
+    /* --- write the paths down --- */
+    while(recAt*SIM.REC <= tau + 1e-9 && (recAt+1)*nG*3 <= rec.length){
+      const o = recAt*nG*3;
+      for(let g=0; g<nG; g++){
+        rec[o+g*3] = gp[g*3]; rec[o+g*3+1] = gp[g*3+1]; rec[o+g*3+2] = gp[g*3+2];
+      }
+      recAt++;
+    }
+  }
+
+  /* Pack each molecule's log for lookup: entry 0 is where it started, then one
+     entry per collision, in time order. Seven numbers each — the time, and the
+     straight line it left on. */
+  const ev = new Array(N);
+  for(let i=0;i<N;i++){
+    const L = log[i], a = new Float32Array(7 + L.length);
+    a[0]=0; a[1]=ip[i*3]; a[2]=ip[i*3+1]; a[3]=ip[i*3+2];
+    a[4]=iv[i*3]; a[5]=iv[i*3+1]; a[6]=iv[i*3+2];
+    for(let k=0;k<L.length;k++) a[7+k] = L[k];
+    ev[i] = a;
+  }
+  return {
+    t0, ev, ori, rec, nG, nRec:recAt,
+    hitT: Float64Array.from(hitT),
+    hitN: Float32Array.from(hitN),
+    hitJ: Float32Array.from(hitJ)
+  };
+}
+
+/* where a molecule is at time tau into the run — the closed form, picked up
+   from the last collision it had before then.  Most molecules are never hit
+   at all, so this walk backwards is a step or two. */
+function molAt(a, tau, out){
+  let k = a.length - 7;
+  while(k > 0 && a[k] > tau) k -= 7;
+  const dt = tau - a[k];
+  out.x = tri(a[k+1] + a[k+4]*dt, SIM.BX);
+  out.y = tri(a[k+2] + a[k+5]*dt, SIM.BX);
+  out.z = tri(a[k+3] + a[k+6]*dt, SIM.BZ);
+  return out;
+}
+/* and where a grain is: the recorded path, interpolated between samples */
+function grainAt(P, g, tau, out){
+  const u = tau/SIM.REC;
+  const i = Math.max(0, Math.min(P.nRec-2, Math.floor(u)));
+  const f = Math.max(0, Math.min(1, u - i));
+  const a = (i*P.nG + g)*3, b = ((i+1)*P.nG + g)*3;
+  return out.set(lerp(P.rec[a],   P.rec[b],   f),
+                 lerp(P.rec[a+1], P.rec[b+1], f),
+                 lerp(P.rec[a+2], P.rec[b+2], f));
+}
+/* the first impact on the hero grain at or after scene time t */
+function firstHit(P, t){
+  let lo = 0, hi = P.hitT.length;
+  while(lo < hi){ const mid = (lo+hi)>>1; if(P.hitT[mid] < t) lo = mid+1; else hi = mid; }
+  return lo;
 }
 
 /* =====================================================================
@@ -1231,6 +1600,34 @@ lab.traverse(o=>{
 ===================================================================== */
 const field = new THREE.Group(); field.position.y = FIELD_Y; scene.add(field);
 let F = {};
+let PHYS = null;                 // what runSim() worked out, for the whole run
+
+const WALK_T0 = 22.0;            // the clock the walk runs on — and the simulation
+
+/* A little shaded ball, painted once per build and used as the sprite for
+   every molecule. A couple of thousand molecules drawn as meshes would be
+   several hundred thousand triangles and as many matrices a frame; drawn as
+   points they are two draw calls and a position buffer. At the size they
+   appear, a baked highlight reads as round more convincingly than a sphere
+   coarse enough to afford would. The texture is a grey ramp, so the
+   material's own colour still carries the hue and still goes through
+   linearise() with everything else. */
+function ballTex(){
+  const S = 64, c = document.createElement('canvas');
+  c.width = c.height = S;
+  const x = c.getContext('2d');
+  const g = x.createRadialGradient(S*0.36, S*0.32, S*0.04, S*0.5, S*0.5, S*0.5);
+  g.addColorStop(0,    'rgba(255,255,255,1)');
+  g.addColorStop(0.35, 'rgba(215,215,215,1)');
+  g.addColorStop(0.82, 'rgba(105,105,105,1)');
+  g.addColorStop(0.97, 'rgba(60,60,60,1)');
+  g.addColorStop(1,    'rgba(60,60,60,0)');
+  x.fillStyle = g;
+  x.beginPath(); x.arc(S/2, S/2, S/2-0.5, 0, 6.2832); x.fill();
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+}
 
 function buildField(){
   clearGroup(field);
@@ -1243,83 +1640,84 @@ function buildField(){
     new THREE.MeshBasicMaterial({color:0x16263a, transparent:true, opacity:0.85}));
   wash.position.z = -6.6; field.add(wash);
 
-  /* the grain we follow, plus a few others for company */
+  /* the grain we follow, plus a few others for company.  Where they start is
+     all this decides — where they GO is up to the water. */
   const grains = [];
+  const shape = [];
   const nG = 6;
   for(let i=0;i<nG;i++){
     const hero = (i === 0);
     const r = GR.r * (hero ? 1 : 0.62 + (i%3)*0.18);
     const m = grainMesh(r, 2);
-    /* each grain gets its own walk, and a smaller grain is kicked further */
-    const step = 0.55 * JIG * (hero ? 1 : GR.r/r);
-    const WALK_DT = 0.52;
-    const w = makeWalk(9100 + i*37, 420, step, WALK_DT, FIELD_R*0.62);
-    const start = new THREE.Vector3(
-      hero ? -1.2 : Math.cos(i*1.9)*FIELD_R*0.44,
-      hero ?  0.6 : Math.sin(i*1.9)*FIELD_R*0.40,
-      hero ?  0.0 : (i%2? 1.2 : -1.4));
-    /* Every grain shares one clock (tw, in updateField) and the same dt, so
-       without this every grain lands on its next waypoint — the instant it
-       visibly changes direction — at exactly the same moment as all the
-       others. The random walk was per-grain; the timing of its kinks was not.
-
-       The phase can't just be another rng() draw from a nearby seed, though:
-       these seeds are only `i*37` apart, and a linear congruential generator
-       is an affine function of its seed, so its raw output stays an affine
-       function of `i` for as many extra draws as you take — the six phases
-       would still land in an almost-straight line instead of scattering.
-       What breaks that is the walk itself: a few steps of cos/sin and the
-       boundary reflection are genuinely nonlinear, so a coordinate plucked
-       out of the path it already computed is well mixed — reusing one costs
-       nothing extra and keeps the rebuild deterministic. The hero is left at
-       phase 0: its walk is what the impact flash and the "kicks" act are
-       timed against, and those stay tuned to the plain clock. */
-    const phase = hero ? 0 : Math.abs(w.pts[5].x * 37.13233) % WALK_DT;
-    /* the companions fade to 70% transparent once the hero's own walk starts
-       being drawn (see trailOn in updateField) — transparent has to be set
+    /* the companions fade to nothing once the hero's own path starts being
+       drawn (see trailOn in updateField) — transparent has to be declared
        here, once, rather than every frame, since three.js only sorts and
-       blends a material that declares it up front */
+       blends a material that says so up front */
     if(!hero) m.material.transparent = true;
-    m.userData = {w, start, r, hero, spin:i*1.3, phase};
+    m.userData = {r, hero, spin:i*1.3};
     field.add(m); grains.push(m);
+    shape.push({
+      r, keep: hero,
+      x: hero ? -1.2 : Math.cos(i*1.9)*FIELD_R*0.44,
+      y: hero ?  0.6 : Math.sin(i*1.9)*FIELD_R*0.40,
+      z: hero ?  0.0 : (i%2? 1.2 : -1.4)
+    });
   }
 
-  /* the water molecules — invisible at first */
-  const mols = [];
-  const rand = rng(9311);
-  const N = 250;
-  for(let i=0;i<N;i++){
-    const g = new THREE.Group();
-    const o = ball(WATER_O, 0.15, {rough:0.35, lo:true, op:0.001});
-    const h1 = ball(WATER_H, 0.085, {rough:0.35, lo:true, op:0.001});
-    const h2 = ball(WATER_H, 0.085, {rough:0.35, lo:true, op:0.001});
-    const ang = 104.5*Math.PI/360;
-    h1.position.set(Math.sin(ang)*0.24, Math.cos(ang)*0.24, 0);
-    h2.position.set(-Math.sin(ang)*0.24, Math.cos(ang)*0.24, 0);
-    g.add(o,h1,h2);
-    const sp = 2.6 + rand()*2.4;
-    const a = rand()*Math.PI*2, el = (rand()-0.5)*0.8;
-    g.userData = {
-      o, h1, h2,
-      p0:new THREE.Vector3((rand()-0.5)*2*FIELD_R, (rand()-0.5)*2*FIELD_R, (rand()-0.5)*5),
-      v:new THREE.Vector3(Math.cos(a)*sp, Math.sin(a)*sp, el*sp*0.5),
-      spin:new THREE.Vector3(rand()*2-1, rand()*2-1, rand()*2-1).multiplyScalar(2.2),
-      ph:rand()*6.283
-    };
-    field.add(g); mols.push(g);
-  }
+  /* ---- and now the physics.  One pass, here, at build: everything after
+     this is a lookup. It costs a fraction of a second and buys a scene in
+     which the grains move because they are being hit. ---- */
+  PHYS = runSim(shape, WALK_T0, TOTAL);
 
-  /* the impact flash, for when a kick lands on the hero grain */
-  const flash = new THREE.Sprite(new THREE.SpriteMaterial({
-    map:GLOW_TEX, color:0xfff0b0, transparent:true, opacity:0,
-    blending:THREE.AdditiveBlending, depthWrite:false, depthTest:false}));
-  flash.scale.setScalar(1.6); field.add(flash);
-  /* and the little arrow showing which way it was pushed */
+  /* the water molecules — invisible at first.  Two point clouds: the oxygens,
+     and the hydrogens at their fixed offsets from them. */
+  const tex = ballTex();
+  const oPos = new Float32Array(SIM.N*3), hPos = new Float32Array(SIM.N*6);
+  const mkCloud = (arr, color) => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+    /* the cloud fills the whole field and every position is rewritten every
+       frame, so the bounding sphere is stated once, big enough for all of it,
+       rather than recomputed from the buffer each time */
+    g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), FIELD_R*3);
+    const p = new THREE.Points(g, new THREE.PointsMaterial({
+      color, map:tex, size:0.0001, sizeAttenuation:true,
+      /* alphaTest rather than transparency, so the molecules go in the opaque
+         queue and occlude each other by depth like the solid things they are
+         standing in for. Thousands of blended sprites sharing one buffer
+         cannot be depth-sorted against each other and would shimmer. */
+      alphaTest:0.4, depthWrite:true
+    }));
+    p.frustumCulled = false;
+    p.visible = false;
+    field.add(p);
+    return p;
+  };
+  const molO = mkCloud(oPos, WATER_O);
+  const molH = mkCloud(hPos, WATER_H);
+  /* three.js sizes a point as size·(height/2)/distance, which works out to
+     size·tan(fov/2) world units across at any distance — so dividing that out
+     lets the molecules be given as the real diameters they are drawn at */
+  const PT = 1/Math.tan(camera.fov*Math.PI/360);
+
+  /* The impact flashes.  There are a dozen or so hits a second on the hero
+     grain, and showing all of the recent ones at once is the entire point of
+     the last act: it is being struck from every side, and only the imbalance
+     between the sides moves it. So this is a pool, not a single spark. */
+  const flashes = [];
+  for(let i=0;i<FLASH_N;i++){
+    const f = new THREE.Sprite(new THREE.SpriteMaterial({
+      map:GLOW_TEX, color:0xfff0b0, transparent:true, opacity:0,
+      blending:THREE.AdditiveBlending, depthWrite:false, depthTest:false}));
+    f.scale.setScalar(0.5); field.add(f); flashes.push(f);
+  }
+  /* and the arrow, which shows the NET push of all of them — the thing that
+     actually moves the grain */
   const kickLine = bond(0xffe070, 0.07); kickLine.material.opacity = 0; field.add(kickLine);
 
   /* the trail the hero grain has actually taken — the record of the walk */
   const trailGeo = new THREE.BufferGeometry();
-  const TRAIL_N = 150;
+  const TRAIL_N = 240;
   trailGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(TRAIL_N*3), 3));
   const trail = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({
     color:0xe8c54a, transparent:true, opacity:0}));
@@ -1333,11 +1731,13 @@ function buildField(){
   };
   Object.values(lbl).forEach(l=>field.add(l));
 
-  F = {grains, mols, flash, kickLine, trail, trailGeo, TRAIL_N, lbl};
+  F = {grains, molO, molH, oPos, hPos, PT, flashes, kickLine,
+       trail, trailGeo, TRAIL_N, lbl};
 }
 
-const _fp = new THREE.Vector3(), _fq = new THREE.Vector3();
-const WALK_T0 = 22.0;            // the clock the walk runs on
+const _fp = new THREE.Vector3(), _fq = new THREE.Vector3(), _fd = new THREE.Vector3();
+const FLASH_N = 16;              // how many recent impacts are shown at once
+const FLASH_LIFE = 0.30;         // and how long each spark lasts, seconds
 
 /* Brown's two other specimens, standing in for the hero grain while the
    captions cover them (39.8–42.8s — see SEGS). A discrete swap, not a
@@ -1352,8 +1752,9 @@ function speciesColorAt(t){
 }
 
 function updateField(t){
-  const {grains, mols, flash, kickLine, trail, trailGeo, TRAIL_N, lbl} = F;
-  const tw = Math.max(0, t - WALK_T0);
+  const {grains, molO, molH, oPos, hPos, PT, flashes, kickLine,
+         trail, trailGeo, TRAIL_N, lbl} = F;
+  const tau = Math.max(0, t - WALK_T0);
   /* the moment we settle on the hero and start drawing its walk — shared with
      the trail fade-in below, so the two happen together */
   const trailOn = ramp(t, 29.0, 31.0);
@@ -1365,59 +1766,97 @@ function updateField(t){
      convertSRGBToLinear() (see AGENTS.md) — linearise() only runs once, at
      build, and cannot help a colour reassigned after that. Cached so the
      conversion runs once per swap, not every frame. */
-  const hero0 = grains[0];
+  const hero = grains[0];
   const col = speciesColorAt(t);
-  if(hero0.userData.col !== col){
-    hero0.userData.col = col;
-    hero0.material.color.setHex(col).convertSRGBToLinear();
-    hero0.material.emissive.setHex(col).multiplyScalar(0.05).convertSRGBToLinear();
+  if(hero.userData.col !== col){
+    hero.userData.col = col;
+    hero.material.color.setHex(col).convertSRGBToLinear();
+    hero.material.emissive.setHex(col).multiplyScalar(0.05).convertSRGBToLinear();
   }
 
-  /* --- the grains, each on its own random walk.  The others fade out
-     entirely once the hero is the one being followed, so nothing is left in
-     the background competing with its path. --- */
+  /* --- the grains, wherever the collisions put them.  The companions fade
+     out entirely once the hero is the one being followed, so nothing is left
+     in the background competing with its path — and the simulation stops
+     bothering with them at the same moment (SIM.QUIET). --- */
   grains.forEach((m,i)=>{
     const d = m.userData;
-    walkAt(d.w, tw + d.phase, _fp);
-    m.position.copy(d.start).add(_fp);
-    m.rotation.set(d.spin + tw*0.25, d.spin*1.7 + tw*0.18, d.spin*0.5);
+    m.position.copy(grainAt(PHYS, i, tau, _fp));
+    /* The spin is decorative. Collisions really do apply a torque, and a real
+       grain tumbles as well as wanders, but nothing in the scene is read off
+       its orientation, so no angular momentum is carried through the
+       simulation — this is just enough turn to show it is a solid lump. */
+    m.rotation.set(d.spin + tau*0.25, d.spin*1.7 + tau*0.18, d.spin*0.5);
     if(!d.hero){
       m.material.opacity = lerp(1, 0, trailOn);
       m.visible = m.material.opacity > 0.02;
     }
   });
 
-  /* --- the water molecules: straight lines, reflecting off the edges --- */
+  /* --- the water.  Every molecule's position is a closed form evaluated at
+     tau: a straight line from wherever a grain last knocked it, reflected off
+     the walls of the drop. The reveal is a growth in size rather than a fade
+     in opacity, which keeps the whole cloud in the opaque queue. --- */
   const show = ramp(t, 43.0, 46.0);
-  const tm = Math.max(0, t - 40.0) * SPEED;
-  mols.forEach((g,i)=>{
-    const d = g.userData;
-    g.position.set(
-      tri(d.p0.x + d.v.x*tm, FIELD_R*1.06),
-      tri(d.p0.y + d.v.y*tm, FIELD_R*1.06),
-      tri(d.p0.z + d.v.z*tm, 3.0)
-    );
-    g.rotation.set(d.spin.x*tm*0.3, d.spin.y*tm*0.3, d.spin.z*tm*0.3);
-    const op = show*0.92;
-    d.o.material.opacity = op; d.h1.material.opacity = op*0.95; d.h2.material.opacity = op*0.95;
-    g.visible = op > 0.02;
-  });
+  molO.visible = molH.visible = show > 0.01;
+  if(molO.visible){
+    const ev = PHYS.ev, ori = PHYS.ori;
+    for(let i=0;i<SIM.N;i++){
+      molAt(ev[i], tau, _fp);
+      const o = i*3, h = i*6;
+      oPos[o] = _fp.x; oPos[o+1] = _fp.y; oPos[o+2] = _fp.z;
+      hPos[h]   = _fp.x + ori[h];   hPos[h+1] = _fp.y + ori[h+1]; hPos[h+2] = _fp.z + ori[h+2];
+      hPos[h+3] = _fp.x + ori[h+3]; hPos[h+4] = _fp.y + ori[h+4]; hPos[h+5] = _fp.z + ori[h+5];
+    }
+    molO.geometry.attributes.position.needsUpdate = true;
+    molH.geometry.attributes.position.needsUpdate = true;
+    molO.material.size = SIM.R*2*PT*show;
+    molH.material.size = SIM.HR*2*PT*show;
+  }
 
-  /* --- the impact flash on the hero grain, at the moment of each kick --- */
-  const hero = grains[0];
-  const k = walkKick(hero.userData.w, tw);
+  /* --- the impacts on the hero grain, as they actually happened.  Every blow
+     in the last FLASH_LIFE seconds gets a spark on the side it came from, and
+     the arrow shows their vector sum, which is the only part of them that
+     moves the grain anywhere. --- */
   const kicking = ramp(t, 50.0, 52.0) * (1 - ramp(t, 62.0, 63.5));
-  /* the kick came from behind, so the flash sits on the trailing side */
-  _fq.copy(k.dir).multiplyScalar(-(hero.userData.r + 0.12));
-  flash.position.copy(hero.position).add(_fq);
-  const bite = Math.max(0, 1 - k.age/0.22);           // a short, sharp flash
-  flash.material.opacity = kicking * bite * 0.95;
-  flash.scale.setScalar(hero.userData.r * (1.5 + bite*0.9));
-  kickLine.material.opacity = kicking * bite * 0.8;
+  const hi = firstHit(PHYS, t), lo = firstHit(PHYS, t - FLASH_LIFE);
+  const hR = hero.userData.r;
+  /* a middling impulse, to scale the sparks against: a molecule of mass m
+     arriving at the RMS speed and bouncing straight back off something far
+     heavier hands over about 2·m·σ */
+  const typical = 2*SIM.M*SIM.SIGMA*SPEED;
+  let px = 0, py = 0, pz = 0;                 // the net push
+  for(let k=lo;k<hi;k++){
+    const j = PHYS.hitJ[k];
+    px -= PHYS.hitN[k*3]*j; py -= PHYS.hitN[k*3+1]*j; pz -= PHYS.hitN[k*3+2]*j;
+  }
+  for(let s=0;s<FLASH_N;s++){
+    const f = flashes[s], k = hi-1-s;
+    const op = (k >= lo)
+      ? kicking * (1 - (t - PHYS.hitT[k])/FLASH_LIFE) * Math.min(1, PHYS.hitJ[k]/typical)
+      : 0;
+    f.material.opacity = op*0.9;
+    f.visible = op > 0.02;
+    if(f.visible){
+      const n = k*3;
+      f.position.copy(hero.position).add(
+        _fq.set(PHYS.hitN[n], PHYS.hitN[n+1], PHYS.hitN[n+2]).multiplyScalar(hR + 0.06));
+      f.scale.setScalar(hR*(0.5 + 0.5*Math.min(1, PHYS.hitJ[k]/typical)));
+    }
+  }
+  /* The arrow, and how long to draw it.  Hits arriving from random directions
+     already give a net push of about √n times a single one just by chance, so
+     that — not one impact — is what the imbalance has to be measured against.
+     Scaled this way the arrow says how lopsided the last third of a second was
+     compared with an even battering, which is the quantity the captions are
+     actually talking about. */
+  const push = Math.hypot(px, py, pz);
+  const expect = typical*Math.sqrt(Math.max(1, hi-lo));
+  kickLine.material.opacity = kicking * Math.min(1, push/expect) * 0.85;
   kickLine.visible = kickLine.material.opacity > 0.02;
   if(kickLine.visible){
-    _fp.copy(hero.position).add(_fq);
-    _fq.copy(hero.position).addScaledVector(k.dir, hero.userData.r + 0.9);
+    _fd.set(px, py, pz).multiplyScalar(1/push);
+    _fp.copy(hero.position).addScaledVector(_fd, hR + 0.05);
+    _fq.copy(hero.position).addScaledVector(_fd, hR + 0.3 + Math.min(1.2, push/expect*1.1));
     placeBond(kickLine, _fp, _fq, 0);
   }
 
@@ -1426,11 +1865,9 @@ function updateField(t){
   trail.visible = trailOn > 0.02;
   if(trail.visible){
     const pos = trailGeo.attributes.position.array;
-    const span = Math.min(tw, 26.0);
+    const span = Math.min(tau, 26.0);
     for(let j=0;j<TRAIL_N;j++){
-      const tj = tw - span * (1 - j/(TRAIL_N-1));
-      walkAt(hero.userData.w, Math.max(0,tj), _fp);
-      _fp.add(hero.userData.start);
+      grainAt(PHYS, 0, Math.max(0, tau - span*(1 - j/(TRAIL_N-1))), _fp);
       pos[j*3]   = _fp.x;
       pos[j*3+1] = _fp.y;
       pos[j*3+2] = _fp.z;
@@ -1442,13 +1879,17 @@ function updateField(t){
   /* --- labels --- */
   const L = lbl;
   L.grain.material.opacity = ramp(t,23.4,24.4)*(1-ramp(t,28.0,29.0));
-  L.grain.position.copy(hero.position).add(_v1.set(0, hero.userData.r+0.95, 0));
+  L.grain.position.copy(hero.position).add(_v1.set(0, hR+0.95, 0));
   L.walk.material.opacity = ramp(t,31.0,32.0)*(1-ramp(t,35.0,36.0));
-  L.walk.position.copy(hero.position).add(_v1.set(1.9, -hero.userData.r-0.9, 0));
+  L.walk.position.copy(hero.position).add(_v1.set(1.9, -hR-0.9, 0));
   L.water.material.opacity = ramp(t,45.0,46.2)*(1-ramp(t,49.5,50.5));
   L.water.position.set(-4.4, 3.5, 2);   // off to one side, clear of the grain
+  /* the busier side is the one the net push came FROM, so the label sits
+     opposite the arrow — on the side that was, in fact, hit more */
   L.uneven.material.opacity = ramp(t,54.0,55.0)*(1-ramp(t,58.0,59.0));
-  L.uneven.position.copy(flash.position).add(_v1.set(0, -1.25, 0));
+  if(push > 1e-6)
+    L.uneven.position.copy(hero.position)
+      .addScaledVector(_fd.set(px,py,pz).multiplyScalar(1/push), -(hR + 1.15));
 }
 
 /* =====================================================================
@@ -1702,7 +2143,8 @@ function buildMenu(){
     `A <b>${GR.name}</b> grain in <b>${TP.word}</b> water. ` +
     `<i>Smaller grains jitter more</i> — the same collisions shift less mass. ` +
     `<i>Warmer water jitters more</i> — the molecules are faster, so the kicks are harder ` +
-    `and come more often. Try ${GR.name==='large'?'small':'large'} and ` +
+    `and come more often. Neither is drawn in: both settings change the water, and the ` +
+    `grains do what the collisions make them do. Try ${GR.name==='large'?'small':'large'} and ` +
     `${TP.name==='hot'?'cold':'hot'} to see both ends of it.`;
   menuEl.querySelectorAll('.opt').forEach(b=>{
     b.onclick = ()=>{

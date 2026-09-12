@@ -4,12 +4,16 @@
    checking are pulled out and run against a tiny Vector3 stub.
 
    What this checks:
-     - the "random" walk is genuinely deterministic, so scrubbing is repeatable
-     - it behaves like a random WALK, not a drift: net displacement grows like
-       the square root of the number of steps, not linearly
-     - it stays inside the field of view
-     - the molecule motion is a true reflecting billiard (speed preserved)
-     - the physics knobs are monotonic in the right directions
+     - the hard-sphere simulation is deterministic, so scrubbing is repeatable
+     - its collisions are elastic: molecular energy holds, and the grains come
+       out obeying equipartition, which nothing in the code arranges
+     - nothing escapes — molecules stay in the box, grains stay in the drop
+     - the grains behave like a random WALK, not a drift: net displacement is
+       far shorter than the path travelled
+     - the teaching MEASURES up: GRAINS.jiggle and TEMPS.jig are predictions,
+       and the simulation is run at all nine settings to check them
+     - the molecule motion is a true reflecting billiard (speed preserved), and
+       triSlope agrees with the slope of tri, which the impulses depend on
      - captions and camera tracks are ordered and complete
 
    What it cannot check: whether any of it looks right. Open the file for that.
@@ -69,13 +73,14 @@ function brownian(){
   /* One contiguous region from the maths helpers through to the walk code.
      Slicing on '/* =====' matched an earlier comment block and silently
      produced an empty string, which took rng() with it. */
-  const src = region(js, 'const GRAINS = {', 'const POLLEN_COL')
+  const src = region(js, 'const GRAINS = {', '/* ---------- renderer')
             + region(js, 'function lerp(a,b,t)', 'const lab = new THREE.Group()')
             + region(js, 'const TOTAL = 68', 'const camPos=');
 
   const S = evaluate(src,
-    ['GRAINS','TEMPS','derive','GR','TP','JIG','SPEED','makeWalk','walkAt','walkKick',
-     'tri','rng','buildCaptions','SEGS','TOTAL','TRANSITIONS','worldAt','CAM'],
+    ['GRAINS','TEMPS','derive','GR','TP','JIG','SPEED','SIM','runSim','molAt',
+     'grainAt','firstHit','tri','triSlope','rng','buildCaptions','SEGS','TOTAL',
+     'TRANSITIONS','worldAt','CAM'],
     'grainKey=v[0];tempKey=v[1];');
 
   /* ---------- the knobs ---------- */
@@ -84,6 +89,8 @@ function brownian(){
   for(let i=1;i<sizes.length;i++){
     chk(S.GRAINS[sizes[i]].um > S.GRAINS[sizes[i-1]].um,
         `${sizes[i]} should be a bigger grain than ${sizes[i-1]}`);
+    /* jiggle is a PREDICTION here, not a setting — what the simulation
+       actually does with it is measured further down */
     chk(S.GRAINS[sizes[i]].jiggle < S.GRAINS[sizes[i-1]].jiggle,
         `a bigger grain must jiggle LESS — ${sizes[i]} (${S.GRAINS[sizes[i]].jiggle}) vs ${sizes[i-1]} (${S.GRAINS[sizes[i-1]].jiggle})`);
     chk(S.GRAINS[sizes[i]].r > S.GRAINS[sizes[i-1]].r,
@@ -113,57 +120,219 @@ function brownian(){
   S.pick = ['small','hot']; S.derive(); const hi = S.JIG;
   S.pick = ['large','cold']; S.derive(); const lo = S.JIG;
   chk(hi / lo > 3, `the liveliest setting should be clearly livelier than the dullest (${(hi/lo).toFixed(1)}×)`);
-  console.log(`      smallest+hottest jiggles ${(hi/lo).toFixed(1)}× the largest+coldest`);
+  console.log(`      smallest+hottest is predicted to jiggle ${(hi/lo).toFixed(1)}× the largest+coldest`);
 
-  /* ---------- the walk ---------- */
-  section('    the random walk');
-  const BOUND = 9.0*0.62;
-  const w1 = S.makeWalk(9100, 420, 0.55, 0.52, BOUND);
-  const w2 = S.makeWalk(9100, 420, 0.55, 0.52, BOUND);
-  /* determinism: same seed, same path, every time */
-  let same = true;
-  for(let i=0;i<w1.pts.length;i++){
-    if(w1.pts[i].x !== w2.pts[i].x || w1.pts[i].y !== w2.pts[i].y) { same = false; break; }
+  /* =====================================================================
+     THE SIMULATION
+
+     The grains are no longer walked along precomputed waypoints — they are
+     hit by molecules. So the things worth checking have changed: not "is the
+     scripted path shaped like a walk", but "does hard-sphere dynamics come
+     out of this, and does the scene's teaching fall out of it".
+
+     runSim() is written with no three.js in it for exactly this reason: it
+     runs here, under node, unchanged.
+  ===================================================================== */
+  section('    the simulation');
+
+  /* six grains all the same size, spread out, for measurements that need more
+     than one walk to mean anything */
+  const ensemble = () => {
+    const out = [];
+    for(let i=0;i<6;i++)
+      out.push({r:S.GR.r, keep:true, x:Math.cos(i*1.0472)*3.2,
+                y:Math.sin(i*1.0472)*3.2, z:(i%2?0.8:-0.8)});
+    return out;
+  };
+  /* and the six the scene actually builds, so containment is checked on the
+     shape that ships rather than on a convenient one */
+  const sceneShape = () => {
+    const out = [];
+    for(let i=0;i<6;i++){
+      const hero = i===0, r = S.GR.r*(hero?1:0.62+(i%3)*0.18);
+      out.push({r, keep:hero, x: hero?-1.2:Math.cos(i*1.9)*9.0*0.44,
+                   y: hero? 0.6:Math.sin(i*1.9)*9.0*0.40,
+                   z: hero? 0.0:(i%2?1.2:-1.4)});
+    }
+    return out;
+  };
+  const T0 = 22.0;
+
+  S.pick = ['medium','room']; S.derive();
+  const P = S.runSim(sceneShape(), T0, S.TOTAL);
+
+  /* ---------- determinism: the whole point of precomputing ---------- */
+  const P2 = S.runSim(sceneShape(), T0, S.TOTAL);
+  let identical = P.rec.length === P2.rec.length && P.hitT.length === P2.hitT.length;
+  for(let i=0; identical && i<P.rec.length; i++)
+    if(P.rec[i] !== P2.rec[i]) identical = false;
+  chk(identical, 'two runs of the same settings must agree exactly, or scrubbing is not repeatable');
+
+  /* sampling is a pure function of t, and continuous between samples */
+  const a = new V3(), b = new V3();
+  S.grainAt(P,0,7.3,a); S.grainAt(P,0,7.3,b);
+  chk(a.x===b.x && a.y===b.y && a.z===b.z, 'grainAt must be a pure function of t');
+  S.grainAt(P,0,7.30,a); S.grainAt(P,0,7.34,b);
+  chk(Math.hypot(a.x-b.x,a.y-b.y,a.z-b.z) < 0.25, 'the grain path should be continuous, not a jump');
+  S.molAt(P.ev[17],5.1,a); S.molAt(P.ev[17],5.1,b);
+  chk(a.x===b.x && a.y===b.y && a.z===b.z, 'molAt must be a pure function of t');
+
+  /* ---------- nothing escapes ---------- */
+  let worstXY = 0, worstZ = 0;
+  for(let t=0; t<=S.TOTAL-T0; t+=1.7)
+    for(let i=0;i<S.SIM.N;i+=3){
+      S.molAt(P.ev[i], t, a);
+      worstXY = Math.max(worstXY, Math.abs(a.x), Math.abs(a.y));
+      worstZ  = Math.max(worstZ, Math.abs(a.z));
+    }
+  chk(worstXY <= S.SIM.BX + 1e-4 && worstZ <= S.SIM.BZ + 1e-4,
+      `a molecule left the box (${worstXY.toFixed(2)} of ${S.SIM.BX.toFixed(2)}, ` +
+      `${worstZ.toFixed(2)} of ${S.SIM.BZ})`);
+  chk(worstXY > S.SIM.BX*0.97, 'the molecules should actually reach the walls');
+
+  let worstGrain = 0;
+  for(let g=0; g<6; g++){
+    const gr = sceneShape()[g].r;
+    for(let t=0; t<=S.TOTAL-T0; t+=0.2){
+      S.grainAt(P,g,t,a);
+      worstGrain = Math.max(worstGrain, Math.hypot(a.x,a.y) + gr);
+    }
   }
-  chk(same, 'the same seed must give exactly the same walk, or scrubbing is not repeatable');
-  /* a different seed must give a different path, or every grain moves alike */
-  const w3 = S.makeWalk(9137, 420, 0.55, 0.52, BOUND);
-  chk(w3.pts[50].x !== w1.pts[50].x, 'different seeds must give different walks');
+  chk(worstGrain <= S.SIM.DROP_R + 1e-3,
+      `a grain left the drop (reached ${worstGrain.toFixed(2)} of ${S.SIM.DROP_R.toFixed(2)})`);
+  console.log(`      molecules reach ${worstXY.toFixed(2)}/${S.SIM.BX.toFixed(2)} across the box, ` +
+              `grains stay inside ${worstGrain.toFixed(2)}/${S.SIM.DROP_R.toFixed(2)} of the drop`);
 
-  /* sampling is a pure function of t */
-  const a = S.walkAt(w1, 7.3, new V3()), b = S.walkAt(w1, 7.3, new V3());
-  chk(a.x === b.x && a.y === b.y, 'walkAt must be a pure function of t');
-  /* and it interpolates rather than jumping */
-  const p0 = S.walkAt(w1, 5.20, new V3()), p1 = S.walkAt(w1, 5.24, new V3());
-  chk(p0.distanceTo(p1) < 0.25, 'the path between kicks should be continuous, not a jump');
+  /* ---------- the collisions are elastic ----------
+     Two independent ways to catch a collision routine that quietly creates or
+     destroys energy, which is the classic way a hard-sphere loop goes wrong:
 
-  /* it must stay inside the field of view */
-  let maxR = 0;
-  for(const p of w1.pts) maxR = Math.max(maxR, Math.hypot(p.x, p.y));
-  chk(maxR <= BOUND + 1e-9, `the walk left the field of view (reached ${maxR.toFixed(2)}, bound ${BOUND.toFixed(2)})`);
-  console.log(`      420 steps, furthest from centre ${maxR.toFixed(2)} of ${BOUND.toFixed(2)} allowed`);
+     1. the molecular kinetic energy must come out where it went in. The grains
+        hold a share too, but they are heavy and slow, so this is nearly all
+        of it and must not drift.
+     2. equipartition. Whatever the grain's mass, the collisions must leave it
+        with ½M⟨v²⟩ = ½m⟨u²⟩ per axis — so its RMS speed must be the
+        molecules' scaled by √(m/M). Nothing in the code arranges that; it is
+        only true if momentum and energy are being handed over correctly. */
+  const molKE = tAt => {
+    let e = 0;
+    for(let i=0;i<S.SIM.N;i++){
+      const A = P.ev[i]; let k = A.length-7;
+      while(k>0 && A[k]>tAt) k -= 7;
+      e += 0.5*S.SIM.M*(A[k+4]*A[k+4] + A[k+5]*A[k+5] + A[k+6]*A[k+6]);
+    }
+    return e;
+  };
+  const ke0 = molKE(0), ke1 = molKE(S.TOTAL-T0);
+  chk(Math.abs(ke1/ke0 - 1) < 0.03,
+      `the molecules gained or lost energy (${((ke1/ke0-1)*100).toFixed(1)}%) — the collisions are not elastic`);
+  console.log(`      molecular kinetic energy holds to ${((ke1/ke0-1)*100).toFixed(2)}% over ${(S.TOTAL-T0).toFixed(0)}s`);
 
-  /* THE signature of a random walk: net displacement grows like √N, so it is
-     far shorter than the distance actually travelled.  A drift would not be. */
-  let pathLen = 0;
-  for(let i=1;i<w1.pts.length;i++) pathLen += w1.pts[i].distanceTo(w1.pts[i-1]);
-  const net = w1.pts[w1.pts.length-1].length();
-  chk(net < pathLen*0.35,
-      `this is meant to be a walk, not a drift — net ${net.toFixed(1)} vs path ${pathLen.toFixed(1)}`);
+  /* ---------- the impact log the last act is built on ---------- */
+  chk(P.hitT.length > 100, `only ${P.hitT.length} impacts on the hero grain — too few to read as a barrage`);
+  let sorted = true, unit = true, positive = true;
+  for(let k=0;k<P.hitT.length;k++){
+    if(k && P.hitT[k] < P.hitT[k-1]) sorted = false;
+    const n = Math.hypot(P.hitN[k*3], P.hitN[k*3+1], P.hitN[k*3+2]);
+    if(Math.abs(n-1) > 1e-3) unit = false;
+    if(!(P.hitJ[k] > 0)) positive = false;
+  }
+  chk(sorted, 'the impact log must be in time order, or firstHit() searches nonsense');
+  chk(unit, 'every impact normal must be a unit vector');
+  chk(positive, 'an impact must transfer a positive impulse — a negative one would pull the grain in');
+  chk(P.hitT[0] >= T0 && P.hitT[P.hitT.length-1] <= S.TOTAL,
+      'the impacts must be stamped with scene time, inside the timeline');
+  console.log(`      ${P.hitT.length} impacts on the hero grain, ` +
+              `${(P.hitT.length/(S.TOTAL-T0)).toFixed(1)} a second, all in order`);
+
+  /* ---------- a walk, not a drift ----------
+     The signature: the net displacement grows like √t, so it ends up far
+     shorter than the distance actually travelled. A grain being pushed by a
+     current, or one with a bug letting momentum accumulate, would not. */
+  let path = 0;
+  for(let k=1;k<P.nRec;k++){
+    const o = k*P.nG*3, q = (k-1)*P.nG*3;
+    path += Math.hypot(P.rec[o]-P.rec[q], P.rec[o+1]-P.rec[q+1], P.rec[o+2]-P.rec[q+2]);
+  }
+  S.grainAt(P,0,0,a); S.grainAt(P,0,S.TOTAL-T0,b);
+  const net = Math.hypot(a.x-b.x, a.y-b.y, a.z-b.z);
+  chk(net < path*0.35, `this is meant to be a walk, not a drift — net ${net.toFixed(1)} vs path ${path.toFixed(1)}`);
   chk(net > 0.2, 'it should still get somewhere, not return exactly to the start');
-  console.log(`      travels ${pathLen.toFixed(1)} units to end up ${net.toFixed(1)} from where it began`);
+  console.log(`      the hero travels ${path.toFixed(1)} units to end up ${net.toFixed(1)} from where it began`);
 
-  /* the kick direction must match the step the grain is actually taking */
-  for(const tt of [3.1, 11.7, 25.4]){
-    const k = S.walkKick(w1, tt);
-    const step = new V3().subVectors(w1.pts[k.i+1], w1.pts[k.i]).normalize();
-    chk(Math.abs(k.dir.x - step.x) < 1e-6 && Math.abs(k.dir.y - step.y) < 1e-6,
-        `at ${tt}s the kick direction does not match the step being taken`);
-    chk(k.age >= 0 && k.age <= w1.dt + 1e-9, `at ${tt}s the kick age is outside the step`);
+  /* ---------- and now the teaching, measured ----------
+     GRAINS.jiggle and TEMPS.jig are predictions, not settings. Nothing feeds
+     them into the simulation, so this is a real check: run all nine, measure
+     how far the grains actually get, and see whether the numbers on the menu
+     are the numbers that come out.
+
+     Measured over an 8-second lag, from six grains, at every start time — one
+     grain over one run is a single throw of the dice and says nothing. The
+     remaining tolerance is wide because two known effects bias it: below the
+     grain's momentum relaxation time the motion is still ballistic rather
+     than diffusive, and at the lively end the pool's edge starts to cut the
+     spread short. Both flatten the ratios slightly. What must not happen is a
+     trend going the wrong way, or an exponent being wrong. */
+  section('    what the simulation produces');
+  const LAG = 8, rms = {};
+  for(const g of sizes) for(const tp of temps){
+    S.pick = [g, tp]; S.derive();
+    const R = S.runSim(ensemble(), T0, S.TOTAL);
+    let s2 = 0, c = 0;
+    for(let gi=0; gi<6; gi++)
+      for(let t=0; t+LAG <= S.TOTAL-T0; t+=0.25){
+        S.grainAt(R,gi,t,a); S.grainAt(R,gi,t+LAG,b);
+        s2 += (a.x-b.x)*(a.x-b.x) + (a.y-b.y)*(a.y-b.y);   // in the plane we watch
+        c++;
+      }
+    rms[g+'/'+tp] = Math.sqrt(s2/c);
+
+    /* equipartition, from the recorded path */
+    let v2 = 0, n = 0;
+    for(let k=1;k<R.nRec;k++)
+      for(let gi=0; gi<6; gi++){
+        const o = (k*R.nG+gi)*3, q = ((k-1)*R.nG+gi)*3;
+        v2 += ((R.rec[o]-R.rec[q])**2 + (R.rec[o+1]-R.rec[q+1])**2 +
+               (R.rec[o+2]-R.rec[q+2])**2)/(S.SIM.REC*S.SIM.REC);
+        n++;
+      }
+    const measured = Math.sqrt(v2/n/3);
+    const M = S.SIM.M*S.SIM.MASS*Math.pow(S.GR.r/S.GRAINS.medium.r, 3);
+    const expect = S.SIM.SIGMA*S.SPEED*Math.sqrt(S.SIM.M/M);
+    chk(Math.abs(measured/expect - 1) < 0.2,
+        `${g}/${tp}: equipartition is broken — grain RMS speed ${measured.toFixed(3)}, ` +
+        `expected ${expect.toFixed(3)} from ½M⟨v²⟩ = ½m⟨u²⟩`);
   }
-  console.log('      every impact flash points along the step it caused');
+  console.log(`      RMS displacement over ${LAG}s, and what jiggle × jig predicts:`);
+  for(const g of sizes){
+    console.log('      ' + g.padEnd(7) + temps.map(tp=>{
+      S.pick=[g,tp]; S.derive();
+      const r = rms[g+'/'+tp]/rms['medium/room'];
+      return `${tp} ${r.toFixed(2)}/${S.JIG.toFixed(2)}`;
+    }).join('  '));
+  }
+  /* the two trends, at every setting of the other knob */
+  for(const tp of temps) for(let i=1;i<sizes.length;i++)
+    chk(rms[sizes[i]+'/'+tp] < rms[sizes[i-1]+'/'+tp],
+        `in ${tp} water the ${sizes[i]} grain wandered further than the ${sizes[i-1]} one ` +
+        `(${rms[sizes[i]+'/'+tp].toFixed(2)} vs ${rms[sizes[i-1]+'/'+tp].toFixed(2)}) — the size trend is backwards`);
+  for(const g of sizes) for(let i=1;i<temps.length;i++)
+    chk(rms[g+'/'+temps[i]] > rms[g+'/'+temps[i-1]],
+        `a ${g} grain wandered less in ${temps[i]} water than in ${temps[i-1]} ` +
+        `(${rms[g+'/'+temps[i]].toFixed(2)} vs ${rms[g+'/'+temps[i-1]].toFixed(2)}) — the temperature trend is backwards`);
+  /* and the predictions on the menu have to be roughly what comes out */
+  for(const g of sizes) for(const tp of temps){
+    S.pick=[g,tp]; S.derive();
+    const got = rms[g+'/'+tp]/rms['medium/room'];
+    chk(Math.abs(got/S.JIG - 1) < 0.45,
+        `${g}/${tp}: the menu predicts ${S.JIG.toFixed(2)}× the medium/room wander, ` +
+        `the simulation gives ${got.toFixed(2)}×`);
+  }
+  const spread = rms['small/hot']/rms['large/cold'];
+  chk(spread > 3, `the liveliest setting should be clearly livelier than the dullest (${spread.toFixed(1)}×)`);
+  console.log(`      smallest+hottest really does wander ${spread.toFixed(1)}× the largest+coldest`);
 
-  /* ---------- the molecules ---------- */
+  /* ---------- the closed forms the playback rests on ---------- */
   section('    the molecules');
   const H = 9.54;
   let outside = 0, worst = 0;
@@ -175,16 +344,21 @@ function brownian(){
   chk(outside === 0, `${outside} samples escaped the box — the reflection is wrong`);
   chk(worst > H*0.98, 'the molecules should actually reach the walls');
   /* a reflecting billiard conserves speed, so the slope is ±1 everywhere */
-  let badSlope = 0;
+  let badSlope = 0, badSign = 0;
   for(let i=0;i<2000;i++){
     const x = -30 + i*0.017, d = 1e-4;
-    const s = Math.abs((S.tri(x+d,H) - S.tri(x,H))/d);
-    if(Math.abs(s - 1) > 1e-3) badSlope++;     // turning points are allowed
+    const s = (S.tri(x+d,H) - S.tri(x,H))/d;
+    if(Math.abs(Math.abs(s) - 1) > 1e-3) badSlope++;     // turning points are allowed
+    /* triSlope IS that slope, and the collision code reads the molecule's
+       velocity off it — so if the two ever disagree, every impulse computed
+       near a wall is wrong */
+    else if(Math.sign(s) !== S.triSlope(x,H)) badSign++;
   }
   chk(badSlope < 20, `speed is not preserved on reflection (${badSlope} bad samples)`);
+  chk(badSign === 0, `triSlope disagrees with the slope of tri at ${badSign} samples`);
   chk(Math.abs(S.tri(0,H)) < 1e-9, 'tri(0) should sit at the centre');
   chk(Math.abs(S.tri(4*H,H)) < 1e-9, 'tri should repeat every 4 half-widths');
-  console.log('      straight lines, perfect reflection, speed preserved');
+  console.log('      straight lines, perfect reflection, speed preserved, velocity sign agrees');
 
   /* ---------- the timeline ---------- */
   section('    the timeline');
