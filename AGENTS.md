@@ -11,14 +11,12 @@ index.html                  the catalogue everything is listed in
 reactionbuilder/            drag-and-drop reaction builder (+ test.js)
 3dreactionscenes/           15 three.js scenes, one per GCSE reaction type
 particles/                  particle-theory scenes (Brownian motion so far)
-tools/                      the screenshot harness — see below
+tools/                      one-off colour-migration scripts (animcolour.mjs, colourfix.mjs)
 ```
 
 ---
 
-## Two loops you are expected to use
-
-### 1. Tests — run these before and after any change
+## Tests — run these before and after any change
 
 ```bash
 cd 3dreactionscenes && node test-scenes.js      # ~14,500 checks
@@ -32,27 +30,10 @@ captions out of order, camera tracks that do not cover their act, choreography
 that is causally impossible (something arriving before it departs), element
 colours drifting apart between scenes, and malformed camera vectors.
 
-They cannot tell you whether anything **looks** right. For that:
-
-### 2. Screenshots — look at the thing before you claim it is better
-
-```bash
-cd tools
-npm install puppeteer-core        # once; does NOT download a browser
-node shoot.mjs ../3dreactionscenes/combustion.html ./shots 0 18 34 47
-```
-
-Drives the Chrome or Edge already installed. Seeks the scene to each timestamp
-and writes a PNG. Then **actually read the PNGs** — you can see images.
-
-It works because every scene declares `let t` at the top level of a classic
-script, so an eval in the page can assign to it by name. No hook is needed in
-the scene files.
-
-> **This is not optional.** A whole round of "improvements" was made in this repo
-> without looking, and it made every scene worse — a near-black microscope was
-> rendering pure white and nobody knew. Reasoning about three.js code is not a
-> substitute for looking at the output.
+They cannot tell you whether anything **looks** right — there is no screenshot
+harness in this repo, and none should be added. The user checks the visual
+result themselves; do not spawn a browser to render or screenshot a scene as
+part of your own workflow.
 
 ---
 
@@ -135,28 +116,6 @@ Two things that look like this bug but are not, so rule them out first:
   submerged object to pure red and seeing salmon is the quick proof. Colourless
   solutions are now `(0.58,0.72,0.84)` at `0.20`.
 
-#### How to find out what you are actually looking at
-
-Do not reason about which mesh a pixel belongs to — raycast and ask it:
-
-```js
-const rc = new THREE.Raycaster();
-rc.setFromCamera(new THREE.Vector2(fx*2-1, -(fy*2-1)), camera);   // frame fractions
-rc.intersectObjects(scene.children, true)
-  .filter(h => h.object.visible)
-  .slice(0,4)
-  .map(h => [h.object.geometry.type, h.object.material.color.getHexString()]);
-```
-
-Two related gotchas when probing a live scene from puppeteer:
-
-* The canvas has no `preserveDrawingBuffer`, so reading it back on a later tick
-  gives black. Call `renderer.render(...)` and `gl.readPixels` in the *same*
-  `page.evaluate`.
-* Setting `someMesh.visible = false` from the console does nothing lasting —
-  the rAF loop rewrites it on the next frame. That will fool you into clearing
-  an innocent mesh, as it did here with the blast furnace slag.
-
 ### Coplanar surfaces z-fight
 
 Every beaker put its surface disc at exactly the liquid cylinder cap height.
@@ -169,9 +128,9 @@ above the cap (`+0.006` for the big trough).
 Several scenes had a caption talking about one thing while the camera looked at
 another — the limewater in `thermal-decomposition.html`, the dish of oxide in
 `metal-oxygen.html`, the melt hidden behind an opaque crucible wall in
-`electrolysis-molten.html`. Nothing in the test suite can catch this. When you
-shoot a frame, read its caption and ask whether the thing it names is actually
-on screen and unobstructed.
+`electrolysis-molten.html`. Nothing in the test suite can catch this — check a
+camera key against its caption by reading the track and the segment text
+together, and flag it to the user if the two disagree.
 
 ### Large flat surfaces
 

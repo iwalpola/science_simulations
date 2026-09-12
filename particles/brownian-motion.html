@@ -246,6 +246,11 @@ function derive(){
 const cap1 = s => s.charAt(0).toUpperCase() + s.slice(1);
 
 const POLLEN_COL = 0xe8c54a, WATER_O = 0x2f47b8, WATER_H = 0xd8402f;
+/* Brown's other two specimens, briefly swapped in for the hero grain while
+   the captions cover them — see speciesColorAt() near updateField. Rock dust:
+   a warm mineral grey. Fossilised wood: a dark, dead-looking umber, chosen to
+   read as "definitely not alive" next to the pollen's gold. */
+const ROCK_COL = 0x9c9186, FOSSIL_COL = 0x4e3c2e;
 const FIELD_Y = -400;              // the microscope field of view, parked below
 const FIELD_R = 9.0;               // how wide that field is
 
@@ -406,6 +411,49 @@ function rod(color, r, h, opts={}){
       metalness:opts.metal ?? 0.3}));
   return m;
 }
+/* A box with its edges taken off.  Square corners are the single biggest tell
+   that a "metal" part is CG: a real machined edge is always broken, and that
+   thin chamfer is what catches a highlight and reads as solid. A rounded-rect
+   Shape gives the four corners; the extrude bevel gives the twelve edges. */
+function roundedBox(w, h, d, r, mat){
+  const sh = new THREE.Shape();
+  /* the cross-section is the footprint (w in X, d in Z); the extrusion is the
+     height. It is laid out in the shape's XY and then tipped upright. */
+  const x = -w/2, y = -d/2, k = Math.min(r, w/2-1e-4, d/2-1e-4);
+  sh.moveTo(x+k, y);
+  sh.lineTo(x+w-k, y);   sh.quadraticCurveTo(x+w, y, x+w, y+k);
+  sh.lineTo(x+w, y+d-k); sh.quadraticCurveTo(x+w, y+d, x+w-k, y+d);
+  sh.lineTo(x+k, y+d);   sh.quadraticCurveTo(x, y+d, x, y+d-k);
+  sh.lineTo(x, y+k);     sh.quadraticCurveTo(x, y, x+k, y);
+  const bev = Math.min(0.018, h/3);
+  const g = new THREE.ExtrudeGeometry(sh, {depth: h - bev*2, bevelEnabled:true,
+    bevelThickness: bev, bevelSize: bev, bevelSegments: 3, curveSegments: 8});
+  g.translate(0, 0, -(h - bev*2)/2 - bev);
+  g.rotateX(Math.PI/2);           // tip the extrusion upright: depth becomes height
+  const m = new THREE.Mesh(g, mat);
+  return m;
+}
+/* Knurling, as a roughness + bump pair.  Cross-hatched knobs are the detail
+   that makes an instrument look handled rather than modelled, and it is far
+   cheaper to paint the diamonds into a texture than to build them. */
+const KNURL_TEX = (function(){
+  const W=256, H=128, c=document.createElement('canvas');
+  c.width=W; c.height=H;
+  const x=c.getContext('2d');
+  x.fillStyle='#7a7a7a'; x.fillRect(0,0,W,H);
+  x.lineWidth=2.2;
+  for(let d=-H; d<W+H; d+=9){
+    x.strokeStyle='#cfcfcf';
+    x.beginPath(); x.moveTo(d,0); x.lineTo(d+H,H); x.stroke();
+    x.strokeStyle='#2c2c2c';
+    x.beginPath(); x.moveTo(d+H,0); x.lineTo(d,H); x.stroke();
+  }
+  const t=new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(6,1);
+  return t;
+})();
+
 const _v1=new THREE.Vector3(), _up=new THREE.Vector3(0,1,0);
 function placeBond(mesh, a, b, shrink=0){
   const dir = new THREE.Vector3().subVectors(b,a);
@@ -600,6 +648,21 @@ const steel = new THREE.MeshStandardMaterial({color:0x9aa4b2, metalness:0.88, ro
   envMapIntensity:0.9});
 const darkMetal = new THREE.MeshStandardMaterial({color:0x232932, metalness:0.55, roughness:0.5,
   envMapIntensity:0.55});
+/* The microscope is three materials, not one.  A real instrument is satin
+   black enamel over a cast body, bright chrome on the fittings, and knurled
+   metal on anything a hand turns — painting the lot one shade of grey is what
+   made it read as a toy. */
+const enamel = new THREE.MeshStandardMaterial({color:0x151a21, metalness:0.25, roughness:0.55,
+  envMapIntensity:0.7});
+const chrome = new THREE.MeshStandardMaterial({color:0xc2cad6, metalness:0.95, roughness:0.16,
+  envMapIntensity:1.2});
+const knurled = new THREE.MeshStandardMaterial({color:0x6b7482, metalness:0.85, roughness:0.42,
+  roughnessMap:KNURL_TEX, bumpMap:KNURL_TEX, bumpScale:0.006, envMapIntensity:0.9});
+/* Machined-but-unpainted, for the parts sitting right over the stage lamp.
+   Enamel is mostly diffuse, so with the lamp on it floods to a flat tan; the
+   turret is bare metal anyway, and metalness kills the diffuse wash. */
+const machined = new THREE.MeshStandardMaterial({color:0x12171f, metalness:0.7, roughness:0.52,
+  envMapIntensity:0.5});
 
 /* Spin a 2D silhouette to make glassware.  This is the primitive I should have
    been using all along: a handful of points gives a rolled lip, a shaped body
@@ -633,20 +696,96 @@ const green = new THREE.MeshStandardMaterial({color:0x3d6f39, roughness:0.82, me
   envMapIntensity:0.28});
 const stem = rod(0x3d6f39, 0.048, HEAD_Y-0.2, {rough:0.82, metal:0.02});
 stem.position.y = (HEAD_Y-0.2)/2 + 0.2; flower.add(stem);
+
+/* A leaf texture: a midrib, a few side veins branching off it, and soft
+   mottled blotches of value either side.  Painted near-white (230) rather
+   than mid-grey, so multiplying it into the leaf's colour reads as texture —
+   darker along the veins, lighter in the blotches — without darkening the
+   leaf overall the way a mid-grey multiply map would. */
+const leafTex = (function(){
+  const S = 256, c = document.createElement('canvas');
+  c.width = c.height = S;
+  const x = c.getContext('2d');
+  const rand = rng(55010);
+  x.fillStyle = '#e6e6e6'; x.fillRect(0,0,S,S);
+  for(let i=0;i<60;i++){
+    const rx = rand()*S, ry = rand()*S, rr = 10+rand()*30;
+    const g = x.createRadialGradient(rx,ry,0, rx,ry,rr);
+    const dark = rand() < 0.55;
+    g.addColorStop(0, dark ? 'rgba(0,0,0,0.10)' : 'rgba(255,255,255,0.10)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    x.fillStyle = g; x.beginPath(); x.arc(rx,ry,rr,0,Math.PI*2); x.fill();
+  }
+  x.strokeStyle = 'rgba(0,0,0,0.16)';
+  x.lineWidth = 2;
+  x.beginPath(); x.moveTo(0, S/2); x.lineTo(S, S/2); x.stroke();     // midrib
+  x.lineWidth = 1;
+  for(let i=0;i<9;i++){                                              // side veins
+    const y0 = S/2 + (i-4)*S*0.09;
+    x.beginPath(); x.moveTo(S*0.5, S/2);
+    x.lineTo(S*(0.55+i*0.05), y0);
+    x.stroke();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+})();
+const leafMat = new THREE.MeshStandardMaterial({color:0x3d6f39, roughness:0.82, metalness:0.02,
+  envMapIntensity:0.28, map:leafTex, bumpMap:leafTex, bumpScale:0.006});
+
+/* Each leaf is a group carrying the blade, rather than one squashed sphere
+   doing both jobs.  Where a leaf sits and which way it points then has nothing
+   to do with how flat and long the blade is — and a gizmo dragged on an
+   unscaled frame behaves, where rotating a mesh that is squashed to a twentieth
+   of its height does not. */
+const leaves = [], leafBlades = [];
 [[0.7, 1.25, 0.5],[-0.72, 1.85, -0.4]].forEach(([dx,y,dz])=>{
-  const leaf = new THREE.Mesh(SPH, green);
-  leaf.scale.set(0.42, 0.05, 0.20);
+  const leaf = new THREE.Group();
   leaf.position.set(dx*0.55, y, dz*0.5);
   leaf.rotation.set(0.1, Math.atan2(dz,dx), dx>0? -0.35 : 0.35);
   flower.add(leaf);
+  const blade = new THREE.Mesh(SPH, leafMat);
+  blade.scale.set(0.42, 0.05, 0.20);
+  leaf.add(blade);
+  leaves.push(leaf); leafBlades.push(blade);
 });
 const receptacle = new THREE.Mesh(SPH, green);
 receptacle.scale.set(0.115,0.085,0.115); receptacle.position.y = HEAD_Y-0.13; flower.add(receptacle);
 
 /* petals */
+/* A petal texture: veins fanning out from the base (the shape's own origin,
+   x=0, which the extrude's default UVs put at u=0) towards the tip, a warm
+   blush where they meet, and a darker rim — near-white so multiplying it into
+   petalMat's colour reads as texture rather than as a change of colour. */
+const petalTex = (function(){
+  const S = 256, c = document.createElement('canvas');
+  c.width = c.height = S;
+  const x = c.getContext('2d');
+  const rand = rng(55020);
+  x.fillStyle = '#e8e8e8'; x.fillRect(0,0,S,S);
+  const blush = x.createRadialGradient(0,S*0.5,0, 0,S*0.5,S*0.6);
+  blush.addColorStop(0.00, 'rgba(255,255,255,0.20)');
+  blush.addColorStop(0.35, 'rgba(255,255,255,0)');
+  x.fillStyle = blush; x.fillRect(0,0,S,S);
+  x.strokeStyle = 'rgba(0,0,0,0.14)';
+  for(let i=0;i<9;i++){
+    x.lineWidth = 0.8 + rand()*0.8;
+    const bend = (i-4)*0.10;
+    x.beginPath(); x.moveTo(0, S*0.5);
+    x.quadraticCurveTo(S*0.5, S*0.5+bend*S*0.5, S*0.98, S*0.5+bend*S*0.85);
+    x.stroke();
+  }
+  const rim = x.createRadialGradient(S*0.5,S*0.5,S*0.42, S*0.5,S*0.5,S*0.5);
+  rim.addColorStop(0, 'rgba(0,0,0,0)');
+  rim.addColorStop(1, 'rgba(0,0,0,0.12)');
+  x.fillStyle = rim; x.fillRect(0,0,S,S);
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+})();
 const petalMat = new THREE.MeshStandardMaterial({
   color:0xd9739c, roughness:0.62, metalness:0.02, side:THREE.DoubleSide,
-  emissive:0x1a0810, envMapIntensity:0.25
+  emissive:0x1a0810, envMapIntensity:0.25, map:petalTex, bumpMap:petalTex, bumpScale:0.004
 });
 /* A petal, as an outline that is extruded and bevelled rather than a squashed
    sphere.  Built once and shared by all seven — same geometry, different
@@ -698,40 +837,78 @@ const centre = new THREE.Mesh(SPH,
     envMapIntensity:0.3}));
 centre.scale.set(0.17,0.07,0.17); centre.position.y = HEAD_Y+0.02; flower.add(centre);
 
-const anthers = [];
-for(let i=0;i<6;i++){
-  const a = (i/6)*Math.PI*2 + 0.3;
-  const fil = rod(0xb9ae7e, 0.014, 0.32, {rough:0.8, metal:0.03});
-  fil.position.set(Math.cos(a)*0.11, HEAD_Y+0.17, Math.sin(a)*0.11);
-  fil.rotation.z = -Math.cos(a)*0.30;
-  fil.rotation.x =  Math.sin(a)*0.30;
-  flower.add(fil);
-  /* the anther is deliberately darker than the pollen on it — otherwise the
-     two merge into one cream-coloured lump at close range */
-  const anth = new THREE.Mesh(SPH,
-    new THREE.MeshStandardMaterial({color:0x7a5418, roughness:0.85, metalness:0.05,
-      envMapIntensity:0.35}));
-  anth.scale.set(0.058,0.036,0.036);
-  anth.position.set(Math.cos(a)*0.22, HEAD_Y+0.32, Math.sin(a)*0.22);
-  anth.rotation.y = -a;
-  flower.add(anth);
-  anthers.push(anth);
-}
-/* Pollen dust on the anthers.  Smaller and far more numerous than before, and
-   at detail 1 rather than 0 — at 20 flat faces each they read as broken
-   polystyrene rather than as grains. */
-const dustGrp = new THREE.Group(); flower.add(dustGrp);
-(function dust(){
+/* The stamens.  Filament and anther used to be positioned independently, each
+   from the same angle — six pairs of numbers that all had to agree, so the gap
+   between a filament and the anther it carries could not be adjusted without
+   editing twelve of them and re-deriving the trigonometry. Now one stamen is
+   built in its own upright frame, where the filament sits at a plain (x, y)
+   and the anther at another, and the whole thing is simply turned to face each
+   way round the flower. Fixing the join is one number in one place, and the
+   other five follow because they are the same numbers.
+
+   The anther is a GROUP, not the squashed sphere itself: pollen hangs off it
+   so that it follows the anther wherever it is put, and inheriting the
+   sphere's non-uniform scale would flatten every grain. */
+const STAMENS = 6;
+const stamens = [], filaments = [], anthers = [], dustBits = [];
+/* A speckled, dimpled texture for the anther wall — near-white so it
+   multiplies into the material's own colour as a texture rather than a tint,
+   and reused as a bump map so the dimples actually catch the light. */
+const antherTex = (function(){
+  const S = 128, c = document.createElement('canvas');
+  c.width = c.height = S;
+  const x = c.getContext('2d');
+  const rand = rng(55030);
+  x.fillStyle = '#dcdcdc'; x.fillRect(0,0,S,S);
+  for(let i=0;i<220;i++){
+    const rx = rand()*S, ry = rand()*S, rr = 1.5+rand()*3;
+    const g = x.createRadialGradient(rx,ry,0, rx,ry,rr);
+    const dark = rand() < 0.6;
+    g.addColorStop(0, dark ? 'rgba(0,0,0,0.30)' : 'rgba(255,255,255,0.22)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    x.fillStyle = g; x.beginPath(); x.arc(rx,ry,rr,0,Math.PI*2); x.fill();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+})();
+const antherMat = new THREE.MeshStandardMaterial({
+  /* deliberately darker than the pollen on it — otherwise the two merge into
+     one cream-coloured lump at close range */
+  color:0x7a5418, roughness:0.85, metalness:0.05, envMapIntensity:0.35,
+  map:antherTex, bumpMap:antherTex, bumpScale:0.01});
+(function stamenRing(){
   const rand = rng(77001);
-  anthers.forEach(anth=>{
+  for(let i=0;i<STAMENS;i++){
+    const st = new THREE.Group();
+    st.position.y = HEAD_Y;
+    st.rotation.y = -((i/STAMENS)*Math.PI*2 + 0.3);
+    flower.add(st);
+
+    const fil = rod(0xb9ae7e, 0.014, 0.32, {rough:0.8, metal:0.03});
+    fil.position.set(0.11, 0.17, 0);
+    fil.rotation.z = -0.30;                  // leans outwards, away from the centre
+    st.add(fil);
+
+    const anth = new THREE.Group();
+    anth.position.set(0.22, 0.32, 0);
+    st.add(anth);
+    const anthBody = new THREE.Mesh(SPH, antherMat);
+    anthBody.scale.set(0.058, 0.036, 0.036);
+    anth.add(anthBody);
+
+    /* Pollen dust on the anther — small and numerous, and at detail 1 rather
+       than 0: at 20 flat faces each they read as broken polystyrene. */
     for(let k=0;k<18;k++){
-      const d = grainMesh(0.0075 + rand()*0.006, 1);
-      d.position.copy(anth.position).add(new THREE.Vector3(
-        (rand()-0.5)*0.105, 0.024+rand()*0.020, (rand()-0.5)*0.062));
+      const d = grainMesh((0.0075 + rand()*0.006) * 0.6, 1);   // bench view: 0.6x
+      d.position.set((rand()-0.5)*0.105, 0.024+rand()*0.020, (rand()-0.5)*0.062);
       d.rotation.set(rand()*3, rand()*3, rand()*3);
-      dustGrp.add(d);
+      anth.add(d);
+      dustBits.push(d);
     }
-  });
+    stamens.push(st); filaments.push(fil); anthers.push(anth);
+  }
 })();
 
 /* ---- the slide, with a drop of water and a cover slip ---- */
@@ -741,20 +918,22 @@ const slideGlass = new THREE.Mesh(new THREE.BoxGeometry(0.92,0.022,0.40), glassM
 slide.add(slideGlass);
 const drop = new THREE.Mesh(SPH, new THREE.MeshStandardMaterial({
   color:0xbcd8f0, roughness:0.06, metalness:0.12, transparent:true, opacity:0.5}));
-drop.scale.set(0.20,0.055,0.16); drop.position.y = 0.035; slide.add(drop);
-const coverSlip = new THREE.Mesh(new THREE.BoxGeometry(0.34,0.012,0.30), glassMat);
+drop.scale.set(0.10,0.0275,0.08); drop.position.y = 0.035; slide.add(drop);   // radius: 0.5x, height: 0.5x
+const coverSlip = new THREE.Mesh(new THREE.BoxGeometry(0.204,0.003,0.18), glassMat);  // footprint: 0.6x, thickness: 0.25x
 slide.add(coverSlip);
 /* the grains that end up on the slide */
 const onSlide = [];
 (function seedSlide(){
   const rand = rng(77002);
+  /* the anthers sit inside their stamen groups now, so ask for the world
+     position rather than reading a local one and adding the flower's */
+  flower.updateMatrixWorld(true);
   for(let k=0;k<7;k++){
-    const g = grainMesh(0.019, 0);
+    const g = grainMesh(0.019 * 0.6, 0);   // bench view: 0.6x
     g.userData = {
-      from: anthers[k % anthers.length].position.clone()
-              .add(new THREE.Vector3((rand()-0.5)*0.1, 0.05, (rand()-0.5)*0.06))
-              .add(flower.position),
-      to: new THREE.Vector3((rand()-0.5)*0.22, 0.045, (rand()-0.5)*0.13),
+      from: anthers[k % anthers.length].getWorldPosition(new THREE.Vector3())
+              .add(new THREE.Vector3((rand()-0.5)*0.1, 0.05, (rand()-0.5)*0.06)),
+      to: new THREE.Vector3((rand()-0.5)*0.11, 0.0225, (rand()-0.5)*0.065),  // matches the drop's radius and height
       t0: 9.7 + rand()*0.9,
       spin: rand()*6.283
     };
@@ -769,55 +948,270 @@ restBlock.position.set(SLIDE_START.x, 0.84, SLIDE_START.z); lab.add(restBlock);
 /* ---- the microscope ---- */
 const SC_X = 1.95, STAGE_Y = 1.30;
 const scope = new THREE.Group(); scope.position.set(SC_X,0,0); lab.add(scope);
-const base = new THREE.Mesh(new THREE.BoxGeometry(1.25,0.17,0.95), darkMetal);
-base.position.y = 0.085; scope.add(base);
-const column = rod(0x343c46, 0.13, 2.35, {rough:0.45, metal:0.6});
-column.position.set(0.34, 1.30, -0.30); scope.add(column);
-const stageArm = new THREE.Mesh(new THREE.BoxGeometry(0.36,0.12,0.5), darkMetal);
-stageArm.position.set(0.22, STAGE_Y, -0.18); scope.add(stageArm);
-const stagePlate = new THREE.Mesh(new THREE.BoxGeometry(1.0,0.06,0.78), darkMetal);
+
+/* The foot.  A real microscope stands on a horseshoe, not a brick: the weight
+   is thrown backwards under the arm so the thing cannot tip when you lean on
+   the eyepiece. Rounded, and set on two small pads so it is not welded to the
+   bench. */
+const base = roundedBox(1.25, 0.17, 1.00, 0.22, enamel);
+base.position.set(0.05, 0.085, -0.05); scope.add(base);
+const baseCrown = roundedBox(0.86, 0.09, 0.62, 0.18, enamel);
+baseCrown.position.set(0.16, 0.205, -0.12); scope.add(baseCrown);
+[[-0.38,0.28],[0.44,0.30],[0.10,-0.46]].forEach(([px,pz])=>{
+  const pad = rod(0x0c0f14, 0.09, 0.05, {rough:0.9, metal:0.05, seg:20});
+  pad.position.set(px, 0.02, pz); scope.add(pad);
+});
+
+/* The arm — the one shape that says "microscope" before any other.  It was a
+   straight rod, which is why the scope read as a lab stand with bits bolted
+   on. A tube swept along a curve gives the C that carries the eye from the
+   foot, up the back, and over to the body. */
+const armCurve = new THREE.CatmullRomCurve3([
+  new THREE.Vector3( 0.30, 0.16, -0.24),
+  new THREE.Vector3( 0.44, 0.75, -0.32),
+  new THREE.Vector3( 0.47, 1.55, -0.33),
+  new THREE.Vector3( 0.38, 2.22, -0.26),
+  new THREE.Vector3( 0.20, 2.48, -0.14),
+  new THREE.Vector3(-0.02, 2.60,  0.01)
+]);
+const arm = new THREE.Mesh(new THREE.TubeGeometry(armCurve, 64, 0.135, 20, false), enamel);
+scope.add(arm);
+/* caps, so the swept tube does not end in a visible open mouth */
+[armCurve.getPoint(0), armCurve.getPoint(1)].forEach(pt=>{
+  const cap = new THREE.Mesh(SPH, enamel);
+  cap.scale.setScalar(0.135); cap.position.copy(pt); scope.add(cap);
+});
+
+/* the stage: a chamfered plate, a bright insert around the aperture, and two
+   sprung chrome clips */
+const stageArm = roundedBox(0.40, 0.14, 0.52, 0.06, enamel);
+stageArm.position.set(0.26, STAGE_Y, -0.16); scope.add(stageArm);
+const stagePlate = roundedBox(1.00, 0.06, 0.78, 0.05, enamel);
 stagePlate.position.set(-0.05, STAGE_Y, 0); scope.add(stagePlate);
-const stageHole = new THREE.Mesh(new THREE.CircleGeometry(0.15,28),
+const stageRing = new THREE.Mesh(new THREE.RingGeometry(0.15, 0.23, 40), chrome);
+stageRing.rotation.x = -Math.PI/2; stageRing.position.set(-0.05, STAGE_Y+0.031, 0);
+scope.add(stageRing);
+const stageHole = new THREE.Mesh(new THREE.CircleGeometry(0.15,32),
   new THREE.MeshBasicMaterial({color:0x05070b}));
 stageHole.rotation.x = -Math.PI/2; stageHole.position.set(-0.05, STAGE_Y+0.032, 0);
 scope.add(stageHole);
 [[-0.34],[0.24]].forEach(([dz])=>{
-  const clip = new THREE.Mesh(new THREE.BoxGeometry(0.28,0.03,0.06), steel);
+  const clip = roundedBox(0.28, 0.03, 0.06, 0.014, chrome);
   clip.position.set(-0.05, STAGE_Y+0.05, dz); scope.add(clip);
+  const post = rod(0xc2cad6, 0.022, 0.07, {rough:0.16, metal:0.95, seg:14});
+  post.material = chrome;
+  post.position.set(0.06, STAGE_Y+0.05, dz); scope.add(post);
 });
+
 /* the light under the stage */
-const condenser = rod(0x3a424c, 0.11, 0.3, {rough:0.5, metal:0.5});
+const condenser = rod(0x3a424c, 0.11, 0.3, {rough:0.5, metal:0.5, seg:28});
 condenser.position.set(-0.05, STAGE_Y-0.3, 0); scope.add(condenser);
+const condRing = rod(0xc2cad6, 0.125, 0.035, {seg:28});
+condRing.material = chrome;
+condRing.position.set(-0.05, STAGE_Y-0.16, 0); scope.add(condRing);
+const irisKnob = rod(0x6b7482, 0.055, 0.05, {seg:20});
+irisKnob.material = knurled;
+irisKnob.rotation.z = Math.PI/2; irisKnob.position.set(-0.28, STAGE_Y-0.30, 0.06);
+scope.add(irisKnob);
 const lampGlow = new THREE.Sprite(new THREE.SpriteMaterial({
   map:GLOW_TEX, color:0xfff2cc, transparent:true, opacity:0,
   blending:THREE.AdditiveBlending, depthWrite:false, depthTest:false}));
 lampGlow.position.set(-0.05, STAGE_Y-0.1, 0); lampGlow.scale.setScalar(0.8);
 scope.add(lampGlow);
-/* nosepiece and objectives */
-const nose = rod(0x2e353e, 0.24, 0.14, {rough:0.45, metal:0.6});
-nose.position.set(-0.05, STAGE_Y+0.78, 0); scope.add(nose);
-[[0,-0.9],[2.1,-0.65],[4.2,-0.65]].forEach(([a,len],i)=>{
-  const ob = rod(i?0x4a525c:0x20262d, 0.055, 0.34, {r2:0.04, rough:0.4, metal:0.55});
+
+/* ---- everything above the arm, built on one axis ----
+
+   The parts up here were each given their own hand-typed position and the same
+   tilt, which is exactly how they drifted apart: the turret, the tube, the
+   draw-ring, the eyepiece and the lens were all near the optical axis but none
+   of them actually on it, and the eyepiece hung a quarter of a unit in front of
+   the tube it is supposed to plug into. So the axis is declared once — a foot
+   just above the stage and a direction leaning towards the viewer — and every
+   part is placed by how far along it sits. Move AXIS_TILT and the whole optical
+   train swings together. */
+const AXIS_TILT = 0.22;                                   // radians, top towards +z
+const AXIS_DIR  = new THREE.Vector3(0, Math.cos(AXIS_TILT), Math.sin(AXIS_TILT));
+const AXIS_FOOT = new THREE.Vector3(-0.05, STAGE_Y+0.88, 0);
+
+/* The whole optical train is ONE object.  Turret, objectives, tube, draw-ring,
+   eyepiece, collar and lens are aligned to each other and never want to move
+   apart — so they are children of `head` rather than separate parts that have
+   to be selected together and kept in step. Move or rotate head and the lot
+   goes with it, as a single thing with a single set of numbers.
+
+   head sits at the foot of the optical axis, so rotating it swings the train
+   about the point where it meets the stage — which is the pivot you actually
+   want — and each part's own position is simply how far up the axis it sits. */
+const head = new THREE.Group();
+head.position.copy(AXIS_FOOT);
+scope.add(head);
+
+/* s is distance along the axis from the foot; a part's own centre is placed at
+   s + half its length, so lengths simply stack. */
+const onAxis = (s) => AXIS_FOOT.clone().addScaledVector(AXIS_DIR, s);
+function mountAxis(mesh, s){
+  mesh.position.copy(AXIS_DIR).multiplyScalar(s);   // head's origin is the foot
+  mesh.rotation.x = AXIS_TILT;
+  head.add(mesh);
+  return mesh;
+}
+
+/* nosepiece and objectives.  The coloured band near the tip is the standard
+   magnification ring — two extra rings per objective, and the turret stops
+   looking like three grey pegs.  The turret sits below the foot of the axis,
+   so its numbers are negative. */
+const nose = rod(0x151a21, 0.245, 0.11, {seg:36});
+nose.material = machined;
+mountAxis(nose, -0.115);
+/* a dome on top rather than a flat lid: a disc facing straight up under the
+   key light goes one flat tan, where a curve spreads the same light into a
+   gradient and the turret reads as turned metal */
+const noseDome = new THREE.Mesh(SPH, machined);
+noseDome.scale.set(0.245, 0.11, 0.245);
+mountAxis(noseDome, -0.060);
+const noseRim = rod(0xc2cad6, 0.25, 0.035, {seg:36});
+noseRim.material = chrome;
+mountAxis(noseRim, -0.185);
+
+const OBJ_BAND = [0xd94f4f, 0xe3c04a, 0x4f7fd9];   // red / yellow / blue
+const OBJ_LEN  = 0.34;
+const objectives = [];
+[0, 2.1, 4.2].forEach((a,i)=>{
+  const ob = rod(i?0x8d96a3:0x20262d, 0.055, OBJ_LEN, {r2:0.04, rough:0.32, metal:0.7, seg:24});
+  /* the two idle objectives are swung out and tipped off the axis; the one in
+     use hangs straight down it */
   const rr = i? 0.15 : 0;
-  ob.position.set(-0.05 + Math.cos(a)*rr, STAGE_Y+0.78 - (i? 0.22 : 0.28),
-                  Math.sin(a)*rr);
-  if(i) ob.rotation.z = 0.5*Math.cos(a), ob.rotation.x = -0.5*Math.sin(a);
-  scope.add(ob);
+  mountAxis(ob, i ? -0.330 : -0.390);
+  ob.position.x += Math.cos(a)*rr;
+  ob.position.z += Math.sin(a)*rr;
+  if(i){ ob.rotation.z = 0.5*Math.cos(a); ob.rotation.x = AXIS_TILT - 0.5*Math.sin(a); }
+  objectives.push(ob);
+  /* band and front lens ride with the objective, so they inherit its tilt */
+  const band = rod(OBJ_BAND[i], 0.0435, 0.045, {rough:0.4, metal:0.15, seg:24});
+  band.position.y = -OBJ_LEN/2 + 0.055; ob.add(band);
+  const front = new THREE.Mesh(new THREE.CircleGeometry(0.032, 20),
+    new THREE.MeshStandardMaterial({color:0x121b26, roughness:0.05, metalness:0.6,
+      envMapIntensity:1.5}));
+  front.rotation.x = Math.PI/2; front.position.y = -OBJ_LEN/2 - 0.001; ob.add(front);
 });
-/* body tube and eyepiece, leaning back towards the viewer */
-const tube = rod(0x343c46, 0.135, 1.0, {rough:0.45, metal:0.6});
-tube.position.set(-0.02, STAGE_Y+1.42, -0.1); tube.rotation.x = -0.22; scope.add(tube);
-const EYE = new THREE.Vector3(SC_X+0.0, STAGE_Y+2.08, 0.22);
-const eyepiece = rod(0x20262d, 0.105, 0.40, {r2:0.125, rough:0.4, metal:0.55});
-eyepiece.position.set(0.0, STAGE_Y+2.02, 0.15); eyepiece.rotation.x = -0.22; scope.add(eyepiece);
-const eyeLens = new THREE.Mesh(new THREE.CircleGeometry(0.095,24),
-  new THREE.MeshStandardMaterial({color:0x8fa8c8, roughness:0.05, metalness:0.3,
-    transparent:true, opacity:0.7}));
-eyeLens.position.set(0.0, STAGE_Y+2.215, 0.20); eyeLens.rotation.x = -Math.PI/2-0.22;
-scope.add(eyeLens);
-/* focus knob */
-const knob = rod(0x515a66, 0.14, 0.12, {rough:0.5, metal:0.5});
+
+/* body tube and eyepiece, leaning towards the viewer.  TUBE_LEN and EYE_LEN
+   are the only free numbers: each part starts where the one below it ends. */
+const TUBE_LEN = 1.00, EYE_LEN = 0.40;
+const tube = rod(0x151a21, 0.135, TUBE_LEN, {seg:36});
+tube.material = enamel;
+mountAxis(tube, TUBE_LEN/2);
+const tubeRing = rod(0xc2cad6, 0.145, 0.05, {seg:36});
+tubeRing.material = chrome;
+mountAxis(tubeRing, 0.08);
+const eyepiece = rod(0x20262d, 0.105, EYE_LEN, {r2:0.125, rough:0.35, metal:0.6, seg:32});
+mountAxis(eyepiece, TUBE_LEN + EYE_LEN/2);
+const eyeCollar = rod(0x6b7482, 0.118, 0.09, {seg:32});
+eyeCollar.material = knurled;
+mountAxis(eyeCollar, TUBE_LEN + EYE_LEN - 0.06);
+/* The lens is a shallow sphere cap rather than a flat disc — a flat circle at
+   70% opacity reads as a sticker, where a curve slides its highlight across as
+   the camera comes in. */
+const LENS_R = 0.30, LENS_A = 0.33;      // sphere radius, and the half-angle kept
+const lensGeo = new THREE.SphereGeometry(LENS_R, 28, 12, 0, Math.PI*2, 0, LENS_A);
+lensGeo.translate(0, -LENS_R*Math.cos(LENS_A), 0);   // sit the cap's rim on the origin
+const eyeLens = new THREE.Mesh(lensGeo,
+  new THREE.MeshStandardMaterial({color:0x8fa8c8, roughness:0.03, metalness:0.35,
+    emissive:0x0b1626, transparent:true, opacity:0.72, envMapIntensity:1.6}));
+mountAxis(eyeLens, TUBE_LEN + EYE_LEN - 0.005);
+/* where an eye would be, a little above the lens and on the same axis */
+const EYE = onAxis(TUBE_LEN + EYE_LEN + 0.10).add(new THREE.Vector3(SC_X,0,0));
+
+/* focus knobs — coarse and fine, both knurled */
+const knob = rod(0x6b7482, 0.14, 0.12, {seg:32});
+knob.material = knurled;
 knob.rotation.z = Math.PI/2; knob.position.set(0.50, STAGE_Y+0.45, -0.30); scope.add(knob);
+const fineKnob = rod(0x6b7482, 0.085, 0.09, {seg:28});
+fineKnob.material = knurled;
+fineKnob.rotation.z = Math.PI/2; fineKnob.position.set(0.62, STAGE_Y+0.45, -0.30);
+scope.add(fineKnob);
+
+/* ---- the rig: every part of the scope, addressable by name ----
+
+   Two things hang off this. The overrides below are applied last, so a number
+   tuned by hand beats whatever the axis maths worked out; and the editor at
+   ?rig=1 drags these same objects with a gizmo and hands back the block to
+   paste. Nothing here costs anything when the editor is not open. */
+/* The scope's parts, kept but not currently edited — swap RIG_PARTS back to
+   this if the instrument needs another pass. */
+const SCOPE_PARTS = {
+  scope, head,
+  base, baseCrown, arm, stageArm, stagePlate, stageRing,
+  condenser, condRing, irisKnob,
+  nose, noseDome, noseRim,
+  objective0: objectives[0], objective1: objectives[1], objective2: objectives[2],
+  tube, tubeRing, eyepiece, eyeCollar, eyeLens,
+  knob, fineKnob
+};
+
+/* What the rig editor currently offers: the flower.
+
+   stamen0..5 are the whole sprigs — filament, anther and the pollen on it —
+   and are what to grab to move one out of the way. filament0 and anther0 are
+   the pair whose spacing is being fixed; because every stamen is built from
+   the same two local positions, an edit to one is mirrored onto the other five
+   (the LINKED list below), so the join is fixed once and the ring stays even. */
+const RIG_PARTS = {
+  flower, stem, centre, receptacle,
+  /* leafN is where the leaf sits and which way it points; leafBladeN is the
+     blade's own shape — length, width and how flat it lies. */
+  leaf0: leaves[0], leafBlade0: leafBlades[0],
+  leaf1: leaves[1], leafBlade1: leafBlades[1],
+  stamen0: stamens[0], stamen1: stamens[1], stamen2: stamens[2],
+  stamen3: stamens[3], stamen4: stamens[4], stamen5: stamens[5],
+  filament0: filaments[0], anther0: anthers[0],
+  filament1: filaments[1], anther1: anthers[1],
+  filament2: filaments[2], anther2: anthers[2],
+  filament3: filaments[3], anther3: anthers[3],
+  filament4: filaments[4], anther4: anthers[4],
+  filament5: filaments[5], anther5: anthers[5]
+};
+
+/* Parts that are one of a set of identical siblings: editing any of them is
+   copied to the rest, so the six stamens cannot drift apart. */
+const RIG_LINKED = [filaments, anthers];
+
+/* Hand-tuned positions.  Paste what the rig editor's Copy button gives you
+   straight over this object — it writes the same shape it reads. */
+const RIG_OVERRIDES = {
+  head: {p:[-0.05, 2.18, 0.025], r:[-0.2094, 0, 0]},
+  condenser: {p:[-0.05, 0.4074, 0]},
+  condRing: {p:[-0.05, 0.5474, 0]},
+  irisKnob: {p:[-0.16, 0.4024, 0.06]},
+  objective0: {p:[0, -0.3399, -0.0765]},
+  objective2: {p:[-0.0735, -0.279, -0.1936]},
+  knob: {p:[0.5897, 1.75, -0.3325]},
+  fineKnob: {p:[0.7097, 1.75, -0.3325]},
+  flower: {r:[0, 0, 0.0117]},
+  anther0: {p:[0.1958, 0.3203, 0.0075]},
+  anther1: {p:[0.1958, 0.3203, 0.0075]},
+  anther2: {p:[0.1958, 0.3203, 0.0075]},
+  anther3: {p:[0.1958, 0.3203, 0.0075]},
+  anther4: {p:[0.1958, 0.3203, 0.0075]},
+  anther5: {p:[0.1958, 0.3203, 0.0075]},
+  stem: {s:[0.3483, 1, 0.5077]},
+  leaf0: {p:[0.3977, 1.2499, 0.1998], r:[-0.3851, -0.4363, 0.1538]},
+  leafBlade0: {p:[-0.0429, 0.0072, 0.0205]},
+  leaf1: {p:[-0.3273, 1.8492, -0.2], r:[-3.05, 0.6113, -2.8936]},
+};
+
+/* Overrides are applied against EVERYTHING, not just what the editor is
+   currently offering: the scope's hand-tuned numbers below have to keep
+   working while the rig is pointed at the flower. */
+const RIG_ALL = Object.assign({}, SCOPE_PARTS, RIG_PARTS);
+
+for(const [name, o] of Object.entries(RIG_OVERRIDES)){
+  const part = RIG_ALL[name];
+  if(!part) continue;
+  if(o.p) part.position.fromArray(o.p);
+  if(o.r) part.rotation.fromArray(o.r);
+  if(o.s) part.scale.fromArray(o.s);
+}
 
 const STAGE_POS = new THREE.Vector3(SC_X-0.05, STAGE_Y+0.06, 0);
 
@@ -858,12 +1252,35 @@ function buildField(){
     const m = grainMesh(r, 2);
     /* each grain gets its own walk, and a smaller grain is kicked further */
     const step = 0.55 * JIG * (hero ? 1 : GR.r/r);
-    const w = makeWalk(9100 + i*37, 420, step, 0.52, FIELD_R*0.62);
+    const WALK_DT = 0.52;
+    const w = makeWalk(9100 + i*37, 420, step, WALK_DT, FIELD_R*0.62);
     const start = new THREE.Vector3(
       hero ? -1.2 : Math.cos(i*1.9)*FIELD_R*0.44,
       hero ?  0.6 : Math.sin(i*1.9)*FIELD_R*0.40,
       hero ?  0.0 : (i%2? 1.2 : -1.4));
-    m.userData = {w, start, r, hero, spin:i*1.3};
+    /* Every grain shares one clock (tw, in updateField) and the same dt, so
+       without this every grain lands on its next waypoint — the instant it
+       visibly changes direction — at exactly the same moment as all the
+       others. The random walk was per-grain; the timing of its kinks was not.
+
+       The phase can't just be another rng() draw from a nearby seed, though:
+       these seeds are only `i*37` apart, and a linear congruential generator
+       is an affine function of its seed, so its raw output stays an affine
+       function of `i` for as many extra draws as you take — the six phases
+       would still land in an almost-straight line instead of scattering.
+       What breaks that is the walk itself: a few steps of cos/sin and the
+       boundary reflection are genuinely nonlinear, so a coordinate plucked
+       out of the path it already computed is well mixed — reusing one costs
+       nothing extra and keeps the rebuild deterministic. The hero is left at
+       phase 0: its walk is what the impact flash and the "kicks" act are
+       timed against, and those stay tuned to the plain clock. */
+    const phase = hero ? 0 : Math.abs(w.pts[5].x * 37.13233) % WALK_DT;
+    /* the companions fade to 70% transparent once the hero's own walk starts
+       being drawn (see trailOn in updateField) — transparent has to be set
+       here, once, rather than every frame, since three.js only sorts and
+       blends a material that declares it up front */
+    if(!hero) m.material.transparent = true;
+    m.userData = {w, start, r, hero, spin:i*1.3, phase};
     field.add(m); grains.push(m);
   }
 
@@ -922,16 +1339,52 @@ function buildField(){
 const _fp = new THREE.Vector3(), _fq = new THREE.Vector3();
 const WALK_T0 = 22.0;            // the clock the walk runs on
 
+/* Brown's two other specimens, standing in for the hero grain while the
+   captions cover them (39.8–42.8s — see SEGS). A discrete swap, not a
+   cross-fade: these are meant to read as three different substances, not one
+   grain changing colour, and blending between rock-grey and pollen-gold
+   midway would just look muddy. The windows match the caption boundaries at
+   39.8 and 42.8 exactly, split at their midpoint. */
+function speciesColorAt(t){
+  if(t >= 39.8 && t < 41.3) return ROCK_COL;
+  if(t >= 41.3 && t < 42.8) return FOSSIL_COL;
+  return POLLEN_COL;
+}
+
 function updateField(t){
   const {grains, mols, flash, kickLine, trail, trailGeo, TRAIL_N, lbl} = F;
   const tw = Math.max(0, t - WALK_T0);
+  /* the moment we settle on the hero and start drawing its walk — shared with
+     the trail fade-in below, so the two happen together */
+  const trailOn = ramp(t, 29.0, 31.0);
 
-  /* --- the grains, each on its own random walk --- */
+  /* the hero briefly stands in for rock dust, then fossilised wood, while
+     Brown rules out life as the explanation — swapped by colour alone, since
+     that is all "change out the particle" needs here. Colours are authored
+     as sRGB hex, same as everywhere else, so each swap needs its own
+     convertSRGBToLinear() (see AGENTS.md) — linearise() only runs once, at
+     build, and cannot help a colour reassigned after that. Cached so the
+     conversion runs once per swap, not every frame. */
+  const hero0 = grains[0];
+  const col = speciesColorAt(t);
+  if(hero0.userData.col !== col){
+    hero0.userData.col = col;
+    hero0.material.color.setHex(col).convertSRGBToLinear();
+    hero0.material.emissive.setHex(col).multiplyScalar(0.05).convertSRGBToLinear();
+  }
+
+  /* --- the grains, each on its own random walk.  The others fade out
+     entirely once the hero is the one being followed, so nothing is left in
+     the background competing with its path. --- */
   grains.forEach((m,i)=>{
     const d = m.userData;
-    walkAt(d.w, tw, _fp);
+    walkAt(d.w, tw + d.phase, _fp);
     m.position.copy(d.start).add(_fp);
     m.rotation.set(d.spin + tw*0.25, d.spin*1.7 + tw*0.18, d.spin*0.5);
+    if(!d.hero){
+      m.material.opacity = lerp(1, 0, trailOn);
+      m.visible = m.material.opacity > 0.02;
+    }
   });
 
   /* --- the water molecules: straight lines, reflecting off the edges --- */
@@ -969,7 +1422,6 @@ function updateField(t){
   }
 
   /* --- the trail: where the hero grain has actually been --- */
-  const trailOn = ramp(t, 29.0, 31.0);
   trail.material.opacity = trailOn * 0.85;
   trail.visible = trailOn > 0.02;
   if(trail.visible){
@@ -1019,15 +1471,15 @@ function buildCaptions(){
     {t:29.0, c:'Each one jitters about, changing direction again and again, never settling.'},
     {t:32.6, c:'Follow one and the path is a tangle. It goes everywhere, and gets nowhere.'},
     {t:36.4, c:`Nothing is stirring the water. It is perfectly still, and ${TP.word}.`},
-    {t:39.8, c:'Robert Brown watched exactly this in 1827, and could not explain it.'},
-    {t:42.8, c:'The explanation was something he had no way of seeing. So let us turn it on.'},
+    {t:39.8, c:'In 1827, Brown wondered if the pollen was alive — so he tried rock dust, then fossil wood. Same result.'},
+    {t:42.8, c:'Life was not the answer. The true cause was something he had no way of seeing. So let us turn it on.'},
     {t:45.6, c:'Water molecules. Far too small to see, and moving far faster than the pollen.'},
     {t:49.0, c:'They are striking the grain constantly, from every direction at once.'},
     {t:52.4, c:'And here is the whole point: not quite evenly.'},
     {t:55.6, c:'At any instant a few more hit one side than the other — and the grain is knocked the other way.'},
     {t:59.2, c:'A moment later the imbalance is somewhere else, so the grain goes somewhere else.'},
     {t:62.4, c:'That is Brownian motion: something just big enough to see, shoved about by things far too small to see.'},
-    {t:65.6, c:'And it is the best evidence there is that matter is made of particles at all.'}
+    {t:65.6, c:'It took until 1905, and Einstein, to explain why — the best evidence there is that matter is made of particles.'}
   ];
 }
 
@@ -1045,7 +1497,15 @@ const CAM = {
     {t:13.0, p:[-2.25,1.6,1.25],l:[-2.6,0.95,0.6]},
     {t:16.2, p:[0.1,2.3,2.7],   l:[0.4,1.4,0.2]},
     {t:19.2, p:[1.9,2.9,1.9],   l:[1.95,2.1,0.1]},
-    {t:22.0, p:[1.95,3.52,0.72],l:[1.95,3.3,0.2]}
+    /* the eyepiece opening sits at about (1.90, 3.575, 0.04) once the scope's
+       hand-tuned overrides are applied — worked out from head's own overridden
+       position and rotation, not the un-overridden AXIS_* constants, which no
+       longer describe where the tube actually points. These last two keys
+       climb up and over the instrument first, then drop to hover directly
+       over that opening looking straight down it, so the shot reads as going
+       up and into the eyepiece right as the cut to the field of view lands. */
+    {t:20.6, p:[1.95,4.3,0.9],  l:[1.9,3.6,0.2]},
+    {t:22.0, p:[1.90,3.75,0.10],l:[1.90,3.15,0.02]}
   ],
   field:[
     {t:22.0, p:[0,0,17.0],   l:[0,0,0]},
@@ -1093,15 +1553,19 @@ const TAP_A = 9.7, SLIP_A = 12.6, SLIP_B = 14.0, MOVE_A = 15.4, MOVE_B = 17.4;
 function updateLab(t){
   /* a breath of movement on the flower, so it is not a dead prop */
   flower.rotation.z = Math.sin(t*0.45)*0.012;
-  dustGrp.children.forEach((d,i)=>{
+  dustBits.forEach((d,i)=>{
     d.rotation.y = i*0.7 + t*0.25;
   });
 
-  /* the slide: on its block, then across to the stage */
+  /* the slide: on its block, then across to the stage, turning a quarter
+     turn on the way.  Everything riding on it — the water, the pollen, the
+     cover slip — is a child of `slide`, so one rotation on the group carries
+     all of it; nothing downstream needs to know the trip is not a straight
+     line. */
   const moved = ramp(t, MOVE_A, MOVE_B);
   slide.position.lerpVectors(SLIDE_START, STAGE_POS, moved);
   slide.position.y += Math.sin(moved*Math.PI)*0.28;     // lifted across
-  slide.rotation.y = moved*0.08;
+  slide.rotation.y = moved*(Math.PI/2);
 
   /* the grains falling from the anthers into the drop */
   onSlide.forEach(g=>{
@@ -1116,15 +1580,21 @@ function updateLab(t){
   });
   /* the dust on the anthers thins out as the grains leave */
   const tapped = ramp(t, TAP_A, TAP_A+1.4);
-  dustGrp.children.forEach((d,i)=>{
+  dustBits.forEach((d,i)=>{
     d.visible = (i % 3 !== 0) || tapped < 0.5;
   });
 
   /* the cover slip lowering onto the drop */
   const slip = ramp(t, SLIP_A, SLIP_B);
-  coverSlip.position.set(0, lerp(0.62, 0.075, slip), lerp(0.22, 0, slip));
+  coverSlip.position.set(0, lerp(0.62, 0.045, slip), lerp(0.22, 0, slip));   // rests lower: closer to the slide
   coverSlip.rotation.z = lerp(0.22, 0, slip);
-  drop.scale.set(lerp(0.20,0.25,slip), lerp(0.055,0.04,slip), lerp(0.16,0.21,slip));
+  /* the water has nothing to push against until the glass actually reaches
+     it, so it must not start spreading the moment the cover slip lifts off —
+     only once the fall is nearly done. squash is `slip` run back through its
+     own last 18%, so the two land together: the drop is fully flattened at
+     the same instant the cover slip finishes its descent. */
+  const squash = ramp(slip, 0.82, 1);
+  drop.scale.set(lerp(0.10,0.125,squash), lerp(0.0275,0.02,squash), lerp(0.08,0.105,squash));  // radius: 0.5x, height: 0.5x
 
   /* the lamp under the stage comes on as we get ready to look */
   const lit = ramp(t, 18.4, 19.4);
@@ -1185,6 +1655,12 @@ playBtn.onclick = ()=>{ playing=!playing; playBtn.textContent = playing?'Pause':
 document.getElementById('restart').onclick = ()=>{ t=0; curSeg=-1; playing=true; playBtn.textContent='Pause'; };
 scrub.oninput = ()=>{ t = parseFloat(scrub.value); curSeg=-1; };
 addEventListener('keydown', e=>{
+  /* The rig editor owns the keyboard while it is open, and it owns these very
+     keys: without this, every arrow-key nudge of a part also jogged the
+     timeline two seconds, and a few presses carried it past the fade into the
+     eyepiece — at which point #fade and the #scope vignette cover the screen
+     and the scene looks frozen rather than covered. */
+  if(RIG.on) return;
   if(e.code==='Space'){ e.preventDefault(); playBtn.click(); }
   if(e.code==='ArrowRight'){ t = Math.min(TOTAL, t+2); curSeg=-1; }
   if(e.code==='ArrowLeft'){  t = Math.max(0, t-2);     curSeg=-1; }
@@ -1252,10 +1728,440 @@ function build(){
   buildLegend();
   linearise(scene);          // authored colours are sRGB; the renderer wants linear
   if(menuEl.classList.contains('open')) buildMenu();
-  history.replaceState(null,'',`?grain=${grainKey}&temp=${tempKey}`);
+  /* keep the rig flag: this rewrite runs before the editor reads the query,
+     and without it ?rig=1 is swallowed by the first build */
+  const rigQ = new URLSearchParams(location.search).get('rig') === '1' ? '&rig=1' : '';
+  history.replaceState(null,'',`?grain=${grainKey}&temp=${tempKey}${rigQ}`);
   t = 0; curSeg = -1;
 }
 build();
+
+/* =====================================================================
+   RIG EDITOR  —  open the scene with ?rig=1
+
+   Placing parts by typing numbers and re-rendering is slow. This drops a
+   transform gizmo on any named part of the microscope, frees the camera from
+   the timeline so you can fly round it, and writes the numbers back out in
+   exactly the shape RIG_OVERRIDES expects — so tuning by hand round-trips
+   into the file with one paste and no arithmetic.
+
+   Ctrl-click (or cmd-click) a label or a part to add it to the selection.
+   Several parts move as one: they are hung off a temporary pivot at their
+   shared centre, dragged together, and then handed back to the scope with
+   their world positions intact, so each one's own numbers come out right.
+
+   It is inert unless the query string asks for it: no panel, no gizmo, no
+   listeners, and the CDN script for the gizmo is never fetched.
+
+   Keys:  G / R / S  move, rotate, scale      X  toggle local / world
+          arrows     nudge the selection      [  ]  smaller / larger step
+          Esc        deselect                 Space  play / pause the timeline
+          A          select every part
+===================================================================== */
+const RIG = { on: new URLSearchParams(location.search).get('rig') === '1' };
+
+if(RIG.on) (function rigEditor(){
+  const SAVE_KEY = 'bm-rig-overrides';
+  let selNames = [], target = null, gizmo = null, step = 0.01, snap = false;
+  /* where the camera was when a gizmo drag started.  The gizmo's pointerdown
+     runs BEFORE the scene's own mousedown, so clearing the orbit flag when the
+     drag begins does not help — the orbit handler just sets it again on the
+     way past, and you end up dragging the part and the camera at once, which
+     feeds a moving camera into a rotation that is computed from it. Pinning
+     the camera every frame while the gizmo is busy is order-independent. */
+  let camLock = null;
+  /* set when a gizmo drag ends, so the click that follows it is not taken as
+     a fresh selection (see the click handler) */
+  let swallowClick = false;
+
+  /* ---- camera: orbit / pan / dolly, free of the timeline ---- */
+  const cam = { tgt: new THREE.Vector3(FLOWER_X, HEAD_Y, 0), dist: 1.6 };
+  RIG.camera = function(){
+    if(camLock){ yaw = camLock.yaw; pitch = camLock.pitch; dragging = false; }
+    const sph = new THREE.Spherical(cam.dist,
+      Math.max(0.08, Math.min(Math.PI - 0.08, Math.PI/2 - pitch)), yaw);
+    camera.position.copy(cam.tgt).add(new THREE.Vector3().setFromSpherical(sph));
+    camera.lookAt(cam.tgt);
+  };
+  yaw = 0.7; pitch = 0.25;
+  el.addEventListener('wheel', e=>{
+    e.preventDefault();
+    cam.dist = Math.max(0.35, Math.min(30, cam.dist * (1 + Math.sign(e.deltaY)*0.12)));
+  }, {passive:false});
+  /* right-drag pans the orbit centre, which is the only way to get close to a
+     small part without the centre of rotation fighting you */
+  let panning = false, px = 0, py = 0;
+  el.addEventListener('contextmenu', e=>e.preventDefault());
+  el.addEventListener('mousedown', e=>{
+    if(e.button === 2 && !RIG.busy){ panning = true; px = e.clientX; py = e.clientY; }
+  });
+  addEventListener('mouseup', ()=>{ panning = false; });
+  addEventListener('mousemove', e=>{
+    if(!panning) return;
+    const right = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 0);
+    const up    = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 1);
+    const k = cam.dist * 0.0016;
+    cam.tgt.addScaledVector(right, -(e.clientX-px)*k).addScaledVector(up, (e.clientY-py)*k);
+    px = e.clientX; py = e.clientY;
+  });
+
+  /* ---- panel ---- */
+  const css = document.createElement('style');
+  css.textContent = [
+    '#rig{position:fixed;top:0;right:0;width:272px;max-height:100vh;overflow:auto;z-index:50;',
+    'background:rgba(10,13,18,.93);color:#dfe6f0;font:12px/1.45 ui-monospace,Consolas,monospace;',
+    'padding:10px 12px 14px;border-left:1px solid #2a3240;backdrop-filter:blur(6px);}',
+    '#rig h4{margin:.6em 0 .35em;font-size:11px;letter-spacing:.08em;text-transform:uppercase;',
+    'color:#8b97a8;font-weight:600;display:flex;justify-content:space-between;}',
+    '#rig h4 span{color:#9fd0ff;text-transform:none;letter-spacing:0;font-weight:400;}',
+    '#rig .parts{display:flex;flex-wrap:wrap;gap:3px;}',
+    '#rig .parts button{flex:1 1 auto;padding:3px 6px;font:inherit;font-size:11px;cursor:pointer;',
+    'background:#1a212b;color:#b9c4d2;border:1px solid #2c3543;border-radius:3px;}',
+    '#rig .parts button.sel{background:#2f6ad9;border-color:#4f88ee;color:#fff;}',
+    '#rig .row{display:flex;align-items:center;gap:6px;margin:2px 0;}',
+    '#rig .row label{width:14px;color:#8b97a8;}',
+    '#rig input[type=number]{flex:1;min-width:0;background:#141a22;color:#e6edf6;',
+    'border:1px solid #2c3543;border-radius:3px;padding:2px 4px;font:inherit;}',
+    '#rig .bar{display:flex;gap:4px;margin-top:8px;}',
+    '#rig .bar button{flex:1;padding:5px 0;font:inherit;cursor:pointer;background:#1a212b;',
+    'color:#cfd8e4;border:1px solid #2c3543;border-radius:3px;}',
+    '#rig .bar button.go{background:#2f6ad9;border-color:#4f88ee;color:#fff;}',
+    '#rig .hint{color:#6d7889;font-size:11px;margin-top:8px;}',
+    '#rig code{color:#9fd0ff;}'
+  ].join('');
+  document.head.appendChild(css);
+
+  const panel = document.createElement('div');
+  panel.id = 'rig';
+  panel.innerHTML =
+    '<h4>part <span id="rigCount"></span></h4><div class="parts" id="rigParts"></div>' +
+    '<h4>position <span id="rigWhat"></span></h4><div id="rigPos"></div>' +
+    '<h4>rotation (deg)</h4><div id="rigRot"></div>' +
+    '<h4>scale</h4><div id="rigScl"></div>' +
+    '<div class="bar"><button id="rigG">move</button><button id="rigR">rot</button>' +
+      '<button id="rigS">scale</button><button id="rigSnap">snap</button>' +
+      '<button id="rigLink">link</button></div>' +
+    '<div class="bar"><button id="rigCopy" class="go">copy overrides</button>' +
+      '<button id="rigReset">reset</button></div>' +
+    '<div class="hint" id="rigHint">click a part in the scene or above &middot; ' +
+      '<b>ctrl-click adds to the selection</b> &middot; right-drag pans &middot; ' +
+      'wheel dollies &middot; step <code id="rigStep">0.01</code> ([ / ]) &middot; arrows nudge</div>';
+  document.body.appendChild(panel);
+
+  /* every part's untouched transform, so "reset" means something and the copy
+     can skip everything you never moved */
+  const base0 = {};
+  for(const [n, o] of Object.entries(RIG_PARTS))
+    base0[n] = {p:o.position.toArray(), r:o.rotation.toArray().slice(0,3), s:o.scale.toArray()};
+
+  const partsEl = document.getElementById('rigParts');
+  const btns = {};
+  for(const name of Object.keys(RIG_PARTS)){
+    const b = document.createElement('button');
+    b.textContent = name;
+    b.onclick = e=>select(name, e.ctrlKey || e.metaKey || e.shiftKey);
+    partsEl.appendChild(b);
+    btns[name] = b;
+  }
+
+  /* ---- the pivot that makes several parts move as one ----
+
+     Object3D.attach re-parents while keeping the world transform, so parts can
+     be hung off a pivot at their shared centre, dragged, and handed back to
+     the scope with nothing shifted. Handing them back is what turns a group
+     drag into each part's own position, which is what has to be written out —
+     so it happens before anything reads the numbers. */
+  const homeOf = new Map();
+  let pivot = null;
+
+  function unpivot(){
+    if(!pivot) return;
+    for(const o of [...pivot.children]) (homeOf.get(o) || scope).attach(o);
+    scene.remove(pivot);
+    pivot = null;
+  }
+  function repivot(){
+    const parts = selNames.map(n=>RIG_PARTS[n]).filter(Boolean);
+    if(parts.length < 2) return;
+    pivot = new THREE.Object3D();
+    const c = new THREE.Vector3(), w = new THREE.Vector3();
+    for(const p of parts){ p.getWorldPosition(w); c.add(w); }
+    pivot.position.copy(c.divideScalar(parts.length));
+    scene.add(pivot);
+    pivot.updateMatrixWorld(true);
+    for(const p of parts){ homeOf.set(p, p.parent); pivot.attach(p); }
+  }
+
+  /* ---- identical siblings move together ----
+     The six stamens are the same two local positions repeated, so an edit to
+     one filament or anther is copied straight onto the other five. Without
+     this the ring goes lopsided the moment you touch it, and the whole point
+     of building one stamen and turning it six ways is lost. */
+  const linkOf = new Map();
+  RIG_LINKED.forEach(set => set.forEach(o => linkOf.set(o, set)));
+  let linked = true;
+  function mirror(){
+    if(!linked || !target) return;
+    const set = linkOf.get(target);
+    if(!set) return;
+    for(const o of set){
+      if(o === target) continue;
+      o.position.copy(target.position);
+      o.rotation.copy(target.rotation);
+      o.scale.copy(target.scale);
+    }
+  }
+
+  /* three number fields per transform, wired both ways */
+  function fields(host, set, scale){
+    const inputs = ['x','y','z'].map(axis=>{
+      const row = document.createElement('div'); row.className = 'row';
+      const lab = document.createElement('label'); lab.textContent = axis;
+      const inp = document.createElement('input');
+      inp.type = 'number'; inp.step = scale === 1 ? '0.005' : '0.5';
+      inp.oninput = ()=>{ if(target){ set(axis, parseFloat(inp.value) || 0); mirror(); save(); } };
+      row.append(lab, inp); host.appendChild(row);
+      return inp;
+    });
+    return v => ['x','y','z'].forEach((a,i)=>{
+      if(document.activeElement !== inputs[i])
+        inputs[i].value = (+v[a]*scale).toFixed(scale === 1 ? 4 : 2);
+    });
+  }
+  const DEG = 180/Math.PI;
+  const showPos = fields(document.getElementById('rigPos'), (a,v)=>{ target.position[a] = v; }, 1);
+  const showRot = fields(document.getElementById('rigRot'), (a,v)=>{ target.rotation[a] = v/DEG; }, DEG);
+  const showScl = fields(document.getElementById('rigScl'), (a,v)=>{ target.scale[a] = v || 0.0001; }, 1);
+  function sync(){
+    if(!target) return;
+    showPos(target.position); showRot(target.rotation); showScl(target.scale);
+  }
+
+  /* one place where a selection is applied, so click, ctrl-click and
+     select-all cannot drift apart */
+  function setSelection(names){
+    unpivot();                        // bank whatever the last group drag did
+    /* Drop anything that is already inside something else in the selection:
+       scope contains everything and head contains the optical train, so
+       selecting a parent and its child would move the child twice. The parent
+       wins, since that is what you asked to move. */
+    selNames = names.filter(n => {
+      if(names.length < 2) return true;
+      for(const m of names){
+        if(m === n) continue;
+        for(let a = RIG_PARTS[n].parent; a; a = a.parent)
+          if(a === RIG_PARTS[m]) return false;
+      }
+      return true;
+    });
+
+    repivot();
+    target = pivot || RIG_PARTS[selNames[0]] || null;
+
+    for(const n in btns) btns[n].classList.toggle('sel', selNames.indexOf(n) >= 0);
+    document.getElementById('rigCount').textContent =
+      selNames.length > 1 ? selNames.length + ' selected' : '';
+    document.getElementById('rigWhat').textContent = pivot ? 'group centre' : '';
+    if(gizmo){ target ? gizmo.attach(target) : gizmo.detach(); }
+    sync();
+  }
+  function select(name, additive){
+    if(!name) return setSelection([]);
+    if(!additive) return setSelection([name]);
+    const names = selNames.slice(), i = names.indexOf(name);
+    if(i >= 0) names.splice(i, 1); else names.push(name);
+    setSelection(names);
+  }
+
+  /* ---- the gizmo, from the same CDN as three itself ---- */
+  const sc = document.createElement('script');
+  sc.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js';
+  sc.onload = ()=>{
+    gizmo = new THREE.TransformControls(camera, el);
+    gizmo.setSize(0.8);
+    RIG.gizmo = gizmo;            // handy from the console, and for tests
+    /* the gizmo and the orbit drag share a mouse, so one has to stand down */
+    gizmo.addEventListener('dragging-changed', e=>{
+      dragging = false; RIG.busy = e.value;
+      camLock = e.value ? {yaw, pitch} : null;
+      if(!e.value){ sync(); save(); swallowClick = true; }
+    });
+    gizmo.addEventListener('objectChange', ()=>{ mirror(); sync(); });
+    scene.add(gizmo);
+    if(target) gizmo.attach(target);
+  };
+  sc.onerror = ()=>{
+    document.getElementById('rigHint').textContent =
+      'gizmo CDN blocked — the number fields and arrow-key nudging still work.';
+  };
+  document.head.appendChild(sc);
+
+  document.getElementById('rigG').onclick = ()=> gizmo && gizmo.setMode('translate');
+  document.getElementById('rigR').onclick = ()=> gizmo && gizmo.setMode('rotate');
+  document.getElementById('rigS').onclick = ()=> gizmo && gizmo.setMode('scale');
+  document.getElementById('rigSnap').onclick = e=>{
+    snap = !snap;
+    e.target.style.color = snap ? '#9fd0ff' : '';
+    if(gizmo){
+      gizmo.setTranslationSnap(snap ? 0.01 : null);
+      gizmo.setRotationSnap(snap ? Math.PI/72 : null);
+    }
+  };
+  const linkBtn = document.getElementById('rigLink');
+  linkBtn.style.color = '#9fd0ff';                  // linked is the default
+  linkBtn.onclick = ()=>{
+    linked = !linked;
+    linkBtn.style.color = linked ? '#9fd0ff' : '';
+    if(linked) mirror();
+  };
+  document.getElementById('rigReset').onclick = ()=>{
+    if(!selNames.length) return;
+    const names = selNames.slice();
+    unpivot();
+    for(const n of names){
+      const b = base0[n], part = RIG_PARTS[n];
+      part.position.fromArray(b.p); part.rotation.fromArray(b.r); part.scale.fromArray(b.s);
+    }
+    repivot();
+    target = pivot || RIG_PARTS[names[0]];
+    if(gizmo) gizmo.attach(target);
+    mirror(); sync(); save();
+  };
+
+  /* ---- picking in the scene ---- */
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+  const idToName = new Map(Object.entries(RIG_PARTS).map(([n,o])=>[o.id, n]));
+  /* A drag always ends in a click, and that click used to land on the scene
+     and re-select whatever happened to be under the pointer — so one group
+     drag silently collapsed the group to a single part, and every edit after
+     it moved one thing instead of several. A click only counts as a click if
+     the gizmo was not just released and the pointer barely moved. */
+  let downAt = null;
+  el.addEventListener('mousedown', e=>{ downAt = {x:e.clientX, y:e.clientY}; });
+  el.addEventListener('click', e=>{
+    if(RIG.busy) return;
+    if(swallowClick){ swallowClick = false; return; }
+    if(downAt && Math.hypot(e.clientX-downAt.x, e.clientY-downAt.y) > 4) return;
+    ndc.set(e.clientX/innerWidth*2 - 1, -(e.clientY/innerHeight*2 - 1));
+    ray.setFromCamera(ndc, camera);
+    /* walk up from whatever was hit until we reach something named */
+    for(const hit of ray.intersectObjects(Object.values(RIG_PARTS), true)){
+      for(let o = hit.object; o; o = o.parent)
+        if(idToName.has(o.id)){
+          select(idToName.get(o.id), e.ctrlKey || e.metaKey || e.shiftKey);
+          return;
+        }
+    }
+  });
+
+  /* ---- keys ---- */
+  addEventListener('keydown', e=>{
+    if(e.target.tagName === 'INPUT') return;
+    const k = e.key.toLowerCase();
+    if(k === 'g' && gizmo) gizmo.setMode('translate');
+    if(k === 'r' && gizmo) gizmo.setMode('rotate');
+    if(k === 's' && gizmo) gizmo.setMode('scale');
+    if(k === 'x' && gizmo) gizmo.setSpace(gizmo.space === 'local' ? 'world' : 'local');
+    if(k === 'escape') select(null);
+    if(k === 'a') setSelection(Object.keys(RIG_PARTS).filter(n => n !== 'scope'));
+    if(k === '[') step = Math.max(0.001, step/2);
+    if(k === ']') step = Math.min(0.5, step*2);
+    if(k === ' '){ e.preventDefault(); playBtn.click(); }   /* keeps the label honest */
+    document.getElementById('rigStep').textContent = step;
+    if(target && e.key.indexOf('Arrow') === 0){
+      e.preventDefault();
+      /* nudge across the screen rather than along the world axes, which is
+         what you mean when you are looking at the part from an angle —
+         except with shift held, which lifts it straight up and down */
+      if(e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')){
+        target.position.y += (e.key === 'ArrowUp' ? 1 : -1)*step;
+      } else {
+        const right = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 0);
+        const up    = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 1);
+        const d = {ArrowRight:[right,1], ArrowLeft:[right,-1],
+                   ArrowUp:[up,1], ArrowDown:[up,-1]}[e.key];
+        target.position.addScaledVector(d[0], d[1]*step);
+      }
+      mirror(); sync(); save();
+    }
+  });
+
+  /* ---- what you paste back into the file ---- */
+  function diff(){
+    /* While a group is selected its parts hang off the pivot, so their own
+       position is measured against THAT and is meaningless in the file. Put
+       them home before reading, then pick the group back up — reading has to
+       be non-destructive, since this runs on every nudge to autosave. */
+    const grouped = pivot !== null;
+    if(grouped) unpivot();
+    const out = {};
+    const near = (a,c)=>a.every((v,i)=>Math.abs(v-c[i]) < 1e-6);
+    for(const [n, o] of Object.entries(RIG_PARTS)){
+      const b = base0[n], e = {};
+      if(!near(b.p, o.position.toArray())) e.p = o.position.toArray();
+      if(!near(b.r, o.rotation.toArray().slice(0,3))) e.r = o.rotation.toArray().slice(0,3);
+      if(!near(b.s, o.scale.toArray())) e.s = o.scale.toArray();
+      if(Object.keys(e).length) out[n] = e;
+    }
+    if(grouped){
+      repivot();
+      if(gizmo && pivot) gizmo.attach(pivot);
+    }
+    return out;
+  }
+  const fmt = a => '[' + a.map(v=>String(+(+v).toFixed(4))).join(', ') + ']';
+  function code(){
+    const d = diff();
+    if(!Object.keys(d).length) return 'const RIG_OVERRIDES = {\n};';
+    return 'const RIG_OVERRIDES = {\n' + Object.entries(d).map(([n,e])=>
+      '  ' + n + ': {' + ['p','r','s'].filter(k=>e[k])
+        .map(k=>k + ':' + fmt(e[k])).join(', ') + '},').join('\n') + '\n};';
+  }
+  document.getElementById('rigCopy').onclick = e=>{
+    const txt = code();
+    const done = msg =>{ e.target.textContent = msg;
+      setTimeout(()=>{ e.target.textContent = 'copy overrides'; }, 2400); };
+    navigator.clipboard.writeText(txt).then(
+      ()=>done('copied — paste over RIG_OVERRIDES'),
+      ()=>{ console.log(txt); done('clipboard blocked — see console'); });
+  };
+
+  /* survive a reload, so refreshing to check something does not lose the work */
+  let saveTimer = 0;
+  function save(){
+    clearTimeout(saveTimer);
+    /* Never read the rig out mid-drag: diff() takes the group off the pivot to
+       measure it, and the gizmo holds a reference to the pivot it was given —
+       swap that out underneath a live drag and the gizmo goes on moving an
+       object that is no longer in the scene, which looks exactly like the
+       scene refusing to update. Wait for the drag to finish instead. */
+    saveTimer = setTimeout(function attempt(){
+      if(RIG.busy){ saveTimer = setTimeout(attempt, 200); return; }
+      try{ localStorage.setItem(SAVE_KEY, JSON.stringify(diff())); }catch(_){}
+    }, 200);
+  }
+  try{
+    const kept = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}');
+    for(const [n, o] of Object.entries(kept)){
+      const part = RIG_PARTS[n]; if(!part) continue;
+      if(o.p) part.position.fromArray(o.p);
+      if(o.r) part.rotation.fromArray(o.r);
+      if(o.s) part.scale.fromArray(o.s);
+    }
+    if(Object.keys(kept).length){
+      document.getElementById('rigHint').innerHTML =
+        'restored your unsaved edits &middot; ' +
+        '<a href="#" id="rigClear" style="color:#9fd0ff">discard them</a>';
+      document.getElementById('rigClear').onclick = ()=>{
+        localStorage.removeItem(SAVE_KEY); location.reload();
+      };
+    }
+  }catch(_){}
+
+  /* park the timeline where the whole instrument is on screen and lit */
+  setTimeout(()=>{ t = 4; playing = false; playBtn.textContent = 'Play'; }, 0);
+  select('anther0');
+})();
 
 /* =====================================================================
    LOOP
@@ -1272,8 +2178,9 @@ function frame(now){
 
   updateLab(t);
   updateField(t);
-  sampleCam(t);
-  applyCamera();
+  /* the rig editor flies the camera itself; the timeline keeps it otherwise */
+  if(RIG.on) RIG.camera();
+  else { sampleCam(t); applyCamera(); }
 
   /* the field of view is lit only once we are looking through it */
   const inField = worldAt(t) === 'field';
