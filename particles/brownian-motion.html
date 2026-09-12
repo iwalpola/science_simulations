@@ -278,7 +278,7 @@ const TEMPS = {
 };
 
 const qs = new URLSearchParams(location.search);
-let grainKey = GRAINS[qs.get('grain')] ? qs.get('grain') : 'medium';
+let grainKey = GRAINS[qs.get('grain')] ? qs.get('grain') : 'small';
 let tempKey  = TEMPS[qs.get('temp')]   ? qs.get('temp')  : 'room';
 let GR, TP, JIG, SPEED;
 
