@@ -118,7 +118,15 @@ const P = {
   impulseSpeed:    7.0,    // conduction speed in the unmyelinated stretches
   saltatoryBoost:  3.0,    // how much faster it runs once under the myelin
   impulseWidth:    1.2,    // length of the depolarised zone
-  impulseGlow:     1.0     // brightness of the flash
+  impulseGlow:     1.0,    // brightness of the flash
+
+  /* --- camera (starting view; no rebuild, dragging updates these) --- */
+  camYaw:          153.5,   // degrees around the vertical axis, 0 = looking from +Z
+  camElevation:    18.5,   // degrees above the horizon
+  camDist:         30,
+  camTargetX:      4,      // the point the camera orbits and looks at
+  camTargetY:      0,
+  camTargetZ:      0
 };
 
 /* slider definitions: [key, label, min, max, step] — a 1-item row is a heading */
@@ -171,6 +179,13 @@ const CONTROLS = [
   ['saltatoryBoost',  'saltatory boost',   1.0,  8.0,  0.1 ],
   ['impulseWidth',    'pulse width',       0.2,  6.0,  0.1 ],
   ['impulseGlow',     'glow',              0.0,  1.5,  0.05],
+  ['CAMERA'],
+  ['camYaw',          'yaw (deg)',         -180, 180,  0.5 ],
+  ['camElevation',    'elevation (deg)',   -75,  75,   0.5 ],
+  ['camDist',         'distance',          8,    60,   0.5 ],
+  ['camTargetX',      'target x',          -20,  30,   0.5 ],
+  ['camTargetY',      'target y',          -15,  15,   0.5 ],
+  ['camTargetZ',      'target z',          -15,  15,   0.5 ],
   ['MISC'],
   ['seed',            'random seed',       1,    200,  1   ]
 ];
@@ -698,7 +713,8 @@ for (const c of CONTROLS) {
   slider.addEventListener('input', () => {
     P[k] = parseFloat(slider.value);
     val.textContent = slider.value;
-    build();
+    if (k.startsWith('cam')) { autoSpin = false; cameraFromP(); }
+    else build();
     dumpValues();
   });
 
@@ -739,6 +755,7 @@ resetBtn.addEventListener('click', () => {
     readouts[k].val.textContent = P[k];
   }
   build();
+  cameraFromP();
   dumpValues();
 });
 
@@ -762,8 +779,30 @@ panel.addEventListener('wheel', e => e.stopPropagation());
    CAMERA CONTROLS (manual orbit, no external deps)
    ============================================================ */
 let isDragging = false, prevX = 0, prevY = 0;
-let theta = 0.55, phiAngle = 1.25, camDist = 30;
-const target = new THREE.Vector3(4, 0, 0);
+let theta, phiAngle, camDist;
+const target = new THREE.Vector3();
+const DEG = Math.PI / 180;
+
+function cameraFromP() {
+  theta = P.camYaw * DEG;
+  phiAngle = THREE.MathUtils.clamp((90 - P.camElevation) * DEG, 0.25, Math.PI - 0.25);
+  camDist = P.camDist;
+  target.set(P.camTargetX, P.camTargetY, P.camTargetZ);
+  updateCamera();
+}
+
+// after a drag or zoom, write the view back so "copy values" captures it
+function cameraToP() {
+  const snap = v => Math.round(v * 2) / 2;
+  const yaw = ((theta / DEG) % 360 + 540) % 360 - 180;
+  const vals = { camYaw: snap(yaw), camElevation: snap(90 - phiAngle / DEG), camDist: snap(camDist) };
+  for (const k in vals) {
+    P[k] = vals[k];
+    readouts[k].slider.value = P[k];
+    readouts[k].val.textContent = P[k];
+  }
+  dumpValues();
+}
 
 function updateCamera() {
   camera.position.set(
@@ -773,10 +812,10 @@ function updateCamera() {
   );
   camera.lookAt(target);
 }
-updateCamera();
+cameraFromP();
 
 renderer.domElement.addEventListener('mousedown', (e) => { isDragging = true; prevX = e.clientX; prevY = e.clientY; });
-window.addEventListener('mouseup', () => isDragging = false);
+window.addEventListener('mouseup', () => { if (isDragging) cameraToP(); isDragging = false; });
 window.addEventListener('mousemove', (e) => {
   if (!isDragging) return;
   theta -= (e.clientX - prevX) * 0.006;
@@ -787,6 +826,7 @@ window.addEventListener('mousemove', (e) => {
 renderer.domElement.addEventListener('wheel', (e) => {
   camDist = THREE.MathUtils.clamp(camDist + e.deltaY * 0.02, 8, 60);
   updateCamera();
+  cameraToP();
 });
 
 let lastTouch = null;
@@ -799,7 +839,7 @@ renderer.domElement.addEventListener('touchmove', (e) => {
   lastTouch = t;
   updateCamera();
 }, { passive:true });
-renderer.domElement.addEventListener('touchend', () => lastTouch = null);
+renderer.domElement.addEventListener('touchend', () => { if (lastTouch) cameraToP(); lastTouch = null; });
 
 /* ============================================================
    RENDER LOOP
