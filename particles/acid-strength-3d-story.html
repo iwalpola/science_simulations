@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Strong vs weak — the 3D story</title>
+<style>
+  :root{
+    --ink:#eef2f7;
+    --dim:#93a2b6;
+    --panel:rgba(10,14,21,.78);
+    --line:rgba(147,162,182,.22);
+    --strong:#ff8a5c;
+    --weak:#7fb0ff;
+    --side:376px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;background:#080b11;color:var(--ink);overflow:hidden;
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+
+  /* ── the 3D takes everything the narration does not ── */
+  #stage{position:fixed;top:0;right:0;bottom:0;left:var(--side);}
+  canvas{display:block;}
+
+  /* ── narration column, down the left ── */
+  #side{
+    position:fixed;top:0;left:0;bottom:0;width:var(--side);
+    background:var(--panel);backdrop-filter:blur(16px);
+    border-right:1px solid var(--line);
+    padding:20px 22px 16px;
+    display:flex;flex-direction:column;gap:14px;
+    overflow-y:auto;
+  }
+
+  #side h1{
+    margin:0;
+    font-family:"Iowan Old Style","Charter","Palatino Linotype",Georgia,serif;
+    font-weight:600;font-size:19px;letter-spacing:.2px;line-height:1.25;
+  }
+  #side .byline{margin:4px 0 0;font-size:12px;line-height:1.5;color:var(--dim);}
+  #side a{color:var(--dim);text-decoration:none;font-size:12px;
+    border-bottom:1px solid rgba(147,162,182,.3);}
+  #side a:hover{color:var(--ink);}
+  .links{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;}
+
+  /* readout cards, stacked */
+  .cards{display:flex;flex-direction:column;gap:8px;}
+  .card{
+    background:rgba(255,255,255,.04);
+    border:1px solid var(--line);border-radius:11px;
+    padding:9px 12px;
+  }
+  .card .who{font-size:10px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;}
+  .card.a .who{color:var(--strong);}
+  .card.b .who{color:var(--weak);}
+  .card .nm{font-size:11.5px;color:var(--dim);margin-top:1px;}
+  .card .nums{display:flex;gap:18px;margin-top:6px;}
+  .card .n{font-size:10px;color:var(--dim);line-height:1.2;}
+  .card .n b{display:block;color:var(--ink);font-size:16px;font-weight:600;
+    font-variant-numeric:tabular-nums;margin-top:2px;}
+
+  /* the narration itself */
+  .story{flex:1;min-height:0;}
+  .story h2{
+    margin:0;font-family:"Iowan Old Style","Charter",Georgia,serif;
+    font-size:17px;font-weight:600;letter-spacing:.2px;
+  }
+  .story p{margin:8px 0 0;font-size:13px;line-height:1.62;color:#cbd5e1;}
+  .story p b{color:#ffd9a0;font-weight:600;}
+  .story .caveat{
+    margin-top:10px;font-size:11px;line-height:1.5;color:#6b7a8f;
+    border-left:2px solid rgba(147,162,182,.25);padding-left:10px;
+  }
+
+  /* ── playback controls, floating bottom-centre over the stage ──
+     centred within the stage region (viewport minus the side column), not
+     the whole viewport, so it does not drift left into the narration */
+  .nav{
+    position:fixed;left:var(--side);right:0;bottom:20px;z-index:5;
+    margin:0 auto;width:fit-content;max-width:calc(100% - var(--side) - 32px);
+    display:flex;align-items:center;gap:8px;flex-wrap:nowrap;justify-content:center;
+    background:var(--panel);backdrop-filter:blur(16px);
+    border:1px solid var(--line);border-radius:999px;
+    padding:9px 12px;white-space:nowrap;
+  }
+  .nav button{
+    font:inherit;font-size:12.5px;font-weight:500;color:var(--dim);
+    background:rgba(255,255,255,.05);border:1px solid var(--line);
+    border-radius:999px;padding:7px 14px;cursor:pointer;
+    transition:background .15s ease,color .15s ease,opacity .15s ease;
+  }
+  .nav button:hover:not(:disabled){background:rgba(255,255,255,.12);color:var(--ink);}
+  .nav button:disabled{opacity:.32;cursor:default;}
+  .nav button.primary{background:rgba(127,176,255,.2);color:#dce9ff;border-color:rgba(127,176,255,.35);}
+  .dots{display:flex;gap:6px;padding:0 4px;}
+  .dots i{
+    width:7px;height:7px;border-radius:50%;background:rgba(147,162,182,.3);
+    cursor:pointer;transition:background .2s ease,transform .2s ease;
+  }
+  .dots i.on{background:var(--ink);transform:scale(1.25);}
+
+  /* ── atom key, floating top-right over the stage ── */
+  #key{
+    position:fixed;top:18px;right:20px;z-index:5;
+    background:var(--panel);backdrop-filter:blur(16px);
+    border:1px solid var(--line);border-radius:12px;
+    padding:11px 14px;
+    font-size:11.5px;line-height:1.75;color:var(--dim);
+  }
+  #key div{display:flex;align-items:center;gap:8px;}
+  #key b{color:var(--ink);font-weight:600;min-width:16px;}
+  .dot{width:11px;height:11px;border-radius:50%;flex:none;
+    box-shadow:inset -2px -2px 3px rgba(0,0,0,.45);}
+
+  .hint{
+    position:fixed;right:20px;bottom:20px;z-index:3;
+    font-size:11px;color:#5a687d;pointer-events:none;
+  }
+
+  /* ── narrow: narration goes back to the bottom, controls sit above it ── */
+  @media (max-width:860px){
+    :root{--side:0px;}
+    #stage{left:0;bottom:44vh;}
+    #side{
+      top:auto;left:0;right:0;bottom:0;width:auto;height:44vh;
+      border-right:none;border-top:1px solid var(--line);
+      padding:14px 16px;gap:11px;
+    }
+    #side h1{font-size:16px;}
+    #side .byline{display:none;}
+    .cards{flex-direction:row;}
+    .card{flex:1;min-width:0;}
+    /* .nav lives outside #side in the DOM, so it stays fixed rather than
+       returning to #side's flex flow — docked in its own strip just above
+       the narration panel, which itself is pinned to the bottom 44vh */
+    .nav{
+      left:0;right:0;bottom:44vh;
+      width:auto;max-width:none;margin:0;
+      border-radius:0;border-width:1px 0 0;
+      flex-wrap:wrap;white-space:normal;justify-content:center;
+    }
+    #key{top:14px;right:14px;padding:8px 10px;font-size:11px;line-height:1.6;}
+    .hint{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<div id="stage"></div>
+
+<div id="side">
+  <div>
+    <h1>Same concentration. Very different acid.</h1>
+    <p class="byline">Why a strong acid gives you far more H⁺ from exactly the same amount of acid</p>
+    <div class="links">
+      <a href="./acid-strength-vs-concentration.html">2D sandbox →</a>
+      <a href="../index.html">← All simulations</a>
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="card a">
+      <div class="who">Strong</div>
+      <div class="nm">nitric acid, HNO₃</div>
+      <div class="nums">
+        <div class="n">H⁺ set free<b id="hA">—</b></div>
+        <div class="n">pH<b id="pA">—</b></div>
+      </div>
+    </div>
+    <div class="card b">
+      <div class="who">Weak</div>
+      <div class="nm">carbonic acid, H₂CO₃</div>
+      <div class="nums">
+        <div class="n">H⁺ set free<b id="hB">—</b></div>
+        <div class="n">pH<b id="pB">—</b></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="story">
+    <h2 id="sTitle"></h2>
+    <p id="sText"></p>
+    <div class="caveat" id="sCaveat"></div>
+  </div>
+</div>
+
+<!-- outside #side: that panel's backdrop-filter would otherwise make it the
+     containing block for anything fixed-position inside it, pinning these to
+     the side column instead of the viewport -->
+<div class="nav">
+  <button id="back">← Back</button>
+  <button id="next" class="primary">Next →</button>
+  <button id="replay">Replay</button>
+  <div class="dots" id="dots"></div>
+</div>
+
+<div id="key"></div>
+
+<div class="hint">drag to orbit · scroll to zoom</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ===========================================================================
+   STRONG vs WEAK — the 3D story
+
+   The one idea: both beakers hold the SAME concentration of acid. What
+   differs is how much of that acid comes apart in water. Nitric acid hands
+   over its hydrogen every time; carbonic acid keeps almost all of its, sitting
+   at an equilibrium where only a tiny fraction is apart at any instant. Fewer
+   free H+ is the whole of what "weaker" means.
+
+   The molecules are built the way the reaction scenes in 3dreactionscenes/
+   build theirs: real atoms at real-ish bond angles, the folder's shared
+   element palette, sRGB output with tone mapping and a small reflective room
+   so the spheres read as objects rather than as flat discs.
+
+     HNO3  — N at the centre, three O trigonal-planar around it, one of them
+             carrying the hydrogen that leaves.  ->  NO3(-)  +  H(+)
+     H2CO3 — C at the centre, three O around it; one hydrogen stays put and
+             one can leave.                      <=> HCO3(-) +  H(+)
+
+   HONESTY NOTE ON THE VISUAL.  Each beaker draws 24 acid particles. At
+   0.5 mol/dm3 carbonic acid is about 0.095% dissociated — roughly 1 particle
+   in 1000 — so a fair drawing of 24 would show nothing split, ever. One or two
+   are drawn apart here so that dissociation is visible at all. Every NUMBER on
+   screen (pH, the true fraction) is the real one, computed from Ka, and the
+   caveat line under each scene says where the picture is exaggerated.
+=========================================================================== */
+
+const KA = 4.5e-7;                 // carbonic acid, first dissociation
+const CONC = 0.5;                  // mol/dm3, identical in both beakers
+const N = 24;                      // acid particles drawn per beaker
+
+// exact root of x^2/(C-x) = Ka, not the sqrt(Ka*C) shortcut
+const hWeak    = (-KA + Math.sqrt(KA*KA + 4*KA*CONC)) / 2;
+const pHStrong = -Math.log10(CONC);
+const pHWeak   = -Math.log10(hWeak);
+const alphaWeak = hWeak / CONC;
+const ONE_IN = Math.round(1/alphaWeak);      // about 1 in 1050
+
+/* the shared palette from 3dreactionscenes/ */
+const EL = {
+  O:{name:'oxygen',   col:0x2f47b8, r:0.50},
+  H:{name:'hydrogen', col:0xd8402f, r:0.34},
+  N:{name:'nitrogen', col:0x8f6fe0, r:0.56},
+  C:{name:'carbon',   col:0x99a3b4, r:0.58}
+};
+
+/* ------------------------------------------------------------------ three */
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio||1));
+/* Colour management, as in the reaction scenes: without outputEncoding every
+   colour comes out darker and flatter than it was chosen to be. */
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x080b11);
+scene.fog = new THREE.Fog(0x080b11, 30, 62);
+const camera = new THREE.PerspectiveCamera(44, 1, 0.1, 200);
+
+scene.add(new THREE.HemisphereLight(0x9fb4d0, 0x0a0d13, 0.6));
+const keyL = new THREE.DirectionalLight(0xffffff, 0.95); keyL.position.set(6,11,8); scene.add(keyL);
+const fillL = new THREE.DirectionalLight(0x9ec3ff, 0.40); fillL.position.set(-8,4,-6); scene.add(fillL);
+const rimL  = new THREE.DirectionalLight(0xffd9b0, 0.32); rimL.position.set(0,3,-10); scene.add(rimL);
+
+/* a small room to reflect, so the atoms read as solid objects */
+(function environment(){
+  const env = new THREE.Scene();
+  const box = new THREE.BoxGeometry(1,1,1);
+  env.add(new THREE.Mesh(new THREE.BoxGeometry(30,18,30),
+    new THREE.MeshBasicMaterial({color:0x1d2634, side:THREE.BackSide})));
+  const panel=(hex,gain,x,y,z,sx,sy,sz)=>{
+    const m=new THREE.Mesh(box,new THREE.MeshBasicMaterial({color:hex}));
+    m.material.color.multiplyScalar(gain);
+    m.position.set(x,y,z); m.scale.set(sx,sy,sz); env.add(m);
+  };
+  panel(0xffffff,1.1,  0, 8.4,  0, 14,0.1,14);
+  panel(0xbcd6ff,1.3,-11, 1.5,  0, 0.1,11,20);
+  panel(0xffd7b0,0.9, 11, 1.5,  2, 0.1,11,20);
+  panel(0x8fb0e0,0.5,  0, 0.0,-12, 22,11,0.1);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(env, 0.04).texture;
+  pmrem.dispose();
+})();
+
+/* the bench, with a radial falloff painted in so it reads as a pool of light
+   rather than a pale dome sweeping the frame */
+const benchMap = (function(){
+  const S = 512, c = document.createElement('canvas');
+  c.width = c.height = S;
+  const x = c.getContext('2d');
+  x.fillStyle = '#000'; x.fillRect(0,0,S,S);
+  const g = x.createRadialGradient(S/2,S/2,0, S/2,S/2,S*0.5);
+  g.addColorStop(0.00,'rgba(255,255,255,1)');
+  g.addColorStop(0.13,'rgba(226,232,242,0.78)');
+  g.addColorStop(0.27,'rgba(140,152,172,0.24)');
+  g.addColorStop(0.40,'rgba(56,64,78,0.06)');
+  g.addColorStop(0.50,'rgba(0,0,0,0)');
+  x.fillStyle = g; x.fillRect(0,0,S,S);
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+})();
+const bench = new THREE.Mesh(
+  new THREE.CylinderGeometry(17,17,0.4,64),
+  new THREE.MeshStandardMaterial({color:0x4a515d, map:benchMap,
+    roughness:0.94, metalness:0, envMapIntensity:0.10})
+);
+bench.position.y = -0.2; scene.add(bench);
+
+/* ------------------------------------------------------------- shared bits */
+const SPH = new THREE.SphereGeometry(1,28,20);
+const SPH_LO = new THREE.SphereGeometry(1,16,12);
+const CYL = new THREE.CylinderGeometry(1,1,1,16,1,false);
+const UP = new THREE.Vector3(0,1,0);
+
+function atom(color, radius, opts){
+  opts = opts || {};
+  const m = new THREE.Mesh(opts.lo?SPH_LO:SPH, new THREE.MeshStandardMaterial({
+    color:color, roughness:opts.rough!==undefined?opts.rough:0.35,
+    metalness:opts.metal!==undefined?opts.metal:0.2,
+    emissive:new THREE.Color(color).multiplyScalar(0.06),
+    transparent:true, opacity:1
+  }));
+  m.scale.setScalar(radius);
+  return m;
+}
+function bond(color, radius){
+  const m = new THREE.Mesh(CYL, new THREE.MeshStandardMaterial({
+    color:color||0xa9b6c6, roughness:0.5, metalness:0.1, transparent:true, opacity:1
+  }));
+  m.userData.radius = radius||0.13;
+  return m;
+}
+function placeBond(mesh, a, b, shrink){
+  const dir = new THREE.Vector3().subVectors(b,a);
+  const len = Math.max(dir.length()-(shrink||0)*2, 0.001);
+  mesh.position.copy(a).addScaledVector(dir,0.5);
+  mesh.scale.set(mesh.userData.radius, len, mesh.userData.radius);
+  mesh.quaternion.setFromUnitVectors(UP, dir.normalize());
+}
+
+/* authored colours are sRGB; the renderer wants linear. Idempotent, so
+   calling it again after adding objects cannot double-convert. */
+function linearise(root){
+  root.traverse(o=>{
+    if(!o.material) return;
+    (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{
+      if(!m || m.userData.__lin) return;
+      m.userData.__lin = true;
+      if(m.color)    m.color.convertSRGBToLinear();
+      if(m.emissive) m.emissive.convertSRGBToLinear();
+    });
+  });
+}
+
+function makeLabel(text, opt){
+  opt = opt || {};
+  const size = opt.size || 54, pad = 18;
+  const c = document.createElement('canvas'), ctx = c.getContext('2d');
+  const font = '600 '+size+'px "Iowan Old Style", Charter, Georgia, serif';
+  ctx.font = font;
+  const w = Math.ceil(ctx.measureText(text).width) + pad*2, h = size + pad*2;
+  c.width = w; c.height = h;
+  ctx.font = font; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.shadowColor = 'rgba(0,0,0,.9)'; ctx.shadowBlur = 14;
+  ctx.fillStyle = opt.color || '#eef2f7';
+  ctx.fillText(text, w/2, h/2 + size*0.04);
+  const tex = new THREE.CanvasTexture(c); tex.anisotropy = 4;
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({
+    map:tex, transparent:true, depthTest:false, depthWrite:false}));
+  spr.renderOrder = 10;
+  const scale = opt.scale || 0.62;
+  spr.scale.set(w/h*scale, scale, 1);
+  return spr;
+}
+function setLabel(spr, text, opt){
+  const fresh = makeLabel(text, opt);
+  if(spr.material.map) spr.material.map.dispose();
+  spr.material.map = fresh.material.map;
+  spr.scale.copy(fresh.scale);
+}
+
+/* ------------------------------------------------------------------ beaker */
+const R_IN = 2.5, H_LIQ = 3.6, Y_BASE = 0.08, BEAKER_X = 4.4;
+
+function buildBeaker(x, accent, name){
+  const g = new THREE.Group(); g.position.x = x; scene.add(g);
+
+  const glassMat = new THREE.MeshStandardMaterial({
+    color:0xbfd6e8, roughness:0.08, metalness:0.0,
+    transparent:true, opacity:0.17, side:THREE.DoubleSide
+  });
+  const wall = new THREE.Mesh(new THREE.CylinderGeometry(R_IN+0.11, R_IN+0.11, 4.5, 56, 1, true), glassMat);
+  wall.position.y = Y_BASE + 2.25; g.add(wall);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(R_IN+0.11, R_IN+0.11, 0.13, 56), glassMat);
+  base.position.y = Y_BASE; g.add(base);
+  const lip = new THREE.Mesh(new THREE.TorusGeometry(R_IN+0.11, 0.05, 10, 60),
+    new THREE.MeshStandardMaterial({color:0xd8e6f2, roughness:0.15, metalness:0.1,
+      transparent:true, opacity:0.5}));
+  lip.rotation.x = Math.PI/2; lip.position.y = Y_BASE + 4.5; g.add(lip);
+
+  const liqMat = new THREE.MeshStandardMaterial({
+    color:0x7fa8cc, roughness:0.12, metalness:0.0, transparent:true, opacity:0.17,
+    side:THREE.DoubleSide, depthWrite:false
+  });
+  const liquid = new THREE.Mesh(new THREE.CylinderGeometry(R_IN, R_IN, H_LIQ, 56), liqMat);
+  liquid.position.y = Y_BASE + H_LIQ/2 + 0.07; g.add(liquid);
+  const surface = new THREE.Mesh(new THREE.CircleGeometry(R_IN, 56),
+    new THREE.MeshStandardMaterial({color:0xeaf3ff, roughness:0.05, metalness:0.2,
+      transparent:true, opacity:0.3}));
+  surface.rotation.x = -Math.PI/2; surface.position.y = Y_BASE + H_LIQ + 0.08; g.add(surface);
+
+  const nameLbl = makeLabel(name, {scale:0.55, color:accent});
+  nameLbl.position.set(0, 6.1, 0); g.add(nameLbl);
+  const concLbl = makeLabel('0.5 mol/dm³', {scale:0.42, color:'#93a2b6', size:46});
+  concLbl.position.set(0, 5.5, 0); g.add(concLbl);
+  const tallyLbl = makeLabel('0 free H⁺', {scale:0.5, color:accent});
+  tallyLbl.position.set(0, 4.95, 0); tallyLbl.material.opacity = 0; g.add(tallyLbl);
+
+  return {group:g, liqMat:liqMat, surface:surface, nameLbl:nameLbl, concLbl:concLbl,
+          tallyLbl:tallyLbl, tallyShown:-1, accent:accent,
+          targetColor:new THREE.Color(0x7fa8cc).convertSRGBToLinear(),
+          targetOpacity:0.17};
+}
+
+const beakerA = buildBeaker(-BEAKER_X, '#ff8a5c', 'STRONG · HNO₃');
+const beakerB = buildBeaker( BEAKER_X, '#7fb0ff', 'WEAK · H₂CO₃');
+
+/* --------------------------------------------------------------- molecules */
+/* Built at chemical proportions and then shrunk as a whole, so bond lengths
+   and atom sizes stay in the right ratio to each other. */
+const MOL_SCALE = 0.24;
+const D_XO = 1.22;          // N–O / C–O
+const D_OH = 0.72;          // the O–H that can break
+
+/* the three oxygens, trigonal planar; index 0 carries the hydrogen that goes */
+const O_SITES = [0,1,2].map(i=>{
+  const a = i*2*Math.PI/3 + Math.PI/2;
+  return new THREE.Vector3(Math.cos(a)*D_XO, Math.sin(a)*D_XO, 0);
+});
+/* where the detachable H sits, in the molecule's own frame */
+const H_SITE = O_SITES[0].clone().normalize().multiplyScalar(D_XO + D_OH);
+
+function buildCore(centre, keepSecondH){
+  const g = new THREE.Group();
+  g.add(atom(EL[centre].col, EL[centre].r, {rough:0.34, metal:0.24}));
+  O_SITES.forEach(p=>{
+    const o = atom(EL.O.col, 0.46, {rough:0.28, metal:0.1});
+    o.position.copy(p);
+    const b = bond(0xa9b6c6, 0.12);
+    placeBond(b, new THREE.Vector3(), p, 0.05);
+    g.add(o, b);
+  });
+  if(keepSecondH){
+    // carbonic acid keeps its second hydrogen: only the first one leaves here
+    const hp = O_SITES[1].clone().normalize().multiplyScalar(D_XO + D_OH);
+    const h = atom(EL.H.col, EL.H.r, {rough:0.3, metal:0.1});
+    h.position.copy(hp);
+    const b = bond(0xc89a90, 0.085);
+    placeBond(b, O_SITES[1], hp, 0.04);
+    g.add(h, b);
+  }
+  g.scale.setScalar(MOL_SCALE);
+  return g;
+}
+
+/* a free H+ reads as charge, not as a tiny ball: a small core inside an
+   additive halo, the same trick the reaction scenes use for electrons */
+function buildHydrogen(){
+  const g = new THREE.Group();
+  const core = new THREE.Mesh(SPH_LO, new THREE.MeshStandardMaterial({
+    color:0xff6a4a, emissive:0xd8402f, roughness:0.3, metalness:0.1,
+    transparent:true, opacity:1
+  }));
+  core.scale.setScalar(EL.H.r * MOL_SCALE);
+  const halo = new THREE.Mesh(SPH_LO, new THREE.MeshBasicMaterial({
+    color:0xff7a4d, transparent:true, opacity:0.0,
+    blending:THREE.AdditiveBlending, depthWrite:false
+  }));
+  halo.scale.setScalar(EL.H.r * MOL_SCALE * 3.2);
+  g.add(core, halo);
+  g.userData.core = core; g.userData.halo = halo;
+  return g;
+}
+
+function randInLiquid(){
+  const r = R_IN*0.78*Math.sqrt(Math.random()), th = Math.random()*Math.PI*2;
+  return new THREE.Vector3(Math.cos(th)*r,
+    Y_BASE + 0.5 + Math.random()*(H_LIQ-1.0), Math.sin(th)*r);
+}
+
+/* one acid particle: a core that can lose its hydrogen */
+function buildUnit(beaker, centre, keepSecondH){
+  const core = buildCore(centre, keepSecondH);
+  const h = buildHydrogen();
+  const b = bond(0xc89a90, 0.085 * MOL_SCALE / 0.24);
+  b.userData.radius = 0.085 * MOL_SCALE;
+  beaker.group.add(core, h, b);
+
+  const p = randInLiquid();
+  core.position.copy(p);
+  core.rotation.set(Math.random()*6.28, Math.random()*6.28, Math.random()*6.28);
+
+  const u = {
+    core:core, h:h, bond:b,
+    pos:p.clone(), vel:new THREE.Vector3(),
+    hPos:new THREE.Vector3(), hVel:new THREE.Vector3(),
+    spin:new THREE.Vector3((Math.random()-0.5)*0.5,(Math.random()-0.5)*0.5,(Math.random()-0.5)*0.5),
+    state:'attached', t:0
+  };
+  u.hPos.copy(attachPoint(u));
+  return u;
+}
+
+const _off = new THREE.Vector3();
+function attachPoint(u){
+  _off.copy(H_SITE).applyQuaternion(u.core.quaternion).multiplyScalar(MOL_SCALE);
+  return u.pos.clone().add(_off);
+}
+/* where the O–H bond starts, so the stick meets the oxygen and not the centre */
+function bondFoot(u){
+  _off.copy(O_SITES[0]).applyQuaternion(u.core.quaternion).multiplyScalar(MOL_SCALE);
+  return u.pos.clone().add(_off);
+}
+
+const unitsA = [], unitsB = [];
+for(let i=0;i<N;i++) unitsA.push(buildUnit(beakerA, 'N', false));   // HNO3  -> NO3(-)
+for(let i=0;i<N;i++) unitsB.push(buildUnit(beakerB, 'C', true));    // H2CO3 <=> HCO3(-)
+
+linearise(scene);
+
+/* ------------------------------------------------------------- pH → colour */
+function pHColor(pH){
+  const stops = [[0,[214,48,49]],[2,[225,96,42]],[3.5,[235,150,40]],
+                 [5,[225,205,55]],[6.5,[150,200,90]],[7,[70,190,120]]];
+  const p = Math.max(0, Math.min(7, pH));
+  for(let i=0;i<stops.length-1;i++){
+    const a = stops[i], b = stops[i+1];
+    if(p >= a[0] && p <= b[0]){
+      const f = (p-a[0])/(b[0]-a[0]);
+      return new THREE.Color(
+        (a[1][0]+(b[1][0]-a[1][0])*f)/255,
+        (a[1][1]+(b[1][1]-a[1][1])*f)/255,
+        (a[1][2]+(b[1][2]-a[1][2])*f)/255).convertSRGBToLinear();
+    }
+  }
+  return new THREE.Color(0x46be78).convertSRGBToLinear();
+}
+const COL_NEUTRAL = new THREE.Color(0x7fa8cc).convertSRGBToLinear();
+
+/* =============================== the story ============================== */
+const SCENES = [
+  {
+    mode:'intact', cam:{dist:24, az:0, el:0.30, look:[0,3.0,0]},
+    title:'Two beakers, one label',
+    text:'Both beakers were made up to <b>exactly the same concentration</b> — 0.5 mol/dm³. The same '+
+         'amount of acid, dissolved in the same volume of water. Whatever happens next, that number '+
+         'never changes, and it is never the difference between them.',
+    caveat:'Concentration is a recipe: how much acid went in. You set it, at the balance and the measuring cylinder.'
+  },
+  {
+    mode:'intact', cam:{dist:13.5, az:0, el:0.12, look:[0,2.2,0]},
+    title:'Same number of acid particles',
+    text:'Zoom in and count. <b>24 acid particles on each side</b> — identical populations, because the '+
+         'concentration is identical. Nitric acid on the left: one nitrogen, three oxygens, one hydrogen. '+
+         'Carbonic acid on the right: one carbon, three oxygens, two hydrogens.',
+    caveat:'Real 0.5 mol/dm³ holds around 3×10²³ acid particles per litre. These 24 stand in for all of them.'
+  },
+  {
+    mode:'dissociate', cam:{dist:11.5, az:0.32, el:0.10, look:[0,2.1,0]},
+    title:'Water gets to work',
+    text:'Now watch the hydrogens. On the left, <b>every HNO₃ lets go</b> — a strong acid dissociates '+
+         'completely, leaving nitrate ions behind, and it does not go back. On the right, almost every '+
+         'H₂CO₃ <b>hangs on</b>. One breaks off, drifts, and is pulled back while another takes its turn: '+
+         'the weak acid sits at equilibrium, H₂CO₃ ⇌ H⁺ + HCO₃⁻.',
+    caveat:'Exaggerated so you can see it happen at all: one or two particles in 24 are drawn apart on the '+
+           'weak side. In real carbonic acid at this concentration it is closer to 1 in '+ONE_IN+'.'
+  },
+  {
+    mode:'count', cam:{dist:20, az:0, el:0.24, look:[0,5.4,0]},
+    title:'Count the free H⁺',
+    text:'Lift out just the hydrogen ions and stack them up. Same concentration, same number of particles — '+
+         'but the strong acid has released <b>all 24</b> of its hydrogens and the weak acid has released '+
+         '<b>about one</b>. That gap is the whole of what "strong" and "weak" mean.',
+    caveat:'Only free H⁺ makes a solution acidic. A hydrogen still attached to its molecule does nothing at all.'
+  },
+  {
+    mode:'ph', cam:{dist:21, az:-0.30, el:0.28, look:[0,2.8,0]},
+    title:'pH is just the H⁺ scoreboard',
+    text:'Add indicator. pH measures free H⁺ and nothing else, so the strong acid reads <b>'+
+         pHStrong.toFixed(2)+'</b> while the weak acid — made from the same concentration of acid — reads '+
+         '<b>'+pHWeak.toFixed(2)+'</b>. Three whole pH units apart, which is a factor of about '+
+         ONE_IN+' in [H⁺].',
+    caveat:'These pH values are the real ones, from Ka = 4.5×10⁻⁷ solved exactly — not counted off the 24 particles on screen.'
+  },
+  {
+    mode:'summary', cam:{dist:26, az:0.48, el:0.34, look:[0,3.0,0]},
+    title:'Concentration ≠ strength',
+    text:'<b>Concentration</b> is how much acid you dissolved — your choice, at the bench. <b>Strength</b> is '+
+         'what fraction of it comes apart once it is in there — the molecule\'s own property, fixed by Ka. '+
+         'These two beakers held concentration equal so that strength was the only thing left to see.',
+    caveat:'Next step: the 2D sandbox, where concentration and strength are two separate sliders — and a '+
+           'concentrated weak acid can end up more acidic than a dilute strong one.'
+  }
+];
+
+let sceneIdx = 0, mode = 'intact';
+
+/* ------------------------------------------------------- particle dynamics */
+function jiggle(pos, vel, dt, speed){
+  vel.x += (Math.random()-0.5)*speed*dt;
+  vel.y += (Math.random()-0.5)*speed*dt;
+  vel.z += (Math.random()-0.5)*speed*dt;
+  vel.multiplyScalar(0.90);
+  pos.addScaledVector(vel, dt);
+  const r = Math.hypot(pos.x, pos.z), rMax = R_IN*0.80;
+  if(r > rMax){
+    const s = rMax/r; pos.x *= s; pos.z *= s;
+    vel.x *= -0.5; vel.z *= -0.5;
+  }
+  const yLo = Y_BASE+0.45, yHi = Y_BASE+H_LIQ-0.45;
+  if(pos.y < yLo){ pos.y = yLo; vel.y = Math.abs(vel.y); }
+  if(pos.y > yHi){ pos.y = yHi; vel.y = -Math.abs(vel.y); }
+}
+function isFree(u){ return u.state === 'free' || u.state === 'leaving'; }
+
+function updateUnit(u, dt){
+  jiggle(u.pos, u.vel, dt, 5.5);
+  u.core.position.copy(u.pos);
+  u.core.rotation.x += u.spin.x*dt;
+  u.core.rotation.y += u.spin.y*dt;
+  u.core.rotation.z += u.spin.z*dt;
+  u.core.updateMatrixWorld();          // the attach point reads the quaternion
+
+  if(u.state === 'waiting'){
+    u.t += dt;
+    if(u.t >= 0){ u.state = 'leaving'; u.t = 0; }
+    u.hPos.copy(attachPoint(u));
+  } else if(u.state === 'attached'){
+    u.hPos.copy(attachPoint(u));
+    u.hVel.set(0,0,0);
+  } else if(u.state === 'leaving'){
+    u.t += dt/0.9;
+    const a = attachPoint(u);
+    const dir = a.clone().sub(u.pos).normalize();
+    u.hPos.lerp(a.addScaledVector(dir, 1.5*u.t), Math.min(1, dt*7));
+    if(u.t >= 1){ u.state = 'free'; u.t = 0; }
+  } else if(u.state === 'free'){
+    jiggle(u.hPos, u.hVel, dt, 11);
+  } else if(u.state === 'returning'){
+    u.t += dt/1.1;
+    u.hPos.lerp(attachPoint(u), Math.min(1, dt*4.5));
+    if(u.t >= 1){ u.state = 'attached'; u.t = 0; }
+  }
+  u.h.position.copy(u.hPos);
+
+  // a bond is drawn only while the hydrogen is still held
+  const bonded = (u.state === 'attached' || u.state === 'returning' || u.state === 'waiting');
+  u.bond.visible = bonded;
+  if(bonded) placeBond(u.bond, bondFoot(u), u.hPos, 0.01);
+
+  // free hydrogens glow, so they can be picked out of the crowd
+  const halo = u.h.userData.halo;
+  const want = isFree(u) ? 0.30 : 0.0;
+  halo.material.opacity += (want - halo.material.opacity) * Math.min(1, dt*4);
+}
+
+function freeCount(units){
+  let n = 0;
+  for(let i=0;i<units.length;i++) if(isFree(units[i])) n++;
+  return n;
+}
+
+/* the weak acid's equilibrium: keep roughly one hydrogen off at a time, with a
+   different molecule taking its turn each time — dynamic, not frozen */
+let weakTimer = 1.4;
+function stepWeakEquilibrium(dt){
+  weakTimer -= dt;
+  if(weakTimer > 0) return;
+  weakTimer = 1.1 + Math.random()*1.5;
+  const free = unitsB.filter(u => u.state === 'free');
+  const held = unitsB.filter(u => u.state === 'attached');
+  if(free.length && (free.length > 1 || Math.random() < 0.6)){
+    const u = free[Math.floor(Math.random()*free.length)];
+    u.state = 'returning'; u.t = 0;
+  }
+  if(free.length <= 1 && held.length){
+    const u = held[Math.floor(Math.random()*held.length)];
+    u.state = 'leaving'; u.t = 0;
+  }
+}
+
+function setAllState(units, state){
+  units.forEach(u=>{
+    u.state = state; u.t = 0;
+    if(state === 'attached'){ u.hPos.copy(attachPoint(u)); u.hVel.set(0,0,0); }
+  });
+}
+
+/* a rising 4-wide stack above each beaker, for the H+ head-count */
+function tallySlot(i){
+  const col = i % 4, row = Math.floor(i/4);
+  return new THREE.Vector3((col-1.5)*0.62, Y_BASE + H_LIQ + 1.6 + row*0.56, 0);
+}
+
+/* -------------------------------------------------------------- enter scene */
+function enterScene(i){
+  sceneIdx = i;
+  const s = SCENES[i];
+  mode = s.mode;
+
+  document.getElementById('sTitle').innerHTML = s.title;
+  document.getElementById('sText').innerHTML = s.text;
+  document.getElementById('sCaveat').innerHTML = s.caveat;
+  document.getElementById('back').disabled = (i === 0);
+  document.getElementById('next').disabled = (i === SCENES.length-1);
+  const dotEls = document.querySelectorAll('#dots i');
+  for(let k=0;k<dotEls.length;k++) dotEls[k].classList.toggle('on', k === i);
+
+  desired.dist = s.cam.dist; desired.az = s.cam.az; desired.el = s.cam.el;
+  desired.look.set(s.cam.look[0], s.cam.look[1], s.cam.look[2]);
+
+  if(mode === 'intact'){
+    setAllState(unitsA, 'attached');
+    setAllState(unitsB, 'attached');
+  } else if(mode === 'dissociate'){
+    // replay the moment of splitting, staggered so it reads as an event
+    setAllState(unitsA, 'attached');
+    unitsA.forEach((u,k)=>{ u.state = 'waiting'; u.t = -0.3 - k*0.06; });
+    setAllState(unitsB, 'attached');
+    weakTimer = 1.8;
+  } else {
+    // already-dissociated steady state
+    setAllState(unitsA, 'free');
+    setAllState(unitsB, 'attached');
+    unitsB[Math.floor(Math.random()*N)].state = 'free';
+    weakTimer = 1.4;
+  }
+
+  // indicator colour only once pH is the subject
+  const showPH = (i >= 4);
+  beakerA.targetColor = showPH ? pHColor(pHStrong) : COL_NEUTRAL;
+  beakerB.targetColor = showPH ? pHColor(pHWeak)   : COL_NEUTRAL;
+  beakerA.targetOpacity = beakerB.targetOpacity = showPH ? 0.34 : 0.17;
+
+  beakerA.tallyShown = beakerB.tallyShown = -1;
+}
+
+/* --------------------------------------------------------------- readouts */
+const elHA = document.getElementById('hA'), elPA = document.getElementById('pA');
+const elHB = document.getElementById('hB'), elPB = document.getElementById('pB');
+function updateReadouts(){
+  if(sceneIdx <= 1){
+    elHA.textContent = '0'; elHB.textContent = '0';
+    elPA.textContent = '—'; elPB.textContent = '—';
+  } else {
+    elHA.textContent = freeCount(unitsA) + ' / ' + N;
+    elHB.textContent = freeCount(unitsB) + ' / ' + N;
+    elPA.textContent = pHStrong.toFixed(2);
+    elPB.textContent = pHWeak.toFixed(2);
+  }
+}
+
+/* ------------------------------------------------------------ camera orbit */
+const desired = {dist:24, az:0, el:0.30, look:new THREE.Vector3(0,3,0)};
+const cur     = {dist:24, az:0, el:0.30, look:new THREE.Vector3(0,3,0)};
+let dragAz = 0, dragEl = 0, zoomAdj = 0;
+let dragging = false, lastX = 0, lastY = 0;
+
+const cv = renderer.domElement;
+cv.style.touchAction = 'none';
+cv.style.cursor = 'grab';
+cv.addEventListener('pointerdown', e=>{
+  dragging = true; lastX = e.clientX; lastY = e.clientY;
+  cv.style.cursor = 'grabbing';
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove', e=>{
+  if(!dragging) return;
+  dragAz += (e.clientX - lastX) * 0.006;
+  dragEl = Math.max(-0.4, Math.min(1.05, dragEl + (e.clientY - lastY) * 0.004));
+  lastX = e.clientX; lastY = e.clientY;
+});
+['pointerup','pointercancel'].forEach(ev=>
+  cv.addEventListener(ev, ()=>{ dragging = false; cv.style.cursor = 'grab'; }));
+cv.addEventListener('wheel', e=>{
+  e.preventDefault();
+  zoomAdj = Math.max(-8, Math.min(16, zoomAdj + e.deltaY*0.008));
+}, {passive:false});
+
+function placeCamera(dt){
+  const k = Math.min(1, dt*2.6);
+  cur.dist += (desired.dist - cur.dist)*k;
+  cur.az   += (desired.az   - cur.az)*k;
+  cur.el   += (desired.el   - cur.el)*k;
+  cur.look.lerp(desired.look, k);
+
+  const az = cur.az + dragAz, el = cur.el + dragEl;
+  const d = Math.max(6, cur.dist + zoomAdj);
+  camera.position.set(
+    cur.look.x + d*Math.cos(el)*Math.sin(az),
+    cur.look.y + d*Math.sin(el),
+    cur.look.z + d*Math.cos(el)*Math.cos(az)
+  );
+  camera.lookAt(cur.look);
+}
+
+/* ------------------------------------------------------------------- loop */
+function fadeTo(m, target, dt){
+  m.opacity += (target - m.opacity) * Math.min(1, dt*4);
+}
+function fadeUnit(u, coreA, hA, dt){
+  u.core.traverse(o=>{ if(o.material && o.material.opacity !== undefined) fadeTo(o.material, coreA, dt); });
+  fadeTo(u.h.userData.core.material, hA, dt);
+  if(u.bond.visible) fadeTo(u.bond.material, Math.min(coreA, hA), dt);
+}
+
+let lastT = performance.now();
+function animate(now){
+  requestAnimationFrame(animate);
+  const dt = Math.min(0.05, (now - lastT)/1000);
+  lastT = now;
+
+  if(mode !== 'intact') stepWeakEquilibrium(dt);
+
+  unitsA.forEach(u=>updateUnit(u, dt));
+  unitsB.forEach(u=>updateUnit(u, dt));
+
+  /* the H+ head-count: lift free hydrogens out and dim everything else */
+  if(mode === 'count'){
+    [[unitsA, beakerA],[unitsB, beakerB]].forEach(pair=>{
+      const units = pair[0], bk = pair[1];
+      let slot = 0;
+      units.forEach(u=>{
+        const free = isFree(u);
+        fadeUnit(u, 0.13, free ? 1 : 0.15, dt);
+        if(free){
+          u.hPos.lerp(tallySlot(slot++), Math.min(1, dt*2.4));
+          u.h.position.copy(u.hPos);
+          u.hVel.set(0,0,0);
+        }
+      });
+      fadeTo(bk.tallyLbl.material, 1, dt);
+      if(bk.tallyShown !== slot){
+        bk.tallyShown = slot;
+        setLabel(bk.tallyLbl, slot + ' free H⁺', {scale:0.5, color:bk.accent});
+      }
+    });
+  } else {
+    unitsA.forEach(u=>fadeUnit(u, 1, 1, dt));
+    unitsB.forEach(u=>fadeUnit(u, 1, 1, dt));
+    fadeTo(beakerA.tallyLbl.material, 0, dt);
+    fadeTo(beakerB.tallyLbl.material, 0, dt);
+  }
+
+  /* indicator tint */
+  [beakerA, beakerB].forEach(bk=>{
+    bk.liqMat.color.lerp(bk.targetColor, Math.min(1, dt*2.2));
+    fadeTo(bk.liqMat, bk.targetOpacity, dt);
+  });
+
+  updateReadouts();
+  placeCamera(dt);
+  renderer.render(scene, camera);
+}
+
+/* ------------------------------------------------------------------ wiring */
+const dotsEl = document.getElementById('dots');
+SCENES.forEach((s,i)=>{
+  const d = document.createElement('i');
+  d.title = s.title;
+  d.addEventListener('click', ()=>enterScene(i));
+  dotsEl.appendChild(d);
+});
+document.getElementById('next').addEventListener('click', ()=>{
+  if(sceneIdx < SCENES.length-1) enterScene(sceneIdx+1);
+});
+document.getElementById('back').addEventListener('click', ()=>{
+  if(sceneIdx > 0) enterScene(sceneIdx-1);
+});
+document.getElementById('replay').addEventListener('click', ()=>enterScene(sceneIdx));
+window.addEventListener('keydown', e=>{
+  if(e.key === 'ArrowRight' && sceneIdx < SCENES.length-1) enterScene(sceneIdx+1);
+  if(e.key === 'ArrowLeft'  && sceneIdx > 0) enterScene(sceneIdx-1);
+});
+
+/* the atom key */
+const hexCss = n => '#'+n.toString(16).padStart(6,'0');
+document.getElementById('key').innerHTML =
+  ['N','C','O','H'].map(s=>
+    `<div><span class="dot" style="background:${hexCss(EL[s].col)}"></span><b>${s}</b> ${EL[s].name}</div>`
+  ).join('');
+
+function resize(){
+  const w = stage.clientWidth || window.innerWidth;
+  const h = stage.clientHeight || window.innerHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w/h;
+  camera.fov = (w/h < 1.1) ? 56 : 44;   // keep both beakers in frame when narrow
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+resize();
+
+enterScene(0);
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

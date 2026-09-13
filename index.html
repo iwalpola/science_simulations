@@ -200,6 +200,29 @@
             box-shadow: 0 5px 16px rgba(102,126,234,0.5);
         }
 
+        /* two ways into the same topic — a guided story and a sandbox */
+        .launch-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .launch-group .launch-btn { margin-top: 0; }
+
+        .launch-btn-alt {
+            background: #fff;
+            color: #5a3d8a;
+            border: 1.5px solid #d6cbea;
+            box-shadow: none;
+        }
+
+        .launch-btn-alt:hover {
+            filter: none;
+            background: #faf5ff;
+            box-shadow: 0 3px 10px rgba(102,126,234,0.2);
+        }
+
         /* ── Empty state ── */
         .empty-state {
             display: none;
@@ -382,6 +405,27 @@
             <a href="./3dreactionscenes/index.html" class="launch-btn">
                 Launch →
             </a>
+        </div>
+
+        <div class="card" data-category="chemistry" data-keywords="acid strength concentration weak strong dissociation ph indicator equilibrium ka particle model 3d story nitric carbonic hno3 h2co3 nitrate hydrogencarbonate">
+            <div class="card-header">
+                <div class="card-icon">🧫</div>
+                <div class="card-meta">
+                    <div class="card-title">Concentration vs Acid Strength</div>
+                    <span class="badge badge-chemistry">Chemistry</span>
+                </div>
+            </div>
+            <p class="card-description">
+                Nitric acid against carbonic acid. Watch the acid split into ions — completely for the strong one, barely at all for the weak one. Take the guided 3D story first, where concentration is held equal so strength is the only thing left to see; then open the 2D sandbox and turn both knobs yourself.
+            </p>
+            <div class="launch-group">
+                <a href="./particles/acid-strength-3d-story.html" class="launch-btn">
+                    3D story →
+                </a>
+                <a href="./particles/acid-strength-vs-concentration.html" class="launch-btn launch-btn-alt">
+                    2D sandbox →
+                </a>
+            </div>
         </div>
 
         <div class="empty-state" id="emptyState">

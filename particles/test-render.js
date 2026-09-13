@@ -390,6 +390,164 @@ function brownian(THREE){
   console.log(`      ${ran} frames, ${S.renderer.__renders} draws`);
 }
 
+/* ===========================================================================
+   ACID STRENGTH — the 3D story
+
+   This scene has no timeline to scrub. It has six scenes, each of which resets
+   the particle states and then runs free, so what is worth checking is that
+   every scene survives a long run and that the claims the narration makes are
+   actually what the model produces:
+
+     - the strong acid ends up with all 24 hydrogens free, the weak acid with
+       a handful at most            (scene "Water gets to work")
+     - the same molecules do not split every time — the weak acid's
+       equilibrium has to be dynamic
+     - the H+ head-count reads 24 against roughly 1
+                                    (scene "Count the free H+")
+
+   If any of those stop being true the narration is lying to the class, which
+   is worse than a crash.
+
+   It also checks the detachable hydrogen actually tracks its own molecule:
+   the H sits at the end of an O–H bond on a core that tumbles, so if the
+   attach-point maths ever stops following the core's rotation the hydrogens
+   drift off their molecules and nobody would see it in a headless run except
+   by measuring the distance.
+=========================================================================== */
+function acidStory(THREE){
+  section('ACID  acid-strength-3d-story.html  (render path)');
+  const html = read('acid-strength-3d-story.html');
+
+  const numbers = [];
+  const dom = makeDom(600, 400, numbers);
+  /* this scene reads the step dots back out of the document; the shared stub
+     only carries querySelectorAll on elements, not on the document */
+  dom.querySelectorAll = () => [];
+  stubRenderer(THREE, dom, numbers);
+
+  const expose = ['animate','enterScene','SCENES','camera','renderer',
+                  'unitsA','unitsB','beakerA','beakerB','attachPoint',
+                  'freeCount','N','pHStrong','pHWeak','ONE_IN','MOL_SCALE'].join(',');
+
+  const js = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+  let clock = 1000;
+  const win = {addEventListener(){}, removeEventListener(){},
+               innerWidth:1280, innerHeight:720, devicePixelRatio:1};
+  let S = null;
+  try {
+    S = new Function(
+      'THREE','document','window','performance','requestAnimationFrame','navigator',
+      js + '\nreturn {' + expose + '};'
+    )(THREE, dom, win, {now(){ clock += 16; return clock; }}, () => 0, {userAgent:'node'});
+  } catch(e){
+    chk(false, 'the scene threw while loading: ' + e.message);
+    console.log((e.stack || '').split('\n').slice(0, 4).join('\n'));
+    return;
+  }
+  chk(true, 'the scene loads');
+  chk(S.SCENES.length === 6, `expected 6 scenes, found ${S.SCENES.length}`);
+
+  function finite(){
+    for(const u of S.unitsA.concat(S.unitsB)){
+      for(const v of [u.pos, u.hPos, u.core.position, u.h.position])
+        if(!isFinite(v.x) || !isFinite(v.y) || !isFinite(v.z)) return false;
+      if(!isFinite(u.bond.scale.y)) return false;
+    }
+    const c = S.camera.position;
+    return isFinite(c.x) && isFinite(c.y) && isFinite(c.z);
+  }
+
+  let now = 5000;
+  function run(frames){                       // a steady 60 fps
+    for(let i=0;i<frames;i++){ now += 16.7; S.animate(now); }
+  }
+
+  /* ---------- every scene survives a long run ---------- */
+  section('    every scene');
+  let threw = null, threwAt = -1, badMath = -1;
+  for(let i=0;i<S.SCENES.length;i++){
+    S.enterScene(i);
+    const before = S.renderer.__renders;
+    try { run(360); }                         // 6 seconds of frames
+    catch(e){ threw = e; threwAt = i; break; }
+    if(!finite() && badMath < 0) badMath = i;
+    chk(S.renderer.__renders > before, `scene ${i} drew nothing`);
+  }
+  if(threw){
+    chk(false, `scene ${threwAt} ("${S.SCENES[threwAt].title}") threw: ${threw.message}`);
+    console.log('      ' + (threw.stack || '').split('\n').slice(1, 3).join('\n      '));
+    return;
+  }
+  chk(true, 'every scene runs for 6 s without throwing');
+  chk(badMath < 0, `scene ${badMath} went non-finite`);
+
+  /* ---------- the molecules hold together ---------- */
+  section('    the molecules');
+  S.enterScene(1);                            // everything still intact
+  run(300);
+  let worst = 0;
+  for(const u of S.unitsA.concat(S.unitsB)){
+    worst = Math.max(worst, u.hPos.distanceTo(S.attachPoint(u)));
+  }
+  chk(worst < 1e-6,
+      `an attached hydrogen drifted ${worst.toFixed(4)} off its molecule`);
+  /* the whole molecule must stay inside the liquid, not just its centre */
+  let outside = 0;
+  for(const u of S.unitsA.concat(S.unitsB)){
+    for(const p of [u.pos, u.hPos]){
+      if(Math.hypot(p.x, p.z) > 2.5 || p.y < 0 || p.y > 4.0) outside++;
+    }
+  }
+  chk(outside === 0, `${outside} particles left the beaker`);
+  console.log(`      24 + 24 molecules intact, hydrogens within ${worst.toExponential(1)} of their bonds`);
+
+  /* ---------- does the picture say what the narration says? ---------- */
+  section('    the story the particles tell');
+
+  S.enterScene(2);                            // "Water gets to work"
+  run(300);                                   // 5 s — past the staggered split
+  const strongFree = S.freeCount(S.unitsA), weakFree = S.freeCount(S.unitsB);
+  chk(strongFree === S.N,
+      `the strong acid should free all ${S.N} hydrogens, freed ${strongFree}`);
+  chk(weakFree >= 1 && weakFree <= 3,
+      `the weak acid should sit at roughly one free H+, found ${weakFree}`);
+  console.log(`      strong ${strongFree}/${S.N} free, weak ${weakFree}/${S.N} free`);
+
+  /* the weak acid's equilibrium has to be DYNAMIC — a different molecule
+     taking its turn each time — not one molecule frozen apart */
+  const seen = new Set();
+  for(let i=0;i<30;i++){
+    run(60);
+    S.unitsB.forEach((u,k)=>{ if(u.state === 'free' || u.state === 'leaving') seen.add(k); });
+  }
+  chk(seen.size >= 3,
+      `the weak acid's equilibrium looks frozen: only ${seen.size} molecule(s) ever split`);
+  console.log(`      ${seen.size} different weak-acid molecules took a turn splitting`);
+
+  S.enterScene(3);                            // "Count the free H+"
+  run(240);
+  chk(S.beakerA.tallyShown === S.N,
+      `strong tally read ${S.beakerA.tallyShown}, expected ${S.N}`);
+  chk(S.beakerB.tallyShown >= 1 && S.beakerB.tallyShown <= 3,
+      `weak tally read ${S.beakerB.tallyShown}, expected about 1`);
+  console.log(`      tally: ${S.beakerA.tallyShown} free H+ vs ${S.beakerB.tallyShown}`);
+
+  /* ---------- the numbers on the cards are the real chemistry ---------- */
+  section('    the chemistry behind the numbers');
+  chk(Math.abs(S.pHStrong - 0.301) < 0.01, `strong-acid pH should be 0.30, got ${S.pHStrong.toFixed(3)}`);
+  chk(Math.abs(S.pHWeak - 3.324) < 0.01, `weak-acid pH should be 3.32, got ${S.pHWeak.toFixed(3)}`);
+  chk(S.pHWeak > S.pHStrong, 'the weak acid must come out less acidic at equal concentration');
+  chk(S.ONE_IN > 900 && S.ONE_IN < 1200,
+      `the stated real dissociation should be about 1 in 1050, got 1 in ${S.ONE_IN}`);
+  console.log(`      pH ${S.pHStrong.toFixed(2)} vs ${S.pHWeak.toFixed(2)},`
+            + ` truly 1 in ${S.ONE_IN} dissociated`);
+
+  /* ---------- nothing left over from the magnesium version ---------- */
+  section('    the magnesium is gone');
+  chk(!/magnesium|ribbon|syringe/i.test(html),
+      'the scene still mentions magnesium, a ribbon or a syringe');
+}
+
 /* =========================================================================== */
 (async function main(){
   const url = threeUrlOf(read('melting-snowman.html'));
@@ -412,6 +570,7 @@ function brownian(THREE){
   try {
     melting(THREE);
     brownian(THREE);
+    acidStory(THREE);
     console.log('\n' + (fails ? `${fails} of ${checks} checks FAILED`
                                : `all ${checks} checks pass`));
     if(fails) process.exitCode = 1;
