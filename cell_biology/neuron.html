@@ -92,6 +92,7 @@ const P = {
   axonExtent:      0.55,   // axon lobe pull-out
   axonSharp:       20,
   axonHillock:     1.3,
+  hillockFlatten:  0.6,   // top/bottom squash at the soma end, easing to 0 at the shaft
   axonSegments:    9,      // shaft length = segments x segLength
   axonSegLength:   2.05,
   axonRadius:      0.26,
@@ -154,6 +155,7 @@ const CONTROLS = [
   ['axonExtent',      'lobe extent',       0.00, 1.60, 0.01],
   ['axonSharp',       'lobe sharp',        2,    60,   0.5 ],
   ['axonHillock',     'hillock length',    0.2,  4.0,  0.05],
+  ['hillockFlatten',  'hillock flatten',   0.0,  0.9,  0.01],
   ['axonSegments',    'shaft segments',    1,    24,   1   ],
   ['axonSegLength',   'segment length',    0.4,  4.0,  0.05],
   ['axonRadius',      'shaft radius',      0.08, 0.70, 0.01],
@@ -555,7 +557,28 @@ function createAxon() {
   const hillockStart = rootTip(axonRoot, 0.86);
   const hillockEnd = hillockStart.clone().add(axonRoot.dir.clone().multiplyScalar(P.axonHillock));
   const hillock = makeSegment(hillockStart, hillockEnd, 0.42, 0.26, somaMat, 12);
-  if (hillock) { group.add(hillock); reg(hillock, P.axonHillock * 0.5); }
+  if (hillock) {
+    // squash top and bottom to match the flat soma, easing back to round at the shaft
+    const geo = hillock.geometry;
+    const len = geo.parameters.height;
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(hillock.quaternion.clone().invert());
+    up.y = 0;
+    if (up.lengthSq() > 1e-6) {
+      up.normalize();
+      const pos = geo.attributes.position;
+      const v = new THREE.Vector3();
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i);
+        const t = v.y / len + 0.5;              // 0 at the soma end, 1 at the shaft
+        const squash = P.hillockFlatten * (1 - t);
+        v.addScaledVector(up, -v.dot(up) * squash);
+        pos.setXYZ(i, v.x, v.y, v.z);
+      }
+      geo.computeVertexNormals();
+    }
+    group.add(hillock);
+    reg(hillock, P.axonHillock * 0.5);
+  }
 
   const shaft = myelinatedRun(hillockEnd, axonRoot.dir.clone(),
                               P.axonSegments, P.axonSegLength, P.axonRadius, group, P.axonHillock);

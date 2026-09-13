@@ -58,6 +58,38 @@
   }
   #quizBtns button:hover { background:#3a2327; color:#ffe6e2; }
 
+  /* ---- tour mode ---- */
+  #tourToggle {
+    background:rgba(20,12,14,0.90); border:1px solid #3a2326; border-radius:20px;
+    color:#ffe6e2; font-family:'Courier New', monospace; font-size:12px; letter-spacing:0.5px;
+    padding:8px 18px; cursor:pointer; user-select:none; pointer-events:auto;
+    box-shadow:0 2px 10px rgba(0,0,0,0.45);
+  }
+  #tourToggle:hover { background:rgba(34,20,24,0.95); }
+  #tourToggle.active { background:#5a2a30; border-color:#e08a86; }
+  #tourPanel {
+    position:relative;
+    width:220px; background:rgba(20,12,14,0.94); border:1px solid #3a2326; border-radius:8px;
+    padding:12px 14px; font-family:'Courier New', monospace; color:#d9a9a4; text-align:center;
+    pointer-events:auto;
+  }
+  #tourPanel[hidden] { display:none; }
+  #tourProgress { font-size:10px; letter-spacing:1px; color:#8a6a66; margin-bottom:6px; }
+  #tourName { font-size:13px; color:#ffe6e2; margin-bottom:10px; font-weight:bold; }
+  #tourBtns { display:flex; gap:6px; }
+  #tourBtns button {
+    flex:1; background:#2b1a1d; color:#f0c3bf; border:1px solid #3a2326; border-radius:4px;
+    font-family:inherit; font-size:11px; padding:7px 0; cursor:pointer;
+  }
+  #tourBtns button:hover { background:#3a2327; color:#ffe6e2; }
+  #tourBtns button:disabled { opacity:0.4; cursor:default; }
+  .tourDescBox {
+    position:absolute; transform:translate(-50%,0); max-width:230px;
+    font-family:'Courier New', monospace; font-size:11px; line-height:1.4; color:#f0c3bf;
+    background:rgba(20,12,14,0.90); border:1px solid #3a2326; border-radius:6px;
+    padding:6px 9px; pointer-events:none; user-select:none; white-space:normal;
+  }
+
   /* ---- tuning panel ---- */
   #panel {
     position:absolute; top:16px; right:16px; width:268px; max-height:calc(100vh - 32px);
@@ -98,6 +130,7 @@
 
 <svg id="leaders"><circle id="quizRing" r="10" fill="none" stroke="#ffd54a" stroke-width="2.2" style="display:none"></circle><circle id="quizDot" r="4" fill="#ffd54a" style="display:none"></circle></svg>
 <div id="labels"></div>
+<div id="tourDescBox" class="tourDescBox" style="display:none"></div>
 
 <div id="quizWrap">
   <button id="quizToggle">🎯 Guess the Organelle</button>
@@ -109,6 +142,16 @@
       <button id="quizReveal">Reveal</button>
       <button id="quizNext">Next</button>
       <button id="quizExit">Exit</button>
+    </div>
+  </div>
+  <button id="tourToggle">🧭 Start Tour</button>
+  <div id="tourPanel" hidden>
+    <div id="tourProgress">1 / 1</div>
+    <div id="tourName">Cell membrane</div>
+    <div id="tourBtns">
+      <button id="tourPrev">Prev</button>
+      <button id="tourNext">Next</button>
+      <button id="tourExit">Exit</button>
     </div>
   </div>
 </div>
@@ -555,11 +598,13 @@ const _proj = new THREE.Vector3();
 function updateLabels() {
   const show = P.labelsOn > 0.5;
   const w = window.innerWidth, h = window.innerHeight;
+  let descShown = false;
 
   for (const d of labelDefs) {
     const el = labelEls[d.key], line = leaderEls[d.key], dot = dotEls[d.key];
     const a = anchors[d.key];
-    if (!show || !a) { el.style.display = 'none'; line.style.display = 'none'; dot.style.display = 'none'; continue; }
+    const isTourTarget = tour.active && tourCurrentDef().key === d.key;
+    if ((!show && !isTourTarget) || !a) { el.style.display = 'none'; line.style.display = 'none'; dot.style.display = 'none'; continue; }
 
     // the anchor is stored in cell-local space, so it follows the spin
     _proj.copy(a).applyMatrix4(cell.matrixWorld).project(camera);
@@ -588,7 +633,17 @@ function updateLabels() {
     dot.style.display = '';
     dot.setAttribute('cx', sx);
     dot.setAttribute('cy', sy);
+
+    if (isTourTarget) {
+      tourDescBox.style.display = '';
+      tourDescBox.textContent = TOUR_DESCS[d.key] || '';
+      tourDescBox.style.left = el.style.left;
+      tourDescBox.style.top = (ey + P.labelSize + 10) + 'px';
+      descShown = true;
+    }
   }
+
+  if (!descShown) tourDescBox.style.display = 'none';
 }
 
 /* ============================================================
@@ -644,6 +699,7 @@ function build() {
   };
 
   if (quiz.active) ensureAnchorVisible(quizCurrentDef());
+  if (tour.active) ensureAnchorVisible(tourCurrentDef());
 }
 
 /* ============================================================
@@ -801,6 +857,7 @@ function quizShowRound() {
 }
 
 function quizStart() {
+  if (tour.active) tourExit();
   quiz.active = true;
   quiz.prevLabelsOn = P.labelsOn;
   quiz.prevSpin = P.spin;
@@ -875,6 +932,103 @@ function updateQuizMarker() {
   quizDot.setAttribute('cx', sx);
   quizDot.setAttribute('cy', sy);
 }
+
+/* ============================================================
+   TOUR — walks through every organelle in turn: rotates the cell
+   to face it, dims whatever layer would otherwise block the view
+   (membrane / cytosol), and shows its name with the function text
+   underneath the on-screen label.
+   ============================================================ */
+const tourToggle  = document.getElementById('tourToggle');
+const tourPanel   = document.getElementById('tourPanel');
+const tourNameEl  = document.getElementById('tourName');
+const tourProgEl  = document.getElementById('tourProgress');
+const tourPrevBtn = document.getElementById('tourPrev');
+const tourNextBtn = document.getElementById('tourNext');
+const tourExitBtn = document.getElementById('tourExit');
+const tourDescBox = document.getElementById('tourDescBox');
+
+const TOUR_DESCS = {
+  membrane:  'Controls what enters and leaves the cell; encloses the cytoplasm.',
+  ribosomes: 'Site of protein synthesis; builds proteins by translating mRNA.',
+  mito:      'Site of aerobic respiration; produces ATP (energy) for the cell.',
+  cytoplasm: 'Jelly-like substance where metabolic reactions occur and organelles are suspended.',
+  nucleus:   "Contains the cell's DNA and controls the cell's activities."
+};
+
+// opacities that can occlude an organelle from the camera — dimmed while
+// touring and restored to whatever the user had set on exit
+const TOUR_DIM = { membraneOpacity: 0.06, cytosolOpacity: 0.03 };
+
+const tour = { active:false, pos:0, prevLabelsOn:1, prevSpin:0, prevDim:{} };
+
+function tourCurrentDef() { return labelDefs[tour.pos]; }
+
+function applyParams(vals) {
+  Object.assign(P, vals);
+  for (const k in vals) {
+    if (readouts[k]) { readouts[k].slider.value = P[k]; readouts[k].val.textContent = P[k]; }
+  }
+  build();
+  dumpValues();
+}
+
+function tourShowStep() {
+  const def = tourCurrentDef();
+  tourNameEl.textContent = def.text;
+  tourProgEl.textContent = (tour.pos + 1) + ' / ' + labelDefs.length;
+  tourPrevBtn.disabled = tour.pos === 0;
+  tourNextBtn.textContent = tour.pos === labelDefs.length - 1 ? 'Restart' : 'Next';
+  ensureAnchorVisible(def);
+}
+
+function tourStart() {
+  if (quiz.active) quizExit();
+  tour.active = true;
+  tour.prevLabelsOn = P.labelsOn;
+  tour.prevSpin = P.spin;
+  for (const k in TOUR_DIM) tour.prevDim[k] = P[k];
+  P.labelsOn = 0;   // only the touring organelle's label should show
+  P.spin = 0;       // hold still once turned to face it
+  applyParams(TOUR_DIM);
+
+  tour.pos = 0;
+  tourShowStep();
+
+  tourToggle.classList.add('active');
+  tourToggle.textContent = '🧭 Exit Tour';
+  tourPanel.hidden = false;
+}
+
+function tourExit() {
+  tour.active = false;
+  P.labelsOn = tour.prevLabelsOn;
+  P.spin = tour.prevSpin;
+  applyParams(tour.prevDim);
+  tourToggle.classList.remove('active');
+  tourToggle.textContent = '🧭 Start Tour';
+  tourPanel.hidden = true;
+  tourDescBox.style.display = 'none';
+}
+
+function tourNext() {
+  tour.pos = (tour.pos + 1) % labelDefs.length;
+  tourShowStep();
+}
+function tourPrev() {
+  tour.pos = (tour.pos - 1 + labelDefs.length) % labelDefs.length;
+  tourShowStep();
+}
+
+tourToggle.addEventListener('click', () => { tour.active ? tourExit() : tourStart(); });
+tourNextBtn.addEventListener('click', tourNext);
+tourPrevBtn.addEventListener('click', tourPrev);
+tourExitBtn.addEventListener('click', tourExit);
+
+// keep the tour UI from driving the orbit controls, same as the other panels
+tourPanel.addEventListener('mousedown', e => e.stopPropagation());
+tourPanel.addEventListener('wheel', e => e.stopPropagation());
+tourToggle.addEventListener('mousedown', e => e.stopPropagation());
 
 
 build();
