@@ -20,7 +20,8 @@ tools/                      one-off colour-migration scripts (animcolour.mjs, co
 
 ```bash
 cd 3dreactionscenes && node test-scenes.js      # ~14,500 checks
-cd particles        && node test-particles.js   # ~500 checks
+cd particles        && node test-particles.js   # ~3,200 checks
+cd particles        && node test-render.js      # runs the scenes headlessly
 cd reactionbuilder  && node test.js             # needs: npm install jsdom
 ```
 
@@ -30,10 +31,35 @@ captions out of order, camera tracks that do not cover their act, choreography
 that is causally impossible (something arriving before it departs), element
 colours drifting apart between scenes, and malformed camera vectors.
 
-They cannot tell you whether anything **looks** right — there is no screenshot
-harness in this repo, and none should be added. The user checks the visual
-result themselves; do not spawn a browser to render or screenshot a scene as
-part of your own workflow.
+### What each of them can and cannot see
+
+`test-scenes.js` and `test-particles.js` read the HTML as **text** and execute
+only the parts with no three.js in them. That is most of what is worth
+checking — and none of it touches the code that draws a frame.
+
+`test-render.js` covers that gap. It loads the real three.js the page loads
+(the URL is read out of the scene's own `<script src>`, so they cannot drift),
+stubs out `WebGLRenderer` and `PMREMGenerator` — the only two parts that need a
+graphics context — and drives every frame of the timeline through `frame()`
+with the clock scrubbed by hand. It is looking for **thrown errors and bad
+arithmetic**: a frame that throws, a camera or a mote or an instance matrix
+that goes non-finite, a NaN reaching the 2D canvas, a frame that draws nothing.
+
+It exists because of a real bug that everything else missed. A squiggle added
+to the melting scene's motes read a loop variable declared inside an `if/else`
+branch, so it was out of scope where it was used. `node --check` sees nothing
+— that is a runtime resolution error, not a syntax error — and the text-based
+suite never executes that function. In the browser `updateMotes()` threw on the
+**first** frame, before `sampleCam()` and `renderer.render()` could run, so
+nothing ever drew: a blank page with the captions still sitting on top of it.
+Add a scene to `test-render.js` when you add a scene.
+
+None of them can tell you whether anything **looks** right. `test-render.js`
+rasterises nothing and compares nothing against anything — a scene can pass
+every check in it and still be pointing the camera at the floor. There is no
+screenshot harness in this repo and none should be added: the user checks the
+visual result themselves. Do not spawn a browser to render or screenshot a
+scene as part of your own workflow.
 
 ---
 
