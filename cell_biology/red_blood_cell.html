@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Red Blood Cell — Oxygen Loading</title>
+<style>
+  html, body { margin:0; padding:0; overflow:hidden; background:#0d0708; height:100%; }
+  canvas { display:block; }
+  #info {
+    position:absolute; top:16px; left:16px; color:#d99a9a; font-family:'Courier New', monospace;
+    font-size:12px; letter-spacing:0.5px; line-height:1.6; pointer-events:none; user-select:none;
+    text-shadow:0 0 8px rgba(0,0,0,0.8);
+  }
+  #info b { color:#ffe0e0; }
+  #hud {
+    position:absolute; bottom:16px; left:16px; color:#6e4a4e; font-family:'Courier New', monospace;
+    font-size:11px; pointer-events:none; user-select:none;
+  }
+
+  /* ---- oxygen readout ---- */
+  #gauge {
+    position:absolute; bottom:16px; left:50%; transform:translateX(-50%);
+    width:420px; font-family:'Courier New', monospace; font-size:10px; color:#e08a8f;
+    letter-spacing:1px; text-align:center; pointer-events:none; user-select:none;
+  }
+  #gaugeBar {
+    margin-top:5px; height:5px; background:#241114; border:1px solid #45232a; border-radius:3px;
+    overflow:hidden;
+  }
+  #gaugeFill { height:100%; width:0%; background:linear-gradient(90deg,#6e1020,#ff4a5c); }
+
+  /* ---- tuning panel ---- */
+  #panel {
+    position:absolute; top:16px; right:16px; width:268px; max-height:calc(100vh - 32px);
+    overflow-y:auto; background:rgba(20,9,11,0.88); border:1px solid #3d1f25; border-radius:6px;
+    font-family:'Courier New', monospace; font-size:11px; color:#d99a9a; padding:10px 12px 12px;
+    backdrop-filter:blur(4px);
+  }
+  #panel h2 {
+    margin:0 0 8px; font-size:11px; letter-spacing:1.5px; color:#ffe0e0; font-weight:bold;
+    display:flex; justify-content:space-between; align-items:center; cursor:pointer;
+  }
+  #panel.collapsed .body { display:none; }
+  #panel .grp {
+    margin:12px 0 4px; color:#ff5a6e; letter-spacing:1px; border-bottom:1px solid #45232a; padding-bottom:3px;
+  }
+  #panel label { display:block; margin:7px 0 0; }
+  #panel .row { display:flex; justify-content:space-between; }
+  #panel .val { color:#ffe0e0; }
+  #panel input[type=range] {
+    width:100%; margin:2px 0 0; height:14px; accent-color:#e84a5c; background:transparent;
+  }
+  #panel .btns { display:flex; gap:6px; margin-top:12px; }
+  #panel button {
+    flex:1; background:#2b1216; color:#f0b8bd; border:1px solid #4a2830; border-radius:4px;
+    font-family:inherit; font-size:11px; padding:5px 0; cursor:pointer;
+  }
+  #panel button:hover { background:#3a181e; color:#fff0f0; }
+  #dump {
+    width:100%; box-sizing:border-box; margin-top:8px; height:96px; resize:vertical;
+    background:#170a0c; color:#d78a92; border:1px solid #45232a; border-radius:4px;
+    font-family:inherit; font-size:10px; padding:5px;
+  }
+</style>
+</head>
+<body>
+<div id="info"><b>RED BLOOD CELL (erythrocyte)</b><br>biconcave disc · no nucleus · packed with haemoglobin</div>
+<div id="hud">drag to orbit · scroll to zoom</div>
+
+<div id="gauge">
+  <span id="gaugeText">IN THE LUNGS</span>
+  <div id="gaugeBar"><div id="gaugeFill"></div></div>
+</div>
+
+<div id="panel">
+  <h2 id="panelHead"><span>PARAMETERS</span><span id="caret">[–]</span></h2>
+  <div class="body" id="panelBody"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="adaptations.js"></script>
+<script>
+/* ============================================================
+   TUNABLE PARAMETERS — every slider writes here and rebuilds
+   the cell. These values are the defaults.
+   ============================================================ */
+const P = {
+  seed:            3,
+
+  /* --- shape --- */
+  cellRadius:      4.0,
+  thickness:       1.0,    // overall thickness multiplier
+  dimple:          1.0,    // centre thickness multiplier — lower = deeper dimple
+  membraneOpacity: 0.55,
+  cutaway:         80,     // degrees of membrane removed to see inside
+
+  /* --- haemoglobin --- */
+  hbCount:         600,
+  hbSize:          0.09,
+
+  /* --- oxygen --- */
+  o2Count:         70,
+  o2Speed:         0.45,
+  o2Size:          0.09,
+
+  /* --- circulation --- */
+  autoCycle:       1,      // 0 hands control to the manual slider below
+  manual:          1.0,    // oxygen saturation when not cycling
+  cycleSeconds:    10,
+  flex:            0.10,   // squeeze wobble, as if passing through a capillary
+
+  /* --- view --- */
+  tilt:            32,     // degrees the disc is tipped toward the camera
+  spin:            0.25,
+  bgCells:         9
+};
+
+/* slider definitions: [key, label, min, max, step] — a 1-item row is a heading */
+const CONTROLS = [
+  ['SHAPE'],
+  ['cellRadius',      'radius',             2.0,  6.0,  0.05],
+  ['thickness',       'thickness',          0.3,  2.5,  0.05],
+  ['dimple',          'centre thickness',   0.0,  4.0,  0.05],
+  ['membraneOpacity', 'membrane opacity',   0.05, 1.00, 0.01],
+  ['cutaway',         'cutaway (deg)',      0,    180,  1   ],
+  ['HAEMOGLOBIN'],
+  ['hbCount',         'count',              0,    3000, 50  ],
+  ['hbSize',          'size',               0.02, 0.25, 0.005],
+  ['OXYGEN'],
+  ['o2Count',         'molecules',          0,    300,  5   ],
+  ['o2Speed',         'diffusion speed',    0.05, 2.0,  0.05],
+  ['o2Size',          'size',               0.03, 0.25, 0.005],
+  ['CIRCULATION'],
+  ['autoCycle',       'auto cycle (0/1)',   0,    1,    1   ],
+  ['manual',          'manual saturation',  0.0,  1.0,  0.01],
+  ['cycleSeconds',    'lungs→tissues (sec)',2,    30,   0.5 ],
+  ['flex',            'squeeze',            0.0,  0.4,  0.01],
+  ['VIEW'],
+  ['tilt',            'tilt (deg)',         0,    90,   1   ],
+  ['spin',            'spin',               0.0,  2.0,  0.05],
+  ['bgCells',         'background cells',   0,    60,   1   ],
+  ['MISC'],
+  ['seed',            'random seed',        1,    200,  1   ]
+];
+
+/* ============================================================
+   SEEDED RNG
+   ============================================================ */
+let _rngState = 1;
+function seedRng(s) { _rngState = (s * 1831565813 + 0x9E3779B9) >>> 0; }
+function rnd() {
+  _rngState = (_rngState + 0x6D2B79F5) >>> 0;
+  let t = _rngState;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+/* ============================================================
+   SCENE / CAMERA / RENDERER
+   ============================================================ */
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x0d0708, 0.018);
+
+const camera = new THREE.PerspectiveCamera(42, window.innerWidth/window.innerHeight, 0.1, 500);
+
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+document.body.appendChild(renderer.domElement);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+/* ============================================================
+   LIGHTING
+   ============================================================ */
+scene.add(new THREE.AmbientLight(0x4a2226, 0.6));
+const key = new THREE.DirectionalLight(0xffe2d8, 1.0);
+key.position.set(-6, 10, 10);
+scene.add(key);
+const rim = new THREE.PointLight(0xff6070, 0.7, 80);
+rim.position.set(12, -6, -10);
+scene.add(rim);
+const fill = new THREE.PointLight(0x6680ff, 0.25, 80);
+fill.position.set(-10, -8, 6);
+scene.add(fill);
+
+/* ============================================================
+   MATERIALS — colour follows oxygen saturation: dark maroon
+   deoxyhaemoglobin to bright scarlet oxyhaemoglobin
+   ============================================================ */
+const DEOXY = new THREE.Color(0x6a0f1e), OXY = new THREE.Color(0xe8283a);
+const HB_DEOXY = new THREE.Color(0x8a2a52), HB_OXY = new THREE.Color(0xff6a5a);
+
+const membraneMat = new THREE.MeshPhongMaterial({ color:0xc8202f, shininess:45, specular:0x663038, emissive:0x2a0508, emissiveIntensity:0.5, transparent:true, opacity:0.55, side:THREE.DoubleSide, depthWrite:false });
+const hbMat       = new THREE.MeshPhongMaterial({ color:0xff6a5a, shininess:40, specular:0x552222, emissive:0x3a0a10, emissiveIntensity:0.4 });
+const o2Mat       = new THREE.MeshPhongMaterial({ color:0x8fd8ff, shininess:80, specular:0xffffff, emissive:0x1f5a88, emissiveIntensity:0.7 });
+const bgMat       = new THREE.MeshPhongMaterial({ color:0xa01a28, shininess:30, specular:0x442022, emissive:0x1a0305, emissiveIntensity:0.4 });
+
+/* ============================================================
+   BICONCAVE PROFILE
+   Evans & Fung's fit to real erythrocytes: total thickness at
+   normalised radius ρ is  √(1−ρ²)·(c0 + c1ρ² + c2ρ⁴)  in units
+   of the cell radius — thin in the middle, a thick rounded rim.
+   ============================================================ */
+const C0 = 0.207, C1 = 2.003, C2 = -1.123;
+
+function halfThickness(rho) {
+  const r2 = rho * rho;
+  const t = Math.sqrt(Math.max(1 - r2, 0)) * (C0 * P.dimple + C1 * r2 + C2 * r2 * r2);
+  return Math.max(t, 0.01) * 0.5 * P.cellRadius * P.thickness;
+}
+
+function buildCellGeometry(phiStart, phiLength, segments = 64) {
+  const N = 40, pts = [];
+  // underside from the centre out to the rim, then the top back in;
+  // sin-spacing crowds samples at the rim, where the profile turns fastest
+  for (let i = 0; i <= N; i++) {
+    const rho = Math.sin(i / N * Math.PI / 2);
+    pts.push(new THREE.Vector2(Math.max(rho * P.cellRadius, 1e-4), -halfThickness(rho)));
+  }
+  for (let i = N - 1; i >= 0; i--) {
+    const rho = Math.sin(i / N * Math.PI / 2);
+    pts.push(new THREE.Vector2(Math.max(rho * P.cellRadius, 1e-4), halfThickness(rho)));
+  }
+  const geo = new THREE.LatheGeometry(pts, segments, phiStart, phiLength);
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/* ============================================================
+   BUILD / REBUILD
+   The cell lives in its own local frame: disc in XZ, thickness
+   along Y. LatheGeometry places a vertex at angle φ at
+   (r·sinφ, y, r·cosφ), and the haemoglobin uses the same
+   convention so it stays out of the cut-away wedge.
+   ============================================================ */
+let cell = new THREE.Group();
+let membrane = null, hbMesh = null, o2Mesh = null;
+let hbPositions = [], o2 = [];
+let bg = new THREE.Group();
+let bgCells = [];
+scene.add(cell, bg);
+
+const CUT_CENTRE = 0;       // the wedge is cut facing local +Z, toward the camera at rest
+
+function disposeGroup(obj) {
+  obj.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+}
+
+function surfacePoint(rho, ang, side) {
+  const r = rho * P.cellRadius;
+  return new THREE.Vector3(r * Math.sin(ang), side * halfThickness(rho), r * Math.cos(ang));
+}
+
+function build() {
+  scene.remove(cell, bg);
+  disposeGroup(cell); disposeGroup(bg);
+  seedRng(P.seed);
+
+  membraneMat.opacity = P.membraneOpacity;
+
+  cell = new THREE.Group();
+  const cut = THREE.MathUtils.degToRad(P.cutaway);
+  const phiStart = CUT_CENTRE + cut / 2;
+  const phiLength = Math.PI * 2 - cut;
+  membrane = new THREE.Mesh(buildCellGeometry(phiStart, phiLength), membraneMat);
+  cell.add(membrane);
+
+  // haemoglobin: uniform through the disc's volume, but only where the membrane still is
+  const dummy = new THREE.Object3D();
+  const hbN = Math.round(P.hbCount);
+  hbPositions = [];
+  hbMesh = null;
+  if (hbN > 0) {
+    hbMesh = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(P.hbSize, 0), hbMat, hbN);
+    for (let i = 0; i < hbN; i++) {
+      const rho = Math.sqrt(rnd()) * 0.94;
+      const ang = phiStart + rnd() * phiLength;
+      const p = surfacePoint(rho, ang, (rnd() * 2 - 1) * 0.78);
+      hbPositions.push(p);
+      dummy.position.copy(p);
+      dummy.rotation.set(rnd() * 6.28, rnd() * 6.28, 0);
+      dummy.updateMatrix();
+      hbMesh.setMatrixAt(i, dummy.matrix);
+    }
+    cell.add(hbMesh);
+  }
+
+  // oxygen: each molecule shuttles along a path between a point just off the
+  // membrane and a point out in the plasma; saturation decides which way
+  const oN = Math.round(P.o2Count);
+  o2 = [];
+  o2Mesh = null;
+  if (oN > 0) {
+    o2Mesh = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 10, 8), o2Mat, oN * 2);
+    for (let i = 0; i < oN; i++) {
+      const rho = Math.sqrt(rnd()) * 0.95, ang = rnd() * Math.PI * 2, side = rnd() < 0.5 ? -1 : 1;
+      const inner = surfacePoint(rho, ang, side * 1.05);
+      const out = new THREE.Vector3(Math.sin(ang) * rho * 0.8, side, Math.cos(ang) * rho * 0.8).normalize();
+      const outer = inner.clone().add(out.multiplyScalar(P.cellRadius * (0.8 + rnd() * 0.9)));
+      const axis = new THREE.Vector3(rnd() - 0.5, rnd() - 0.5, rnd() - 0.5).normalize();
+      o2.push({ inner, outer, axis, s: rnd(), speed: 0.7 + rnd() * 0.6 });
+    }
+    cell.add(o2Mesh);
+  }
+
+  // background cells: a slow stream of whole cells behind the main one
+  bg = new THREE.Group();
+  bgCells = [];
+  const bgN = Math.round(P.bgCells);
+  if (bgN > 0) {
+    const bgGeo = buildCellGeometry(0, Math.PI * 2, 32);
+    for (let i = 0; i < bgN; i++) {
+      const m = new THREE.Mesh(bgGeo, bgMat);
+      m.position.set((rnd() - 0.5) * 70, (rnd() - 0.5) * 30, -32 - rnd() * 30);
+      m.rotation.set(rnd() * 6.28, rnd() * 6.28, rnd() * 6.28);
+      m.userData.drift = 1.5 + rnd() * 1.5;
+      m.userData.tumble = (rnd() - 0.5) * 0.6;
+      bg.add(m);
+      bgCells.push(m);
+    }
+  }
+
+  scene.add(cell, bg);
+}
+
+/* ============================================================
+   CIRCULATION SIGNAL — first half of the cycle in the lungs
+   (oxygen diffuses in), second half in the tissues (out)
+   ============================================================ */
+let saturation = 1;
+
+function inLungs(t) {
+  if (P.autoCycle < 0.5) return null;
+  return ((t / P.cycleSeconds) % 1) < 0.5;
+}
+
+/* ============================================================
+   CONTROL PANEL
+   ============================================================ */
+const panelBody = document.getElementById('panelBody');
+const readouts = {};
+
+for (const c of CONTROLS) {
+  if (c.length === 1) {
+    const h = document.createElement('div');
+    h.className = 'grp';
+    h.textContent = c[0];
+    panelBody.appendChild(h);
+    continue;
+  }
+  const [k, label, min, max, step] = c;
+  const wrap = document.createElement('label');
+  const row = document.createElement('div');
+  row.className = 'row';
+  const name = document.createElement('span');
+  name.textContent = label;
+  const val = document.createElement('span');
+  val.className = 'val';
+  val.textContent = P[k];
+  row.appendChild(name); row.appendChild(val);
+
+  const slider = document.createElement('input');
+  slider.type = 'range';
+  slider.min = min; slider.max = max; slider.step = step; slider.value = P[k];
+  slider.addEventListener('input', () => {
+    P[k] = parseFloat(slider.value);
+    val.textContent = slider.value;
+    build();
+    dumpValues();
+  });
+
+  wrap.appendChild(row); wrap.appendChild(slider);
+  panelBody.appendChild(wrap);
+  readouts[k] = { slider, val };
+}
+
+const btns = document.createElement('div');
+btns.className = 'btns';
+const resetBtn = document.createElement('button');
+resetBtn.textContent = 'reset';
+const copyBtn = document.createElement('button');
+copyBtn.textContent = 'copy values';
+btns.appendChild(resetBtn); btns.appendChild(copyBtn);
+panelBody.appendChild(btns);
+
+const dump = document.createElement('textarea');
+dump.id = 'dump';
+dump.readOnly = true;
+panelBody.appendChild(dump);
+
+// only the values that differ from the defaults, so the paste-back stays short
+const DEFAULTS = JSON.parse(JSON.stringify(P));
+function dumpValues() {
+  const changed = {};
+  for (const k in P) if (P[k] !== DEFAULTS[k]) changed[k] = P[k];
+  dump.value = Object.keys(changed).length
+    ? JSON.stringify(changed, null, 1)
+    : '(all defaults)';
+}
+dumpValues();
+
+resetBtn.addEventListener('click', () => {
+  Object.assign(P, DEFAULTS);
+  for (const k in readouts) {
+    readouts[k].slider.value = P[k];
+    readouts[k].val.textContent = P[k];
+  }
+  build();
+  dumpValues();
+});
+
+copyBtn.addEventListener('click', () => {
+  dump.select();
+  if (navigator.clipboard) navigator.clipboard.writeText(dump.value).catch(() => {});
+  copyBtn.textContent = 'copied!';
+  setTimeout(() => copyBtn.textContent = 'copy values', 900);
+});
+
+const panel = document.getElementById('panel');
+document.getElementById('panelHead').addEventListener('click', () => {
+  panel.classList.toggle('collapsed');
+  document.getElementById('caret').textContent = panel.classList.contains('collapsed') ? '[+]' : '[–]';
+});
+// keep the panel from driving the orbit controls
+panel.addEventListener('mousedown', e => e.stopPropagation());
+panel.addEventListener('wheel', e => e.stopPropagation());
+
+build();
+
+/* ============================================================
+   CAMERA CONTROLS
+   ============================================================ */
+let isDragging = false, prevX = 0, prevY = 0;
+let theta = 0.35, phiAngle = 1.35, camDist = 17;
+
+function updateCamera() {
+  camera.position.set(
+    camDist * Math.sin(phiAngle) * Math.sin(theta),
+    camDist * Math.cos(phiAngle),
+    camDist * Math.sin(phiAngle) * Math.cos(theta)
+  );
+  camera.lookAt(0, 0, 0);
+}
+updateCamera();
+
+renderer.domElement.addEventListener('mousedown', (e) => { isDragging = true; prevX = e.clientX; prevY = e.clientY; });
+window.addEventListener('mouseup', () => isDragging = false);
+window.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  theta -= (e.clientX - prevX) * 0.006;
+  phiAngle = THREE.MathUtils.clamp(phiAngle - (e.clientY - prevY) * 0.006, 0.25, Math.PI - 0.25);
+  prevX = e.clientX; prevY = e.clientY;
+  updateCamera();
+});
+renderer.domElement.addEventListener('wheel', (e) => {
+  camDist = THREE.MathUtils.clamp(camDist + e.deltaY * 0.02, 6, 50);
+  updateCamera();
+});
+
+let lastTouch = null;
+renderer.domElement.addEventListener('touchstart', (e) => { lastTouch = e.touches[0]; });
+renderer.domElement.addEventListener('touchmove', (e) => {
+  if (!lastTouch) return;
+  const t = e.touches[0];
+  theta -= (t.clientX - lastTouch.clientX) * 0.006;
+  phiAngle = THREE.MathUtils.clamp(phiAngle - (t.clientY - lastTouch.clientY) * 0.006, 0.25, Math.PI - 0.25);
+  lastTouch = t;
+  updateCamera();
+}, { passive:true });
+renderer.domElement.addEventListener('touchend', () => lastTouch = null);
+
+/* ============================================================
+   RENDER LOOP
+   ============================================================ */
+const gaugeFill = document.getElementById('gaugeFill');
+const gaugeText = document.getElementById('gaugeText');
+const clock = new THREE.Clock();
+const dummy = new THREE.Object3D();
+let spinAngle = 0;
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const t = clock.elapsedTime;
+
+  // --- saturation: eases toward full in the lungs, toward low in the tissues ---
+  const lungs = inLungs(t);
+  const target = lungs === null ? P.manual : (lungs ? 1 : 0.25);
+  saturation += (target - saturation) * Math.min(dt * 1.2, 1);
+  const loading = lungs === null ? saturation < P.manual + 0.001 : lungs;
+
+  membraneMat.color.copy(DEOXY).lerp(OXY, saturation);
+  hbMat.color.copy(HB_DEOXY).lerp(HB_OXY, saturation);
+  bgMat.color.copy(DEOXY).lerp(OXY, saturation * 0.8);
+
+  // --- the cell: spin about its own axis, tip toward the viewer, squeeze ---
+  spinAngle += P.spin * dt * 0.3;
+  cell.rotation.set(THREE.MathUtils.degToRad(P.tilt), spinAngle, 0, 'XYZ');
+  const sq = Math.sin(t * 1.3) * P.flex;
+  cell.scale.set(1 + sq, 1 - sq * 0.5, 1 - sq);
+
+  // --- oxygen molecules ---
+  if (o2Mesh) {
+    const dir = loading ? -1 : 1;      // -1: plasma → cell, +1: cell → plasma
+    for (let i = 0; i < o2.length; i++) {
+      const m = o2[i];
+      m.s += dir * dt * P.o2Speed * m.speed * 0.5;
+      if (m.s < 0) m.s += 1;
+      if (m.s > 1) m.s -= 1;
+      const pos = m.inner.clone().lerp(m.outer, m.s);
+      // shrink to nothing at both ends so the wrap-around never pops
+      const fade = Math.min(m.s / 0.12, (1 - m.s) / 0.25, 1);
+      const r = P.o2Size * Math.max(fade, 0);
+      m.pos = pos;
+      m.fade = fade;
+      for (let a = 0; a < 2; a++) {
+        dummy.position.copy(pos).addScaledVector(m.axis, (a === 0 ? 1 : -1) * r * 0.8);
+        dummy.scale.setScalar(r);
+        dummy.updateMatrix();
+        o2Mesh.setMatrixAt(i * 2 + a, dummy.matrix);
+      }
+    }
+    o2Mesh.instanceMatrix.needsUpdate = true;
+  }
+
+  // --- background stream ---
+  for (const b of bgCells) {
+    b.position.x += b.userData.drift * dt;
+    if (b.position.x > 40) b.position.x -= 80;
+    b.rotation.y += b.userData.tumble * dt;
+  }
+
+  gaugeFill.style.width = (saturation * 100).toFixed(1) + '%';
+  gaugeText.textContent = (lungs === null ? 'MANUAL' : lungs ? 'IN THE LUNGS · O₂ DIFFUSING IN' : 'IN THE TISSUES · O₂ DIFFUSING OUT')
+    + ' · ' + (saturation * 100).toFixed(0) + '% SATURATED';
+
+  renderer.render(scene, camera);
+}
+animate();
+
+/* ============================================================
+   ADAPTATIONS — anchors sit in the cell's local frame and are
+   carried into world space by its tilt, spin and squeeze
+   ============================================================ */
+const cellPoint = v => cell.localToWorld(v.clone());
+// the membrane side facing away from the cutaway, so the line meets real membrane
+const FACE = Math.PI;
+
+CellAdaptations.init({
+  camera,
+  heading: 'RED BLOOD CELL ADAPTATIONS',
+  theme: { accent:'#ff5a6e', text:'#d99a9a', bright:'#ffe0e0', bg:'rgba(20,9,11,0.9)', border:'#4a2830' },
+  items: [
+    {
+      title: 'Biconcave disc shape',
+      text: 'The cell is <b>dented inwards on both sides</b>. This gives it a <b>large surface area to volume ratio</b>, so oxygen can <b>diffuse in and out quickly</b>.',
+      anchor: () => cellPoint(surfacePoint(0.72, FACE, 1))
+    },
+    {
+      title: 'No nucleus',
+      text: 'Mature red blood cells have <b>no nucleus</b>. This leaves <b>more space for haemoglobin</b>, so each cell can carry more oxygen. Look through the cutaway: the centre is empty of a nucleus.',
+      anchor: () => cellPoint(new THREE.Vector3(0, 0, 0))
+    },
+    {
+      title: 'Packed with haemoglobin',
+      text: 'The cytoplasm is full of <b>haemoglobin</b>, a red protein that <b>binds to oxygen</b> in the lungs to form <b>oxyhaemoglobin</b>, then releases it in the tissues. Notice the cell turn <b>bright red</b> when oxygenated.',
+      anchor: () => {
+        if (!hbPositions.length) return null;
+        // the particle nearest the cut face, so the line lands on one you can see
+        let best = hbPositions[0], bestD = Infinity;
+        const aim = surfacePoint(0.6, CUT_CENTRE, 0);
+        for (let i = 0; i < hbPositions.length; i += 7) {
+          const d = hbPositions[i].distanceToSquared(aim);
+          if (d < bestD) { bestD = d; best = hbPositions[i]; }
+        }
+        return cellPoint(best);
+      }
+    },
+    {
+      title: 'Thin membrane, short diffusion distance',
+      text: 'The cell is <b>very thin</b>, especially in the middle, so oxygen has only a <b>short distance to diffuse</b> to reach every haemoglobin molecule. Watch the blue O₂ molecules move in (lungs) and out (tissues).',
+      // the thin centre, on the cut edge where the membrane is seen in section
+      anchor: () => cellPoint(surfacePoint(0.2, CUT_CENTRE + THREE.MathUtils.degToRad(P.cutaway) / 2, 1))
+    },
+    {
+      title: 'Small and flexible',
+      text: 'Red blood cells are <b>small</b> (about 7&nbsp;µm across) and <b>flexible</b>, so they can <b>squeeze through narrow capillaries</b> and get close to body cells to deliver oxygen. Millions fit in a drop of blood.',
+      anchor: () => cellPoint(surfacePoint(1, FACE + Math.PI / 2, 0))
+    }
+  ]
+});
+</script>
+</body>
+</html>
