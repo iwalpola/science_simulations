@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Diamond & Graphite — Crystal Structures with Electrons</title>
+<style>
+  html, body { margin:0; padding:0; overflow:hidden; background:#0b0e14; font-family: 'Segoe UI', Arial, sans-serif; color:#e8ecf1; }
+  #canvas-holder { position:absolute; inset:0; }
+  canvas { display:block; }
+
+  #topbar {
+    position:absolute; top:0; left:0; right:0;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 20px; z-index:10;
+    background:linear-gradient(to bottom, rgba(10,12,18,0.85), rgba(10,12,18,0));
+    pointer-events:none;
+  }
+  #topbar * { pointer-events:auto; }
+  #title { font-size:18px; font-weight:600; letter-spacing:0.3px; }
+  #title span { color:#8fb8ff; }
+
+  #tabs { display:flex; gap:8px; }
+  .tab-btn {
+    background:#1a2030; border:1px solid #2c3652; color:#c7d0e0;
+    padding:9px 18px; border-radius:8px; cursor:pointer; font-size:14px;
+    transition: all .15s ease; font-weight:500;
+  }
+  .tab-btn:hover { background:#232b40; border-color:#3d4a6b; }
+  .tab-btn.active { background:#3a5fd9; border-color:#3a5fd9; color:#fff; }
+
+  #panel {
+    position:absolute; bottom:18px; left:18px; z-index:10;
+    background:rgba(15,18,28,0.88); border:1px solid #263049;
+    border-radius:12px; padding:14px 18px; max-width:320px;
+    font-size:13px; line-height:1.55; backdrop-filter: blur(6px);
+  }
+  #panel h3 { margin:0 0 6px 0; font-size:14px; color:#9fc2ff; }
+  #panel .legend-row { display:flex; align-items:center; gap:8px; margin-top:8px; }
+  .dot { width:11px; height:11px; border-radius:50%; flex:0 0 auto; box-shadow:0 0 6px currentColor; }
+
+  #stats {
+    position:absolute; top:70px; right:18px; z-index:10;
+    background:rgba(15,18,28,0.8); border:1px solid #263049;
+    border-radius:10px; padding:10px 14px; font-size:12px; color:#9aa7c2;
+    text-align:right; line-height:1.6;
+  }
+  #stats b { color:#e8ecf1; }
+
+  #hint {
+    position:absolute; bottom:18px; right:18px; z-index:10;
+    font-size:11.5px; color:#6b7794; background:rgba(15,18,28,0.7);
+    padding:8px 12px; border-radius:8px; border:1px solid #202840;
+  }
+</style>
+</head>
+<body>
+
+<div id="canvas-holder"></div>
+
+<div id="topbar">
+  <div id="title">Crystal Structures &mdash; <span id="modeLabel">Diamond</span></div>
+  <div id="tabs">
+    <button class="tab-btn active" id="btnDiamond">Diamond (sp&sup3;)</button>
+    <button class="tab-btn" id="btnGraphite">Graphite (sp&sup2;)</button>
+  </div>
+</div>
+
+<div id="panel">
+  <h3 id="panelTitle">Diamond cubic lattice</h3>
+  <div id="panelText">Every carbon is covalently bonded to four neighbours in a tetrahedral arrangement (sp&sup3; hybridisation). All four valence electrons per atom are locked into &sigma;-bonds.</div>
+  <div class="legend-row"><div class="dot" style="color:#66e0ff;background:#66e0ff;"></div><span>Bonding (&sigma;) electron pair &mdash; localized, tightly bound</span></div>
+  <div class="legend-row" id="freeRow" style="display:none;"><div class="dot" style="color:#ffcf4d;background:#ffcf4d;"></div><span>Delocalized &pi; electron &mdash; free to roam the sheet (metallic conduction in-plane)</span></div>
+</div>
+
+<div id="stats">
+  <div id="statLine1"><b>a</b> ≈ 0.357 nm (cubic cell)</div>
+  <div id="statLine2">nearest-neighbour bond ≈ 0.154 nm</div>
+</div>
+
+<div id="hint">drag to rotate &middot; scroll to zoom</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ---------------------------------------------------------------------
+   SCENE SETUP
+--------------------------------------------------------------------- */
+const holder = document.getElementById('canvas-holder');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b0e14);
+scene.fog = new THREE.FogExp2(0x0b0e14, 0.018);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 200);
+camera.position.set(9, 7, 11);
+
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+holder.appendChild(renderer.domElement);
+
+scene.add(new THREE.AmbientLight(0x8899bb, 0.55));
+const key = new THREE.DirectionalLight(0xffffff, 0.9);
+key.position.set(8,12,6);
+scene.add(key);
+const rim = new THREE.DirectionalLight(0x6f9bff, 0.5);
+rim.position.set(-8,-4,-8);
+scene.add(rim);
+
+/* simple orbit-style drag controls (no external deps) */
+let isDown=false, lastX=0, lastY=0;
+let theta = 0.7, phi = 1.0, radius = 15.5, target = new THREE.Vector3(0,0,0);
+function updateCamera(){
+  camera.position.x = target.x + radius*Math.sin(phi)*Math.sin(theta);
+  camera.position.y = target.y + radius*Math.cos(phi);
+  camera.position.z = target.z + radius*Math.sin(phi)*Math.cos(theta);
+  camera.lookAt(target);
+}
+updateCamera();
+renderer.domElement.addEventListener('pointerdown', e=>{isDown=true; lastX=e.clientX; lastY=e.clientY;});
+window.addEventListener('pointerup', ()=>isDown=false);
+window.addEventListener('pointermove', e=>{
+  if(!isDown) return;
+  const dx = e.clientX-lastX, dy = e.clientY-lastY;
+  theta -= dx*0.006;
+  phi -= dy*0.006;
+  phi = Math.max(0.25, Math.min(Math.PI-0.25, phi));
+  lastX=e.clientX; lastY=e.clientY;
+  updateCamera();
+});
+renderer.domElement.addEventListener('wheel', e=>{
+  radius += e.deltaY*0.01;
+  radius = Math.max(5, Math.min(40, radius));
+  updateCamera();
+}, {passive:true});
+window.addEventListener('resize', ()=>{
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+/* ---------------------------------------------------------------------
+   SHARED MATERIALS / GEOMETRIES
+--------------------------------------------------------------------- */
+const atomGeo = new THREE.SphereGeometry(0.16, 20, 16);
+const atomMat = new THREE.MeshPhongMaterial({ color:0x9fb0c8, shininess:70, specular:0x444444 });
+
+const bondMat = new THREE.MeshPhongMaterial({ color:0x556077, shininess:20 });
+
+function makeBond(p1, p2, radius=0.045){
+  const dir = new THREE.Vector3().subVectors(p2,p1);
+  const len = dir.length();
+  const geo = new THREE.CylinderGeometry(radius, radius, len, 8);
+  const mesh = new THREE.Mesh(geo, bondMat);
+  const mid = new THREE.Vector3().addVectors(p1,p2).multiplyScalar(0.5);
+  mesh.position.copy(mid);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir.clone().normalize());
+  return mesh;
+}
+
+function glowSprite(color, size){
+  const c = document.createElement('canvas'); c.width=c.height=64;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(32,32,0,32,32,32);
+  g.addColorStop(0, color); g.addColorStop(0.4, color); g.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle = g; ctx.fillRect(0,0,64,64);
+  const tex = new THREE.CanvasTexture(c);
+  const mat = new THREE.SpriteMaterial({ map:tex, transparent:true, blending:THREE.AdditiveBlending, depthWrite:false });
+  const spr = new THREE.Sprite(mat);
+  spr.scale.set(size,size,1);
+  return spr;
+}
+
+function textSprite(text, color, fontSize=42){
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.font = `600 ${fontSize}px Segoe UI, Arial`;
+  ctx.fillStyle = color;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(text, 256, 64);
+  const tex = new THREE.CanvasTexture(c);
+  const mat = new THREE.SpriteMaterial({ map:tex, transparent:true, depthWrite:false });
+  const spr = new THREE.Sprite(mat);
+  spr.scale.set(3.4, 0.85, 1);
+  return spr;
+}
+
+/* ---------------------------------------------------------------------
+   DIAMOND STRUCTURE  (diamond-cubic lattice, 2x2x2 conventional cells)
+--------------------------------------------------------------------- */
+const diamondGroup = new THREE.Group();
+const diamondElectrons = []; // {sprite, base:Vector3, phase}
+
+(function buildDiamond(){
+  const a = 2.1; // scaled cubic cell edge
+  const basis = [
+    [0,0,0],[0,0.5,0.5],[0.5,0,0.5],[0.5,0.5,0],
+    [0.25,0.25,0.25],[0.25,0.75,0.75],[0.75,0.25,0.75],[0.75,0.75,0.25]
+  ];
+  const positions = [];
+  for(let i=0;i<2;i++) for(let j=0;j<2;j++) for(let k=0;k<2;k++){
+    basis.forEach(([bx,by,bz])=>{
+      positions.push(new THREE.Vector3(
+        (bx+i-1)*a, (by+j-1)*a, (bz+k-1)*a
+      ));
+    });
+  }
+  // dedupe (shared cell faces would repeat if we extended, here 2x2 basis already unique)
+  const atoms = positions;
+  atoms.forEach(p=>{
+    const s = new THREE.Mesh(atomGeo, atomMat);
+    s.position.copy(p);
+    diamondGroup.add(s);
+  });
+
+  // bonds: nearest neighbour distance = a*sqrt(3)/4
+  const nn = a*Math.sqrt(3)/4;
+  const bonds = [];
+  for(let i=0;i<atoms.length;i++){
+    for(let j=i+1;j<atoms.length;j++){
+      const d = atoms[i].distanceTo(atoms[j]);
+      if(Math.abs(d-nn) < 0.05){
+        diamondGroup.add(makeBond(atoms[i], atoms[j]));
+        bonds.push([atoms[i], atoms[j]]);
+      }
+    }
+  }
+
+  // localized bonding electron pairs at bond midpoints (two electrons per bond, slight jitter)
+  bonds.forEach(([p1,p2])=>{
+    const mid = new THREE.Vector3().addVectors(p1,p2).multiplyScalar(0.5);
+    for(let e=0;e<2;e++){
+      const spr = glowSprite('rgba(102,224,255,0.95)', 0.34);
+      spr.position.copy(mid);
+      diamondGroup.add(spr);
+      diamondElectrons.push({ sprite:spr, base:mid.clone(), phase:Math.random()*Math.PI*2, dir:p2.clone().sub(p1).normalize(), offset:(e===0?1:-1)*0.06 });
+    }
+  });
+
+  scene.add(diamondGroup);
+})();
+
+/* ---------------------------------------------------------------------
+   GRAPHITE STRUCTURE (stacked honeycomb sheets, Bernal AB stacking)
+--------------------------------------------------------------------- */
+const graphiteGroup = new THREE.Group();
+graphiteGroup.visible = false;
+const graphiteElectrons = []; // {sprite, cx,cy, z, r, speed, phase}
+const graphiteLayerBounds = []; // {z, minX,maxX,minY,maxY}
+
+(function buildGraphite(){
+  const d = 1.05;              // C-C bond length (scaled)
+  const interlayer = 1.85;     // interlayer spacing (scaled, ~ real 0.335 nm)
+  const nLayers = 4;
+  const range = 3;             // hex rings extent
+
+  const a1 = new THREE.Vector2(1.5*d, Math.sqrt(3)/2*d);
+  const a2 = new THREE.Vector2(1.5*d, -Math.sqrt(3)/2*d);
+
+  for(let L=0; L<nLayers; L++){
+    const z = (L - (nLayers-1)/2) * interlayer;
+    const shiftAB = (L%2===1) ? new THREE.Vector2(d,0) : new THREE.Vector2(0,0); // Bernal AB stacking offset
+    const atomsA = [], atomsB = [];
+    for(let m=-range;m<=range;m++){
+      for(let n=-range;n<=range;n++){
+        const base = new THREE.Vector2().addScaledVector(a1,m).addScaledVector(a2,n).add(shiftAB);
+        if(Math.abs(base.x) > range*2.6 || Math.abs(base.y) > range*2.2) continue;
+        atomsA.push(base.clone());
+        atomsB.push(base.clone().add(new THREE.Vector2(d,0)));
+      }
+    }
+    const all = atomsA.concat(atomsB);
+    const seen = new Set();
+    const atoms3 = [];
+    all.forEach(p=>{
+      const key = p.x.toFixed(2)+','+p.y.toFixed(2);
+      if(seen.has(key)) return;
+      seen.add(key);
+      atoms3.push(new THREE.Vector3(p.x, z, p.y));
+    });
+
+    atoms3.forEach(p=>{
+      const s = new THREE.Mesh(atomGeo, atomMat);
+      s.position.copy(p);
+      graphiteGroup.add(s);
+    });
+
+    // bonds: connect nearest neighbours at distance d
+    for(let i=0;i<atoms3.length;i++){
+      for(let j=i+1;j<atoms3.length;j++){
+        if(atoms3[i].distanceTo(atoms3[j]) < d*1.06){
+          graphiteGroup.add(makeBond(atoms3[i], atoms3[j], 0.038));
+        }
+      }
+    }
+
+    // translucent sheet hinting the delocalized pi-cloud
+    const sheetGeo = new THREE.CircleGeometry(range*2.4, 24);
+    const sheetMat = new THREE.MeshBasicMaterial({ color:0xffcf4d, transparent:true, opacity:0.05, side:THREE.DoubleSide });
+    const sheet = new THREE.Mesh(sheetGeo, sheetMat);
+    sheet.rotation.x = Math.PI/2;
+    sheet.position.set(0, z, 0);
+    graphiteGroup.add(sheet);
+
+    graphiteLayerBounds.push({ z, ext: range*2.2 });
+
+    // free / delocalized pi electrons roaming this layer
+    const nFree = 26;
+    for(let f=0; f<nFree; f++){
+      const spr = glowSprite('rgba(255,207,77,0.95)', 0.3);
+      graphiteGroup.add(spr);
+      graphiteElectrons.push({
+        sprite: spr,
+        cx: (Math.random()-0.5)*range*4,
+        cy: (Math.random()-0.5)*range*3.4,
+        z: z,
+        r: 0.6 + Math.random()*1.4,
+        speed: 0.4 + Math.random()*0.6,
+        phase: Math.random()*Math.PI*2,
+        ext: range*2.2
+      });
+    }
+  }
+
+  // axes like the reference figure (X, Y, Z) + dimension labels
+  const axisMat = c => new THREE.LineBasicMaterial({ color:c });
+  function axisLine(from,to,color){
+    const geo = new THREE.BufferGeometry().setFromPoints([from,to]);
+    return new THREE.Line(geo, axisMat(color));
+  }
+  const zTop = (nLayers-1)/2*interlayer + 1.2;
+  graphiteGroup.add(axisLine(new THREE.Vector3(0,-zTop-0.5,0), new THREE.Vector3(0,zTop,0), 0x8fb8ff));
+  graphiteGroup.add(axisLine(new THREE.Vector3(0,-zTop-0.5,0), new THREE.Vector3(range*3.2,-zTop-0.5,0), 0x8fb8ff));
+  graphiteGroup.add(axisLine(new THREE.Vector3(0,-zTop-0.5,0), new THREE.Vector3(0,-zTop-0.5,range*2.6), 0x8fb8ff));
+
+  const zLabel = textSprite('Z','#8fb8ff'); zLabel.position.set(0, zTop+0.5, 0); graphiteGroup.add(zLabel);
+  const yLabel = textSprite('Y','#8fb8ff'); yLabel.position.set(range*3.6, -zTop-0.5, 0); graphiteGroup.add(yLabel);
+  const xLabel = textSprite('X','#8fb8ff'); xLabel.position.set(0, -zTop-0.5, range*3.0); graphiteGroup.add(xLabel);
+
+  const c0Label = textSprite('c\u2080 = 0.671 nm', '#c7d0e0', 30);
+  c0Label.position.set(-range*3.0, 0, 0);
+  c0Label.scale.set(3.0,0.75,1);
+  graphiteGroup.add(c0Label);
+
+  const aLabel = textSprite('a = 0.246 nm', '#c7d0e0', 30);
+  aLabel.position.set(range*1.6, zTop*0.55, -range*1.2);
+  aLabel.scale.set(3.0,0.75,1);
+  graphiteGroup.add(aLabel);
+
+  scene.add(graphiteGroup);
+})();
+
+/* ---------------------------------------------------------------------
+   UI WIRING
+--------------------------------------------------------------------- */
+const btnDiamond = document.getElementById('btnDiamond');
+const btnGraphite = document.getElementById('btnGraphite');
+const modeLabel = document.getElementById('modeLabel');
+const panelTitle = document.getElementById('panelTitle');
+const panelText = document.getElementById('panelText');
+const freeRow = document.getElementById('freeRow');
+const statLine1 = document.getElementById('statLine1');
+const statLine2 = document.getElementById('statLine2');
+
+function setMode(mode){
+  const isDiamond = mode==='diamond';
+  diamondGroup.visible = isDiamond;
+  graphiteGroup.visible = !isDiamond;
+  btnDiamond.classList.toggle('active', isDiamond);
+  btnGraphite.classList.toggle('active', !isDiamond);
+  modeLabel.textContent = isDiamond ? 'Diamond' : 'Graphite';
+  if(isDiamond){
+    panelTitle.textContent = 'Diamond cubic lattice';
+    panelText.innerHTML = 'Every carbon is covalently bonded to four neighbours in a tetrahedral arrangement (sp&sup3; hybridisation). All four valence electrons per atom are locked into &sigma;-bonds &mdash; there are no free carriers, which is why diamond is an electrical insulator.';
+    freeRow.style.display = 'none';
+    statLine1.innerHTML = '<b>a</b> ≈ 0.357 nm (cubic cell edge)';
+    statLine2.innerHTML = 'nearest-neighbour bond ≈ 0.154 nm';
+    radius = 15.5;
+  } else {
+    panelTitle.textContent = 'Graphite (hexagonal, Bernal ABAB stacking)';
+    panelText.innerHTML = 'Each carbon bonds to three neighbours in a flat honeycomb sheet (sp&sup2;). The 4th valence electron per atom sits in a p<sub>z</sub> orbital that delocalizes across the whole sheet &mdash; free to roam within a layer, giving graphite its in-plane electrical conductivity, while layers are held together only by weak van der Waals forces.';
+    freeRow.style.display = 'flex';
+    statLine1.innerHTML = '<b>a</b> ≈ 0.246 nm (in-plane lattice const.)';
+    statLine2.innerHTML = 'c\u2080 ≈ 0.671 nm (stacking repeat)';
+    radius = 20;
+  }
+  updateCamera();
+}
+btnDiamond.addEventListener('click', ()=>setMode('diamond'));
+btnGraphite.addEventListener('click', ()=>setMode('graphite'));
+
+/* ---------------------------------------------------------------------
+   ANIMATION LOOP
+--------------------------------------------------------------------- */
+const clock = new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+
+  if(diamondGroup.visible){
+    diamondElectrons.forEach(el=>{
+      // localized: small oscillation along the bond axis only
+      const wobble = Math.sin(t*2.2 + el.phase)*0.045;
+      el.sprite.position.copy(el.base)
+        .addScaledVector(el.dir, el.offset)
+        .addScaledVector(el.dir, wobble);
+    });
+    diamondGroup.rotation.y += 0.0022;
+  }
+
+  if(graphiteGroup.visible){
+    graphiteElectrons.forEach(el=>{
+      // free: roams across the whole layer (bounded random-ish drift)
+      const x = el.cx + Math.sin(t*el.speed + el.phase)*el.ext*0.9;
+      const y = el.cy + Math.cos(t*el.speed*0.8 + el.phase*1.3)*el.ext*0.75;
+      el.sprite.position.set(x, el.z + Math.sin(t*3+el.phase)*0.06, y);
+    });
+    graphiteGroup.rotation.y += 0.0016;
+  }
+
+  renderer.render(scene, camera);
+}
+animate();
+</script>
+</body>
+</html>
