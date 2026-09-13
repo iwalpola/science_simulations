@@ -78,6 +78,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="adaptations.js"></script>
 <script>
 /* ============================================================
    TUNABLE PARAMETERS — every slider writes here and rebuilds
@@ -762,6 +763,58 @@ function animate() {
   renderer.render(scene, camera);
 }
 animate();
+
+/* ============================================================
+   ADAPTATIONS — anchors sit in a fibre's local frame (x along
+   the fibre, y/z across it) and follow it as it contracts
+   ============================================================ */
+const outerFibre = () => fibres[fibres.length - 1];
+function fibrePoint(f, along, across) {
+  return f.group.localToWorld(new THREE.Vector3(
+    along * f.length * f.lastShorten, across * f.radius * f.lastGirth, 0));
+}
+
+CellAdaptations.init({
+  camera,
+  heading: 'MUSCLE CELL ADAPTATIONS',
+  theme: { accent:'#ff9e6b', text:'#d9a98c', bright:'#ffe4d0', bg:'rgba(20,12,8,0.9)', border:'#4a3024' },
+  items: [
+    {
+      title: 'Many mitochondria',
+      text: 'Muscle cells are packed with mitochondria. These carry out <b>aerobic respiration</b> to transfer the large amount of <b>energy</b> needed for <b>contraction</b>.',
+      anchor: () => {
+        const f = outerFibre();
+        if (!f || !f.mitos.length) return null;
+        const m = f.mitos.reduce((a, b) => (b.userData.rad > a.userData.rad ? b : a));
+        return m.getWorldPosition(new THREE.Vector3());
+      }
+    },
+    {
+      title: 'Protein filaments',
+      text: 'The stripes are made by <b>protein filaments</b> (actin and myosin). Energy from respiration lets these filaments <b>slide over each other</b>, which makes the cell <b>shorten</b>.',
+      anchor: () => outerFibre() ? fibrePoint(outerFibre(), 0.2, 1) : null
+    },
+    {
+      title: 'Cells contract together',
+      text: 'Muscle cells can <b>contract and relax</b>. Many cells are arranged in <b>bundles</b> so they pull together, shortening the whole muscle to <b>move a bone</b> or organ.',
+      anchor: () => fibres[0] ? fibrePoint(fibres[0], 0.5, 0) : null
+    },
+    {
+      title: 'Long fibres with many nuclei',
+      text: 'Skeletal muscle cells <b>fuse together</b> into long fibres with <b>many nuclei</b>. A long cell can shorten further and contract as one unit.',
+      anchor: () => {
+        const f = outerFibre();
+        const n = f && f.nuclei[Math.floor(f.nuclei.length / 2)];
+        return n ? n.getWorldPosition(new THREE.Vector3()) : null;
+      }
+    },
+    {
+      title: 'Stores of glycogen',
+      text: 'Muscle cells <b>store glycogen</b>, which can be quickly broken down into <b>glucose</b> for respiration when the muscle needs extra energy during exercise.',
+      anchor: null
+    }
+  ]
+});
 </script>
 </body>
 </html>

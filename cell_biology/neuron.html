@@ -61,6 +61,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="adaptations.js"></script>
 <script>
 /* ============================================================
    TUNABLE PARAMETERS — every slider writes into this object and
@@ -817,6 +818,61 @@ function animate() {
   renderer.render(scene, camera);
 }
 animate();
+
+/* ============================================================
+   ADAPTATIONS — anchors are looked up fresh every frame, since
+   a slider change rebuilds the whole neuron
+   ============================================================ */
+function nearestConductive(u, base) {
+  let best = null, bestD = Infinity;
+  for (const e of conduction) {
+    if (base && e.base !== base) continue;
+    const d = Math.abs(e.u - u);
+    if (d < bestD) { bestD = d; best = e; }
+  }
+  return best ? best.mesh.getWorldPosition(new THREE.Vector3()) : null;
+}
+
+CellAdaptations.init({
+  camera,
+  heading: 'NERVE CELL ADAPTATIONS',
+  theme: { accent:'#f2b01e', text:'#8fa3b0', bright:'#d7e6ee', bg:'rgba(10,14,20,0.9)', border:'#2a3f52' },
+  items: [
+    {
+      title: 'Long axon',
+      text: 'The axon is a <b>long, thin extension</b> of the cell. It carries <b>electrical impulses</b> away from the cell body over long distances, e.g. from the spinal cord to the muscles in your foot.',
+      anchor: () => nearestConductive(P.axonHillock + P.axonSegments * P.axonSegLength * 0.55, axonMat)
+    },
+    {
+      title: 'Dendrites',
+      text: 'Many <b>branched dendrites</b> give a large surface area to <b>connect with lots of other nerve cells</b>. They receive impulses and carry them towards the cell body.',
+      anchor: () => nearestConductive(uMin * 0.45, dendriteMat)
+    },
+    {
+      title: 'Myelin sheath',
+      text: 'A fatty myelin sheath wraps the axon in segments. It <b>insulates</b> the axon and makes the impulse <b>jump between the gaps</b>, so it travels <b>much faster</b>. Watch the pulse speed up once it reaches the gold sheath.',
+      anchor: () => {
+        const sheaths = [];
+        if (neuron.children[2]) neuron.children[2].traverse(o => { if (o.material === myelinMat) sheaths.push(o); });
+        const m = sheaths[Math.floor(sheaths.length * 0.3)];
+        return m ? m.getWorldPosition(new THREE.Vector3()) : null;
+      }
+    },
+    {
+      title: 'Nerve endings (axon terminals)',
+      text: 'At the end of the axon are branched <b>nerve endings</b>. They form <b>synapses</b> with other cells and release <b>chemical neurotransmitters</b> to pass the impulse on to the next nerve, muscle or gland.',
+      anchor: () => nearestConductive(uMax, boutonMat)
+    },
+    {
+      title: 'Cell body with nucleus',
+      text: 'The cell body contains the <b>nucleus</b>, which controls the cell, and many <b>mitochondria</b> that release the energy needed to make neurotransmitters and keep impulses moving.',
+      anchor: () => {
+        const nuc = neuron.children[0] && neuron.children[0].children[0];
+        return nuc ? nuc.getWorldPosition(new THREE.Vector3()) : null;
+      }
+    }
+  ]
+});
 </script>
 </body>
 </html>

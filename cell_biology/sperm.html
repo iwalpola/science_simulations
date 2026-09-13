@@ -61,6 +61,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="adaptations.js"></script>
 <script>
 /* ============================================================
    TUNABLE PARAMETERS — every slider writes here and rebuilds
@@ -676,6 +677,47 @@ function animate() {
   renderer.render(scene, camera);
 }
 animate();
+
+/* ============================================================
+   ADAPTATIONS — anchors are built in the cell's local frame
+   (+Z forward) and carried into world space by its group
+   ============================================================ */
+const spermPoint = (x, y, z) => cell.group.localToWorld(new THREE.Vector3(x, y, z));
+CellAdaptations.init({
+  camera,
+  heading: 'SPERM CELL ADAPTATIONS',
+  theme: { accent:'#e08aa6', text:'#b9a8c9', bright:'#f0e6f8', bg:'rgba(14,10,18,0.9)', border:'#3d2a4a' },
+  items: [
+    {
+      title: 'Acrosome containing enzymes',
+      text: 'The cap at the tip of the head stores <b>digestive enzymes</b>. When the sperm reaches the egg, these are released to <b>break down the outer layers of the egg</b> so the sperm can get inside.',
+      anchor: () => spermPoint(0, 0, P.cellScale * (0.35 + P.headLength * (P.nucleusScale + P.acroThickness)))
+    },
+    {
+      title: 'Haploid nucleus',
+      text: 'The nucleus contains the <b>genetic information</b> from the father, but only <b>half the normal number of chromosomes</b> (23 in humans). When it fuses with the egg nucleus the full number is restored.',
+      anchor: () => spermPoint(0, 0, P.cellScale * 0.35)
+    },
+    {
+      title: 'Midpiece packed with mitochondria',
+      text: 'The mitochondria spiral around the midpiece. They carry out <b>aerobic respiration</b> to transfer the <b>energy</b> the tail needs to keep swimming all the way to the egg.',
+      anchor: () => spermPoint(P.mitoRadius * P.cellScale, 0, P.cellScale * (P.midStart - P.midLength / 2))
+    },
+    {
+      title: 'Long tail (flagellum)',
+      text: 'The tail <b>whips from side to side</b>, pushing the sperm forward so it can <b>swim</b> through the female reproductive system towards the egg.',
+      anchor: () => {
+        const m = cell.coreMeshes[Math.floor(cell.coreMeshes.length * 0.45)];
+        return m ? cell.group.localToWorld(m.position.clone()) : null;
+      }
+    },
+    {
+      title: 'Streamlined head',
+      text: 'The small, smooth, <b>streamlined</b> head reduces resistance, so the sperm can swim <b>efficiently</b> using less energy.',
+      anchor: () => spermPoint(P.headWidth * P.cellScale, 0, P.cellScale * 0.35)
+    }
+  ]
+});
 </script>
 </body>
 </html>
