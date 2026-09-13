@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Generic Plant Cell — Labelled 3D Model</title>
+<style>
+  html, body { margin:0; padding:0; overflow:hidden; background:#0a0d0a; height:100%; }
+  canvas { display:block; }
+  #info {
+    position:absolute; top:16px; left:16px; color:#a8c99a; font-family:'Courier New', monospace;
+    font-size:12px; letter-spacing:0.5px; line-height:1.6; pointer-events:none; user-select:none;
+    text-shadow:0 0 8px rgba(0,0,0,0.8);
+  }
+  #info b { color:#e6f3dc; }
+  #hud {
+    position:absolute; bottom:16px; left:16px; color:#5d7a55; font-family:'Courier New', monospace;
+    font-size:11px; pointer-events:none; user-select:none;
+  }
+
+  /* ---- labels ---- */
+  #leaders { position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; }
+  #labels  { position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; }
+  .lab {
+    position:absolute; transform:translate(-50%, -50%); white-space:nowrap;
+    font-family:'Helvetica Neue', Helvetica, Arial, sans-serif; color:#f2fbec;
+    text-shadow:0 1px 6px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.9);
+    letter-spacing:0.4px;
+  }
+
+  /* ---- tuning panel ---- */
+  #panel {
+    position:absolute; top:16px; right:16px; width:268px; max-height:calc(100vh - 32px);
+    overflow-y:auto; background:rgba(12,18,12,0.88); border:1px solid #263a24; border-radius:6px;
+    font-family:'Courier New', monospace; font-size:11px; color:#a8c99a; padding:10px 12px 12px;
+    backdrop-filter:blur(4px);
+  }
+  #panel h2 {
+    margin:0 0 8px; font-size:11px; letter-spacing:1.5px; color:#e6f3dc; font-weight:bold;
+    display:flex; justify-content:space-between; align-items:center; cursor:pointer;
+  }
+  #panel.collapsed .body { display:none; }
+  #panel .grp {
+    margin:12px 0 4px; color:#8fd06a; letter-spacing:1px; border-bottom:1px solid #2c4229; padding-bottom:3px;
+  }
+  #panel label { display:block; margin:7px 0 0; }
+  #panel .row { display:flex; justify-content:space-between; }
+  #panel .val { color:#e6f3dc; }
+  #panel input[type=range] {
+    width:100%; margin:2px 0 0; height:14px; accent-color:#7fc25e; background:transparent;
+  }
+  #panel .btns { display:flex; gap:6px; margin-top:12px; }
+  #panel button {
+    flex:1; background:#1a2a18; color:#bfe0ac; border:1px solid #33502f; border-radius:4px;
+    font-family:inherit; font-size:11px; padding:5px 0; cursor:pointer;
+  }
+  #panel button:hover { background:#233821; color:#eefae6; }
+  #dump {
+    width:100%; box-sizing:border-box; margin-top:8px; height:96px; resize:vertical;
+    background:#0f150e; color:#9ec98a; border:1px solid #2c4229; border-radius:4px;
+    font-family:inherit; font-size:10px; padding:5px;
+  }
+</style>
+</head>
+<body>
+<div id="info"><b>PLANT CELL</b> — generic<br>cellulose wall / membrane / permanent vacuole / chloroplasts / nucleus</div>
+<div id="hud">drag to orbit · scroll to zoom</div>
+
+<svg id="leaders"></svg>
+<div id="labels"></div>
+
+<div id="panel">
+  <h2 id="panelHead"><span>PARAMETERS</span><span id="caret">[–]</span></h2>
+  <div class="body" id="panelBody"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ============================================================
+   TUNABLE PARAMETERS — every slider writes here and rebuilds
+   the cell. These values are the defaults.
+   ============================================================ */
+const P = {
+  seed:            11,
+
+  /* --- cell box: a rounded brick rather than the animal cell's blob --- */
+  cellWidth:       3.20,
+  cellHeight:      4.40,
+  cellDepth:       2.40,
+  cornerRound:     5.0,    // 2 = ellipsoid, high = sharp-cornered box
+  cellWobble:      0.30,   // slight organic irregularity on top of the box
+  wallThickness:   0.10,   // wall depth as a fraction of the cell
+  wallOpacity:     0.42,
+  membraneOpacity: 0.55,
+  cytosolOpacity:  0.16,
+
+  /* --- permanent vacuole --- */
+  vacWidth:        1.30,
+  vacHeight:       2.35,
+  vacDepth:        1.05,
+  vacRound:        3.2,    // 2 = ellipsoid, higher = more slab-like
+  vacX:            0.30,   // position, fraction of the way out from centre
+  vacY:            0.25,
+  vacZ:            0.00,
+  vacOpacity:      0.42,
+
+  /* --- nucleus --- */
+  nucleusRadius:   0.72,
+  nucleusFlatten:  0.88,
+  nucleusX:       -0.55,
+  nucleusY:       -0.85,
+  nucleusZ:        0.35,
+  nucleolusSize:   0.34,
+  envelopeGap:     0.10,
+
+  /* --- chloroplasts --- */
+  chloroCount:     34,
+  chloroLength:    0.40,
+  chloroWidth:     0.22,
+  chloroFlatten:   0.62,   // squashes them into lens shapes
+  chloroGrana:     1,      // 0/1 — darker stacked interior
+
+  /* --- mitochondria --- */
+  mitoCount:       28,
+  mitoLength:      0.30,
+  mitoWidth:       0.11,
+  mitoCristae:     1,
+
+  /* --- organelle scatter --- */
+  scatterInner:    0.30,   // nearest approach to the cell centre
+  scatterOuter:    0.88,   // and to the wall
+  organelleGap:    0.16,   // clearance kept around vacuole and nucleus
+
+  /* --- rough ER + ribosomes --- */
+  erFolds:         5,
+  erWidth:         1.35,
+  erSpacing:       0.28,
+  erRipple:        0.12,
+  erTube:          0.060,
+  erFlatten:       0.55,
+  erX:            -0.80,
+  erY:             0.80,
+  erZ:             0.20,
+  erTilt:          22,
+  riboSize:        0.045,
+  riboDensity:     40,
+  riboFree:        30,
+
+  /* --- labels + view --- */
+  labelsOn:        1,
+  labelSize:       15,
+  labelDistance:   104,
+  spin:            0.30
+};
+
+/* slider definitions: [key, label, min, max, step] — a 1-item row is a heading */
+const CONTROLS = [
+  ['CELL BOX'],
+  ['cellWidth',        'width',             1.0,  7.0,  0.05],
+  ['cellHeight',       'height',            1.0,  9.0,  0.05],
+  ['cellDepth',        'depth',             1.0,  7.0,  0.05],
+  ['cornerRound',      'corner sharpness',  2.0,  12.0, 0.1 ],
+  ['cellWobble',       'wobble',            0.0,  1.5,  0.01],
+  ['wallThickness',    'wall thickness',    0.01, 0.30, 0.005],
+  ['wallOpacity',      'wall opacity',      0.02, 1.00, 0.01],
+  ['membraneOpacity',  'membrane opacity',  0.02, 1.00, 0.01],
+  ['cytosolOpacity',   'cytosol opacity',   0.00, 0.60, 0.01],
+  ['PERMANENT VACUOLE'],
+  ['vacWidth',         'width',             0.2,  4.0,  0.05],
+  ['vacHeight',        'height',            0.2,  6.0,  0.05],
+  ['vacDepth',         'depth',             0.2,  4.0,  0.05],
+  ['vacRound',         'corner sharpness',  2.0,  10.0, 0.1 ],
+  ['vacX',             'position x',       -1.2,  1.2,  0.01],
+  ['vacY',             'position y',       -1.2,  1.2,  0.01],
+  ['vacZ',             'position z',       -1.2,  1.2,  0.01],
+  ['vacOpacity',       'opacity',           0.02, 1.00, 0.01],
+  ['NUCLEUS'],
+  ['nucleusRadius',    'radius',            0.2,  2.5,  0.05],
+  ['nucleusFlatten',   'flatten',           0.40, 1.20, 0.01],
+  ['nucleusX',         'position x',       -1.2,  1.2,  0.01],
+  ['nucleusY',         'position y',       -1.2,  1.2,  0.01],
+  ['nucleusZ',         'position z',       -1.2,  1.2,  0.01],
+  ['nucleolusSize',    'nucleolus',         0.00, 0.70, 0.01],
+  ['envelopeGap',      'envelope gap',      0.00, 0.40, 0.01],
+  ['CHLOROPLASTS'],
+  ['chloroCount',      'count',             0,    150,  1   ],
+  ['chloroLength',     'length',            0.10, 1.20, 0.01],
+  ['chloroWidth',      'width',             0.04, 0.60, 0.01],
+  ['chloroFlatten',    'lens flatten',      0.20, 1.00, 0.01],
+  ['chloroGrana',      'grana (0/1)',       0,    1,    1   ],
+  ['MITOCHONDRIA'],
+  ['mitoCount',        'count',             0,    150,  1   ],
+  ['mitoLength',       'length',            0.08, 1.00, 0.01],
+  ['mitoWidth',        'width',             0.03, 0.40, 0.01],
+  ['mitoCristae',      'cristae (0/1)',     0,    1,    1   ],
+  ['SCATTER'],
+  ['scatterInner',     'inner limit',       0.05, 0.90, 0.01],
+  ['scatterOuter',     'outer limit',       0.30, 0.99, 0.01],
+  ['organelleGap',     'clearance',         0.00, 0.80, 0.01],
+  ['ROUGH ER'],
+  ['erFolds',          'folds',             1,    14,   1   ],
+  ['erWidth',          'width',             0.3,  4.0,  0.05],
+  ['erSpacing',        'fold spacing',      0.08, 0.80, 0.01],
+  ['erRipple',         'ripple',            0.00, 0.50, 0.01],
+  ['erTube',           'fold thickness',    0.02, 0.20, 0.005],
+  ['erFlatten',        'sheet flatten',     0.20, 1.00, 0.01],
+  ['erX',              'position x',       -1.2,  1.2,  0.01],
+  ['erY',              'position y',       -1.2,  1.2,  0.01],
+  ['erZ',              'position z',       -1.2,  1.2,  0.01],
+  ['erTilt',           'tilt (deg)',       -90,   90,   1   ],
+  ['riboSize',         'ribosome size',     0.01, 0.15, 0.005],
+  ['riboDensity',      'ribosomes / fold',  0,    120,  1   ],
+  ['riboFree',         'free ribosomes',    0,    300,  1   ],
+  ['LABELS + VIEW'],
+  ['labelsOn',         'labels (0/1)',      0,    1,    1   ],
+  ['labelSize',        'label size (px)',   9,    28,   1   ],
+  ['labelDistance',    'leader length (px)',30,   260,  2   ],
+  ['spin',             'auto-spin',         0.0,  2.0,  0.05],
+  ['MISC'],
+  ['seed',             'random seed',       1,    200,  1   ]
+];
+
+/* ============================================================
+   SEEDED RNG — a slider change only alters what that slider
+   controls; the scatter of organelles stays put.
+   ============================================================ */
+let _rngState = 1;
+function seedRng(s) { _rngState = (s * 1831565813 + 0x9E3779B9) >>> 0; }
+function rnd() {
+  _rngState = (_rngState + 0x6D2B79F5) >>> 0;
+  let t = _rngState;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+/* ============================================================
+   SCENE / CAMERA / RENDERER
+   ============================================================ */
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x0a0d0a, 0.008);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 500);
+
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+document.body.appendChild(renderer.domElement);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+/* ============================================================
+   LIGHTING — daylight key with a green bounce, matching the
+   soft wash of the textbook illustration
+   ============================================================ */
+scene.add(new THREE.HemisphereLight(0xe8ffd9, 0x0d1a10, 0.8));
+const key = new THREE.DirectionalLight(0xffffee, 1.0);
+key.position.set(-7, 11, 9);
+scene.add(key);
+const rim = new THREE.PointLight(0x9fe07a, 0.5, 90);
+rim.position.set(12, -5, -8);
+scene.add(rim);
+const fill = new THREE.PointLight(0xb07ad8, 0.3, 90);
+fill.position.set(-10, -7, 6);
+scene.add(fill);
+
+/* ============================================================
+   MATERIALS
+   ============================================================ */
+const wallMat     = new THREE.MeshPhongMaterial({ color:0x8ac46a, shininess:30, specular:0xd9ffc2, emissive:0x2c4a1e, emissiveIntensity:0.35, transparent:true, opacity:0.42, side:THREE.DoubleSide, depthWrite:false });
+const wallInnerMat= new THREE.MeshPhongMaterial({ color:0x6ba84c, shininess:15, specular:0x8fbf72, transparent:true, opacity:0.45, side:THREE.BackSide, depthWrite:false });
+const membraneMat = new THREE.MeshPhongMaterial({ color:0xe0664a, shininess:45, specular:0xffc2b0, emissive:0x5e1c10, emissiveIntensity:0.4, transparent:true, opacity:0.55, side:THREE.DoubleSide, depthWrite:false });
+const cytosolMat  = new THREE.MeshPhongMaterial({ color:0xf4efc4, shininess:6,  specular:0x55553a, transparent:true, opacity:0.16, side:THREE.FrontSide, depthWrite:false });
+const vacuoleMat  = new THREE.MeshPhongMaterial({ color:0xeef6f8, shininess:70, specular:0xffffff, emissive:0x35434a, emissiveIntensity:0.3, transparent:true, opacity:0.42, side:THREE.DoubleSide, depthWrite:false });
+const nucleusMat  = new THREE.MeshPhongMaterial({ color:0x7e3f9d, shininess:35, specular:0xd9a8ee, emissive:0x30103f, emissiveIntensity:0.5 });
+const nucleolusMat= new THREE.MeshPhongMaterial({ color:0x4d1f66, shininess:25, specular:0xa878c4, emissive:0x1d0a28, emissiveIntensity:0.6 });
+const envelopeMat = new THREE.MeshPhongMaterial({ color:0xb478d0, shininess:50, specular:0xf0d8ff, transparent:true, opacity:0.30, side:THREE.DoubleSide, depthWrite:false });
+const chloroMat   = new THREE.MeshPhongMaterial({ color:0x74b354, shininess:35, specular:0xc8f0aa, emissive:0x1e3d14, emissiveIntensity:0.45 });
+const granaMat    = new THREE.MeshPhongMaterial({ color:0x3d7a2b, shininess:20, specular:0x6aa855 });
+const mitoMat     = new THREE.MeshPhongMaterial({ color:0xe0847f, shininess:30, specular:0xffc9c2, emissive:0x5a201d, emissiveIntensity:0.4 });
+const cristaeMat  = new THREE.MeshPhongMaterial({ color:0xb8524d, shininess:18, specular:0x8a3a35 });
+const erMat       = new THREE.MeshPhongMaterial({ color:0xc07ad8, shininess:45, specular:0xf2ddff, emissive:0x3d1a4d, emissiveIntensity:0.45 });
+const riboMat     = new THREE.MeshPhongMaterial({ color:0x6a2f8a, shininess:60, specular:0xe0b8f0, emissive:0x2a0d38, emissiveIntensity:0.55 });
+
+let cell = new THREE.Group();
+scene.add(cell);
+
+/* ============================================================
+   CELL OUTLINE
+   A plant cell is a rounded brick, so the shape is a superellipsoid:
+   |x/a|^p + |y/b|^p + |z/c|^p = 1. At p = 2 that is an ellipsoid; as
+   p climbs the corners sharpen toward a box. Solving it for a given
+   direction gives one radius function, and — as in the animal cell —
+   everything else (organelle placement, label anchors) asks that same
+   function, so nothing can escape the wall when the box is resized.
+   ============================================================ */
+function superRadius(n, a, b, c, p) {
+  const s = Math.pow(Math.abs(n.x) / a, p) +
+            Math.pow(Math.abs(n.y) / b, p) +
+            Math.pow(Math.abs(n.z) / c, p);
+  return s > 1e-9 ? Math.pow(s, -1 / p) : 0;
+}
+
+function cellRadiusAt(n) {
+  const base = superRadius(n, P.cellWidth, P.cellHeight, P.cellDepth, P.cornerRound);
+  const w = 0.055 * Math.sin(n.x * 3.1 + 0.7) +
+            0.045 * Math.sin(n.y * 2.6 + 2.9) +
+            0.035 * Math.sin(n.z * 3.7 + 4.4);
+  return base * (1 + P.cellWobble * w);
+}
+
+// a point on the cell wall in direction n (n is normalised)
+function surfacePoint(n) {
+  return n.clone().multiplyScalar(cellRadiusAt(n));
+}
+
+// a point inside the cell: direction n, fraction f of the way out
+function interiorPoint(n, f) {
+  return surfacePoint(n).multiplyScalar(f);
+}
+
+// direction + magnitude params (x,y,z) resolved to a point inside the cell,
+// so an organelle can never be pushed out through the wall
+function placeInside(x, y, z, reach) {
+  const n = new THREE.Vector3(x, y, z);
+  const len = n.length();
+  if (len < 1e-4) return new THREE.Vector3();
+  return interiorPoint(n.normalize(), Math.min(len, 1) * reach);
+}
+
+function shellMesh(material, scale, detail = 5) {
+  const geo = new THREE.IcosahedronGeometry(1, detail);
+  const pos = geo.attributes.position;
+  const v = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i);
+    const p = surfacePoint(v.normalize()).multiplyScalar(scale);
+    pos.setXYZ(i, p.x, p.y, p.z);
+  }
+  geo.computeVertexNormals();
+  return new THREE.Mesh(geo, material);
+}
+
+/* ============================================================
+   PERMANENT VACUOLE — the big one that pushes everything else
+   out into a thin layer of cytoplasm against the wall
+   ============================================================ */
+function vacuoleCentre() {
+  return placeInside(P.vacX, P.vacY, P.vacZ, 0.45);
+}
+
+function createVacuole(group) {
+  const c = vacuoleCentre();
+  const geo = new THREE.IcosahedronGeometry(1, 5);
+  const pos = geo.attributes.position;
+  const v = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i);
+    v.normalize();
+    const r = superRadius(v, P.vacWidth, P.vacHeight, P.vacDepth, P.vacRound);
+    pos.setXYZ(i, v.x * r, v.y * r, v.z * r);
+  }
+  geo.computeVertexNormals();
+  const mesh = new THREE.Mesh(geo, vacuoleMat);
+  mesh.position.copy(c);
+  group.add(mesh);
+  return c;
+}
+
+// is p inside the vacuole (plus a clearance pad)?
+function inVacuole(p, pad) {
+  const d = p.clone().sub(vacuoleCentre());
+  const len = d.length();
+  if (len < 1e-6) return true;
+  const r = superRadius(d.clone().divideScalar(len),
+                        P.vacWidth + pad, P.vacHeight + pad, P.vacDepth + pad, P.vacRound);
+  return len < r;
+}
+
+/* ============================================================
+   ORGANELLES
+   ============================================================ */
+function createNucleus(group) {
+  const c = placeInside(P.nucleusX, P.nucleusY, P.nucleusZ, 0.62);
+  const R = P.nucleusRadius;
+
+  const geo = new THREE.SphereGeometry(R, 32, 24);
+  geo.scale(1, P.nucleusFlatten, 1);
+  const nuc = new THREE.Mesh(geo, nucleusMat);
+  nuc.position.copy(c);
+  group.add(nuc);
+
+  if (P.nucleolusSize > 0.01) {
+    const nl = new THREE.Mesh(new THREE.SphereGeometry(R * P.nucleolusSize, 16, 12), nucleolusMat);
+    nl.position.set(R * 0.28, R * 0.12 * P.nucleusFlatten, R * 0.22);
+    nuc.add(nl);
+  }
+
+  if (P.envelopeGap > 0.005) {
+    const eg = new THREE.SphereGeometry(R * (1 + P.envelopeGap), 28, 20);
+    eg.scale(1, P.nucleusFlatten, 1);
+    const env = new THREE.Mesh(eg, envelopeMat);
+    env.position.copy(c);
+    group.add(env);
+  }
+
+  return c;
+}
+
+/* A random point in the cytoplasm: outside the vacuole, clear of the
+   other organelles, and inside the wall. */
+function scatterPoint(clearOf) {
+  const pad = P.organelleGap;
+  for (let tries = 0; tries < 60; tries++) {
+    const n = new THREE.Vector3(rnd() * 2 - 1, rnd() * 2 - 1, rnd() * 2 - 1);
+    if (n.lengthSq() < 1e-6) continue;
+    n.normalize();
+    const f = P.scatterInner + rnd() * Math.max(P.scatterOuter - P.scatterInner, 0.01);
+    const p = interiorPoint(n, f);
+    if (inVacuole(p, pad)) continue;
+    let ok = true;
+    for (const c of clearOf) if (p.distanceTo(c.at) < c.r) { ok = false; break; }
+    if (ok) return p;
+  }
+  return null;
+}
+
+function createChloroplasts(group, clearOf) {
+  const anchors = [];
+  const count = Math.round(P.chloroCount);
+  const geo = new THREE.SphereGeometry(1, 14, 10);
+
+  for (let i = 0; i < count; i++) {
+    const p = scatterPoint(clearOf);
+    if (!p) continue;
+
+    const c = new THREE.Mesh(geo, chloroMat);
+    c.position.copy(p);
+    // lens-shaped: long, moderately wide, squashed through the third axis
+    c.scale.set(P.chloroLength, P.chloroWidth, P.chloroWidth * P.chloroFlatten);
+    c.rotation.set(rnd() * Math.PI * 2, rnd() * Math.PI * 2, rnd() * Math.PI * 2);
+    group.add(c);
+
+    if (P.chloroGrana > 0.5) {
+      // darker stacked interior standing in for grana at this scale
+      const g = new THREE.Mesh(geo, granaMat);
+      g.scale.set(0.6, 0.55, 0.5);
+      c.add(g);
+    }
+    anchors.push(p);
+  }
+  return anchors;
+}
+
+function createMitochondria(group, clearOf) {
+  const anchors = [];
+  const count = Math.round(P.mitoCount);
+  const geo = new THREE.SphereGeometry(1, 12, 9);
+
+  for (let i = 0; i < count; i++) {
+    const p = scatterPoint(clearOf);
+    if (!p) continue;
+
+    const m = new THREE.Mesh(geo, mitoMat);
+    m.position.copy(p);
+    m.scale.set(P.mitoLength, P.mitoWidth, P.mitoWidth);
+    m.rotation.set(rnd() * Math.PI * 2, rnd() * Math.PI * 2, rnd() * Math.PI * 2);
+    group.add(m);
+
+    if (P.mitoCristae > 0.5) {
+      const inner = new THREE.Mesh(geo, cristaeMat);
+      inner.scale.set(0.72, 0.45, 0.45);
+      m.add(inner);
+    }
+    anchors.push(p);
+  }
+  return anchors;
+}
+
+/* Rough ER: a serpentine path folded back on itself, tubed, then
+   squashed flat so the tubes read as stacked cisternae rather than pipes.
+   Ribosomes are studded along the same curve. */
+function createRoughER(group) {
+  const er = new THREE.Group();
+  const F = Math.max(1, Math.round(P.erFolds));
+  const W = P.erWidth;
+  const pts = [];
+
+  for (let i = 0; i < F; i++) {
+    const y = (i - (F - 1) / 2) * P.erSpacing;
+    const dir = i % 2 === 0 ? 1 : -1;
+    const N = 12;
+    for (let k = 0; k <= N; k++) {
+      const t = k / N;
+      const x = (-W / 2 + t * W) * dir;
+      const z = Math.sin(t * Math.PI * 2 + i * 1.3) * P.erRipple;
+      pts.push(new THREE.Vector3(x, y + Math.sin(t * Math.PI) * P.erSpacing * 0.12, z));
+    }
+    // a rounded U-turn out past the end so the folds do not pinch
+    if (i < F - 1) {
+      const nextY = (i + 1 - (F - 1) / 2) * P.erSpacing;
+      pts.push(new THREE.Vector3((W / 2 + P.erSpacing * 0.5) * dir, (y + nextY) / 2, 0));
+    }
+  }
+
+  const curve = new THREE.CatmullRomCurve3(pts);
+  const tube = new THREE.TubeGeometry(curve, pts.length * 3, P.erTube, 8, false);
+  er.add(new THREE.Mesh(tube, erMat));
+
+  const count = Math.round(P.riboDensity) * F;
+  if (count > 0 && P.riboSize > 0.005) {
+    const rg = new THREE.SphereGeometry(P.riboSize, 7, 6);
+    for (let i = 0; i < count; i++) {
+      const t = Math.min((i + 0.5) / count, 0.999);
+      const p = curve.getPointAt(t);
+      const tan = curve.getTangentAt(t);
+      const ref = Math.abs(tan.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
+      const side = new THREE.Vector3().crossVectors(tan, ref).normalize()
+        .applyAxisAngle(tan, rnd() * Math.PI * 2);
+      const r = new THREE.Mesh(rg, riboMat);
+      r.position.copy(p).addScaledVector(side, P.erTube * 0.9);
+      er.add(r);
+    }
+  }
+
+  er.scale.set(1, 1, P.erFlatten);
+  er.rotation.set(0, THREE.MathUtils.degToRad(P.erTilt), THREE.MathUtils.degToRad(P.erTilt * 0.4));
+
+  const centre = placeInside(P.erX, P.erY, P.erZ, 0.62);
+  er.position.copy(centre);
+  group.add(er);
+  return centre;
+}
+
+function createFreeRibosomes(group, clearOf) {
+  const count = Math.round(P.riboFree);
+  if (count < 1 || P.riboSize < 0.005) return;
+  const geo = new THREE.SphereGeometry(P.riboSize * 0.8, 6, 5);
+  for (let i = 0; i < count; i++) {
+    const p = scatterPoint(clearOf);
+    if (!p) continue;
+    const r = new THREE.Mesh(geo, riboMat);
+    r.position.copy(p);
+    group.add(r);
+  }
+}
+
+/* ============================================================
+   LABELS — anchored to real 3D points and projected each frame,
+   so a leader line always ends on the thing it names however
+   the cell is turned.
+   ============================================================ */
+const labelDefs = [
+  { key:'wall',      text:'cellulose cell wall' },
+  { key:'membrane',  text:'cell membrane' },
+  { key:'ribosomes', text:'ribosomes' },
+  { key:'chloro',    text:'chloroplasts' },
+  { key:'mito',      text:'mitochondria' },
+  { key:'cytoplasm', text:'cytoplasm' },
+  { key:'vacuole',   text:'permanent vacuole' },
+  { key:'nucleus',   text:'nucleus' }
+];
+let anchors = {};
+
+const labelLayer = document.getElementById('labels');
+const leaderSvg  = document.getElementById('leaders');
+const labelEls = {}, leaderEls = {}, dotEls = {};
+
+for (const d of labelDefs) {
+  const el = document.createElement('div');
+  el.className = 'lab';
+  el.textContent = d.text;
+  labelLayer.appendChild(el);
+  labelEls[d.key] = el;
+
+  const line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+  line.setAttribute('fill', 'none');
+  line.setAttribute('stroke', '#e8f7dc');
+  line.setAttribute('stroke-width', '1.1');
+  line.setAttribute('stroke-opacity', '0.8');
+  leaderSvg.appendChild(line);
+  leaderEls[d.key] = line;
+
+  const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  dot.setAttribute('r', '2.4');
+  dot.setAttribute('fill', '#e8f7dc');
+  leaderSvg.appendChild(dot);
+  dotEls[d.key] = dot;
+}
+
+const _proj = new THREE.Vector3();
+
+function updateLabels() {
+  const show = P.labelsOn > 0.5;
+  const w = window.innerWidth, h = window.innerHeight;
+
+  for (const d of labelDefs) {
+    const el = labelEls[d.key], line = leaderEls[d.key], dot = dotEls[d.key];
+    const a = anchors[d.key];
+    if (!show || !a) { el.style.display = 'none'; line.style.display = 'none'; dot.style.display = 'none'; continue; }
+
+    // the anchor is stored in cell-local space, so it follows the spin
+    _proj.copy(a).applyMatrix4(cell.matrixWorld).project(camera);
+    if (_proj.z > 1) { el.style.display = 'none'; line.style.display = 'none'; dot.style.display = 'none'; continue; }
+
+    const sx = (_proj.x * 0.5 + 0.5) * w;
+    const sy = (-_proj.y * 0.5 + 0.5) * h;
+
+    // run the leader outward from the centre of the screen so the text
+    // always lands clear of the cell rather than on top of it
+    let dx = sx - w / 2, dy = sy - h / 2;
+    const len = Math.hypot(dx, dy) || 1;
+    dx /= len; dy /= len;
+
+    const ex = THREE.MathUtils.clamp(sx + dx * P.labelDistance, 80, w - 80);
+    const ey = THREE.MathUtils.clamp(sy + dy * P.labelDistance, 24, h - 24);
+    const tail = dx >= 0 ? 14 : -14;        // short horizontal tick, as in the reference
+
+    el.style.display = '';
+    el.style.fontSize = P.labelSize + 'px';
+    el.style.left = (ex + tail * 1.6 + (dx >= 0 ? el.offsetWidth / 2 : -el.offsetWidth / 2)) + 'px';
+    el.style.top  = ey + 'px';
+
+    line.style.display = '';
+    line.setAttribute('points', sx + ',' + sy + ' ' + ex + ',' + ey + ' ' + (ex + tail) + ',' + ey);
+    dot.style.display = '';
+    dot.setAttribute('cx', sx);
+    dot.setAttribute('cy', sy);
+  }
+}
+
+/* ============================================================
+   BUILD / REBUILD
+   ============================================================ */
+function disposeGroup(obj) {
+  obj.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+}
+
+function build() {
+  scene.remove(cell);
+  disposeGroup(cell);
+
+  wallMat.opacity = P.wallOpacity;
+  wallInnerMat.opacity = Math.min(0.8, P.wallOpacity * 1.1);
+  membraneMat.opacity = P.membraneOpacity;
+  cytosolMat.opacity = P.cytosolOpacity;
+  vacuoleMat.opacity = P.vacOpacity;
+  wallMat.needsUpdate = membraneMat.needsUpdate = cytosolMat.needsUpdate =
+    vacuoleMat.needsUpdate = wallInnerMat.needsUpdate = true;
+
+  seedRng(P.seed);
+  cell = new THREE.Group();
+
+  // three nested shells: cellulose wall outside, the plasma membrane
+  // pressed against its inner face, then the cytosol filling the rest
+  const t = P.wallThickness;
+  cell.add(shellMesh(wallMat, 1.0));
+  cell.add(shellMesh(wallInnerMat, 1 - t * 0.35));
+  cell.add(shellMesh(membraneMat, 1 - t));
+  if (P.cytosolOpacity > 0.002) cell.add(shellMesh(cytosolMat, 1 - t * 1.25, 4));
+
+  const vacC = createVacuole(cell);
+  const nucC = createNucleus(cell);
+  const erC  = createRoughER(cell);
+
+  const keepClear = [
+    { at: nucC, r: P.nucleusRadius * (1 + P.envelopeGap) + P.organelleGap + 0.12 },
+    { at: erC,  r: Math.max(P.erWidth * 0.6, P.erSpacing * P.erFolds * 0.7) + P.organelleGap }
+  ];
+  const chloroPts = createChloroplasts(cell, keepClear);
+  const mitoPts   = createMitochondria(cell, keepClear);
+  createFreeRibosomes(cell, keepClear);
+
+  scene.add(cell);
+
+  /* label anchors, all in cell-local space */
+  const wallDir = new THREE.Vector3(-1.0, -0.15, 0.30).normalize();
+  const memDir  = new THREE.Vector3(-0.85, 0.70, 0.25).normalize();
+  anchors = {
+    wall:      surfacePoint(wallDir),
+    membrane:  surfacePoint(memDir).multiplyScalar(1 - t),
+    ribosomes: erC.clone(),
+    vacuole:   vacC.clone(),
+    nucleus:   nucC.clone(),
+    cytoplasm: interiorPoint(new THREE.Vector3(-0.55, -0.20, 0.80).normalize(), 0.80),
+    chloro:    chloroPts.length ? chloroPts[Math.floor(chloroPts.length * 0.35)].clone() : null,
+    mito:      mitoPts.length ? mitoPts[Math.floor(mitoPts.length * 0.6)].clone() : null
+  };
+}
+
+/* ============================================================
+   CONTROL PANEL
+   ============================================================ */
+const panelBody = document.getElementById('panelBody');
+const readouts = {};
+
+for (const c of CONTROLS) {
+  if (c.length === 1) {
+    const h = document.createElement('div');
+    h.className = 'grp';
+    h.textContent = c[0];
+    panelBody.appendChild(h);
+    continue;
+  }
+  const [k, label, min, max, step] = c;
+  const wrap = document.createElement('label');
+  const row = document.createElement('div');
+  row.className = 'row';
+  const name = document.createElement('span');
+  name.textContent = label;
+  const val = document.createElement('span');
+  val.className = 'val';
+  val.textContent = P[k];
+  row.appendChild(name); row.appendChild(val);
+
+  const slider = document.createElement('input');
+  slider.type = 'range';
+  slider.min = min; slider.max = max; slider.step = step; slider.value = P[k];
+  slider.addEventListener('input', () => {
+    P[k] = parseFloat(slider.value);
+    val.textContent = slider.value;
+    build();
+    dumpValues();
+  });
+
+  wrap.appendChild(row); wrap.appendChild(slider);
+  panelBody.appendChild(wrap);
+  readouts[k] = { slider, val };
+}
+
+const btns = document.createElement('div');
+btns.className = 'btns';
+const resetBtn = document.createElement('button');
+resetBtn.textContent = 'reset';
+const copyBtn = document.createElement('button');
+copyBtn.textContent = 'copy values';
+btns.appendChild(resetBtn); btns.appendChild(copyBtn);
+panelBody.appendChild(btns);
+
+const dump = document.createElement('textarea');
+dump.id = 'dump';
+dump.readOnly = true;
+panelBody.appendChild(dump);
+
+// only the values that differ from the defaults, so the paste-back stays short
+const DEFAULTS = JSON.parse(JSON.stringify(P));
+function dumpValues() {
+  const changed = {};
+  for (const k in P) if (P[k] !== DEFAULTS[k]) changed[k] = P[k];
+  dump.value = Object.keys(changed).length
+    ? JSON.stringify(changed, null, 1)
+    : '(all defaults)';
+}
+dumpValues();
+
+resetBtn.addEventListener('click', () => {
+  Object.assign(P, DEFAULTS);
+  for (const k in readouts) {
+    readouts[k].slider.value = P[k];
+    readouts[k].val.textContent = P[k];
+  }
+  build();
+  dumpValues();
+});
+
+copyBtn.addEventListener('click', () => {
+  dump.select();
+  if (navigator.clipboard) navigator.clipboard.writeText(dump.value).catch(() => {});
+  copyBtn.textContent = 'copied!';
+  setTimeout(() => copyBtn.textContent = 'copy values', 900);
+});
+
+const panel = document.getElementById('panel');
+document.getElementById('panelHead').addEventListener('click', () => {
+  panel.classList.toggle('collapsed');
+  document.getElementById('caret').textContent = panel.classList.contains('collapsed') ? '[+]' : '[–]';
+});
+// keep the panel from driving the orbit controls
+panel.addEventListener('mousedown', e => e.stopPropagation());
+panel.addEventListener('wheel', e => e.stopPropagation());
+
+build();
+
+/* ============================================================
+   CAMERA CONTROLS (manual orbit, no external deps)
+   ============================================================ */
+let isDragging = false, prevX = 0, prevY = 0;
+let theta = 0.5, phiAngle = 1.25, camDist = 18;
+const target = new THREE.Vector3(0, 0, 0);
+
+function updateCamera() {
+  camera.position.set(
+    target.x + camDist * Math.sin(phiAngle) * Math.sin(theta),
+    target.y + camDist * Math.cos(phiAngle),
+    target.z + camDist * Math.sin(phiAngle) * Math.cos(theta)
+  );
+  camera.lookAt(target);
+}
+updateCamera();
+
+renderer.domElement.addEventListener('mousedown', (e) => { isDragging = true; prevX = e.clientX; prevY = e.clientY; });
+window.addEventListener('mouseup', () => isDragging = false);
+window.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  theta -= (e.clientX - prevX) * 0.006;
+  phiAngle = THREE.MathUtils.clamp(phiAngle - (e.clientY - prevY) * 0.006, 0.2, Math.PI - 0.2);
+  prevX = e.clientX; prevY = e.clientY;
+  updateCamera();
+});
+renderer.domElement.addEventListener('wheel', (e) => {
+  camDist = THREE.MathUtils.clamp(camDist + e.deltaY * 0.02, 6, 60);
+  updateCamera();
+});
+
+let lastTouch = null;
+renderer.domElement.addEventListener('touchstart', (e) => { lastTouch = e.touches[0]; });
+renderer.domElement.addEventListener('touchmove', (e) => {
+  if (!lastTouch) return;
+  const t = e.touches[0];
+  theta -= (t.clientX - lastTouch.clientX) * 0.006;
+  phiAngle = THREE.MathUtils.clamp(phiAngle - (t.clientY - lastTouch.clientY) * 0.006, 0.2, Math.PI - 0.2);
+  lastTouch = t;
+  updateCamera();
+}, { passive:true });
+renderer.domElement.addEventListener('touchend', () => lastTouch = null);
+
+/* ============================================================
+   RENDER LOOP
+   ============================================================ */
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+
+  cell.rotation.y += P.spin * dt * 0.25;
+  cell.updateMatrixWorld();
+
+  renderer.render(scene, camera);
+  updateLabels();
+}
+animate();
+</script>
+</body>
+</html>

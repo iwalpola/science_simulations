@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Muscle Fibre Bundle — Contraction / Relaxation</title>
+<style>
+  html, body { margin:0; padding:0; overflow:hidden; background:#0a0705; height:100%; }
+  canvas { display:block; }
+  #info {
+    position:absolute; top:16px; left:16px; color:#d9a98c; font-family:'Courier New', monospace;
+    font-size:12px; letter-spacing:0.5px; line-height:1.6; pointer-events:none; user-select:none;
+    text-shadow:0 0 8px rgba(0,0,0,0.8);
+  }
+  #info b { color:#ffe4d0; }
+  #hud {
+    position:absolute; bottom:16px; left:16px; color:#6b5548; font-family:'Courier New', monospace;
+    font-size:11px; pointer-events:none; user-select:none;
+  }
+
+  /* ---- contraction readout ---- */
+  #gauge {
+    position:absolute; bottom:16px; left:50%; transform:translateX(-50%);
+    width:260px; font-family:'Courier New', monospace; font-size:10px; color:#c98f6a;
+    letter-spacing:1px; text-align:center; pointer-events:none; user-select:none;
+  }
+  #gaugeBar {
+    margin-top:5px; height:5px; background:#241611; border:1px solid #402a20; border-radius:3px;
+    overflow:hidden;
+  }
+  #gaugeFill { height:100%; width:0%; background:linear-gradient(90deg,#c4603a,#ffb37a); }
+
+  /* ---- tuning panel ---- */
+  #panel {
+    position:absolute; top:16px; right:16px; width:268px; max-height:calc(100vh - 32px);
+    overflow-y:auto; background:rgba(20,12,8,0.88); border:1px solid #3d271c; border-radius:6px;
+    font-family:'Courier New', monospace; font-size:11px; color:#d9a98c; padding:10px 12px 12px;
+    backdrop-filter:blur(4px);
+  }
+  #panel h2 {
+    margin:0 0 8px; font-size:11px; letter-spacing:1.5px; color:#ffe4d0; font-weight:bold;
+    display:flex; justify-content:space-between; align-items:center; cursor:pointer;
+  }
+  #panel.collapsed .body { display:none; }
+  #panel .grp {
+    margin:12px 0 4px; color:#ff9e6b; letter-spacing:1px; border-bottom:1px solid #452d21; padding-bottom:3px;
+  }
+  #panel label { display:block; margin:7px 0 0; }
+  #panel .row { display:flex; justify-content:space-between; }
+  #panel .val { color:#ffe4d0; }
+  #panel input[type=range] {
+    width:100%; margin:2px 0 0; height:14px; accent-color:#e8946b; background:transparent;
+  }
+  #panel .btns { display:flex; gap:6px; margin-top:12px; }
+  #panel button {
+    flex:1; background:#2b1a12; color:#f0c3a5; border:1px solid #4a3024; border-radius:4px;
+    font-family:inherit; font-size:11px; padding:5px 0; cursor:pointer;
+  }
+  #panel button:hover { background:#3a2318; color:#fff0e6; }
+  #dump {
+    width:100%; box-sizing:border-box; margin-top:8px; height:96px; resize:vertical;
+    background:#170f0b; color:#d79a75; border:1px solid #452d21; border-radius:4px;
+    font-family:inherit; font-size:10px; padding:5px;
+  }
+</style>
+</head>
+<body>
+<div id="info"><b>MUSCLE FIBRE BUNDLE (fascicle)</b><br>multinucleate striated fibres, hex-packed, contracting in unison</div>
+<div id="hud">drag to orbit · scroll to zoom</div>
+
+<div id="gauge">
+  <span id="gaugeText">RELAXED</span>
+  <div id="gaugeBar"><div id="gaugeFill"></div></div>
+</div>
+
+<div id="panel">
+  <h2 id="panelHead"><span>PARAMETERS</span><span id="caret">[–]</span></h2>
+  <div class="body" id="panelBody"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ============================================================
+   TUNABLE PARAMETERS — every slider writes here and rebuilds
+   the bundle. These values are the defaults.
+   ============================================================ */
+const P = {
+  seed:            5,
+
+  /* --- fibres --- */
+  fibreCount:      19,     // 1 + 6 + 12 fills three whole hex rings
+  fibreLength:     11.5,
+  fibreRadius:     0.62,
+  fibreFlatten:    1.00,   // cross-section squash
+  taperPower:      0.55,   // lower = blunter ends, higher = more spindle-like
+  fibreOpacity:    0.62,
+  lengthVar:       0.10,   // random spread, fraction
+  radiusVar:       0.12,
+  endStagger:      0.55,   // fibres do not all end at the same plane
+
+  /* --- packing --- */
+  packSpacing:     2.30,   // centre-to-centre, in units of relaxed radius
+  packJitter:      0.14,
+  packSwirl:       6,      // degrees the whole lattice is rotated
+
+  /* --- striations --- */
+  sarcomereDensity:1.30,   // sarcomeres per unit of fibre length
+  bandContrast:    0.60,
+  zLineStrength:   0.75,
+
+  /* --- nuclei (skeletal fibres are multinucleate, nuclei at the rim) --- */
+  nucleiPerFibre:  5,
+  nucleusSize:     0.42,
+  nucleusOffset:   0.74,   // fraction of the radius — 1 is against the membrane
+
+  /* --- perimysium sheath --- */
+  sheathOn:        1,
+  sheathPad:       0.55,
+  sheathOpacity:   0.10,
+
+  /* --- contraction --- */
+  autoCycle:       1,      // 0 hands control to the manual slider below
+  manual:          0.0,
+  contractAmount:  0.34,   // peak shortening, fraction of resting length
+  girthResponse:   1.00,   // 1 = constant volume (thickens as it shortens)
+  cycleSeconds:    4.0,
+  riseFraction:    0.18,   // of the cycle: contraction
+  holdFraction:    0.26,   // held tetanus
+  fallFraction:    0.34,   // relaxation is slower than contraction
+  waveSpread:      0.22,   // seconds of activation delay across the bundle
+
+  /* --- view --- */
+  spin:            0.35
+};
+
+/* slider definitions: [key, label, min, max, step] — a 1-item row is a heading */
+const CONTROLS = [
+  ['CONTRACTION'],
+  ['autoCycle',        'auto cycle (0/1)',  0,    1,    1   ],
+  ['manual',           'manual contraction',0.0,  1.0,  0.01],
+  ['contractAmount',   'shortening',        0.0,  0.65, 0.01],
+  ['girthResponse',    'bulge (volume)',    0.0,  1.5,  0.05],
+  ['cycleSeconds',     'cycle (sec)',       0.5,  12.0, 0.1 ],
+  ['riseFraction',     'rise fraction',     0.02, 0.60, 0.01],
+  ['holdFraction',     'hold fraction',     0.00, 0.70, 0.01],
+  ['fallFraction',     'fall fraction',     0.02, 0.70, 0.01],
+  ['waveSpread',       'activation spread', 0.0,  2.0,  0.02],
+  ['FIBRES'],
+  ['fibreCount',       'count',             1,    61,   1   ],
+  ['fibreLength',      'length',            4.0,  20.0, 0.1 ],
+  ['fibreRadius',      'radius',            0.15, 1.60, 0.01],
+  ['fibreFlatten',     'cross-section',     0.30, 1.00, 0.01],
+  ['taperPower',       'end taper',         0.10, 1.50, 0.01],
+  ['fibreOpacity',     'opacity',           0.08, 1.00, 0.01],
+  ['lengthVar',        'length variation',  0.00, 0.40, 0.01],
+  ['radiusVar',        'radius variation',  0.00, 0.40, 0.01],
+  ['endStagger',       'end stagger',       0.00, 3.00, 0.05],
+  ['PACKING'],
+  ['packSpacing',      'spacing',           1.60, 4.00, 0.02],
+  ['packJitter',       'jitter',            0.00, 0.60, 0.01],
+  ['packSwirl',        'lattice twist (deg)',0,   60,   1   ],
+  ['STRIATIONS'],
+  ['sarcomereDensity', 'sarcomeres / unit', 0.2,  4.0,  0.05],
+  ['bandContrast',     'A-band contrast',   0.0,  1.0,  0.02],
+  ['zLineStrength',    'Z-line strength',   0.0,  1.0,  0.02],
+  ['NUCLEI'],
+  ['nucleiPerFibre',   'per fibre',         0,    14,   1   ],
+  ['nucleusSize',      'size',              0.10, 1.20, 0.01],
+  ['nucleusOffset',    'rim offset',        0.00, 1.00, 0.01],
+  ['PERIMYSIUM'],
+  ['sheathOn',         'sheath (0/1)',      0,    1,    1   ],
+  ['sheathPad',        'clearance',         0.05, 2.00, 0.05],
+  ['sheathOpacity',    'opacity',           0.00, 0.60, 0.01],
+  ['VIEW'],
+  ['spin',             'auto-spin',         0.0,  2.0,  0.05],
+  ['MISC'],
+  ['seed',             'random seed',       1,    200,  1   ]
+];
+
+/* ============================================================
+   SEEDED RNG — a slider change only alters what that slider
+   controls; the fibre variation stays put.
+   ============================================================ */
+let _rngState = 1;
+function seedRng(s) { _rngState = (s * 1831565813 + 0x9E3779B9) >>> 0; }
+function rnd() {
+  _rngState = (_rngState + 0x6D2B79F5) >>> 0;
+  let t = _rngState;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+/* ============================================================
+   SCENE / CAMERA / RENDERER
+   ============================================================ */
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x0a0705, 0.010);
+
+const camera = new THREE.PerspectiveCamera(42, window.innerWidth/window.innerHeight, 0.1, 500);
+
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+document.body.appendChild(renderer.domElement);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+/* ============================================================
+   LIGHTING
+   ============================================================ */
+scene.add(new THREE.AmbientLight(0x4a2f22, 0.55));
+const key = new THREE.DirectionalLight(0xffd9b3, 1.05);
+key.position.set(6, 9, 9);
+scene.add(key);
+const rim = new THREE.PointLight(0xff9966, 0.6, 80);
+rim.position.set(-14, -5, -8);
+scene.add(rim);
+const fill = new THREE.PointLight(0x6688ff, 0.25, 80);
+fill.position.set(10, -8, 6);
+scene.add(fill);
+
+/* ============================================================
+   STRIATION TEXTURE
+   The canvas holds exactly ONE sarcomere — Z line, I band, A band,
+   I band — and each fibre's UVs are then scaled to tile it however
+   many times that fibre is long. That matters for the animation:
+   the bands are part of the geometry's UV space, so when a fibre
+   shortens they compress with it, which is what sarcomeres actually
+   do. (The previous version raised texture.repeat as it contracted,
+   which conjured extra sarcomeres out of nothing.)
+   ============================================================ */
+function createStriationTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 16;
+  canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+
+  // I band — the pale actin-only zone
+  ctx.fillStyle = '#efa87c';
+  ctx.fillRect(0, 0, 16, 64);
+
+  // A band — the dark myosin overlap, soft-edged
+  const grad = ctx.createLinearGradient(0, 12, 0, 52);
+  const a = P.bandContrast;
+  grad.addColorStop(0.00, 'rgba(150,70,45,0)');
+  grad.addColorStop(0.25, 'rgba(140,62,40,' + (0.75 * a).toFixed(3) + ')');
+  grad.addColorStop(0.50, 'rgba(128,54,34,' + (0.92 * a).toFixed(3) + ')');
+  grad.addColorStop(0.75, 'rgba(140,62,40,' + (0.75 * a).toFixed(3) + ')');
+  grad.addColorStop(1.00, 'rgba(150,70,45,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 12, 16, 40);
+
+  // Z line — the sarcomere boundary, split across the wrap seam
+  ctx.fillStyle = 'rgba(78,28,20,' + P.zLineStrength.toFixed(3) + ')';
+  ctx.fillRect(0, 0, 16, 2);
+  ctx.fillRect(0, 62, 16, 2);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+let striationTex = null;
+
+/* ============================================================
+   MATERIALS
+   ============================================================ */
+const nucleusMat = new THREE.MeshPhongMaterial({ color:0xffb3c6, shininess:70, specular:0xffffff, emissive:0x5a2030, emissiveIntensity:0.35 });
+const sheathMat  = new THREE.MeshPhongMaterial({ color:0xffcbb0, shininess:25, specular:0x8a6a55, transparent:true, opacity:0.10, side:THREE.DoubleSide, depthWrite:false });
+let fibreMat = null;
+
+/* ============================================================
+   FIBRE GEOMETRY — a spindle, with its UVs stretched so one
+   sarcomere of texture tiles the whole length
+   ============================================================ */
+function buildFibreGeometry(length, radius) {
+  const profileSegments = 30;
+  const points = [];
+  for (let i = 0; i <= profileSegments; i++) {
+    const t = i / profileSegments;
+    const r = radius * Math.pow(Math.sin(Math.PI * t), P.taperPower);
+    points.push(new THREE.Vector2(Math.max(r, 0.0001), t * length));
+  }
+  const geo = new THREE.LatheGeometry(points, 26);
+  geo.translate(0, -length / 2, 0);
+
+  const bands = Math.max(1, Math.round(length * P.sarcomereDensity));
+  const uv = geo.attributes.uv;
+  for (let i = 0; i < uv.count; i++) uv.setY(i, uv.getY(i) * bands);
+  uv.needsUpdate = true;
+
+  return geo;
+}
+
+/* ============================================================
+   MUSCLE FIBRE
+   One cell. Contraction is driven from outside — the bundle owns
+   the activation signal, so the fascicle acts as a unit instead
+   of every fibre running its own private clock.
+   ============================================================ */
+class MuscleFibre {
+  constructor(o) {
+    this.length = o.length;
+    this.radius = o.radius;
+    this.delay = o.delay;
+
+    this.group = new THREE.Group();
+    this.group.position.copy(o.position);
+
+    this.mesh = new THREE.Mesh(buildFibreGeometry(this.length, this.radius), fibreMat);
+    this.mesh.rotation.z = Math.PI / 2;      // lathe axis (local Y) now runs along world X
+    this.group.add(this.mesh);
+
+    // nuclei: several per fibre, pressed out against the sarcolemma
+    this.nuclei = [];
+    const n = Math.round(P.nucleiPerFibre);
+    const nr = this.radius * P.nucleusSize * 0.55;
+    for (let i = 0; i < n; i++) {
+      const geo = new THREE.SphereGeometry(1, 14, 10);
+      geo.scale(this.length * 0.085 * P.nucleusSize, nr, nr);
+      const mesh = new THREE.Mesh(geo, nucleusMat);
+
+      // spread along the fibre, avoiding the tapered tips, and spun to a
+      // random angle around the axis so they ring the fibre's surface
+      const u = n === 1 ? 0.5 : 0.15 + 0.7 * (i / (n - 1)) + (rnd() - 0.5) * 0.08;
+      const ang = rnd() * Math.PI * 2;
+      const rad = this.radius * P.nucleusOffset * Math.pow(Math.sin(Math.PI * u), P.taperPower);
+      mesh.userData.u = u;
+      mesh.userData.ang = ang;
+      mesh.userData.rad = rad;
+      this.group.add(mesh);
+      this.nuclei.push(mesh);
+    }
+    this.place(0);
+  }
+
+  // c is the activation level, 0 (relaxed) to 1 (fully contracted)
+  place(c) {
+    const shorten = 1 - c * P.contractAmount;
+    // constant volume: a cylinder that shortens by k thickens by 1/sqrt(k)
+    const girth = Math.pow(1 / Math.max(shorten, 0.05), 0.5 * P.girthResponse);
+
+    this.mesh.scale.set(girth * P.fibreFlatten, shorten, girth);
+
+    for (const nuc of this.nuclei) {
+      const d = nuc.userData;
+      nuc.position.set(
+        (d.u - 0.5) * this.length * shorten,
+        Math.sin(d.ang) * d.rad * girth * P.fibreFlatten,
+        Math.cos(d.ang) * d.rad * girth
+      );
+      nuc.scale.set(shorten, girth, girth);
+    }
+    this.lastGirth = girth;
+    this.lastShorten = shorten;
+  }
+}
+
+/* ============================================================
+   BUNDLE
+   Fibres are hex-packed across the cross-section — the real
+   arrangement in a fascicle, and the reason a bundle can stay
+   packed while every fibre in it swells.
+   ============================================================ */
+function hexPositions(count, spacing) {
+  const pts = [new THREE.Vector2(0, 0)];
+  let ring = 1;
+  while (pts.length < count) {
+    for (let i = 0; i < 6 && pts.length < count; i++) {
+      const a0 = Math.PI / 3 * i, a1 = Math.PI / 3 * (i + 1);
+      const p0 = new THREE.Vector2(Math.cos(a0), Math.sin(a0)).multiplyScalar(ring * spacing);
+      const p1 = new THREE.Vector2(Math.cos(a1), Math.sin(a1)).multiplyScalar(ring * spacing);
+      for (let k = 0; k < ring && pts.length < count; k++) {
+        pts.push(p0.clone().lerp(p1, k / ring));
+      }
+    }
+    ring++;
+  }
+  return pts;
+}
+
+let bundle = new THREE.Group();
+let fibres = [];
+let sheath = null;
+let bundleRadius = 1;
+
+/* ============================================================
+   CONTRACTION SIGNAL
+   A twitch is not a sine wave: it rises fast, holds, then
+   relaxes more slowly. Those three phases are sliders, and
+   whatever is left of the cycle is the resting interval.
+   ============================================================ */
+function smoothstep(x) {
+  const t = THREE.MathUtils.clamp(x, 0, 1);
+  return t * t * (3 - 2 * t);
+}
+
+function twitch(u) {
+  let r = P.riseFraction, h = P.holdFraction, f = P.fallFraction;
+  const total = r + h + f;
+  if (total > 1) { r /= total; h /= total; f /= total; }   // never overrun the cycle
+  if (u < r) return smoothstep(u / r);
+  if (u < r + h) return 1;
+  if (u < r + h + f) return 1 - smoothstep((u - r - h) / f);
+  return 0;
+}
+
+function activationFor(fibre, t) {
+  if (P.autoCycle < 0.5) return P.manual;
+  const u = (((t - fibre.delay) / P.cycleSeconds) % 1 + 1) % 1;
+  return twitch(u);
+}
+
+/* ============================================================
+   BUILD / REBUILD
+   ============================================================ */
+function disposeGroup(obj) {
+  obj.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+}
+
+function build() {
+  scene.remove(bundle);
+  disposeGroup(bundle);
+  if (striationTex) striationTex.dispose();
+  if (fibreMat) fibreMat.dispose();
+
+  seedRng(P.seed);
+
+  striationTex = createStriationTexture();
+  fibreMat = new THREE.MeshPhongMaterial({
+    color: 0xffffff, map: striationTex, shininess: 28, specular: 0x552a1a,
+    transparent: true, opacity: P.fibreOpacity, side: THREE.DoubleSide, depthWrite: false
+  });
+  sheathMat.opacity = P.sheathOpacity;
+
+  bundle = new THREE.Group();
+  fibres = [];
+
+  const count = Math.round(P.fibreCount);
+  const spacing = P.fibreRadius * P.packSpacing;
+  const cells = hexPositions(count, spacing);
+  const swirl = THREE.MathUtils.degToRad(P.packSwirl);
+
+  // the outermost fibre sets the bundle radius, which the sheath then wraps
+  bundleRadius = 0;
+  for (const c of cells) bundleRadius = Math.max(bundleRadius, c.length());
+  bundleRadius += P.fibreRadius;
+
+  for (const c of cells) {
+    const p = c.clone().rotateAround(new THREE.Vector2(0, 0), swirl);
+    const jx = (rnd() - 0.5) * spacing * P.packJitter;
+    const jy = (rnd() - 0.5) * spacing * P.packJitter;
+
+    const fibre = new MuscleFibre({
+      position: new THREE.Vector3(
+        (rnd() - 0.5) * P.endStagger,
+        (p.y + jy) * P.fibreFlatten,
+        p.x + jx
+      ),
+      length: P.fibreLength * (1 + (rnd() - 0.5) * 2 * P.lengthVar),
+      radius: P.fibreRadius * (1 + (rnd() - 0.5) * 2 * P.radiusVar),
+      // activation spreads outward from the core of the fascicle
+      delay: P.waveSpread * (bundleRadius > 0 ? c.length() / bundleRadius : 0)
+    });
+    bundle.add(fibre.group);
+    fibres.push(fibre);
+  }
+
+  // perimysium: the connective sheath wrapping the whole fascicle
+  sheath = null;
+  if (P.sheathOn > 0.5 && P.sheathOpacity > 0.004) {
+    const R = bundleRadius + P.sheathPad;
+    const pts = [];
+    const segs = 26;
+    for (let i = 0; i <= segs; i++) {
+      const t = i / segs;
+      pts.push(new THREE.Vector2(Math.max(R * Math.pow(Math.sin(Math.PI * t), 0.22), 0.001), t * P.fibreLength * 1.02));
+    }
+    const geo = new THREE.LatheGeometry(pts, 30);
+    geo.translate(0, -P.fibreLength * 1.02 / 2, 0);
+    sheath = new THREE.Mesh(geo, sheathMat);
+    sheath.rotation.z = Math.PI / 2;   // scale is set each frame, with the fibres
+    bundle.add(sheath);
+  }
+
+  scene.add(bundle);
+}
+
+/* ============================================================
+   CONTROL PANEL
+   ============================================================ */
+const panelBody = document.getElementById('panelBody');
+const readouts = {};
+
+for (const c of CONTROLS) {
+  if (c.length === 1) {
+    const h = document.createElement('div');
+    h.className = 'grp';
+    h.textContent = c[0];
+    panelBody.appendChild(h);
+    continue;
+  }
+  const [k, label, min, max, step] = c;
+  const wrap = document.createElement('label');
+  const row = document.createElement('div');
+  row.className = 'row';
+  const name = document.createElement('span');
+  name.textContent = label;
+  const val = document.createElement('span');
+  val.className = 'val';
+  val.textContent = P[k];
+  row.appendChild(name); row.appendChild(val);
+
+  const slider = document.createElement('input');
+  slider.type = 'range';
+  slider.min = min; slider.max = max; slider.step = step; slider.value = P[k];
+  slider.addEventListener('input', () => {
+    P[k] = parseFloat(slider.value);
+    val.textContent = slider.value;
+    build();
+    dumpValues();
+  });
+
+  wrap.appendChild(row); wrap.appendChild(slider);
+  panelBody.appendChild(wrap);
+  readouts[k] = { slider, val };
+}
+
+const btns = document.createElement('div');
+btns.className = 'btns';
+const resetBtn = document.createElement('button');
+resetBtn.textContent = 'reset';
+const copyBtn = document.createElement('button');
+copyBtn.textContent = 'copy values';
+btns.appendChild(resetBtn); btns.appendChild(copyBtn);
+panelBody.appendChild(btns);
+
+const dump = document.createElement('textarea');
+dump.id = 'dump';
+dump.readOnly = true;
+panelBody.appendChild(dump);
+
+// only the values that differ from the defaults, so the paste-back stays short
+const DEFAULTS = JSON.parse(JSON.stringify(P));
+function dumpValues() {
+  const changed = {};
+  for (const k in P) if (P[k] !== DEFAULTS[k]) changed[k] = P[k];
+  dump.value = Object.keys(changed).length
+    ? JSON.stringify(changed, null, 1)
+    : '(all defaults)';
+}
+dumpValues();
+
+resetBtn.addEventListener('click', () => {
+  Object.assign(P, DEFAULTS);
+  for (const k in readouts) {
+    readouts[k].slider.value = P[k];
+    readouts[k].val.textContent = P[k];
+  }
+  build();
+  dumpValues();
+});
+
+copyBtn.addEventListener('click', () => {
+  dump.select();
+  if (navigator.clipboard) navigator.clipboard.writeText(dump.value).catch(() => {});
+  copyBtn.textContent = 'copied!';
+  setTimeout(() => copyBtn.textContent = 'copy values', 900);
+});
+
+const panel = document.getElementById('panel');
+document.getElementById('panelHead').addEventListener('click', () => {
+  panel.classList.toggle('collapsed');
+  document.getElementById('caret').textContent = panel.classList.contains('collapsed') ? '[+]' : '[–]';
+});
+// keep the panel from driving the orbit controls
+panel.addEventListener('mousedown', e => e.stopPropagation());
+panel.addEventListener('wheel', e => e.stopPropagation());
+
+build();
+
+/* ============================================================
+   CAMERA CONTROLS
+   ============================================================ */
+let isDragging = false, prevX = 0, prevY = 0;
+let theta = 0.55, phiAngle = 1.3, camDist = 22;
+
+function updateCamera() {
+  camera.position.set(
+    camDist * Math.sin(phiAngle) * Math.sin(theta),
+    camDist * Math.cos(phiAngle),
+    camDist * Math.sin(phiAngle) * Math.cos(theta)
+  );
+  camera.lookAt(0, 0, 0);
+}
+updateCamera();
+
+renderer.domElement.addEventListener('mousedown', (e) => { isDragging = true; prevX = e.clientX; prevY = e.clientY; });
+window.addEventListener('mouseup', () => isDragging = false);
+window.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  theta -= (e.clientX - prevX) * 0.006;
+  phiAngle = THREE.MathUtils.clamp(phiAngle - (e.clientY - prevY) * 0.006, 0.25, Math.PI - 0.25);
+  prevX = e.clientX; prevY = e.clientY;
+  updateCamera();
+});
+renderer.domElement.addEventListener('wheel', (e) => {
+  camDist = THREE.MathUtils.clamp(camDist + e.deltaY * 0.02, 8, 60);
+  updateCamera();
+});
+
+let lastTouch = null;
+renderer.domElement.addEventListener('touchstart', (e) => { lastTouch = e.touches[0]; });
+renderer.domElement.addEventListener('touchmove', (e) => {
+  if (!lastTouch) return;
+  const t = e.touches[0];
+  theta -= (t.clientX - lastTouch.clientX) * 0.006;
+  phiAngle = THREE.MathUtils.clamp(phiAngle - (t.clientY - lastTouch.clientY) * 0.006, 0.25, Math.PI - 0.25);
+  lastTouch = t;
+  updateCamera();
+}, { passive:true });
+renderer.domElement.addEventListener('touchend', () => lastTouch = null);
+
+/* ============================================================
+   RENDER LOOP
+   ============================================================ */
+const gaugeFill = document.getElementById('gaugeFill');
+const gaugeText = document.getElementById('gaugeText');
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const t = clock.elapsedTime;
+
+  let mean = 0;
+  for (const f of fibres) {
+    const c = activationFor(f, t);
+    f.place(c);
+    mean += c;
+  }
+  mean = fibres.length ? mean / fibres.length : 0;
+
+  // the sheath follows the fibres it wraps
+  if (sheath) {
+    const shorten = 1 - mean * P.contractAmount;
+    const girth = Math.pow(1 / Math.max(shorten, 0.05), 0.5 * P.girthResponse);
+    sheath.scale.set(girth * P.fibreFlatten, shorten, girth);
+  }
+
+  gaugeFill.style.width = (mean * 100).toFixed(1) + '%';
+  gaugeText.textContent =
+    mean < 0.04 ? 'RELAXED' :
+    mean > 0.96 ? 'CONTRACTED' :
+    (mean * 100).toFixed(0) + '% CONTRACTED';
+
+  bundle.rotation.x += P.spin * dt * 0.12;
+
+  renderer.render(scene, camera);
+}
+animate();
+</script>
+</body>
+</html>

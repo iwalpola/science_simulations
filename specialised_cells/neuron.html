@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Neuron — 3D Fractal Model</title>
+<style>
+  html, body { margin:0; padding:0; overflow:hidden; background:#0b0d10; height:100%; }
+  canvas { display:block; }
+  #info {
+    position:absolute; top:16px; left:16px; color:#8fa3b0; font-family:'Courier New', monospace;
+    font-size:12px; letter-spacing:0.5px; line-height:1.6; pointer-events:none; user-select:none;
+    text-shadow:0 0 8px rgba(0,0,0,0.8);
+  }
+  #info b { color:#d7e6ee; }
+  #hud {
+    position:absolute; bottom:16px; left:16px; color:#556b78; font-family:'Courier New', monospace;
+    font-size:11px; pointer-events:none; user-select:none;
+  }
+
+  /* ---- tuning panel ---- */
+  #panel {
+    position:absolute; top:16px; right:16px; width:268px; max-height:calc(100vh - 32px);
+    overflow-y:auto; background:rgba(10,14,20,0.88); border:1px solid #1d2c3a; border-radius:6px;
+    font-family:'Courier New', monospace; font-size:11px; color:#8fa3b0; padding:10px 12px 12px;
+    backdrop-filter:blur(4px);
+  }
+  #panel h2 {
+    margin:0 0 8px; font-size:11px; letter-spacing:1.5px; color:#d7e6ee; font-weight:bold;
+    display:flex; justify-content:space-between; align-items:center; cursor:pointer;
+  }
+  #panel.collapsed .body { display:none; }
+  #panel .grp {
+    margin:12px 0 4px; color:#f2b01e; letter-spacing:1px; border-bottom:1px solid #23303d; padding-bottom:3px;
+  }
+  #panel label { display:block; margin:7px 0 0; }
+  #panel .row { display:flex; justify-content:space-between; }
+  #panel .val { color:#d7e6ee; }
+  #panel input[type=range] {
+    width:100%; margin:2px 0 0; height:14px; accent-color:#3fb4e8; background:transparent;
+  }
+  #panel .btns { display:flex; gap:6px; margin-top:12px; }
+  #panel button {
+    flex:1; background:#16222e; color:#9fd0ff; border:1px solid #2a3f52; border-radius:4px;
+    font-family:inherit; font-size:11px; padding:5px 0; cursor:pointer;
+  }
+  #panel button:hover { background:#1d2f40; color:#d7e6ee; }
+  #dump {
+    width:100%; box-sizing:border-box; margin-top:8px; height:96px; resize:vertical;
+    background:#0b1119; color:#7fb8dd; border:1px solid #23303d; border-radius:4px;
+    font-family:inherit; font-size:10px; padding:5px;
+  }
+</style>
+</head>
+<body>
+<div id="info"><b>NEURON</b> — procedural model<br>stellate soma + myelinated axon / recursive dendritic arbor</div>
+<div id="hud">drag to orbit · scroll to zoom · impulse fires dendrites → soma → terminals</div>
+
+<div id="panel">
+  <h2 id="panelHead"><span>PARAMETERS</span><span id="caret">[–]</span></h2>
+  <div class="body" id="panelBody"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ============================================================
+   TUNABLE PARAMETERS — every slider writes into this object and
+   triggers a full rebuild. The values here are the defaults.
+   ============================================================ */
+const P = {
+  seed:            1,
+
+  somaRadius:      1.6,
+  somaFlatten:     0.27,   // squash along Y → flat, lens-like body
+  lobeExtent:      0.62,   // how far the lobes are pulled out
+  lobeExtentVar:   0.30,   // random spread added to extent
+  lobeSharp:       9.5,    // higher = narrower, more needle-like lobe
+  lobeSharpVar:    21,
+  somaNoise:       0.45,   // surface wobble multiplier
+  somaOpacity:     0.55,   // <1 makes the cytoplasm glassy so the nucleus shows
+
+  dendriteCount:   7,
+  dendriteArcStart:42,     // degrees; the gap left around the axon
+  dendriteArcEnd:  278,
+  dendriteLength:  1.15,
+  dendriteDepth:   5,
+  dendriteRadius:  0.17,
+  dendriteFlatten: 0.47,   // <1 pulls the arbor into the soma's plane
+  dendriteBend:    0.55,
+  dendriteSpread:  16,     // degrees of extra fork spread
+
+  axonExtent:      0.55,   // axon lobe pull-out
+  axonSharp:       20,
+  axonHillock:     1.3,
+  axonSegments:    9,      // shaft length = segments x segLength
+  axonSegLength:   2.05,
+  axonRadius:      0.26,
+  axonWaver:       0.6,    // per-segment direction jitter
+  myelinOpacity:   0.5,    // gold sheath segments; <1 shows the axon core inside
+
+  collBranchAngle: 21,     // fork half-angle of the two collaterals
+  collBranchRoll:  102,    // roll of the whole fork about the shaft axis
+  collRollVar:     40,     // random roll added per collateral
+  collSegments:    2,
+  collSegLength:   1.5,
+
+  termLength:      0.95,
+  termDepth:       2,
+  termRadius:      0.55,   // x collateral radius
+  termSpread:      15,     // degrees, base fork angle
+  termSpreadVar:   20,
+  termRoll:        64,     // roll of each terminal arbor about its collateral
+  boutonSize:      0.75,
+
+  /* --- action potential --- */
+  impulseOn:       1,      // 0 stops firing and clears the glow
+  impulseRate:     0.5,    // impulses per second
+  impulseSpeed:    7.0,    // conduction speed in the unmyelinated stretches
+  saltatoryBoost:  3.0,    // how much faster it runs once under the myelin
+  impulseWidth:    1.2,    // length of the depolarised zone
+  impulseGlow:     1.0     // brightness of the flash
+};
+
+/* slider definitions: [key, label, min, max, step] — a 1-item row is a heading */
+const CONTROLS = [
+  ['SOMA'],
+  ['somaRadius',      'radius',            1.0,  4.0,  0.05],
+  ['somaFlatten',     'flatten (squash)',  0.10, 1.20, 0.01],
+  ['lobeExtent',      'lobe extent',       0.00, 1.60, 0.01],
+  ['lobeExtentVar',   'lobe extent var',   0.00, 1.00, 0.01],
+  ['lobeSharp',       'lobe sharp',        2,    60,   0.5 ],
+  ['lobeSharpVar',    'lobe sharp var',    0,    30,   0.5 ],
+  ['somaNoise',       'surface noise',     0,    3,    0.05],
+  ['somaOpacity',     'opacity',           0.05, 1.00, 0.01],
+  ['DENDRITES'],
+  ['dendriteCount',   'count',             1,    16,   1   ],
+  ['dendriteArcStart','arc start (deg)',   0,    180,  1   ],
+  ['dendriteArcEnd',  'arc end (deg)',     180,  360,  1   ],
+  ['dendriteLength',  'trunk length',      0.5,  5.0,  0.05],
+  ['dendriteDepth',   'branch depth',      1,    7,    1   ],
+  ['dendriteRadius',  'trunk radius',      0.05, 0.80, 0.01],
+  ['dendriteFlatten', 'arbor flatten',     0.30, 1.00, 0.01],
+  ['dendriteBend',    'bend',              0.0,  1.5,  0.01],
+  ['dendriteSpread',  'fork spread (deg)', 0,    80,   1   ],
+  ['AXON'],
+  ['axonExtent',      'lobe extent',       0.00, 1.60, 0.01],
+  ['axonSharp',       'lobe sharp',        2,    60,   0.5 ],
+  ['axonHillock',     'hillock length',    0.2,  4.0,  0.05],
+  ['axonSegments',    'shaft segments',    1,    24,   1   ],
+  ['axonSegLength',   'segment length',    0.4,  4.0,  0.05],
+  ['axonRadius',      'shaft radius',      0.08, 0.70, 0.01],
+  ['axonWaver',       'shaft waver',       0.0,  0.6,  0.01],
+  ['myelinOpacity',   'myelin opacity',    0.05, 1.00, 0.01],
+  ['AXON TERMINALS'],
+  ['collBranchAngle', 'fork angle (deg)',  0,    90,   1   ],
+  ['collBranchRoll',  'fork roll (deg)',   0,    360,  1   ],
+  ['collRollVar',     'fork roll var',     0,    180,  1   ],
+  ['collSegments',    'collateral segs',   0,    10,   1   ],
+  ['collSegLength',   'collateral seg len',0.3,  4.0,  0.05],
+  ['termLength',      'terminal length',   0.2,  3.0,  0.05],
+  ['termDepth',       'terminal depth',    1,    5,    1   ],
+  ['termRadius',      'terminal radius',   0.2,  1.2,  0.01],
+  ['termSpread',      'spread (deg)',      0,    80,   1   ],
+  ['termSpreadVar',   'spread var (deg)',  0,    90,   1   ],
+  ['termRoll',        'arbor roll (deg)',  0,    360,  1   ],
+  ['boutonSize',      'bouton size',       0.3,  3.0,  0.05],
+  ['ACTION POTENTIAL'],
+  ['impulseOn',       'firing (0/1)',      0,    1,    1   ],
+  ['impulseRate',     'rate (per sec)',    0.05, 4.0,  0.05],
+  ['impulseSpeed',    'conduction speed',  0.5,  30,   0.5 ],
+  ['saltatoryBoost',  'saltatory boost',   1.0,  8.0,  0.1 ],
+  ['impulseWidth',    'pulse width',       0.2,  6.0,  0.1 ],
+  ['impulseGlow',     'glow',              0.0,  1.5,  0.05],
+  ['MISC'],
+  ['seed',            'random seed',       1,    200,  1   ]
+];
+
+/* ============================================================
+   SEEDED RNG — so moving one slider only changes what that
+   slider controls; everything else regenerates identically.
+   ============================================================ */
+let _rngState = 1;
+function seedRng(s) { _rngState = (s * 1831565813 + 0x9E3779B9) >>> 0; }
+function rnd() {
+  _rngState = (_rngState + 0x6D2B79F5) >>> 0;
+  let t = _rngState;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+/* ============================================================
+   SCENE / CAMERA / RENDERER
+   ============================================================ */
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x0b0d10, 0.012);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
+
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+document.body.appendChild(renderer.domElement);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+/* ============================================================
+   LIGHTING — soft key from upper left, cool rim, matching the
+   glossy textbook-illustration look of the reference
+   ============================================================ */
+scene.add(new THREE.HemisphereLight(0x9fd0ff, 0x0a0a12, 0.6));
+const key = new THREE.DirectionalLight(0xeaf6ff, 1.15);
+key.position.set(-6, 14, 12);
+scene.add(key);
+const rim = new THREE.PointLight(0x4fa8ff, 1.0, 80);
+rim.position.set(-14, -6, -10);
+scene.add(rim);
+const fill = new THREE.PointLight(0x3f7bd6, 0.45, 80);
+fill.position.set(10, -10, 8);
+scene.add(fill);
+
+/* ============================================================
+   MATERIALS
+   ============================================================ */
+const somaMat     = new THREE.MeshPhongMaterial({ color:0x3fb4e8, shininess:70, specular:0xbfe8ff, emissive:0x0e5480, emissiveIntensity:0.45, transparent:true, side:THREE.DoubleSide });
+const nucleusMat  = new THREE.MeshPhongMaterial({ color:0xe0359a, shininess:60, specular:0xffc2e8, emissive:0x8e0f5c, emissiveIntensity:0.55 });
+const dendriteMat = new THREE.MeshPhongMaterial({ color:0x1f7fe0, shininess:65, specular:0xa8dcff, emissive:0x0b3f7a, emissiveIntensity:0.45 });
+const axonMat     = new THREE.MeshPhongMaterial({ color:0xb9c4dd, shininess:50, specular:0xffffff, emissive:0x2a3550, emissiveIntensity:0.3 });
+const myelinMat   = new THREE.MeshPhongMaterial({ color:0xf2b01e, shininess:80, specular:0xffeab0, emissive:0x8a5f00, emissiveIntensity:0.35, transparent:true, side:THREE.DoubleSide });
+const boutonMat   = new THREE.MeshPhongMaterial({ color:0x4f9fef, shininess:90, specular:0xffffff, emissive:0x14539f, emissiveIntensity:0.7 });
+
+let neuron = new THREE.Group();
+scene.add(neuron);
+
+/* ============================================================
+   ACTION POTENTIAL — conduction map
+   Every conductive mesh is tagged with u: its distance along the
+   conduction path. Negative in the dendrites (the signal travels
+   inward, toward the cell body), 0 at the soma, positive outward
+   along the axon to the terminals. A pulse is then just a moving
+   position on that one axis, and each frame we light whatever
+   sits near it. The gold sheaths are deliberately NOT tagged:
+   the core glows through them but only the bare nodes of Ranvier
+   flash, which is what makes the conduction look saltatory.
+   ============================================================ */
+const conduction = [];
+let uMin = 0, uMax = 1;
+
+function reg(mesh, u, kind) {
+  if (mesh) conduction.push({ mesh, u, kind, base: mesh.material });
+  return mesh;
+}
+
+// Rather than give every mesh its own material, each base material gets a
+// short ladder of progressively brighter clones and meshes are swapped
+// between rungs — a few hundred material switches a frame instead of a few
+// hundred live materials.
+const TIERS = 7;
+const GLOW = new THREE.Color(0xaff2ff);
+const tiers = new Map();
+
+function buildTiers() {
+  for (const arr of tiers.values()) for (let i = 1; i < arr.length; i++) arr[i].dispose();
+  tiers.clear();
+  for (const base of [somaMat, dendriteMat, axonMat, boutonMat]) {
+    const arr = [base];
+    for (let i = 1; i < TIERS; i++) {
+      const f = i / (TIERS - 1);
+      const m = base.clone();
+      m.color = base.color.clone().lerp(GLOW, f * 0.8);
+      m.emissive = base.emissive.clone().lerp(GLOW, f * 0.95);
+      m.emissiveIntensity = base.emissiveIntensity + f * 1.5;
+      arr.push(m);
+    }
+    tiers.set(base, arr);
+  }
+}
+
+function setTier(e, g) {
+  const ladder = tiers.get(e.base);
+  if (!ladder) return;
+  const want = ladder[Math.min(TIERS - 1, Math.max(0, Math.round(g * (TIERS - 1))))];
+  if (e.mesh.material !== want) e.mesh.material = want;
+}
+
+/* ============================================================
+   GEOMETRY HELPERS
+   ============================================================ */
+function makeSegment(start, end, radiusStart, radiusEnd, material, radialSegments = 7) {
+  const dir = new THREE.Vector3().subVectors(end, start);
+  const length = dir.length();
+  if (length < 1e-5) return null;
+  const geo = new THREE.CylinderGeometry(radiusEnd, radiusStart, length, radialSegments, 1, false);
+  const mesh = new THREE.Mesh(geo, material);
+  mesh.position.copy(new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5));
+  mesh.quaternion.copy(
+    new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0), dir.clone().normalize())
+  );
+  return mesh;
+}
+
+function makeJoint(point, radius, material) {
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 7, 5), material);
+  mesh.position.copy(point);
+  return mesh;
+}
+
+function randomPerpAxis(dir) {
+  const ref = Math.abs(dir.y) < 0.9 ? new THREE.Vector3(0,1,0) : new THREE.Vector3(1,0,0);
+  return new THREE.Vector3().crossVectors(dir, ref).normalize()
+    .applyAxisAngle(dir, rnd() * Math.PI * 2);
+}
+
+const AXON_ANGLE = 0;      // axon leaves toward +X
+
+/* ============================================================
+   ROOT LAYOUT — the single source of truth shared by the soma
+   and the dendrites. Each root is a lobe pulled out of the cell
+   body; the dendrite trunk then continues from that lobe's tip,
+   so the two read as one continuous piece of cytoplasm.
+   ============================================================ */
+let dendriteRoots = [], axonRoot = null, allRoots = [];
+
+function makeRoots(count) {
+  const roots = [];
+  const arcStart = THREE.MathUtils.degToRad(P.dendriteArcStart);
+  const arcEnd   = THREE.MathUtils.degToRad(P.dendriteArcEnd);
+  for (let i = 0; i < count; i++) {
+    const t = count === 1 ? 0.5 : i / (count - 1);
+    const a = AXON_ANGLE + arcStart + t * (arcEnd - arcStart)
+            + THREE.MathUtils.degToRad((rnd() - 0.5) * 14);
+    const lift = (rnd() - 0.5) * 0.7;                    // mild out-of-plane tilt
+    const dir = new THREE.Vector3(Math.cos(a), lift, Math.sin(a)).normalize();
+    roots.push({
+      dir,
+      extent: P.lobeExtent + rnd() * P.lobeExtentVar,    // how far the lobe is pulled out
+      sharp:  P.lobeSharp  + rnd() * P.lobeSharpVar      // higher = narrower, more cone-like lobe
+    });
+  }
+  return roots;
+}
+
+function buildRoots() {
+  dendriteRoots = makeRoots(P.dendriteCount);
+  axonRoot = {
+    dir: new THREE.Vector3(Math.cos(AXON_ANGLE), -0.12, Math.sin(AXON_ANGLE)).normalize(),
+    extent: P.axonExtent,
+    sharp: P.axonSharp
+  };
+  allRoots = dendriteRoots.concat([axonRoot]);
+}
+
+// Radial displacement field: base blob + a smooth cone-shaped bulge per root.
+// Summing (rather than max-ing) the lobes is what makes neighbouring trunks
+// merge into the body instead of poking through it as separate spikes.
+function somaRadiusAt(n) {
+  let bump = 0;
+  for (const r of allRoots) {
+    const d = n.dot(r.dir);
+    if (d > 0) bump += r.extent * Math.pow(d, r.sharp);
+  }
+  const noise = P.somaNoise * (
+    0.045 * Math.sin(n.x * 4.3 + n.y * 2.9) +
+    0.030 * Math.sin(n.y * 6.1 + n.z * 3.8 + 1.7) +
+    0.022 * Math.sin(n.z * 8.2 + n.x * 5.4 + 3.1));
+  return P.somaRadius * (1 + bump + noise);
+}
+
+// Where a given root's lobe tip sits, in the soma's local space.
+function rootTip(root, fraction = 1) {
+  const n = root.dir;
+  const r = P.somaRadius * (1 + root.extent) * fraction;
+  return new THREE.Vector3(n.x * r, n.y * r * P.somaFlatten, n.z * r);
+}
+
+/* ============================================================
+   SOMA — flattened, stellate cell body with the nucleus inside
+   ============================================================ */
+function createSoma() {
+  const geo = new THREE.IcosahedronGeometry(1, 6);   // unit sphere, then displaced
+  const pos = geo.attributes.position;
+  const v = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i);
+    const n = v.normalize();
+    const r = somaRadiusAt(n);
+    pos.setXYZ(i, n.x * r, n.y * r * P.somaFlatten, n.z * r);
+  }
+  geo.computeVertexNormals();
+  const mesh = new THREE.Mesh(geo, somaMat);
+
+  const nucleus = new THREE.Mesh(new THREE.SphereGeometry(P.somaRadius * 0.30, 28, 28), nucleusMat);
+  nucleus.scale.y = 0.75;
+  nucleus.position.set(-P.somaRadius * 0.12, P.somaRadius * 0.06 * P.somaFlatten, P.somaRadius * 0.18);
+  mesh.add(nucleus);
+
+  return mesh;
+}
+
+/* ============================================================
+   DENDRITES — recursive fractal, but each branch is drawn as a
+   short chain of sub-segments with a slight bend and a sphere
+   at every node, so the arbor curves smoothly instead of
+   looking like a pile of straight tubes.
+   ============================================================ */
+function drawBranch(start, dir, length, radius, endRadius, group, dist) {
+  const SUB = 3;
+  const bendAxis = randomPerpAxis(dir);
+  const bend = (rnd() - 0.5) * P.dendriteBend;
+  let p = start.clone();
+  let d = dir.clone();
+
+  for (let i = 0; i < SUB; i++) {
+    d.applyAxisAngle(bendAxis, bend / SUB);
+    d.y *= P.dendriteFlatten;           // keep the arbor disc-like, matching the flat soma
+    d.normalize();
+    const next = p.clone().add(d.clone().multiplyScalar(length / SUB));
+    const r0 = THREE.MathUtils.lerp(radius, endRadius, i / SUB);
+    const r1 = THREE.MathUtils.lerp(radius, endRadius, (i + 1) / SUB);
+    const seg = makeSegment(p, next, r0, r1, dendriteMat, 6);
+    if (seg) { group.add(seg); reg(seg, -(dist + (i + 0.5) * length / SUB)); }
+    if (i < SUB - 1) {
+      const j = makeJoint(next, r1 * 1.02, dendriteMat);
+      group.add(j); reg(j, -(dist + (i + 1) * length / SUB));
+    }
+    p = next;
+  }
+  return { end: p, dir: d, dist: dist + length };
+}
+
+function growDendrite(origin, dir, length, radius, depth, opts, group, dist) {
+  const { maxDepth, minRadius, lengthDecay, radiusDecay } = opts;
+  if (depth > maxDepth || radius < minRadius || length < 0.08) return;
+
+  const isTip = depth === maxDepth;
+  const endRadius = isTip ? minRadius * 0.5 : Math.max(radius * radiusDecay, minRadius);
+  const jittered = dir.clone()
+    .applyAxisAngle(randomPerpAxis(dir), (rnd() - 0.5) * 0.35)
+    .normalize();
+
+  const { end, dir: outDir, dist: endDist } =
+    drawBranch(origin, jittered, length, radius, endRadius, group, dist);
+  if (isTip) return;
+
+  const node = makeJoint(end, endRadius * 1.05, dendriteMat);
+  group.add(node); reg(node, -endDist);
+
+  const branchCount = depth < 2 ? 2 : (rnd() < 0.6 ? 2 : 1);
+  for (let i = 0; i < branchCount; i++) {
+    const spread = THREE.MathUtils.degToRad(16 + rnd() * P.dendriteSpread);
+    const sign = branchCount === 2 ? (i === 0 ? 1 : -1) : (rnd() < 0.5 ? 1 : -1);
+    const axis = randomPerpAxis(outDir);
+    const newDir = outDir.clone().applyAxisAngle(axis, spread * sign).normalize();
+    growDendrite(
+      end,
+      newDir,
+      length * (lengthDecay + (rnd() - 0.5) * 0.1),
+      endRadius,
+      depth + 1,
+      opts,
+      group,
+      endDist
+    );
+  }
+}
+
+function createDendrites() {
+  const group = new THREE.Group();
+  const opts = { maxDepth: P.dendriteDepth, minRadius: 0.035, lengthDecay: 0.78, radiusDecay: 0.70 };
+
+  for (const root of dendriteRoots) {
+    // start just inside the lobe tip so the trunk emerges from the flare
+    // with no visible seam, and at a radius that matches the lobe's waist
+    const origin = rootTip(root, 0.88);
+    const startRadius = P.dendriteRadius + root.extent * 0.14;
+    growDendrite(origin, root.dir.clone(), P.dendriteLength + rnd() * 0.5, startRadius, 0, opts, group, 0);
+  }
+  return group;
+}
+
+/* ============================================================
+   AXON — hillock → myelinated shaft with nodes of Ranvier →
+   bifurcation → myelinated collaterals → terminal arbors
+   ============================================================ */
+function createAxonTerminal(origin, dir, length, radius, depth, group, dist) {
+  const maxDepth = P.termDepth;
+  if (depth > maxDepth || radius < 0.02) {
+    const bouton = makeJoint(origin, Math.max(radius * 2.2, 0.075) * P.boutonSize, boutonMat);
+    group.add(bouton); reg(bouton, dist);
+    return;
+  }
+  const bent = dir.clone().applyAxisAngle(randomPerpAxis(dir), (rnd() - 0.5) * 0.3).normalize();
+  const end = origin.clone().add(bent.clone().multiplyScalar(length));
+  const seg = makeSegment(origin, end, radius, radius * 0.72, boutonMat, 5);
+  if (seg) { group.add(seg); reg(seg, dist + length * 0.5); }
+
+  const branches = depth === 0 ? 3 : 2;
+  for (let i = 0; i < branches; i++) {
+    const axis = randomPerpAxis(bent);
+    const spread = THREE.MathUtils.degToRad(P.termSpread + rnd() * P.termSpreadVar);
+    const newDir = bent.clone().applyAxisAngle(axis, spread * (i % 2 === 0 ? 1 : -1)).normalize();
+    createAxonTerminal(end, newDir, length * 0.62, radius * 0.66, depth + 1, group, dist + length);
+  }
+}
+
+// one myelinated run: pale core the whole way, gold sheaths with bare nodes between
+function myelinatedRun(start, dir, segments, segLength, radius, group, dist) {
+  let current = start.clone();
+  let d = dir.clone();
+  let r = radius;
+
+  for (let i = 0; i < segments; i++) {
+    d.applyAxisAngle(randomPerpAxis(d), (rnd() - 0.5) * P.axonWaver).normalize();
+    const end = current.clone().add(d.clone().multiplyScalar(segLength));
+
+    const coreR = Math.max(r * 0.5, 0.05);
+    const core = makeSegment(current, end, coreR, coreR, axonMat, 8);
+    if (core) { group.add(core); reg(core, dist + (i + 0.5) * segLength); }
+
+    const gap = 0.07;
+    const a = current.clone().lerp(end, gap);
+    const b = current.clone().lerp(end, 1 - gap);
+    const sheath = makeSegment(a, b, r, r, myelinMat, 12);
+    if (sheath) group.add(sheath);
+
+    current = end;
+    r = Math.max(r * 0.97, 0.09);
+  }
+  return { end: current, dir: d, radius: r, dist: dist + segments * segLength };
+}
+
+function createAxon() {
+  const group = new THREE.Group();
+
+  // hillock: short blue cone continuing out of the soma's axon lobe
+  const hillockStart = rootTip(axonRoot, 0.86);
+  const hillockEnd = hillockStart.clone().add(axonRoot.dir.clone().multiplyScalar(P.axonHillock));
+  const hillock = makeSegment(hillockStart, hillockEnd, 0.42, 0.26, somaMat, 12);
+  if (hillock) { group.add(hillock); reg(hillock, P.axonHillock * 0.5); }
+
+  const shaft = myelinatedRun(hillockEnd, axonRoot.dir.clone(),
+                              P.axonSegments, P.axonSegLength, P.axonRadius, group, P.axonHillock);
+
+  // bifurcation, then a myelinated collateral into each terminal arbor
+  const fork = makeJoint(shaft.end, shaft.radius * 0.7, axonMat);
+  group.add(fork); reg(fork, shaft.dist);
+  for (const sign of [1, -1]) {
+    const branchDir = shaft.dir.clone()
+      .applyAxisAngle(new THREE.Vector3(0, 0, 1), THREE.MathUtils.degToRad(P.collBranchAngle * sign))
+      .applyAxisAngle(shaft.dir.clone(), THREE.MathUtils.degToRad(
+        P.collBranchRoll + (rnd() - 0.5) * P.collRollVar))
+      .normalize();
+    const run = myelinatedRun(shaft.end, branchDir, P.collSegments, P.collSegLength,
+                              shaft.radius * 0.85, group, shaft.dist);
+    // build the terminal arbor, then spin it bodily about its own
+    // collateral axis so termRoll twists the whole spray at once
+    const arbor = new THREE.Group();
+    createAxonTerminal(run.end, run.dir.clone(), P.termLength, run.radius * P.termRadius, 0, arbor, run.dist);
+    arbor.children.forEach(c => c.position.sub(run.end));
+    arbor.position.copy(run.end);
+    arbor.setRotationFromAxisAngle(run.dir.clone().normalize(), THREE.MathUtils.degToRad(P.termRoll));
+    group.add(arbor);
+  }
+
+  return group;
+}
+
+/* ============================================================
+   BUILD / REBUILD
+   ============================================================ */
+function disposeGroup(obj) {
+  obj.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+}
+
+function build() {
+  scene.remove(neuron);
+  disposeGroup(neuron);
+
+  // a translucent soma lets the nucleus read through; DoubleSide keeps the
+  // far wall of the blob visible so it looks like a glassy sac, not a shell
+  somaMat.opacity = P.somaOpacity;
+  somaMat.transparent = P.somaOpacity < 1;
+  somaMat.depthWrite = P.somaOpacity >= 1;
+  somaMat.needsUpdate = true;
+
+  // same treatment for the myelin: translucent sheaths let the pale axon
+  // core read continuously through them, nodes of Ranvier included
+  myelinMat.opacity = P.myelinOpacity;
+  myelinMat.transparent = P.myelinOpacity < 1;
+  myelinMat.depthWrite = P.myelinOpacity >= 1;
+  myelinMat.needsUpdate = true;
+
+  // glow ladders are rebuilt here, after the opacity flags above, so the
+  // lit clones inherit the same transparency as the material they brighten
+  buildTiers();
+  conduction.length = 0;
+  pulses.length = 0;
+
+  seedRng(P.seed);
+  buildRoots();
+
+  neuron = new THREE.Group();
+  const soma = createSoma();
+  neuron.add(soma);
+  reg(soma, 0, 'soma');            // the whole cell body lights as one
+  neuron.add(createDendrites());
+  neuron.add(createAxon());
+  neuron.rotation.z = Math.PI * 0.04;
+  scene.add(neuron);
+
+  uMin = 0; uMax = 1;
+  for (const e of conduction) {
+    if (e.u < uMin) uMin = e.u;
+    if (e.u > uMax) uMax = e.u;
+  }
+}
+
+/* ============================================================
+   ACTION POTENTIAL — firing
+   Dendrites depolarise inward, the soma sums the input and the
+   hillock fires; past the hillock the signal is myelinated and
+   runs saltatoryBoost times faster, node to node, until it
+   reaches the boutons.
+   ============================================================ */
+const pulses = [];
+let sinceLast = 1e9;
+
+function clearGlow() {
+  for (const e of conduction) setTier(e, 0);
+}
+
+function updateImpulse(dt) {
+  if (P.impulseOn < 0.5) {
+    if (pulses.length) { pulses.length = 0; clearGlow(); }
+    return;
+  }
+
+  sinceLast += dt;
+  const gap = 1 / Math.max(P.impulseRate, 0.01);
+  if (sinceLast >= gap) {
+    sinceLast = 0;
+    pulses.push(uMin - P.impulseWidth);     // start just off the dendrite tips
+  }
+
+  for (let i = pulses.length - 1; i >= 0; i--) {
+    const myelinated = pulses[i] > P.axonHillock;
+    pulses[i] += P.impulseSpeed * (myelinated ? P.saltatoryBoost : 1) * dt;
+    if (pulses[i] > uMax + 3 * P.impulseWidth) pulses.splice(i, 1);
+  }
+
+  const w = Math.max(P.impulseWidth, 0.05);
+  for (const e of conduction) {
+    let g = 0;
+    // the soma is one big mesh, so it gets a wider window or it would
+    // strobe on and off as the pulse crosses its single u value
+    const width = e.kind === 'soma' ? w * 2.5 : w;
+    for (let i = 0; i < pulses.length; i++) {
+      const d = (pulses[i] - e.u) / width;
+      const v = Math.exp(-d * d);
+      if (v > g) g = v;
+    }
+    setTier(e, g * P.impulseGlow);
+  }
+}
+
+/* ============================================================
+   CONTROL PANEL
+   ============================================================ */
+const panelBody = document.getElementById('panelBody');
+const readouts = {};
+
+for (const c of CONTROLS) {
+  if (c.length === 1) {
+    const h = document.createElement('div');
+    h.className = 'grp';
+    h.textContent = c[0];
+    panelBody.appendChild(h);
+    continue;
+  }
+  const [k, label, min, max, step] = c;
+  const wrap = document.createElement('label');
+  const row = document.createElement('div');
+  row.className = 'row';
+  const name = document.createElement('span');
+  name.textContent = label;
+  const val = document.createElement('span');
+  val.className = 'val';
+  val.textContent = P[k];
+  row.appendChild(name); row.appendChild(val);
+
+  const slider = document.createElement('input');
+  slider.type = 'range';
+  slider.min = min; slider.max = max; slider.step = step; slider.value = P[k];
+  slider.addEventListener('input', () => {
+    P[k] = parseFloat(slider.value);
+    val.textContent = slider.value;
+    build();
+    dumpValues();
+  });
+
+  wrap.appendChild(row); wrap.appendChild(slider);
+  panelBody.appendChild(wrap);
+  readouts[k] = { slider, val };
+}
+
+const btns = document.createElement('div');
+btns.className = 'btns';
+const resetBtn = document.createElement('button');
+resetBtn.textContent = 'reset';
+const copyBtn = document.createElement('button');
+copyBtn.textContent = 'copy values';
+btns.appendChild(resetBtn); btns.appendChild(copyBtn);
+panelBody.appendChild(btns);
+
+const dump = document.createElement('textarea');
+dump.id = 'dump';
+dump.readOnly = true;
+panelBody.appendChild(dump);
+
+// only the values that differ from the defaults, so the paste-back stays short
+const DEFAULTS = JSON.parse(JSON.stringify(P));
+function dumpValues() {
+  const changed = {};
+  for (const k in P) if (P[k] !== DEFAULTS[k]) changed[k] = P[k];
+  dump.value = Object.keys(changed).length
+    ? JSON.stringify(changed, null, 1)
+    : '(all defaults)';
+}
+dumpValues();
+
+resetBtn.addEventListener('click', () => {
+  Object.assign(P, DEFAULTS);
+  for (const k in readouts) {
+    readouts[k].slider.value = P[k];
+    readouts[k].val.textContent = P[k];
+  }
+  build();
+  dumpValues();
+});
+
+copyBtn.addEventListener('click', () => {
+  dump.select();
+  if (navigator.clipboard) navigator.clipboard.writeText(dump.value).catch(() => {});
+  copyBtn.textContent = 'copied!';
+  setTimeout(() => copyBtn.textContent = 'copy values', 900);
+});
+
+const panel = document.getElementById('panel');
+document.getElementById('panelHead').addEventListener('click', () => {
+  panel.classList.toggle('collapsed');
+  document.getElementById('caret').textContent = panel.classList.contains('collapsed') ? '[+]' : '[–]';
+});
+// keep the panel from driving the orbit controls
+panel.addEventListener('mousedown', e => e.stopPropagation());
+panel.addEventListener('wheel', e => e.stopPropagation());
+
+/* ============================================================
+   CAMERA CONTROLS (manual orbit, no external deps)
+   ============================================================ */
+let isDragging = false, prevX = 0, prevY = 0;
+let theta = 0.55, phiAngle = 1.25, camDist = 30;
+const target = new THREE.Vector3(4, 0, 0);
+
+function updateCamera() {
+  camera.position.set(
+    target.x + camDist * Math.sin(phiAngle) * Math.sin(theta),
+    target.y + camDist * Math.cos(phiAngle),
+    target.z + camDist * Math.sin(phiAngle) * Math.cos(theta)
+  );
+  camera.lookAt(target);
+}
+updateCamera();
+
+renderer.domElement.addEventListener('mousedown', (e) => { isDragging = true; prevX = e.clientX; prevY = e.clientY; });
+window.addEventListener('mouseup', () => isDragging = false);
+window.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  theta -= (e.clientX - prevX) * 0.006;
+  phiAngle = THREE.MathUtils.clamp(phiAngle - (e.clientY - prevY) * 0.006, 0.25, Math.PI - 0.25);
+  prevX = e.clientX; prevY = e.clientY;
+  updateCamera();
+});
+renderer.domElement.addEventListener('wheel', (e) => {
+  camDist = THREE.MathUtils.clamp(camDist + e.deltaY * 0.02, 8, 60);
+  updateCamera();
+});
+
+let lastTouch = null;
+renderer.domElement.addEventListener('touchstart', (e) => { lastTouch = e.touches[0]; autoSpin = false; });
+renderer.domElement.addEventListener('touchmove', (e) => {
+  if (!lastTouch) return;
+  const t = e.touches[0];
+  theta -= (t.clientX - lastTouch.clientX) * 0.006;
+  phiAngle = THREE.MathUtils.clamp(phiAngle - (t.clientY - lastTouch.clientY) * 0.006, 0.25, Math.PI - 0.25);
+  lastTouch = t;
+  updateCamera();
+}, { passive:true });
+renderer.domElement.addEventListener('touchend', () => lastTouch = null);
+
+/* ============================================================
+   RENDER LOOP
+   ============================================================ */
+let autoSpin = true;
+renderer.domElement.addEventListener('mousedown', () => autoSpin = false);
+
+build();
+
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  updateImpulse(Math.min(clock.getDelta(), 0.05));
+  if (autoSpin) { theta += 0.0014; updateCamera(); }
+  renderer.render(scene, camera);
+}
+animate();
+</script>
+</body>
+</html>

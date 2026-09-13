@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sperm Cell — 3D Swim Simulation</title>
+<style>
+  html, body { margin:0; padding:0; overflow:hidden; background:#0a0a0d; height:100%; }
+  canvas { display:block; }
+  #info {
+    position:absolute; top:16px; left:16px; color:#b9a8c9; font-family:'Courier New', monospace;
+    font-size:12px; letter-spacing:0.5px; line-height:1.6; pointer-events:none; user-select:none;
+    text-shadow:0 0 8px rgba(0,0,0,0.8);
+  }
+  #info b { color:#e8dcf0; }
+  #hud {
+    position:absolute; bottom:16px; left:16px; color:#5f5568; font-family:'Courier New', monospace;
+    font-size:11px; pointer-events:none; user-select:none;
+  }
+
+  /* ---- tuning panel ---- */
+  #panel {
+    position:absolute; top:16px; right:16px; width:268px; max-height:calc(100vh - 32px);
+    overflow-y:auto; background:rgba(14,10,18,0.88); border:1px solid #2c1d36; border-radius:6px;
+    font-family:'Courier New', monospace; font-size:11px; color:#b9a8c9; padding:10px 12px 12px;
+    backdrop-filter:blur(4px);
+  }
+  #panel h2 {
+    margin:0 0 8px; font-size:11px; letter-spacing:1.5px; color:#e8dcf0; font-weight:bold;
+    display:flex; justify-content:space-between; align-items:center; cursor:pointer;
+  }
+  #panel.collapsed .body { display:none; }
+  #panel .grp {
+    margin:12px 0 4px; color:#e08aa6; letter-spacing:1px; border-bottom:1px solid #33233d; padding-bottom:3px;
+  }
+  #panel label { display:block; margin:7px 0 0; }
+  #panel .row { display:flex; justify-content:space-between; }
+  #panel .val { color:#e8dcf0; }
+  #panel input[type=range] {
+    width:100%; margin:2px 0 0; height:14px; accent-color:#a78fd1; background:transparent;
+  }
+  #panel .btns { display:flex; gap:6px; margin-top:12px; }
+  #panel button {
+    flex:1; background:#22162b; color:#cbb8e0; border:1px solid #3d2a4a; border-radius:4px;
+    font-family:inherit; font-size:11px; padding:5px 0; cursor:pointer;
+  }
+  #panel button:hover { background:#2e1d3a; color:#f0e6f8; }
+  #dump {
+    width:100%; box-sizing:border-box; margin-top:8px; height:96px; resize:vertical;
+    background:#120d18; color:#b48ed0; border:1px solid #33233d; border-radius:4px;
+    font-family:inherit; font-size:10px; padding:5px;
+  }
+</style>
+</head>
+<body>
+<div id="info"><b>SPERMATOZOON</b><br>acrosome + nucleus / midpiece (mitochondrial sheath) / flagellum</div>
+<div id="hud">drag to orbit · scroll to zoom</div>
+
+<div id="panel">
+  <h2 id="panelHead"><span>PARAMETERS</span><span id="caret">[–]</span></h2>
+  <div class="body" id="panelBody"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ============================================================
+   TUNABLE PARAMETERS — every slider writes here and rebuilds
+   the cell. These values are the defaults.
+   ============================================================ */
+const P = {
+  cellScale:       1.6,
+
+  /* --- head --- */
+  headLength:      0.95,   // half-extent along +Z (forward)
+  headWidth:       0.62,
+  headHeight:      0.50,
+  headOpacity:     0.40,   // plasma membrane over the head
+  nucleusScale:    0.78,   // fraction of the head the nucleus fills
+  acroCoverage:    43,     // degrees of the nucleus the acrosome cap covers
+  acroThickness:   0.07,   // how far the cap stands off the nucleus
+  acroOpacity:     0.90,
+  neckLength:      0.50,
+  neckRadius:      0.22,
+  centrioleSize:   0.10,   // the small cyan collar behind the head
+
+  /* --- midpiece --- */
+  midStart:       -0.60,   // z where the midpiece begins
+  midLength:       1.30,
+  midCoreRadius:   0.085,  // the cylinder the mitochondria wrap around
+  midCoreTaper:    1.15,   // rear radius / front radius of that cylinder
+  mitoTurns:       13,     // helix turns over the midpiece
+  mitoRadius:      0.145,  // helix radius (distance from the axis)
+  mitoThickness:   0.042,  // tube radius of the mitochondrial cord
+  mitoSides:       6,      // tube cross-section sides
+  mitoSegments:    64,     // samples along the helix (raise if it looks faceted)
+  midSheathRadius: 0.22,   // translucent membrane around the whole midpiece
+  midSheathOpacity:0.30,
+
+  /* --- tail --- */
+  tailLength:      9.1,    // true contour length of the flagellum
+  tailSegments:    34,
+  tailWaves:       0.95,   // full wavelengths along the tail
+  tailAmp:         2.20,   // peak lateral amplitude
+  tailAmpEnv:      0.95,   // <1 keeps amplitude high early, >1 pushes it to the tip
+  tailAmpBase:     0.05,   // amplitude right at the neck
+  helicalMix:      0.27,   // 0 = flat planar beat, 1 = fully helical
+  beatRate:        2.9,    // set to 0 to freeze the wave for inspection
+  tailBaseRadius:  0.075,  // axoneme core radius at the base
+  tailTaper:       0.90,   // higher = thins out faster toward the tip
+  tailMinRadius:   0.018,
+  tailSheath:      2.10,   // membrane radius / core radius
+  tailSheathOpacity:0.26,
+
+  /* --- motion --- */
+  steerAmount:     1.0     // rate of the slow turn-in-place; 0 freezes the pose
+};
+
+/* slider definitions: [key, label, min, max, step] — a 1-item row is a heading */
+const CONTROLS = [
+  ['HEAD'],
+  ['headLength',      'length',            0.3,  2.0,  0.01],
+  ['headWidth',       'width',             0.2,  1.5,  0.01],
+  ['headHeight',      'height',            0.2,  1.5,  0.01],
+  ['headOpacity',     'membrane opacity',  0.05, 1.00, 0.01],
+  ['nucleusScale',    'nucleus fill',      0.40, 0.98, 0.01],
+  ['acroCoverage',    'acrosome cover (deg)',0,  180,  1   ],
+  ['acroThickness',   'acrosome thickness',0.00, 0.40, 0.01],
+  ['acroOpacity',     'acrosome opacity',  0.10, 1.00, 0.01],
+  ['neckLength',      'neck length',       0.0,  1.5,  0.01],
+  ['neckRadius',      'neck radius',       0.05, 0.60, 0.01],
+  ['centrioleSize',   'centriole size',    0.00, 0.30, 0.01],
+  ['MIDPIECE'],
+  ['midStart',        'start z',          -2.0,  0.0,  0.01],
+  ['midLength',       'length',            0.3,  4.0,  0.01],
+  ['midCoreRadius',   'core radius',       0.02, 0.30, 0.005],
+  ['midCoreTaper',    'core taper',        0.50, 2.00, 0.01],
+  ['mitoTurns',       'mito turns',        1,    40,   1   ],
+  ['mitoRadius',      'mito helix radius', 0.04, 0.40, 0.005],
+  ['mitoThickness',   'mito thickness',    0.01, 0.15, 0.002],
+  ['mitoSides',       'mito tube sides',   3,    16,   1   ],
+  ['mitoSegments',    'mito smoothness',   16,   400,  4   ],
+  ['midSheathRadius', 'sheath radius',     0.05, 0.60, 0.005],
+  ['midSheathOpacity','sheath opacity',    0.00, 1.00, 0.01],
+  ['TAIL'],
+  ['tailLength',      'contour length',    2.0,  20.0, 0.1 ],
+  ['tailSegments',    'segments',          8,    80,   1   ],
+  ['tailWaves',       'wavelengths',       0.2,  4.0,  0.05],
+  ['tailAmp',         'amplitude',         0.0,  6.0,  0.05],
+  ['tailAmpEnv',      'amplitude envelope',0.2,  3.0,  0.05],
+  ['tailAmpBase',     'amplitude at neck', 0.0,  0.6,  0.01],
+  ['helicalMix',      'helical mix',       0.0,  1.0,  0.01],
+  ['beatRate',        'beat rate',         0.0,  20.0, 0.1 ],
+  ['tailBaseRadius',  'core radius',       0.01, 0.25, 0.005],
+  ['tailTaper',       'core taper',        0.0,  3.0,  0.05],
+  ['tailMinRadius',   'tip radius',        0.00, 0.10, 0.002],
+  ['tailSheath',      'sheath / core',     1.0,  4.0,  0.05],
+  ['tailSheathOpacity','sheath opacity',   0.00, 1.00, 0.01],
+  ['MOTION'],
+  ['cellScale',       'cell scale',        0.5,  3.0,  0.05],
+  ['steerAmount',     'turn rate',         0.0,  3.0,  0.05]
+];
+
+/* ============================================================
+   SCENE / CAMERA / RENDERER
+   ============================================================ */
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x0a0a0d, 0.012);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 500);
+
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+document.body.appendChild(renderer.domElement);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+/* ============================================================
+   LIGHTING — soft, no blown-out highlights
+   ============================================================ */
+scene.add(new THREE.AmbientLight(0x554a66, 0.55));
+const key = new THREE.DirectionalLight(0xe8ddff, 0.75);
+key.position.set(6, 9, 8);
+scene.add(key);
+const rim = new THREE.PointLight(0x8866ff, 0.5, 60);
+rim.position.set(-10, -3, -6);
+scene.add(rim);
+const fill = new THREE.PointLight(0xff88aa, 0.25, 60);
+fill.position.set(5, -6, 5);
+scene.add(fill);
+
+/* ============================================================
+   MATERIALS  (tuned low-shininess to avoid overexposed white blobs)
+   Membranes share one look: translucent, double-sided so the far
+   wall still reads, and no depth writes so the organelles inside
+   are never occluded by the sac around them.
+   ============================================================ */
+const headMat    = new THREE.MeshPhongMaterial({ color:0xcbb8e0, shininess:12, specular:0x3a2f4a, transparent:true, opacity:0.4, side:THREE.DoubleSide, depthWrite:false });
+const nucleusMat = new THREE.MeshPhongMaterial({ color:0xa78fd1, shininess:8,  specular:0x2a1f3a });
+const acroMat    = new THREE.MeshPhongMaterial({ color:0xf0dcc0, shininess:22, specular:0x6a5544, transparent:true, opacity:0.9, side:THREE.DoubleSide });
+const centriMat  = new THREE.MeshPhongMaterial({ color:0x4fd8e8, shininess:30, specular:0x88ffff, emissive:0x0d4c55, emissiveIntensity:0.5 });
+const midMat     = new THREE.MeshPhongMaterial({ color:0x9d86c4, shininess:14, specular:0x332844 });
+const mitoMat    = new THREE.MeshPhongMaterial({ color:0xd4576f, shininess:24, specular:0x662233, emissive:0x3d0d1a, emissiveIntensity:0.35 });
+const membraneMat= new THREE.MeshPhongMaterial({ color:0xb9a6c9, shininess:18, specular:0x4a3d55, transparent:true, opacity:0.3, side:THREE.DoubleSide, depthWrite:false });
+const tailMat    = new THREE.MeshPhongMaterial({ color:0x7b3fe4, shininess:20, specular:0x442a66, emissive:0x2a1152, emissiveIntensity:0.4 });
+const tailSkinMat= new THREE.MeshPhongMaterial({ color:0xc2b0d4, shininess:16, specular:0x4a3d55, transparent:true, opacity:0.26, side:THREE.DoubleSide, depthWrite:false });
+
+/* ============================================================
+   SPERM CELL
+   All internal geometry is built along the LOCAL +Z axis
+   (forward). The whole group is then translated/rotated in
+   world space each frame to swim and steer. This keeps the
+   flagellum math simple (no world-space basis recompute) and
+   avoids any curve-frame twisting artifacts, since the tail is
+   a chain of independently-oriented rigid segments rather than
+   a single deformed tube.
+   ============================================================ */
+class SpermCell {
+  constructor(state = {}) {
+    this.scale = P.cellScale;
+    this.phase = state.phase || 0;
+    this.position = state.position ? state.position.clone() : new THREE.Vector3();
+    this.heading = state.heading ? state.heading.clone() : new THREE.Vector3(0, 0, 1);
+    this.steerSeedA = state.steerSeedA ?? Math.random() * 100;
+    this.steerSeedB = state.steerSeedB ?? Math.random() * 100;
+
+    this.group = new THREE.Group();
+    scene.add(this.group);
+
+    this._buildHead();
+    this._buildMidpiece();
+    this._buildTail();
+  }
+
+  dispose() {
+    this.group.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+    scene.remove(this.group);
+  }
+
+  /* ---------------- head: nucleus, acrosome cap, membrane ---------------- */
+  _buildHead() {
+    const s = this.scale;
+    const hx = P.headWidth * s, hy = P.headHeight * s, hz = P.headLength * s;
+    const centre = 0.35 * s;
+
+    // nucleus: the solid violet core that fills most of the head
+    const k = P.nucleusScale;
+    const nucGeo = new THREE.SphereGeometry(1, 26, 18);
+    nucGeo.scale(hx * k, hy * k, hz * k);
+    const nucleus = new THREE.Mesh(nucGeo, nucleusMat);
+    nucleus.position.set(0, 0, centre);
+    this.group.add(nucleus);
+
+    // acrosome: a cap of hydrolytic enzymes over the leading face of the
+    // nucleus. Built as a partial sphere (thetaLength = coverage) whose pole
+    // is rotated from +Y round to +Z so it sits on the front of the head.
+    if (P.acroCoverage > 0.5) {
+      const a = k + P.acroThickness;
+      const acroGeo = new THREE.SphereGeometry(
+        1, 30, 16, 0, Math.PI * 2, 0, THREE.MathUtils.degToRad(P.acroCoverage));
+      acroGeo.rotateX(Math.PI / 2);
+      acroGeo.scale(hx * a, hy * a, hz * a);
+      const acro = new THREE.Mesh(acroGeo, acroMat);
+      acro.position.set(0, 0, centre);
+      this.group.add(acro);
+    }
+
+    // plasma membrane: the outermost envelope of the head
+    const headGeo = new THREE.SphereGeometry(1, 28, 20);
+    headGeo.scale(hx, hy, hz);
+    const head = new THREE.Mesh(headGeo, headMat);
+    head.position.set(0, 0, centre);
+    this.group.add(head);
+
+    // neck: narrows the head down toward the midpiece connector
+    if (P.neckLength > 0.01) {
+      const neckGeo = new THREE.ConeGeometry(P.neckRadius * s, P.neckLength * s, 14);
+      neckGeo.rotateX(-Math.PI / 2);      // apex now points toward -Z (backward)
+      const neck = new THREE.Mesh(neckGeo, headMat);
+      neck.position.set(0, 0, P.midStart * s + P.neckLength * s * 0.5);
+      this.group.add(neck);
+    }
+
+    // centriole: the small bright collar at the head/midpiece junction
+    if (P.centrioleSize > 0.005) {
+      const cGeo = new THREE.CylinderGeometry(P.centrioleSize * s, P.centrioleSize * s,
+                                              P.centrioleSize * 1.4 * s, 12);
+      cGeo.rotateX(Math.PI / 2);
+      const centri = new THREE.Mesh(cGeo, centriMat);
+      centri.position.set(0, 0, P.midStart * s);
+      this.group.add(centri);
+    }
+  }
+
+  /* ---------------- midpiece: core, mitochondrial helix, sheath ---------------- */
+  _buildMidpiece() {
+    const s = this.scale;
+    const startZ = P.midStart * s;
+    const len = P.midLength * s;
+    const endZ = startZ - len;
+
+    // the cylinder the mitochondria spiral around
+    const rF = P.midCoreRadius * s;
+    const rR = rF * P.midCoreTaper;
+    const coreGeo = new THREE.CylinderGeometry(rR, rF, len, 14);
+    coreGeo.rotateX(Math.PI / 2);
+    const core = new THREE.Mesh(coreGeo, midMat);
+    core.position.set(0, 0, startZ - len / 2);
+    this.group.add(core);
+
+    // mitochondrial sheath: a static helix wrap (safe for TubeGeometry —
+    // constant curvature/torsion means no Frenet-frame flip artifacts)
+    const segs = Math.round(P.mitoSegments);
+    const pts = [];
+    for (let i = 0; i <= segs; i++) {
+      const t = i / segs;
+      const ang = t * P.mitoTurns * Math.PI * 2;
+      const r = P.mitoRadius * s;
+      pts.push(new THREE.Vector3(Math.cos(ang) * r, Math.sin(ang) * r, startZ - t * len));
+    }
+    const helixGeo = new THREE.TubeGeometry(
+      new THREE.CatmullRomCurve3(pts), segs, P.mitoThickness * s, Math.round(P.mitoSides), false);
+    this.group.add(new THREE.Mesh(helixGeo, mitoMat));
+
+    // translucent membrane enclosing the whole midpiece
+    if (P.midSheathOpacity > 0.005) {
+      const sheathGeo = new THREE.CylinderGeometry(
+        P.midSheathRadius * s, P.midSheathRadius * s, len, 20, 1, true);
+      sheathGeo.rotateX(Math.PI / 2);
+      const sheath = new THREE.Mesh(sheathGeo, membraneMat.clone());
+      sheath.material.opacity = P.midSheathOpacity;
+      sheath.position.set(0, 0, startZ - len / 2);
+      this.group.add(sheath);
+    }
+
+    this.tailStartZ = endZ;
+  }
+
+  /* ---------------- tail: axoneme core inside a translucent sheath ---------------- */
+  _buildTail() {
+    // Persistent, pre-tapered unit segments. Each frame we only update
+    // position/quaternion/scale — never rebuild geometry — so the tail
+    // can never crumple or self-intersect from re-triangulation.
+    const n = this.tailSegments = Math.round(P.tailSegments);
+    this.coreMeshes = [];
+    this.coreJoints = [];
+    this.skinMeshes = [];
+    this.skinJoints = [];
+
+    tailSkinMat.opacity = P.tailSheathOpacity;
+    const drawSkin = P.tailSheathOpacity > 0.005;
+
+    for (let i = 0; i < n; i++) {
+      const r0 = this._tailRadiusAt(i / n), r1 = this._tailRadiusAt((i + 1) / n);
+      // baked taper ratio between the two ends of this particular segment;
+      // absolute size is then applied later purely via non-uniform scale
+      const ratio = Math.max(r1 / r0, 0.05);
+
+      const core = new THREE.Mesh(new THREE.CylinderGeometry(ratio, 1, 1, 8), tailMat);
+      this.group.add(core);
+      this.coreMeshes.push(core);
+
+      const joint = new THREE.Mesh(new THREE.SphereGeometry(1, 7, 6), tailMat);
+      this.group.add(joint);
+      this.coreJoints.push(joint);
+
+      if (drawSkin) {
+        const skin = new THREE.Mesh(new THREE.CylinderGeometry(ratio, 1, 1, 10), tailSkinMat);
+        this.group.add(skin);
+        this.skinMeshes.push(skin);
+
+        const sj = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 6), tailSkinMat);
+        this.group.add(sj);
+        this.skinJoints.push(sj);
+      }
+    }
+    this._updateTail();
+  }
+
+  _tailRadiusAt(u) {
+    const s = this.scale;
+    return Math.max(P.tailBaseRadius * s * Math.pow(1 - u, P.tailTaper), P.tailMinRadius * s);
+  }
+
+  /* The beat shape at parameter u ∈ [0,1], for a given axial extent.
+     Amplitude grows from tailAmpBase at the neck to full at the tip. */
+  _shape(u, axial) {
+    const s = this.scale;
+    const env = P.tailAmpBase + (1 - P.tailAmpBase) * Math.pow(u, P.tailAmpEnv);
+    const w = Math.PI * 2 * P.tailWaves * u - this.phase;
+    return new THREE.Vector3(
+      env * P.tailAmp * s * Math.sin(w),
+      env * P.tailAmp * s * P.helicalMix * Math.cos(w + 0.6),
+      this.tailStartZ - u * axial
+    );
+  }
+
+  /* A real flagellum has a FIXED contour length — as the wave deepens it
+     pulls the tip forward rather than stretching. So instead of laying the
+     wave over a fixed z-extent, bisect for the axial extent whose contour
+     length equals tailLength, then resample that curve at even arc length. */
+  _tailPoints() {
+    const n = this.tailSegments;
+    const target = P.tailLength * this.scale;
+    const DENSE = 140;
+
+    const contour = (axial) => {
+      let L = 0, prev = this._shape(0, axial);
+      for (let i = 1; i <= DENSE; i++) {
+        const p = this._shape(i / DENSE, axial);
+        L += p.distanceTo(prev);
+        prev = p;
+      }
+      return L;
+    };
+
+    let lo = target * 0.02, hi = target;
+    for (let it = 0; it < 14; it++) {
+      const mid = (lo + hi) * 0.5;
+      if (contour(mid) > target) hi = mid; else lo = mid;
+    }
+    const axial = (lo + hi) * 0.5;
+
+    const dense = [], cum = [0];
+    for (let i = 0; i <= DENSE; i++) dense.push(this._shape(i / DENSE, axial));
+    for (let i = 1; i <= DENSE; i++) cum.push(cum[i - 1] + dense[i].distanceTo(dense[i - 1]));
+    const total = cum[DENSE] || 1e-6;
+
+    const pts = [];
+    let j = 0;
+    for (let i = 0; i <= n; i++) {
+      const want = total * i / n;
+      while (j < DENSE - 1 && cum[j + 1] < want) j++;
+      const span = cum[j + 1] - cum[j];
+      pts.push(dense[j].clone().lerp(dense[j + 1], span > 1e-9 ? (want - cum[j]) / span : 0));
+    }
+    return pts;
+  }
+
+  _updateHeading(t) {
+    const k = P.steerAmount;
+    const yaw = (Math.sin(t * 0.3 + this.steerSeedA) * 0.5 + Math.sin(t * 0.11 + this.steerSeedB) * 0.25) * k;
+    const pitch = Math.cos(t * 0.22 + this.steerSeedB) * 0.28 * k;
+    const forward = new THREE.Vector3(0, 0, 1);
+    forward.applyEuler(new THREE.Euler(pitch * 0.4, yaw * 0.4, 0, 'XYZ'));
+    this.heading.lerp(forward.normalize(), 0.03).normalize();
+  }
+
+  update(dt, t) {
+    this._updateHeading(t);
+
+    // The cell is pinned at the origin and beats in place. It still turns to
+    // follow its wandering heading, so you get every angle over time, but it
+    // never translates — nothing to chase, and no world wrap to lurch across.
+    this.group.position.copy(this.position);
+    const m = new THREE.Matrix4().lookAt(new THREE.Vector3(0, 0, 0), this.heading, new THREE.Vector3(0, 1, 0));
+    this.group.quaternion.setFromRotationMatrix(m);
+
+    this.phase += dt * P.beatRate;
+    this._updateTail();
+  }
+
+  _updateTail() {
+    const n = this.tailSegments;
+    const pts = this._tailPoints();
+    const up = new THREE.Vector3(0, 1, 0);
+    const skin = this.skinMeshes.length > 0;
+
+    for (let i = 0; i < n; i++) {
+      const start = pts[i], end = pts[i + 1];
+      const dir = new THREE.Vector3().subVectors(end, start);
+      const len = Math.max(dir.length(), 1e-4);
+      dir.normalize();
+
+      const mid = start.clone().lerp(end, 0.5);
+      const q = new THREE.Quaternion().setFromUnitVectors(up, dir);
+      const r0 = this._tailRadiusAt(i / n);
+
+      const core = this.coreMeshes[i];
+      core.position.copy(mid);
+      core.quaternion.copy(q);
+      core.scale.set(r0, len, r0);
+
+      const joint = this.coreJoints[i];
+      joint.position.copy(start);
+      joint.scale.setScalar(r0);
+
+      if (skin) {
+        const sr = r0 * P.tailSheath;
+        const sm = this.skinMeshes[i];
+        sm.position.copy(mid);
+        sm.quaternion.copy(q);
+        sm.scale.set(sr, len, sr);
+
+        const sj = this.skinJoints[i];
+        sj.position.copy(start);
+        sj.scale.setScalar(sr);
+      }
+    }
+  }
+}
+
+/* ============================================================
+   BUILD / REBUILD — a slider change rebuilds the cell but keeps
+   it swimming from where it was, so nothing jumps.
+   ============================================================ */
+let cell = null;
+
+function build() {
+  const state = cell ? {
+    phase: cell.phase, position: cell.position, heading: cell.heading,
+    steerSeedA: cell.steerSeedA, steerSeedB: cell.steerSeedB
+  } : {};
+  if (cell) cell.dispose();
+
+  headMat.opacity = P.headOpacity;
+  acroMat.opacity = P.acroOpacity;
+  tailSkinMat.opacity = P.tailSheathOpacity;
+
+  cell = new SpermCell(state);
+}
+
+/* ============================================================
+   CONTROL PANEL
+   ============================================================ */
+const panelBody = document.getElementById('panelBody');
+const readouts = {};
+
+for (const c of CONTROLS) {
+  if (c.length === 1) {
+    const h = document.createElement('div');
+    h.className = 'grp';
+    h.textContent = c[0];
+    panelBody.appendChild(h);
+    continue;
+  }
+  const [k, label, min, max, step] = c;
+  const wrap = document.createElement('label');
+  const row = document.createElement('div');
+  row.className = 'row';
+  const name = document.createElement('span');
+  name.textContent = label;
+  const val = document.createElement('span');
+  val.className = 'val';
+  val.textContent = P[k];
+  row.appendChild(name); row.appendChild(val);
+
+  const slider = document.createElement('input');
+  slider.type = 'range';
+  slider.min = min; slider.max = max; slider.step = step; slider.value = P[k];
+  slider.addEventListener('input', () => {
+    P[k] = parseFloat(slider.value);
+    val.textContent = slider.value;
+    build();
+    dumpValues();
+  });
+
+  wrap.appendChild(row); wrap.appendChild(slider);
+  panelBody.appendChild(wrap);
+  readouts[k] = { slider, val };
+}
+
+const btns = document.createElement('div');
+btns.className = 'btns';
+const resetBtn = document.createElement('button');
+resetBtn.textContent = 'reset';
+const copyBtn = document.createElement('button');
+copyBtn.textContent = 'copy values';
+btns.appendChild(resetBtn); btns.appendChild(copyBtn);
+panelBody.appendChild(btns);
+
+const dump = document.createElement('textarea');
+dump.id = 'dump';
+dump.readOnly = true;
+panelBody.appendChild(dump);
+
+// only the values that differ from the defaults, so the paste-back stays short
+const DEFAULTS = JSON.parse(JSON.stringify(P));
+function dumpValues() {
+  const changed = {};
+  for (const k in P) if (P[k] !== DEFAULTS[k]) changed[k] = P[k];
+  dump.value = Object.keys(changed).length
+    ? JSON.stringify(changed, null, 1)
+    : '(all defaults)';
+}
+dumpValues();
+
+resetBtn.addEventListener('click', () => {
+  Object.assign(P, DEFAULTS);
+  for (const k in readouts) {
+    readouts[k].slider.value = P[k];
+    readouts[k].val.textContent = P[k];
+  }
+  build();
+  dumpValues();
+});
+
+copyBtn.addEventListener('click', () => {
+  dump.select();
+  if (navigator.clipboard) navigator.clipboard.writeText(dump.value).catch(() => {});
+  copyBtn.textContent = 'copied!';
+  setTimeout(() => copyBtn.textContent = 'copy values', 900);
+});
+
+const panel = document.getElementById('panel');
+document.getElementById('panelHead').addEventListener('click', () => {
+  panel.classList.toggle('collapsed');
+  document.getElementById('caret').textContent = panel.classList.contains('collapsed') ? '[+]' : '[–]';
+});
+// keep the panel from driving the orbit controls
+panel.addEventListener('mousedown', e => e.stopPropagation());
+panel.addEventListener('wheel', e => e.stopPropagation());
+
+build();
+
+/* ============================================================
+   CAMERA CONTROLS
+   ============================================================ */
+let isDragging = false, prevX = 0, prevY = 0;
+let theta = 0.6, phiAngle = 1.25, camDist = 13;
+let autoOrbit = true;
+const camTarget = new THREE.Vector3();
+
+function updateCamera() {
+  camTarget.copy(cell.position);      // the cell holds still, so no chase lag
+  camera.position.set(
+    camTarget.x + camDist * Math.sin(phiAngle) * Math.sin(theta),
+    camTarget.y + camDist * Math.cos(phiAngle),
+    camTarget.z + camDist * Math.sin(phiAngle) * Math.cos(theta)
+  );
+  camera.lookAt(camTarget);
+}
+
+renderer.domElement.addEventListener('mousedown', (e) => { isDragging = true; autoOrbit = false; prevX = e.clientX; prevY = e.clientY; });
+window.addEventListener('mouseup', () => isDragging = false);
+window.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  const dx = e.clientX - prevX, dy = e.clientY - prevY;
+  theta -= dx * 0.006;
+  phiAngle = THREE.MathUtils.clamp(phiAngle - dy * 0.006, 0.2, Math.PI - 0.2);
+  prevX = e.clientX; prevY = e.clientY;
+});
+renderer.domElement.addEventListener('wheel', (e) => {
+  camDist = THREE.MathUtils.clamp(camDist + e.deltaY * 0.015, 3, 35);
+});
+
+let lastTouch = null;
+renderer.domElement.addEventListener('touchstart', (e) => { lastTouch = e.touches[0]; autoOrbit = false; });
+renderer.domElement.addEventListener('touchmove', (e) => {
+  if (!lastTouch) return;
+  const t = e.touches[0];
+  const dx = t.clientX - lastTouch.clientX, dy = t.clientY - lastTouch.clientY;
+  theta -= dx * 0.006;
+  phiAngle = THREE.MathUtils.clamp(phiAngle - dy * 0.006, 0.2, Math.PI - 0.2);
+  lastTouch = t;
+}, { passive:true });
+renderer.domElement.addEventListener('touchend', () => lastTouch = null);
+
+/* ============================================================
+   RENDER LOOP
+   ============================================================ */
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const t = clock.elapsedTime;
+
+  cell.update(dt, t);
+
+  if (autoOrbit) theta += 0.0012;
+  updateCamera();
+
+  renderer.render(scene, camera);
+}
+animate();
+</script>
+</body>
+</html>
