@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cell Biology Simulations by Mr. Walpola</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .header {
+            padding: 32px 40px 24px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            color: #fff;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .header .byline {
+            color: rgba(255,255,255,0.75);
+            font-size: 0.95rem;
+            margin-top: 4px;
+        }
+
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        .back-link a {
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            font-size: 0.875rem;
+        }
+
+        .back-link a:hover { color: #fff; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            padding: 0 40px 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+        }
+
+        .card-icon {
+            font-size: 2.2rem;
+            line-height: 1;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+        }
+
+        .card-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .card-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #1a202c;
+            line-height: 1.3;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+            width: fit-content;
+            background: #fff0f6;
+            color: #97266d;
+        }
+
+        .card-description {
+            font-size: 0.875rem;
+            color: #4a5568;
+            line-height: 1.6;
+            flex: 1;
+        }
+
+        .launch-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            text-decoration: none;
+            padding: 10px 22px;
+            border-radius: 999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-top: 4px;
+            align-self: flex-start;
+            transition: filter 0.2s, box-shadow 0.2s;
+            box-shadow: 0 3px 10px rgba(102,126,234,0.35);
+        }
+
+        .launch-btn:hover {
+            filter: brightness(1.1);
+            box-shadow: 0 5px 16px rgba(102,126,234,0.5);
+        }
+
+        .footer {
+            text-align: center;
+            padding: 0 40px 40px;
+            color: rgba(255,255,255,0.6);
+            font-size: 0.85rem;
+        }
+
+        .footer a {
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+        }
+
+        .footer a:hover { color: #fff; }
+
+        @media (max-width: 600px) {
+            .header { padding: 24px 20px 16px; }
+            .header h1 { font-size: 1.6rem; }
+            .grid { padding: 0 20px 32px; gap: 14px; }
+            .footer { padding: 0 20px 32px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="back-link"><a href="../index.html">← All Simulations</a></div>
+        <h1>🧬 Cell Biology Simulations</h1>
+        <p class="byline">by Mr. Walpola</p>
+    </div>
+
+    <div class="grid">
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">🟢</div>
+                <div class="card-meta">
+                    <div class="card-title">Generic Animal Cell</div>
+                    <span class="badge">Cell Biology</span>
+                </div>
+            </div>
+            <p class="card-description">
+                A labelled 3D model of a generic animal cell — rotate it to explore the nucleus, mitochondria, and other organelles.
+            </p>
+            <a href="./generic_animal_cell.html" class="launch-btn">
+                Launch →
+            </a>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">🌿</div>
+                <div class="card-meta">
+                    <div class="card-title">Generic Plant Cell</div>
+                    <span class="badge">Cell Biology</span>
+                </div>
+            </div>
+            <p class="card-description">
+                A labelled 3D model of a generic plant cell, highlighting the cell wall, chloroplasts, and vacuole alongside the shared organelles.
+            </p>
+            <a href="./generic_plant_cell.html" class="launch-btn">
+                Launch →
+            </a>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">💪</div>
+                <div class="card-meta">
+                    <div class="card-title">Muscle Fibre Bundle</div>
+                    <span class="badge">Cell Biology</span>
+                </div>
+            </div>
+            <p class="card-description">
+                Watch a bundle of muscle fibres contract and relax, illustrating how specialised structure supports muscle function.
+            </p>
+            <a href="./muscle_cells.html" class="launch-btn">
+                Launch →
+            </a>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">🧠</div>
+                <div class="card-meta">
+                    <div class="card-title">Neuron</div>
+                    <span class="badge">Cell Biology</span>
+                </div>
+            </div>
+            <p class="card-description">
+                A 3D fractal model of a neuron, showing how its branching dendrites and long axon suit it to carrying electrical signals.
+            </p>
+            <a href="./neuron.html" class="launch-btn">
+                Launch →
+            </a>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">🐟</div>
+                <div class="card-meta">
+                    <div class="card-title">Sperm Cell</div>
+                    <span class="badge">Cell Biology</span>
+                </div>
+            </div>
+            <p class="card-description">
+                A 3D swim simulation of a sperm cell, showing how its streamlined head, midpiece, and flagellum adapt it for movement.
+            </p>
+            <a href="./sperm.html" class="launch-btn">
+                Launch →
+            </a>
+        </div>
+
+    </div>
+
+    <div class="footer">
+        <p>More simulations coming soon! &nbsp;·&nbsp;
+            <a href="https://github.com/iwalpola/science_simulations">View on GitHub</a>
+        </p>
+    </div>
+
+</body>
+</html>

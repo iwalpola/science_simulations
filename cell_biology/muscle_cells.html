@@ -64,7 +64,7 @@
 </style>
 </head>
 <body>
-<div id="info"><b>MUSCLE FIBRE BUNDLE (fascicle)</b><br>multinucleate striated fibres, hex-packed, contracting in unison</div>
+<div id="info"><b>MUSCLE FIBRE BUNDLE (fascicle)</b><br>multinucleate striated fibres, mitochondria-packed, contracting in unison</div>
 <div id="hud">drag to orbit · scroll to zoom</div>
 
 <div id="gauge">
@@ -111,6 +111,18 @@ const P = {
   nucleiPerFibre:  5,
   nucleusSize:     0.42,
   nucleusOffset:   0.74,   // fraction of the radius — 1 is against the membrane
+
+  /* --- mitochondria: the ATP supply for the cross-bridge cycle, which is
+     why a muscle fibre is packed with far more of them than a typical cell --- */
+  mitoPerFibre:    10,
+  mitoLength:      0.30,
+  mitoWidth:       0.10,
+  mitoSpread:      0.82,   // how far out toward the sarcolemma they sit
+  mitoOpacity:     0.60,
+  mitoCristae:     1,      // 0/1 — the bluish inner-membrane zigzag
+  cristaeFolds:    5,
+  cristaeAmplitude:0.46,
+  cristaeThickness:0.18,   // raise it if the folds read too faint
 
   /* --- perimysium sheath --- */
   sheathOn:        1,
@@ -166,6 +178,16 @@ const CONTROLS = [
   ['nucleiPerFibre',   'per fibre',         0,    14,   1   ],
   ['nucleusSize',      'size',              0.10, 1.20, 0.01],
   ['nucleusOffset',    'rim offset',        0.00, 1.00, 0.01],
+  ['MITOCHONDRIA'],
+  ['mitoPerFibre',     'per fibre',         0,    60,   1   ],
+  ['mitoLength',       'length',            0.05, 1.00, 0.01],
+  ['mitoWidth',        'width',             0.02, 0.40, 0.005],
+  ['mitoSpread',       'spread to rim',     0.00, 1.00, 0.01],
+  ['mitoOpacity',      'membrane opacity',  0.05, 1.00, 0.01],
+  ['mitoCristae',      'cristae (0/1)',     0,    1,    1   ],
+  ['cristaeFolds',     'cristae folds',     2,    12,   1   ],
+  ['cristaeAmplitude', 'cristae spread',    0.10, 0.80, 0.01],
+  ['cristaeThickness', 'cristae thickness', 0.03, 0.35, 0.005],
   ['PERIMYSIUM'],
   ['sheathOn',         'sheath (0/1)',      0,    1,    1   ],
   ['sheathPad',        'clearance',         0.05, 2.00, 0.05],
@@ -271,6 +293,8 @@ let striationTex = null;
    MATERIALS
    ============================================================ */
 const nucleusMat = new THREE.MeshPhongMaterial({ color:0xffb3c6, shininess:70, specular:0xffffff, emissive:0x5a2030, emissiveIntensity:0.35 });
+const mitoMat    = new THREE.MeshPhongMaterial({ color:0xe0847f, shininess:30, specular:0xffc9c2, emissive:0x5a201d, emissiveIntensity:0.4, transparent:true, opacity:0.60, side:THREE.DoubleSide, depthWrite:false });
+const cristaeZigzagMat = new THREE.MeshPhongMaterial({ color:0x5aa8e8, shininess:65, specular:0xcfe8ff, emissive:0x0d3a5c, emissiveIntensity:0.55 });
 const sheathMat  = new THREE.MeshPhongMaterial({ color:0xffcbb0, shininess:25, specular:0x8a6a55, transparent:true, opacity:0.10, side:THREE.DoubleSide, depthWrite:false });
 let fibreMat = null;
 
@@ -298,6 +322,26 @@ function buildFibreGeometry(length, radius) {
 }
 
 /* ============================================================
+   MITOCHONDRION PARTS — one body and one cristae ridge, built
+   once per rebuild and shared by every mitochondrion in every
+   fibre. The ridge lives in the body's unit-sphere space and is
+   added as a child, so it inherits the body's non-uniform scale.
+   ============================================================ */
+let mitoBodyGeo = null, cristaeGeo = null;
+
+function buildCristaeZigzag() {
+  const pts = [];
+  const N = Math.max(2, Math.round(P.cristaeFolds));
+  for (let i = 0; i <= N; i++) {
+    const x = -0.55 + (i / N) * 1.10;
+    const y = (i % 2 === 0 ? 1 : -1) * P.cristaeAmplitude;
+    pts.push(new THREE.Vector3(x, y, 0));
+  }
+  const curve = new THREE.CatmullRomCurve3(pts);
+  return new THREE.TubeGeometry(curve, N * 6, P.cristaeThickness, 6, false);
+}
+
+/* ============================================================
    MUSCLE FIBRE
    One cell. Contraction is driven from outside — the bundle owns
    the activation signal, so the fascicle acts as a unit instead
@@ -315,6 +359,12 @@ class MuscleFibre {
     this.mesh = new THREE.Mesh(buildFibreGeometry(this.length, this.radius), fibreMat);
     this.mesh.rotation.z = Math.PI / 2;      // lathe axis (local Y) now runs along world X
     this.group.add(this.mesh);
+
+    // Draw the organelles from a side-branch of the random stream and put
+    // the stream back afterwards, so changing how many nuclei or
+    // mitochondria a fibre carries cannot reshuffle the lengths, radii and
+    // positions drawn for every fibre after this one.
+    const rngMark = _rngState;
 
     // nuclei: several per fibre, pressed out against the sarcolemma
     this.nuclei = [];
@@ -336,6 +386,33 @@ class MuscleFibre {
       this.group.add(mesh);
       this.nuclei.push(mesh);
     }
+
+    // mitochondria: scattered through the sarcoplasm and lying along the
+    // fibre axis, the way they pack into the grooves between myofibrils
+    this.mitos = [];
+    const mn = mitoBodyGeo ? Math.round(P.mitoPerFibre) : 0;
+    for (let i = 0; i < mn; i++) {
+      const u = 0.10 + 0.80 * rnd();
+      const ang = rnd() * Math.PI * 2;
+      // keep them inside the fibre's spindle profile, spread from the
+      // axis out toward the sarcolemma
+      const rad = this.radius * P.mitoSpread * Math.pow(Math.sin(Math.PI * u), P.taperPower)
+                * (0.2 + 0.8 * rnd());
+
+      const mito = new THREE.Mesh(mitoBodyGeo, mitoMat);
+      mito.scale.set(P.mitoLength, P.mitoWidth, P.mitoWidth);
+      // a random roll about the long axis varies which way the folds face;
+      // the small yaw/pitch keeps the rows from looking mechanically regular
+      mito.rotation.set(rnd() * Math.PI * 2, (rnd() - 0.5) * 0.45, (rnd() - 0.5) * 0.45);
+      mito.userData.u = u;
+      mito.userData.ang = ang;
+      mito.userData.rad = rad;
+      if (cristaeGeo) mito.add(new THREE.Mesh(cristaeGeo, cristaeZigzagMat));
+      this.group.add(mito);
+      this.mitos.push(mito);
+    }
+
+    _rngState = rngMark;
     this.place(0);
   }
 
@@ -356,6 +433,19 @@ class MuscleFibre {
       );
       nuc.scale.set(shorten, girth, girth);
     }
+
+    // mitochondria ride the contraction rather than deforming with it:
+    // they crowd together as the fibre shortens and are carried outward
+    // as it swells, but an organelle that rigid keeps its own dimensions
+    for (const mito of this.mitos) {
+      const d = mito.userData;
+      mito.position.set(
+        (d.u - 0.5) * this.length * shorten,
+        Math.sin(d.ang) * d.rad * girth * P.fibreFlatten,
+        Math.cos(d.ang) * d.rad * girth
+      );
+    }
+
     this.lastGirth = girth;
     this.lastShorten = shorten;
   }
@@ -437,6 +527,14 @@ function build() {
     transparent: true, opacity: P.fibreOpacity, side: THREE.DoubleSide, depthWrite: false
   });
   sheathMat.opacity = P.sheathOpacity;
+
+  mitoMat.opacity = P.mitoOpacity;
+  mitoMat.transparent = P.mitoOpacity < 1;
+  mitoMat.depthWrite = P.mitoOpacity >= 1;
+  mitoMat.needsUpdate = true;
+
+  mitoBodyGeo = Math.round(P.mitoPerFibre) > 0 ? new THREE.SphereGeometry(1, 10, 8) : null;
+  cristaeGeo = (mitoBodyGeo && P.mitoCristae > 0.5) ? buildCristaeZigzag() : null;
 
   bundle = new THREE.Group();
   fibres = [];

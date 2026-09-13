@@ -170,6 +170,7 @@
         .badge-physics   { background: #ebf4ff; color: #2b6cb0; }
         .badge-chemistry { background: #f0fff4; color: #276749; }
         .badge-tool      { background: #faf5ff; color: #6b21a8; }
+        .badge-biology   { background: #fff0f6; color: #97266d; }
 
         .card-description {
             font-size: 0.875rem;
@@ -269,6 +270,7 @@
         <button class="filter-btn active" data-filter="all">All</button>
         <button class="filter-btn" data-filter="physics">Physics</button>
         <button class="filter-btn" data-filter="chemistry">Chemistry</button>
+        <button class="filter-btn" data-filter="biology">Biology</button>
         <div class="search-wrap">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -426,6 +428,22 @@
                     2D sandbox →
                 </a>
             </div>
+        </div>
+
+        <div class="card" data-category="biology" data-keywords="cell biology animal plant muscle neuron sperm organelle nucleus mitochondria chloroplast">
+            <div class="card-header">
+                <div class="card-icon">🧬</div>
+                <div class="card-meta">
+                    <div class="card-title">Cell Biology Simulations</div>
+                    <span class="badge badge-biology">Biology</span>
+                </div>
+            </div>
+            <p class="card-description">
+                A collection of labelled 3D and animated cell models — animal and plant cells, muscle fibres, a neuron, and a swimming sperm cell.
+            </p>
+            <a href="./cell_biology/index.html" class="launch-btn">
+                Launch →
+            </a>
         </div>
 
         <div class="empty-state" id="emptyState">
