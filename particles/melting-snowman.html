@@ -1,0 +1,2112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Melting</title>
+<style>
+  :root{
+    --ink:#eef2f7;
+    --dim:#93a2b6;
+    --panel:rgba(10,14,21,.72);
+    --line:rgba(147,162,182,.22);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;background:#0a0f17;color:var(--ink);
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;overflow:hidden;}
+  #stage{position:fixed;inset:0;}
+  canvas{display:block;}
+
+  #fade{position:fixed;inset:0;background:#0a0f17;pointer-events:none;opacity:0;}
+
+  .title{position:fixed;top:22px;left:26px;max-width:min(46ch,60vw);pointer-events:none;}
+  .title h1{
+    margin:0;
+    font-family:"Iowan Old Style","Charter","Palatino Linotype",Georgia,serif;
+    font-weight:600;font-size:23px;letter-spacing:.2px;line-height:1.25;
+  }
+  .title p{margin:6px 0 0;font-size:13px;line-height:1.5;color:var(--dim);}
+  .title a{pointer-events:auto;color:var(--dim);text-decoration:none;font-size:12px;
+    border-bottom:1px solid rgba(147,162,182,.3);}
+  .title a:hover{color:var(--ink);}
+
+  #caption{
+    position:fixed;left:50%;transform:translateX(-50%);
+    bottom:112px;width:min(700px,92vw);text-align:center;pointer-events:none;
+    font-family:"Iowan Old Style","Charter","Palatino Linotype",Georgia,serif;
+    font-size:19px;line-height:1.45;
+    text-shadow:0 2px 18px rgba(0,0,0,.95);
+    transition:opacity .35s ease;
+  }
+
+  /* ---- the energy budget, top right ---- */
+  #energy{
+    position:fixed;right:24px;top:22px;width:236px;
+    background:var(--panel);backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:12px;padding:12px 13px;
+    font-size:12.5px;line-height:1.5;color:var(--dim);
+    opacity:0;transition:opacity .45s ease;
+  }
+  #energy h2{
+    margin:0 0 9px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+    color:#64748b;font-weight:600;
+  }
+  #energy .row{display:flex;justify-content:space-between;gap:10px;align-items:baseline;}
+  #energy .row b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums;}
+  #energy .sw{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;}
+  #split{display:flex;height:7px;border-radius:4px;overflow:hidden;margin:9px 0 8px;
+    background:rgba(255,255,255,.08);}
+  #split i{display:block;height:100%;}
+  #energy .tot{border-top:1px solid var(--line);padding-top:8px;margin-top:8px;}
+  #energy small{display:block;margin-top:7px;font-size:11px;line-height:1.45;color:#7b8a9e;}
+
+  /* ---- the elapsed clock, under the panel ---- */
+  #elapsed{
+    position:fixed;right:24px;top:calc(22px + 196px);width:236px;
+    background:var(--panel);backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:12px;padding:10px 13px;
+    font-size:12.5px;color:var(--dim);opacity:0;transition:opacity .45s ease;
+  }
+  #elapsed b{color:#ffd9a0;font-weight:600;font-variant-numeric:tabular-nums;}
+
+  /* ---- the legend, while we are among the molecules ---- */
+  #key{
+    position:fixed;right:24px;top:22px;
+    background:var(--panel);backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:12px;padding:11px 13px;
+    font-size:12.5px;line-height:1.9;color:var(--dim);
+    opacity:0;transition:opacity .45s ease;
+  }
+  #key div{display:flex;align-items:center;gap:8px;}
+  .dot{width:11px;height:11px;border-radius:50%;flex:none;box-shadow:inset -2px -2px 3px rgba(0,0,0,.45);}
+  #key b{color:var(--ink);font-weight:600;}
+
+  /* ---- the heating curve ---- */
+  #graphWrap{
+    position:fixed;left:26px;bottom:150px;width:min(370px,46vw);
+    background:var(--panel);backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:12px;padding:11px 12px 9px;
+    opacity:0;transition:opacity .45s ease;pointer-events:none;
+  }
+  #graphWrap h2{
+    margin:0 0 7px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+    color:#64748b;font-weight:600;
+  }
+  #graph{display:block;width:100%;height:auto;}
+  #graphWrap p{margin:7px 0 0;font-size:11px;line-height:1.45;color:#7b8a9e;}
+
+  /* ---- the not-to-scale caveat ---- */
+  #scale{
+    position:fixed;left:26px;bottom:150px;width:min(250px,42vw);pointer-events:none;
+    font-size:11.5px;line-height:1.5;color:var(--dim);opacity:0;transition:opacity .4s ease;
+    background:rgba(10,14,21,.82);border:1px solid var(--line);
+    border-radius:10px;padding:9px 11px;
+  }
+  #scale b{color:#ffd9a0;font-weight:600;display:block;font-size:10px;
+    letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px;}
+
+  #bar{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:20px;
+    width:min(730px,94vw);
+    background:var(--panel);backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:14px;
+    padding:12px 14px;display:flex;align-items:center;gap:12px;
+  }
+  button{
+    font:inherit;font-size:13px;color:var(--ink);
+    background:rgba(255,255,255,.06);border:1px solid var(--line);
+    border-radius:9px;padding:7px 13px;cursor:pointer;
+    transition:background .15s ease,border-color .15s ease;
+  }
+  button:hover{background:rgba(255,255,255,.12);}
+  button:focus-visible{outline:2px solid #7fb0ff;outline-offset:2px;}
+  #play{min-width:74px;}
+  #gear{padding:7px 11px;font-size:15px;line-height:1;}
+  #gear.open{background:rgba(127,176,255,.2);border-color:rgba(127,176,255,.5);}
+  #scrub{
+    flex:1;appearance:none;height:4px;border-radius:4px;
+    background:linear-gradient(90deg,#7fc4ff 0%,#7fc4ff var(--p,0%),rgba(255,255,255,.14) var(--p,0%));
+    cursor:pointer;
+  }
+  #scrub::-webkit-slider-thumb{appearance:none;width:14px;height:14px;border-radius:50%;
+    background:var(--ink);border:none;box-shadow:0 0 0 3px rgba(8,11,17,.6);}
+  #scrub::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--ink);border:none;}
+  #clock{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums;min-width:74px;text-align:right;}
+  #hint{position:fixed;bottom:90px;right:24px;font-size:11.5px;color:var(--dim);opacity:.75;}
+
+  /* ---- menu ---- */
+  #menu{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:86px;
+    width:min(730px,94vw);
+    background:var(--panel);backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:14px;
+    padding:16px 18px;display:none;gap:18px;
+  }
+  #menu.open{display:flex;flex-wrap:wrap;}
+  #menu fieldset{border:none;margin:0;padding:0;flex:1;min-width:215px;}
+  #menu legend{
+    font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+    color:#64748b;padding:0 0 8px;
+  }
+  .opts{display:flex;flex-wrap:wrap;gap:6px;}
+  .opt{
+    font:inherit;font-size:12.5px;padding:6px 11px;border-radius:8px;
+    background:rgba(255,255,255,.05);border:1px solid var(--line);
+    color:var(--dim);cursor:pointer;
+  }
+  .opt:hover{background:rgba(255,255,255,.1);color:var(--ink);}
+  .opt.on{background:rgba(127,176,255,.18);border-color:rgba(127,176,255,.5);color:#dce9ff;}
+  .opt .f{font-variant-numeric:tabular-nums;}
+  #menuNote{
+    flex-basis:100%;border-top:1px solid var(--line);padding-top:12px;margin:0;
+    font-size:12.5px;color:var(--dim);line-height:1.6;
+  }
+  #menuNote b{color:var(--ink);font-weight:600;}
+  #menuNote i{color:#a8c9ff;font-style:normal;}
+
+  @media (max-width:760px){
+    .title h1{font-size:18px;} .title p{display:none;}
+    #caption{font-size:16px;bottom:100px;}
+    #energy,#elapsed{width:190px;right:14px;font-size:11.5px;}
+    #elapsed{top:calc(14px + 186px);}
+    #energy{top:14px;padding:10px 11px;}
+    #key{right:14px;top:14px;padding:8px 10px;font-size:11px;line-height:1.7;}
+    #hint,#scale{display:none;}
+    #graphWrap{left:14px;bottom:140px;width:min(260px,54vw);padding:9px 10px 7px;}
+    #clock{display:none;}
+    #menu{bottom:82px;padding:13px 14px;}
+  }
+  @media (prefers-reduced-motion:reduce){#caption,#scale,#graphWrap,#energy,#key,#elapsed{transition:none;}}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="fade"></div>
+
+<div class="title">
+  <h1>Melting</h1>
+  <p>A snowman, the energy going into it, and what that energy does to the molecules.</p>
+  <p><a href="../index.html">← All simulations</a></p>
+</div>
+
+<div id="energy">
+  <h2>Energy arriving</h2>
+  <div class="row"><span><i class="sw" style="background:#7fb6e8"></i>from the air</span><b id="eAir">—</b></div>
+  <div class="row"><span><i class="sw" style="background:#ffc04a"></i>from the sun</span><b id="eSun">—</b></div>
+  <div id="split"><i id="splitAir"></i><i id="splitSun"></i></div>
+  <div class="row tot"><span>whole snowman</span><b id="ePow">—</b></div>
+  <div class="row"><span>time to melt</span><b id="eTime">—</b></div>
+  <small id="eNote"></small>
+</div>
+
+<div id="elapsed">elapsed <b id="eClock">0 h</b> <span id="eLapse"></span></div>
+
+<div id="key"></div>
+
+<div id="graphWrap">
+  <h2>Heating curve</h2>
+  <canvas id="graph" width="560" height="330"></canvas>
+  <p id="graphNote">Worked out from water: 2100 and 4200 J/kg°C, and 334,000 J/kg to melt it. The marker follows the molecules.</p>
+</div>
+
+<div id="scale">
+  <b>not to scale, and a model</b>
+  A few hundred molecules standing in for the billions of billions in a crumb of snow, drawn as
+  single balls in a simpler pattern than the six-sided one real ice builds. They show the
+  mechanism. The numbers on the graph are water's own.
+</div>
+
+<div id="caption"></div>
+<div id="hint">Drag to look around</div>
+
+<div id="menu">
+  <fieldset>
+    <legend>Sunshine</legend>
+    <div class="opts" id="sunOpts"></div>
+  </fieldset>
+  <fieldset>
+    <legend>Air temperature</legend>
+    <div class="opts" id="airOpts"></div>
+  </fieldset>
+  <p id="menuNote"></p>
+</div>
+
+<div id="bar">
+  <button id="play">Pause</button>
+  <button id="restart">Restart</button>
+  <input id="scrub" type="range" min="0" max="96" step="0.01" value="0" aria-label="Timeline">
+  <span id="clock">0.0 / 96.0s</span>
+  <button id="gear" title="Change the weather" aria-label="Change the weather">⚙</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ---------------------------------------------------------------------------
+   MELTING — a snowman, the energy going into it, and what it does
+
+   The order a pupil meets it in:
+
+     1  a snowman at dawn, and the two supplies of energy reaching it: sunlight,
+        most of which white snow throws straight back, and the air around it,
+        which is warmer than the snow and touching every part of it
+     2  inside the ice: a few hundred water molecules locked in a pattern,
+        vibrating on the spot, with energy arriving and the vibration growing
+     3  the pattern breaking — molecules sliding past each other, which is what
+        melting IS — while the heating curve flattens off
+     4  back outside for the whole melt, and a puddle holding exactly the water
+        the snowman was made of
+
+   Three things this has to get right.
+
+   The melting has to be caused.  Nothing on screen melts by a scripted amount.
+   The snowman's shrinking comes from an energy balance — sunlight absorbed
+   after the albedo has taken its cut, plus heat from air warmer than the snow,
+   divided by the latent heat of fusion — and that balance says every exposed
+   surface loses the same DEPTH of snow per hour, which is why the head goes
+   first and why the melt time is what it is. Change the weather in the menu
+   and all of it moves, including the numbers in the panel. See MELT.
+
+   The molecules have to be caused too.  The close-up is a real molecular
+   dynamics run: Lennard-Jones molecules on a lattice, integrated with velocity
+   Verlet, with energy fed in at a steady rate. The lattice comes apart because
+   the molecules are shaken too hard to stay on it. Nothing decides when; it is
+   measured afterwards, by meltWindow(). See runMelt(), which is also what
+   test-particles.js executes under node.
+
+   The graph is worked out, not measured, and that is deliberate.  It is the
+   heating curve as a pupil is taught to draw it, built from three numbers out
+   of the data book — 2100 and 4200 J/kg per degree, and 334,000 J/kg to melt
+   it — so the flat part is genuinely flat and is three quarters of the width
+   of the whole curve. That is the thing to come away with, and a few hundred
+   model molecules cannot show it: a sample that size is far too small a
+   thermometer to hold a temperature still, and an earlier version of this
+   scene plotted the run's own temperature and got a curve that sagged where it
+   should have been flat. True to the model, wrong about water.
+
+   What the run supplies instead is the MARKER. It walks the sloping stretches
+   in step with the energy the simulation has been given, and the flat stretch
+   in step with how much of the pattern has actually come apart — so the dot
+   crosses the flat part exactly while the block on screen is coming to pieces.
+   See curveParts() and curveEnergy(). The run's own temperature is still
+   recorded, because the test suite uses it to check the thing is doing physics
+   at all, but nothing draws it.
+
+   Determinism.  The molecular run happens ONCE, at build, off a seeded random
+   stream, and what it leaves behind is a table of positions. Playback is a
+   lookup and an interpolation, so every frame is a pure function of t and
+   scrubbing lands on the same frame every time. The macro melt is closed form
+   — a radius that is a straight line in time — so it needs no table at all.
+
+   Honesty.  The molecules are drawn as single balls in a close-packed pattern;
+   real ice is a six-sided open one held together by hydrogen bonds, which a
+   Lennard-Jones model cannot make. The panel on screen says so, and says which
+   half of the picture is the model and which half is water's own arithmetic.
+--------------------------------------------------------------------------- */
+
+/* ======================= the choices ======================= */
+
+/* Sunshine, as the energy landing on a square metre of ground.  Roughly what a
+   pyranometer reads on a winter's day in the UK at these three conditions. */
+const SUNS = {
+  bright: {name:'bright', G:850, label:'850 W/m²', word:'bright sunshine'},
+  hazy:   {name:'hazy',   G:400, label:'400 W/m²', word:'hazy sun'},
+  cloudy: {name:'cloudy', G:150, label:'150 W/m²', word:'thick cloud'}
+};
+/* Air temperature.  The snow itself sits at 0 °C once it is melting — it
+   cannot go above that until it has all gone — so this number IS the
+   temperature difference driving heat in from the air. */
+const AIRS = {
+  cold: {name:'cold', C:2,  label:'2 °C',  word:'barely above freezing'},
+  mild: {name:'mild', C:8,  label:'8 °C',  word:'a mild day'},
+  warm: {name:'warm', C:20, label:'20 °C', word:'a warm day'}
+};
+
+/* The snow, and the physics that turns weather into a melt rate.
+
+   ALBEDO is the big one and the reason the answer surprises people. Fresh snow
+   throws back about four fifths of the sunlight that lands on it — that is why
+   it is blinding to look at, and why it is so slow to melt in the cold even in
+   full sun.
+
+   H is a combined coefficient for everything the SURROUNDINGS do: air blowing
+   past and giving up heat by conduction into the surface, and infrared from
+   the ground, the walls and the sky, which is a genuinely large term and is
+   proportional to much the same temperature difference. 15 W/m²K is a
+   reasonable figure for a still-ish day; a real wind would push it higher. */
+const SNOW = {
+  RHO:    400,        // kg/m³, snow packed hard enough to build with
+  ALBEDO: 0.80,       // the fraction of sunlight thrown straight back
+  H:      15,         // W/m²K, air and surroundings together
+  RHO_W:  1000        // kg/m³, the meltwater
+};
+
+/* Water, out of the data book. Every number the heating curve is drawn from is
+   one of these three, and so is the melt rate outside — the same 334,000 J/kg
+   that holds the temperature still in the close-up is what decides how long
+   the snowman lasts in the garden. */
+const WATER = {
+  C_ICE:   2100,      // J/kg°C, specific heat capacity of ice
+  C_WATER: 4200,      // J/kg°C, specific heat capacity of liquid water
+  L_FUS:   334000     // J/kg, specific latent heat of fusion
+};
+/* the stretch of the curve that gets drawn: a cold night, through melting, to
+   a mild afternoon */
+const CURVE = { T0: -20, T1: 20 };
+
+/* The snowman: three balls, biggest at the bottom. Radii in metres, and the
+   scene is built in metres, so one three.js unit is one metre. */
+const BALLS = [
+  {r:0.42, name:'base'},
+  {r:0.30, name:'body'},
+  {r:0.21, name:'head'}
+];
+
+const qs = new URLSearchParams(location.search);
+let sunKey = SUNS[qs.get('sun')] ? qs.get('sun') : 'bright';
+let airKey = AIRS[qs.get('air')] ? qs.get('air') : 'warm';
+let SN, AIR, MELT;
+
+/* ---------------------------------------------------------------------------
+   MELT — the whole macro physics, worked out once per setting.
+
+   A patch of snow surface gains  q = H·ΔT  from the surroundings and
+   (1−albedo)·G·cosθ from the sun, and loses mass at q/L. Averaged over a
+   sphere the sun only lands on the half facing it and at a spread of angles,
+   which comes to G/4 per unit of surface area — the same factor that turns a
+   planet's solar constant into its average insolation.
+
+   Then the useful part. Mass per unit area is ρ·(depth), so
+
+       d(depth)/dt = [H·ΔT + (1−albedo)·G/4] / (ρ·L)
+
+   and there is no radius in it. Every ball loses the same depth per hour no
+   matter how big it is, so each radius is a straight line in time with the
+   SAME slope — which is why the head disappears long before the base, and it
+   is a prediction rather than a piece of choreography. It is also what makes
+   the macro scene closed form: r(t) needs no simulation.
+--------------------------------------------------------------------------- */
+function derive(){
+  SN  = SUNS[sunKey];
+  AIR = AIRS[airKey];
+
+  const fromAir = SNOW.H * AIR.C;                       // W per m² of surface
+  const fromSun = (1 - SNOW.ALBEDO) * SN.G / 4;         // W per m² of surface
+  const flux    = fromAir + fromSun;
+  const shrink  = flux / (SNOW.RHO * WATER.L_FUS);           // metres of snow per second
+
+  /* the totals, for the panel: real areas of the three balls as built */
+  const area = BALLS.reduce((s,b)=> s + 4*Math.PI*b.r*b.r, 0);
+  const vol  = BALLS.reduce((s,b)=> s + (4/3)*Math.PI*b.r*b.r*b.r, 0);
+
+  MELT = {
+    fromAir, fromSun, flux, shrink,
+    airShare: fromAir/flux,
+    powerAir: fromAir*area,
+    powerSun: fromSun*area,
+    power:    flux*area,
+    area, vol,
+    mass:     vol*SNOW.RHO,
+    /* the meltwater, which is the same water at a higher density */
+    water:    vol*SNOW.RHO/SNOW.RHO_W,
+    /* how long the whole thing takes: the biggest ball has to lose its radius */
+    hours:    BALLS[0].r/shrink/3600,
+    /* and when each ball runs out, as a fraction of that */
+    gone:     BALLS.map(b => b.r/BALLS[0].r)
+  };
+}
+
+/* The puddle's size is not chosen either. The water in it is the snow that has
+   gone, at the density of water rather than the density of snow, spread to the
+   depth a puddle on rough ground actually holds. So the ground ends up with
+   exactly the water the snowman was built from, which is the point of the last
+   caption. */
+const PUDDLE_DEPTH = 0.030;                  // metres
+function puddleRadius(f){
+  const volLost = BALLS.reduce((s,b,i)=>{
+    const r = radiusAt(i,f);
+    return s + (4/3)*Math.PI*(b.r*b.r*b.r - r*r*r);
+  }, 0);
+  const water = volLost * SNOW.RHO/SNOW.RHO_W;
+  return Math.sqrt(water/(Math.PI*PUDDLE_DEPTH));
+}
+/* How many motes stand for each supply. One mote is one fixed number of watts
+   per square metre, so the two clouds are in the same proportion as the two
+   terms in the energy balance, and the gold ones that turn round and leave are
+   the albedo. Nothing here is chosen for looks. */
+const MOTE_N = 132;                        // how many are drawn, between the two clouds
+function moteCounts(){
+  const inSun = SN.G/4;                    // arriving, before the snow rejects most of it
+  const inAir = SNOW.H*AIR.C;
+  const unit  = (inSun+inAir)/MOTE_N;
+  const nSun  = Math.round(inSun/unit);
+  return {nSun, nAir: MOTE_N-nSun};
+}
+
+/* ---------------------------------------------------------------------------
+   THE HEATING CURVE — calculated, not measured.
+
+   This is the curve as a pupil is taught to draw it, and every part of it is
+   one of the three numbers above:
+
+       warming the ice    c·Δθ  =  2100 × 20    =   42 kJ per kg
+       melting it              L =                  334 kJ per kg
+       warming the water  c·Δθ  =  4200 × 20    =   84 kJ per kg
+
+   The flat part is eight times as long as the run up to it, which is the whole
+   point and is why it has to be worked out from the real figures rather than
+   read off a few hundred model molecules. A sample that size is far too small
+   a thermometer to hold a temperature still, and an earlier version of this
+   scene plotted its temperature directly and got a curve that sagged where it
+   should have been flat — true to the model, and wrong about water.
+
+   What the molecules on screen DO decide is where along this curve the marker
+   has got to: see curveEnergy(), which walks it across the flat part in step
+   with the pattern actually coming apart.
+--------------------------------------------------------------------------- */
+function curveParts(){
+  const iceE   = WATER.C_ICE   * (0 - CURVE.T0);
+  const meltE  = WATER.L_FUS;
+  const waterE = WATER.C_WATER * (CURVE.T1 - 0);
+  return {iceE, meltE, waterE, total: iceE + meltE + waterE};
+}
+/* the temperature a kilogram of water is at, once this much energy has gone
+   into it starting from CURVE.T0 as ice */
+function curveTemp(e){
+  const C = curveParts();
+  if(e <= C.iceE)            return CURVE.T0 + e/WATER.C_ICE;
+  if(e <= C.iceE + C.meltE)  return 0;
+  return (e - C.iceE - C.meltE)/WATER.C_WATER;
+}
+
+const cap1 = s => s.charAt(0).toUpperCase() + s.slice(1);
+function hoursText(h){
+  if(h < 48) return h.toFixed(0) + ' hours';
+  return (h/24).toFixed(h/24 < 10 ? 1 : 0) + ' days';
+}
+
+/* ---------------------------------------------------------------------------
+   The timeline's two clocks.
+
+   Screen time runs 0 → 96 s. Simulated time runs 0 → MELT.hours. They are not
+   proportional: the first act watches the start of the melt at something near
+   life speed, the middle act goes inside the ice where almost no time passes,
+   and the last act runs the rest of the melt as a time lapse. `simFrac`
+   is that mapping, and the panel shows the hours it gives so the speed-up is
+   stated rather than hidden.
+--------------------------------------------------------------------------- */
+const SIM_KEYS = [
+  {t:0,    f:0},
+  {t:6,    f:0},
+  {t:26,   f:0.05},
+  {t:30,   f:0.055},   // into the ice
+  {t:66,   f:0.075},   // and back out: a little has passed, not much
+  {t:70,   f:0.10},
+  {t:94,   f:1.00},
+  {t:96,   f:1.00}
+];
+function simFrac(t){
+  let i=0; while(i<SIM_KEYS.length-2 && t>=SIM_KEYS[i+1].t) i++;
+  const a=SIM_KEYS[i], b=SIM_KEYS[i+1];
+  const u = b.t===a.t ? 0 : clamp01((t-a.t)/(b.t-a.t));
+  return a.f + (b.f-a.f)*u;
+}
+/* how many hours are going by per second of screen time, right now */
+function lapseRate(t){
+  const d=0.05;
+  return (simFrac(t+d)-simFrac(t-d))/(2*d)*MELT.hours;
+}
+/* the radius of ball i, which is a straight line in the melt fraction */
+function radiusAt(i, f){
+  return Math.max(0, BALLS[i].r - f*BALLS[0].r);
+}
+
+/* where each ball's centre sits, given the radii it has now. They rest on each
+   other with a little overlap, and the bottom one sinks slightly into the
+   ground — so as the radii shrink the whole stack settles by itself. */
+const ballPos = BALLS.map(()=> new THREE.Vector3());
+function stack(f){
+  const r = BALLS.map((b,i)=> radiusAt(i,f));
+  ballPos[0].set(0, r[0]*0.90, 0);
+  ballPos[1].set(0, ballPos[0].y + (r[0]+r[1])*0.80, 0);
+  ballPos[2].set(0, ballPos[1].y + (r[1]+r[2])*0.80, 0);
+  return r;
+}
+
+/* The height of the first thing under a point, working down from the ball
+   below `above` to the ground: the surface of a sphere at that distance from
+   its axis, or `floor` if nothing is in the way. */
+function supportUnder(x, z, above, r, floor){
+  let y = floor;
+  const d2 = x*x + z*z;
+  for(let k=above-1; k>=0; k--){
+    if(r[k] < 0.02) continue;
+    const rr = r[k]*r[k];
+    if(d2 >= rr) continue;                       // the point is off the side of it
+    const top = ballPos[k].y + Math.sqrt(rr - d2)*0.97;
+    if(top > y) y = top;
+  }
+  return y;
+}
+
+const SNOW_COL = 0xe8eff7, WATER_COL = 0x4d7fb8;
+const HEAT_COL = 0xffb648, AIRHEAT_COL = 0x7fb6e8;
+const SOLID_COL = 0x6fa8e0, LIQUID_COL = 0x63d6e8;
+const CARROT_COL = 0xdd6a22, COAL_COL = 0x23262b, STICK_COL = 0x6b4f33;
+const SCARF_COL = 0xc0392b;
+
+const ICE_Y = -400;                 // the close-up world, parked far below the garden
+
+/* ---------- renderer / scene ---------- */
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+/* Colour management. three.js renders in linear space and r128 does not convert
+   back to sRGB unless told to; without this every colour comes out darker and
+   flatter than it was picked. (r128 spelling â€” later versions renamed it.) */
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setClearColor(0x0a0f17);
+document.getElementById('stage').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.03, 2000);
+
+/* ---------- shared helpers ---------- */
+function lerp(a,b,t){ return a+(b-a)*t; }
+function clamp01(x){ return Math.max(0,Math.min(1,x)); }
+function smooth(x){ x=clamp01(x); return x*x*(3-2*x); }
+function ramp(t,a,b){ return smooth((t-a)/(b-a)); }
+function rng(seed){
+  let s = seed>>>0;
+  return ()=>{ s = (s*1664525 + 1013904223)>>>0; return s/4294967296; };
+}
+const SPH = new THREE.SphereGeometry(1,32,24);
+const CYL = new THREE.CylinderGeometry(1,1,1,16,1,false);
+
+/* ---------------------------------------------------------------------------
+   The other half of colour management. In r128 a material colour is used in
+   the lighting maths as if it were already linear, but hex codes are picked by
+   eye, which makes them sRGB. Converting once, after everything is built, is
+   what stops the whole scene coming out pale and desaturated. The flag makes
+   it idempotent so rebuilds cannot double-convert.
+
+   Anything whose colour is written every frame has to be converted at the
+   point of assignment instead â€” in this scene that is the molecules' instance
+   colours and the puddle, and both do it there.
+--------------------------------------------------------------------------- */
+function linearise(root){
+  root.traverse(o=>{
+    if(!o.material) return;
+    const list = Array.isArray(o.material) ? o.material : [o.material];
+    list.forEach(m=>{
+      if(!m || m.userData.__lin) return;
+      m.userData.__lin = true;
+      if(m.color)    m.color.convertSRGBToLinear();
+      if(m.emissive) m.emissive.convertSRGBToLinear();
+    });
+  });
+}
+
+const GLOW_TEX = (function(){
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(64,64,0,64,64,64);
+  g.addColorStop(0,   'rgba(255,255,255,1)');
+  g.addColorStop(0.25,'rgba(255,240,205,.62)');
+  g.addColorStop(0.6, 'rgba(255,200,120,.18)');
+  g.addColorStop(1,   'rgba(255,190,110,0)');
+  ctx.fillStyle = g; ctx.fillRect(0,0,128,128);
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+})();
+
+/* A ball of snow. Real ones are not spheres â€” they are patted into shape and
+   go lumpy â€” so every vertex is pushed out by an amount that depends only on
+   the DIRECTION it sits in. Vertices that share a position then get the same
+   displacement and the surface stays closed; displacing by a random number
+   per vertex tears it open along every seam, which is the usual trap. */
+function snowGeo(detail){
+  const g = new THREE.IcosahedronGeometry(1, detail ?? 3);
+  const p = g.attributes.position, v = new THREE.Vector3();
+  for(let i=0;i<p.count;i++){
+    v.fromBufferAttribute(p,i).normalize();
+    const lump = 1
+      + 0.030*Math.sin(3.1*v.x+1.3)*Math.sin(2.7*v.y+2.1)*Math.sin(3.4*v.z+0.7)
+      + 0.016*Math.sin(6.3*v.y+0.4)*Math.sin(5.6*v.z+1.9)
+      + 0.008*Math.sin(11.0*v.x+2.4)*Math.sin(9.7*v.y+0.8);
+    p.setXYZ(i, v.x*lump, v.y*lump, v.z*lump);
+  }
+  g.computeVertexNormals();
+  return g;
+}
+
+/* ---------------------------------------------------------------------------
+   The sky, painted rather than loaded, so the file stays standalone.
+
+   It is used twice: as the dome you can see, and, through PMREM, as the
+   environment every surface takes light from. Snow is close to a white diffuse
+   surface, so how it reads depends almost entirely on the sky above it â€” a
+   flat grey environment makes it look like plaster.
+--------------------------------------------------------------------------- */
+function skyCanvas(dawn){
+  const W=1024,H=512, c=document.createElement('canvas');
+  c.width=W; c.height=H;
+  const x=c.getContext('2d');
+  const g=x.createLinearGradient(0,0,0,H);
+  if(dawn){
+    g.addColorStop(0.00,'#0d1830');
+    g.addColorStop(0.30,'#1d2b4c');
+    g.addColorStop(0.46,'#5b4a63');
+    g.addColorStop(0.52,'#8a5c4a');
+    g.addColorStop(0.58,'#33425a');
+    g.addColorStop(1.00,'#131a26');
+  }else{
+    g.addColorStop(0.00,'#2f6fc4');
+    g.addColorStop(0.32,'#5b9ada');
+    g.addColorStop(0.48,'#a8cbe8');
+    g.addColorStop(0.53,'#cfdcea');
+    g.addColorStop(1.00,'#8fa3b8');
+  }
+  x.fillStyle=g; x.fillRect(0,0,W,H);
+  /* a few soft clouds, so the dome is not a flat wash */
+  x.globalCompositeOperation='lighter';
+  const rand = rng(20250913);
+  for(let i=0;i<26;i++){
+    const cx=rand()*W, cy=H*(0.16+rand()*0.28), r=W*(0.03+rand()*0.07);
+    const rg=x.createRadialGradient(cx,cy,0,cx,cy,r);
+    const a=(dawn?0.10:0.26)*(0.4+rand()*0.6);
+    rg.addColorStop(0,`rgba(255,255,255,${a})`);
+    rg.addColorStop(1,'rgba(255,255,255,0)');
+    x.fillStyle=rg; x.fillRect(cx-r,cy-r,r*2,r*2);
+  }
+  x.globalCompositeOperation='source-over';
+  const t=new THREE.CanvasTexture(c);
+  t.mapping = THREE.EquirectangularReflectionMapping;
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+}
+const SKY_DAY = skyCanvas(false), SKY_DAWN = skyCanvas(true);
+(function environment(){
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  pmrem.compileEquirectangularShader();
+  scene.environment = pmrem.fromEquirectangular(SKY_DAY).texture;
+  pmrem.dispose();
+})();
+
+/* ---------- lights ---------- */
+/* The sun is the only caster. Its shadow camera has to be told how much of the
+   world to cover: the default box is far bigger than a garden, which is the
+   usual reason a first attempt at shadows comes out as blurred mush. */
+const sunLight = new THREE.DirectionalLight(0xfff2dc, 2.1);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.set(2048,2048);
+sunLight.shadow.camera.near = 0.5;
+sunLight.shadow.camera.far = 22;
+sunLight.shadow.camera.left = -4; sunLight.shadow.camera.right = 4;
+sunLight.shadow.camera.top = 4;   sunLight.shadow.camera.bottom = -4;
+sunLight.shadow.bias = -0.0009;
+sunLight.shadow.normalBias = 0.02;
+scene.add(sunLight);
+scene.add(sunLight.target);
+const skyFill = new THREE.HemisphereLight(0x9cc6f0, 0xd8e4ee, 0.55); scene.add(skyFill);
+/* the light in the close-up world, which is nowhere near the garden */
+const iceLight = new THREE.PointLight(0xdceeff, 0, 60);
+iceLight.position.set(6, ICE_Y + 14, 16); scene.add(iceLight);
+const iceFill = new THREE.HemisphereLight(0x6f9fd0, 0x101820, 0.0); scene.add(iceFill);
+
+/* =====================================================================
+   THE MOLECULES  â€”  a melting run, done once at build
+
+   Lennard-Jones molecules on a face-centred cubic lattice, integrated with
+   velocity Verlet, with energy added at a steady rate by scaling the
+   velocities. Nothing tells it when to melt: it melts when the molecules are
+   being shaken harder than their neighbours can hold them.
+
+   The box. There are no free surfaces except the top one. The four side walls
+   and the floor are placed so that the mirror image of the crystal in them is
+   the crystal continued â€” the lattice is offset a quarter of a cell from each
+   wall â€” which is what makes a few hundred molecules behave like the inside of
+   a much bigger block. Take one of these where the sides were free too melted
+   gradually from every face at once and the transition smeared across the
+   whole run.
+
+   Written with flat typed arrays and no THREE in it at all: it is the hot loop,
+   and it is the part test-particles.js runs under node, where there is no
+   three.js to have.
+===================================================================== */
+const MD = {
+  nx:3, ny:6, nz:3,      // lattice cells; 4 molecules per cell
+  a:1.58,                // lattice constant, in molecular diameters
+  head:2.0,              // ceiling, as a multiple of the block height
+  T0:0.04,               // how cold it starts
+  g:0.035,               // gravity, so the melt puddles rather than floating
+  rc:2.1, skin:0.5, maxnb:90,
+  dt:0.006,
+  power:6.0,             // energy in per unit time, for the whole box
+  steps:19000,
+  warm:1200,             // settle first, then start heating
+  rec:40,                // how often a frame is written down
+  seed:4271
+};
+
+function meltRun(o){
+  const rand = rng(o.seed);
+  const a=o.a, nx=o.nx, ny=o.ny, nz=o.nz;
+  const basis=[[0,0,0],[0.5,0.5,0],[0.5,0,0.5],[0,0.5,0.5]];
+  const X=[],Y=[],Z=[];
+  for(let i=0;i<nx;i++) for(let j=0;j<ny;j++) for(let k=0;k<nz;k++) for(const b of basis){
+    X.push((i+b[0]+0.25)*a); Y.push((j+b[1]+0.25)*a); Z.push((k+b[2]+0.25)*a);
+  }
+  const N=X.length;
+  const LX=nx*a, LZ=nz*a, LY=ny*a*o.head;
+  const x=Float64Array.from(X), y=Float64Array.from(Y), z=Float64Array.from(Z);
+  const vx=new Float64Array(N), vy=new Float64Array(N), vz=new Float64Array(N);
+  /* Maxwellâ€“Boltzmann: saying the speeds are Maxwellian is the same as saying
+     each velocity component is Gaussian of the same width, so that is how they
+     are drawn â€” Boxâ€“Muller, off the same seeded stream as everything else. */
+  const gauss=()=>{ const u=1-rand(); return Math.sqrt(-2*Math.log(u))*Math.cos(6.283185307179586*rand()); };
+  const v0=Math.sqrt(o.T0);
+  let cx=0,cy=0,cz=0;
+  for(let i=0;i<N;i++){ vx[i]=gauss()*v0; vy[i]=gauss()*v0; vz[i]=gauss()*v0; cx+=vx[i]; cy+=vy[i]; cz+=vz[i]; }
+  cx/=N; cy/=N; cz/=N;
+  for(let i=0;i<N;i++){ vx[i]-=cx; vy[i]-=cy; vz[i]-=cz; }   // no net drift
+
+  const fx=new Float64Array(N), fy=new Float64Array(N), fz=new Float64Array(N);
+  const RC=o.rc, RC2=RC*RC, SKIN=o.skin, RL2=(RC+SKIN)*(RC+SKIN);
+  const sc6=1/(RC2*RC2*RC2), ESHIFT=4*(sc6*sc6-sc6);   // so the energy is continuous at the cutoff
+  const MAXNB=o.maxnb;
+  const nbr=new Int32Array(N*MAXNB), nbrN=new Int32Array(N);
+  const lx=new Float64Array(N), ly=new Float64Array(N), lz=new Float64Array(N);
+  /* Neighbour lists with a skin: the pairs within rc+skin are written down and
+     reused until something has moved far enough that the list could be wrong.
+     Without this the force loop is every pair every step and the build takes
+     long enough to be felt. */
+  function rebuild(){
+    for(let i=0;i<N;i++){ nbrN[i]=0; lx[i]=x[i]; ly[i]=y[i]; lz[i]=z[i]; }
+    for(let i=0;i<N;i++) for(let j=i+1;j<N;j++){
+      const dx=x[i]-x[j], dy=y[i]-y[j], dz=z[i]-z[j];
+      if(dx*dx+dy*dy+dz*dz<RL2 && nbrN[i]<MAXNB) nbr[i*MAXNB+nbrN[i]++]=j;
+    }
+  }
+  function forces(){
+    fx.fill(0); fy.fill(0); fz.fill(0);
+    for(let i=0;i<N;i++){
+      const n=nbrN[i], base=i*MAXNB, xi=x[i], yi=y[i], zi=z[i];
+      let ax=0,ay=0,az=0;
+      for(let k=0;k<n;k++){
+        const j=nbr[base+k];
+        const dx=xi-x[j], dy=yi-y[j], dz=zi-z[j];
+        const r2=dx*dx+dy*dy+dz*dz;
+        if(r2>=RC2) continue;
+        const sr2=1/r2, sr6=sr2*sr2*sr2;
+        const fr=24*sr6*(2*sr6-1)*sr2;        // âˆ’dU/dr, divided by r
+        ax+=fr*dx; ay+=fr*dy; az+=fr*dz;
+        fx[j]-=fr*dx; fy[j]-=fr*dy; fz[j]-=fr*dz;
+      }
+      fx[i]+=ax; fy[i]+=ay; fz[i]+=az-o.g;
+    }
+  }
+  rebuild(); forces();
+
+  /* ---- what gets written down ---- */
+  const nRec=Math.floor(o.steps/o.rec)+1;
+  const pos   = new Float32Array(nRec*N*3);
+  const solid = new Uint8Array(nRec*N);
+  const rT=new Float32Array(nRec), rE=new Float32Array(nRec), rS=new Float32Array(nRec);
+
+  /* Which molecules are still in the crystal.
+
+     Counting neighbours is not enough â€” a dense liquid has about as many as
+     the crystal did, just different ones. So this records WHICH molecules were
+     each molecule's neighbours at the start and asks how many are still there.
+     One vibrating on its lattice site keeps them all; one that has slid past
+     its neighbours has swapped them, and the count falls away. That is also
+     what colours the molecules on screen, so what you see turn loose is what
+     the measurement calls loose. */
+  const NR2=(1.30*o.a/1.414)*(1.30*o.a/1.414);
+  const LOOSE2=(1.55*o.a/1.414)*(1.55*o.a/1.414);   // slack, for vibration
+  const KEEP=0.65;
+  const nb0=[];
+  for(let i=0;i<N;i++){
+    const l=[];
+    for(let j=0;j<N;j++){
+      if(j===i) continue;
+      const dx=x[i]-x[j], dy=y[i]-y[j], dz=z[i]-z[j];
+      if(dx*dx+dy*dy+dz*dz<NR2) l.push(j);
+    }
+    nb0.push(l);
+  }
+
+  let rec=0, added=0;
+  function snap(){
+    const p=rec*N*3, s=rec*N;
+    let nSolid=0, ke=0;
+    for(let i=0;i<N;i++){
+      pos[p+i*3]=x[i]; pos[p+i*3+1]=y[i]; pos[p+i*3+2]=z[i];
+      ke += vx[i]*vx[i]+vy[i]*vy[i]+vz[i]*vz[i];
+      const l=nb0[i];
+      let kept=0;
+      for(let q=0;q<l.length;q++){
+        const j=l[q], dx=x[i]-x[j], dy=y[i]-y[j], dz=z[i]-z[j];
+        if(dx*dx+dy*dy+dz*dz<LOOSE2) kept++;
+      }
+      const isSolid = l.length ? (kept >= l.length*KEEP) : 1;
+      solid[s+i] = isSolid?1:0;
+      if(isSolid) nSolid++;
+    }
+    /* Temperature, as mean kinetic energy per degree of freedom. Nothing draws
+       this — the heating curve is calculated from water's real figures instead,
+       for the reason set out at the top of the file. It is recorded because it
+       is how the tests check the run is doing physics. */
+    rT[rec]=ke/(3*N);
+    rE[rec]=added/N;
+    rS[rec]=nSolid/N;
+    rec++;
+  }
+  snap();
+
+  const dt=o.dt;
+  let step=0, result=null;
+  /* One slice of the run. Calling it with the whole step count does the lot;
+     calling it a few thousand at a time spreads the cost over frames the first
+     act is using anyway. Either way the arithmetic is the same, in the same
+     order, off the same seeded stream — so the answer does not depend on how
+     it was sliced. */
+  function advance(n){
+    const end = Math.min(o.steps, step+n);
+    for(let s=step+1;s<=end;s++){
+      for(let i=0;i<N;i++){
+        vx[i]+=0.5*dt*fx[i]; vy[i]+=0.5*dt*fy[i]; vz[i]+=0.5*dt*fz[i];
+        x[i]+=dt*vx[i]; y[i]+=dt*vy[i]; z[i]+=dt*vz[i];
+        if(x[i]<0){x[i]=-x[i];vx[i]=-vx[i];} else if(x[i]>LX){x[i]=2*LX-x[i];vx[i]=-vx[i];}
+        if(z[i]<0){z[i]=-z[i];vz[i]=-vz[i];} else if(z[i]>LZ){z[i]=2*LZ-z[i];vz[i]=-vz[i];}
+        if(y[i]<0){y[i]=-y[i];vy[i]=-vy[i];} else if(y[i]>LY){y[i]=2*LY-y[i];vy[i]=-vy[i];}
+      }
+      let moved=0;
+      for(let i=0;i<N;i++){
+        const dx=x[i]-lx[i], dy=y[i]-ly[i], dz=z[i]-lz[i];
+        const d=dx*dx+dy*dy+dz*dz; if(d>moved) moved=d;
+      }
+      if(moved > SKIN*SKIN*0.25) rebuild();
+      forces();
+      for(let i=0;i<N;i++){ vx[i]+=0.5*dt*fx[i]; vy[i]+=0.5*dt*fy[i]; vz[i]+=0.5*dt*fz[i]; }
+      /* the heating: a fixed amount of energy per unit time, shared out by
+         scaling every velocity. Nothing here decides what it is spent on. */
+      if(s>o.warm){
+        let ke=0; for(let i=0;i<N;i++) ke+=0.5*(vx[i]*vx[i]+vy[i]*vy[i]+vz[i]*vz[i]);
+        const dE=o.power*dt, k=Math.sqrt((ke+dE)/ke);
+        for(let i=0;i<N;i++){ vx[i]*=k; vy[i]*=k; vz[i]*=k; }
+        added+=dE;
+      }
+      if(s%o.rec===0) snap();
+    }
+    step = end;
+    if(step>=o.steps && !result)
+      result = {N, frames:rec, pos, solid, T:rT, E:rE, frac:rS, LX, LY, LZ, a:o.a};
+    return step>=o.steps;
+  }
+  return {
+    advance,
+    get done(){ return step>=o.steps; },
+    get progress(){ return step/o.steps; },
+    get result(){ return result; }
+  };
+}
+
+/* The whole run in one go — what the test harness calls, and what the scene
+   falls back to if the timeline is scrubbed into the close-up before the
+   sliced version has finished. */
+function runMelt(o){
+  const r = meltRun(o);
+  while(!r.done) r.advance(4000);
+  return r.result;
+}
+
+
+/* Where the melting happens, measured rather than assumed: the first and last
+   frames at which the fraction still crystalline crosses these marks. The
+   captions and the shaded band on the graph both come from here, so they
+   cannot drift away from what the run did. */
+function meltWindow(P){
+  let a=-1, b=-1;
+  for(let i=0;i<P.frames;i++){
+    if(a<0 && P.frac[i] < 0.97) a=i;
+    if(P.frac[i] > 0.03) b=i;
+  }
+  if(a<0) a=0;
+  if(b<a) b=P.frames-1;
+  return {a, b:Math.min(b+1,P.frames-1)};
+}
+/* How much of the block has melted by each frame — the number that walks the
+   marker along the flat part of the curve.
+
+   The raw measurement jitters, because a molecule can fall back into step with
+   its neighbours for a moment, and a marker sliding backwards along a flat line
+   would read as a mistake. So this smooths it and then refuses to let it go
+   down, which is what "how much has melted so far" actually means. */
+function meltProgress(P, W){
+  const sm = new Float32Array(P.frames);
+  for(let i=0;i<P.frames;i++){
+    let s=0, n=0;
+    for(let k=-5;k<=5;k++){ const j=i+k; if(j>=0 && j<P.frames){ s+=P.frac[j]; n++; } }
+    sm[i] = s/n;
+  }
+  const f0 = sm[W.a], f1 = sm[W.b], span = f0 - f1;
+  const out = new Float32Array(P.frames);
+  let best = 0;
+  for(let i=0;i<P.frames;i++){
+    const m = i <= W.a ? 0
+            : i >= W.b ? 1
+            : (span > 1e-6 ? clamp01((f0-sm[i])/span) : 0);
+    if(m > best) best = m;
+    out[i] = best;
+  }
+  return out;
+}
+
+/* Where frame i has got to along the calculated curve, in joules per kilogram.
+
+   The two sloping stretches are walked in step with the energy the simulation
+   has actually been given, and that is exact rather than a fudge: it is heated
+   at a constant rate, so how much it has had IS how far through that stretch
+   it is. The flat stretch is walked in step with how much of the pattern has
+   come apart. So the marker is driven by the molecules on screen the whole way
+   along, while the curve it runs on is water's own. */
+function curveEnergy(P, W, i){
+  const C = curveParts();
+  const E0=P.E[0], Ea=P.E[W.a], Eb=P.E[W.b], Ez=P.E[P.frames-1];
+  if(i <= W.a) return C.iceE * (Ea>E0 ? clamp01((P.E[i]-E0)/(Ea-E0)) : 0);
+  if(i <= W.b) return C.iceE + C.meltE*P.melted[i];
+  return C.iceE + C.meltE + C.waterE * (Ez>Eb ? clamp01((P.E[i]-Eb)/(Ez-Eb)) : 0);
+}
+
+let PHYS = null, PHYS_RUN = null, PHYS_WIN = null;
+function simProgress(){ return PHYS ? 1 : (PHYS_RUN ? PHYS_RUN.progress : 0); }
+function ensureSim(){
+  if(PHYS) return PHYS;
+  if(!PHYS_RUN) PHYS_RUN = meltRun(MD);
+  while(!PHYS_RUN.done) PHYS_RUN.advance(4000);
+  PHYS = PHYS_RUN.result;
+  PHYS_WIN = meltWindow(PHYS);
+  PHYS.melted = meltProgress(PHYS, PHYS_WIN);
+  return PHYS;
+}
+function sliceSim(ms){
+  if(PHYS) return;
+  if(!PHYS_RUN) PHYS_RUN = meltRun(MD);
+  const until = performance.now() + ms;
+  while(!PHYS_RUN.done && performance.now() < until) PHYS_RUN.advance(600);
+  if(PHYS_RUN.done){
+    PHYS = PHYS_RUN.result;
+    PHYS_WIN = meltWindow(PHYS);
+    PHYS.melted = meltProgress(PHYS, PHYS_WIN);
+  }
+}
+
+const ICE_T0 = 31.0, ICE_T1 = 64.0;
+/* which recorded frame the clock is on, as a real number so the gap between
+   two of them can be interpolated across */
+function iceFrame(t){
+  const P = ensureSim();
+  const u = clamp01((t-ICE_T0)/(ICE_T1-ICE_T0));
+  return u*(P.frames-1);
+}
+
+/* =====================================================================
+   THE GARDEN
+===================================================================== */
+const garden = new THREE.Group(); scene.add(garden);
+
+/* ---------- sky ---------- */
+const skyDome = new THREE.Mesh(new THREE.SphereGeometry(300, 40, 24),
+  new THREE.MeshBasicMaterial({map:SKY_DAY, side:THREE.BackSide, fog:false}));
+scene.add(skyDome);
+const dawnDome = new THREE.Mesh(new THREE.SphereGeometry(298, 40, 24),
+  new THREE.MeshBasicMaterial({map:SKY_DAWN, side:THREE.BackSide, fog:false,
+    transparent:true, opacity:1}));
+scene.add(dawnDome);
+
+/* ---------- the ground ----------
+   A big flat disc lit by a bright sky reads as a pale dome sweeping across the
+   frame, whatever albedo it is given. Darkening it further is not the fix —
+   the falloff has to be painted into its colour map so it reads as a field of
+   snow fading into distance. */
+const groundTex = (function(){
+  const S=512, c=document.createElement('canvas'); c.width=c.height=S;
+  const x=c.getContext('2d');
+  const g=x.createRadialGradient(S/2,S/2,0,S/2,S/2,S/2);
+  g.addColorStop(0.00,'#e9f0f7');
+  g.addColorStop(0.30,'#dde7f1');
+  g.addColorStop(0.62,'#b9c9da');
+  g.addColorStop(1.00,'#8698ac');
+  x.fillStyle=g; x.fillRect(0,0,S,S);
+  /* a dusting of sparkle and a few hollows, so it is not a smooth ramp */
+  const rand=rng(881);
+  for(let i=0;i<2600;i++){
+    const px=rand()*S, py=rand()*S;
+    const d=Math.hypot(px-S/2,py-S/2)/(S/2);
+    if(d>1) continue;
+    x.fillStyle = rand()<0.5 ? `rgba(255,255,255,${0.5*(1-d)})` : `rgba(150,170,195,${0.35*(1-d)})`;
+    x.fillRect(px,py,1.6,1.6);
+  }
+  const t=new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+})();
+const ground = new THREE.Mesh(new THREE.CircleGeometry(30, 72),
+  new THREE.MeshStandardMaterial({map:groundTex, roughness:0.92, metalness:0.0,
+    envMapIntensity:0.10}));
+ground.rotation.x = -Math.PI/2;
+ground.receiveShadow = true;
+garden.add(ground);
+
+/* ---------- a few trees, for depth ---------- */
+(function trees(){
+  const rand = rng(5150);
+  const trunkMat = new THREE.MeshStandardMaterial({color:0x4a3728, roughness:0.9, envMapIntensity:0.2});
+  const needleMat = new THREE.MeshStandardMaterial({color:0x2c4434, roughness:0.85, envMapIntensity:0.2});
+  const snowMat = new THREE.MeshStandardMaterial({color:0xdfe9f4, roughness:0.85, envMapIntensity:0.25});
+  for(let i=0;i<9;i++){
+    const ang = -2.5 + i*0.62 + rand()*0.22;
+    const dist = 9 + rand()*7;
+    const h = 2.4 + rand()*2.2;
+    const g = new THREE.Group();
+    g.position.set(Math.cos(ang)*dist, 0, Math.sin(ang)*dist);
+    const tr = new THREE.Mesh(CYL, trunkMat);
+    tr.scale.set(0.09,h*0.28,0.09); tr.position.y = h*0.14;
+    g.add(tr);
+    for(let k=0;k<3;k++){
+      const rr = 0.78*(1-k*0.24), hh = h*0.42*(1-k*0.13);
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(rr, hh, 12), needleMat);
+      cone.position.y = h*(0.26+k*0.20);
+      g.add(cone);
+      const cap = new THREE.Mesh(new THREE.ConeGeometry(rr*0.82, hh*0.46, 12), snowMat);
+      cap.position.y = h*(0.26+k*0.20) + hh*0.27;
+      g.add(cap);
+    }
+    garden.add(g);
+  }
+})();
+
+/* ---------- the sun ---------- */
+const sunBall = new THREE.Mesh(new THREE.SphereGeometry(0.55, 24, 16),
+  new THREE.MeshBasicMaterial({color:0xfff4d2, fog:false}));
+const sunGlow = new THREE.Sprite(new THREE.SpriteMaterial({map:GLOW_TEX, color:0xffe4a8,
+  transparent:true, blending:THREE.AdditiveBlending, depthWrite:false, depthTest:false, fog:false}));
+sunGlow.scale.set(11,11,1);
+sunGlow.renderOrder = 2;
+scene.add(sunBall); scene.add(sunGlow);
+const SUN_DIST = 26;
+const sunPos = new THREE.Vector3();
+const sunDir = new THREE.Vector3();      // from the sun towards the snowman
+function placeSun(t){
+  /* up out of the east through the first act, then drifting on */
+  const rise = ramp(t, 1.0, 22.0);
+  const elev = lerp(-0.04, 0.62, rise) + 0.10*ramp(t, 66, 94);
+  const azim = lerp(-1.32, -0.78, rise) + 0.30*ramp(t, 66, 94);
+  sunPos.set(Math.cos(azim)*Math.cos(elev), Math.sin(elev), Math.sin(azim)*Math.cos(elev))
+        .multiplyScalar(SUN_DIST);
+  sunBall.position.copy(sunPos);
+  sunGlow.position.copy(sunPos);
+  sunLight.position.copy(sunPos).multiplyScalar(0.30);
+  /* at first light the sun is still below the horizon, and a directional light
+     from below throws the shadows the wrong way up the snowman */
+  sunLight.position.y = Math.max(sunLight.position.y, 0.6);
+  sunLight.target.position.set(0, 0.7, 0);
+  sunDir.set(0,0.7,0).sub(sunPos).normalize();
+  return elev;
+}
+
+/* ---------- the snowman ---------- */
+const SNOW_MAT = new THREE.MeshStandardMaterial({
+  color:SNOW_COL, roughness:0.86, metalness:0.0, envMapIntensity:0.55
+});
+const snowman = new THREE.Group(); garden.add(snowman);
+const SNOW_GEO = snowGeo(3);
+const balls = BALLS.map((b,i)=>{
+  const m = new THREE.Mesh(SNOW_GEO, SNOW_MAT);
+  m.castShadow = true; m.receiveShadow = true;
+  snowman.add(m);
+  return m;
+});
+
+/* ---------- what is stuck in the snow ----------
+   Each prop is anchored to a ball by a DIRECTION, so it rides the surface in
+   as the ball shrinks and ends up lying on the ground when the ball has gone.
+   Nothing has to be told when to fall. */
+const props = [];
+function prop(mesh, ball, dir, out, rest, tip){
+  mesh.userData = {ball, dir:new THREE.Vector3().fromArray(dir).normalize(), out, rest, tip:tip||0};
+  /* castShadow does not reach a group's children, and the arms and the hat are
+     groups — so set it on everything rather than on the thing being handed in */
+  mesh.traverse(o=>{ if(o.isMesh) o.castShadow = true; });
+  snowman.add(mesh);
+  props.push(mesh);
+  return mesh;
+}
+const coalMat = new THREE.MeshStandardMaterial({color:COAL_COL, roughness:0.42, metalness:0.05,
+  envMapIntensity:0.5});
+const carrotMat = new THREE.MeshStandardMaterial({color:CARROT_COL, roughness:0.55, metalness:0.0,
+  envMapIntensity:0.4});
+const stickMat = new THREE.MeshStandardMaterial({color:STICK_COL, roughness:0.9, metalness:0.0,
+  envMapIntensity:0.25});
+const scarfMat = new THREE.MeshStandardMaterial({color:SCARF_COL, roughness:0.88, metalness:0.0,
+  envMapIntensity:0.3});
+
+(function dressUp(){
+  const coal = s => {
+    const m = new THREE.Mesh(SPH, coalMat);
+    m.scale.setScalar(s);
+    return m;
+  };
+  /* eyes and mouth, on the head */
+  prop(coal(0.026), 2, [-0.34, 0.42, 0.84], 1.0, 0.026);
+  prop(coal(0.026), 2, [ 0.34, 0.42, 0.84], 1.0, 0.026);
+  for(let i=0;i<5;i++){
+    const a = -0.52 + i*0.26;
+    prop(coal(0.016), 2, [Math.sin(a)*0.9, -0.34-Math.cos(a)*0.10, 0.86], 1.0, 0.016);
+  }
+  /* the nose */
+  const carrot = new THREE.Mesh(new THREE.ConeGeometry(0.036, 0.20, 14), carrotMat);
+  carrot.geometry.translate(0, 0.06, 0);              // pivot near the base, not the middle
+  prop(carrot, 2, [0, 0.04, 1], 0.92, 0.038, 1);
+  /* buttons */
+  for(let i=0;i<3;i++)
+    prop(coal(0.028), 1, [0, 0.55-i*0.5, 0.84], 1.0, 0.028);
+  /* arms — twigs pushed into the body, and the first thing to let go once it
+     has softened, well before the body itself is gone */
+  for(const s of [-1, 1]){
+    const arm = new THREE.Mesh(CYL, stickMat);
+    arm.scale.set(0.022, 0.62, 0.022);
+    const g = new THREE.Group(); g.add(arm);
+    arm.position.y = 0.31;
+    arm.rotation.z = -s*0.42;
+    arm.position.x = s*0.13;
+    prop(g, 1, [s, 0.30, 0.1], 0.94, 0.03, 1).userData.isArm = true;
+  }
+  /* a hat, which is the first thing to come off */
+  const hat = new THREE.Group();
+  const brim = new THREE.Mesh(CYL, coalMat); brim.scale.set(0.20, 0.012, 0.20);
+  const crown = new THREE.Mesh(CYL, coalMat); crown.scale.set(0.125, 0.15, 0.125);
+  crown.position.y = 0.082;
+  const band = new THREE.Mesh(CYL, scarfMat); band.scale.set(0.129, 0.028, 0.129);
+  band.position.y = 0.022;
+  hat.add(brim); hat.add(crown); hat.add(band);
+  prop(hat, 2, [0, 1, 0.06], 0.95, 0.012, 1);
+})();
+
+/* ---------- the arms fall off ----------
+   A scripted moment, not something tied to how much of the body is left —
+   the twigs give way on their own well before the body has melted down to
+   nothing. The pose they fall FROM is captured once, here, at the instant
+   they let go: everything else in this scene is a pure function of t with no
+   memory between frames, and a falling object needs somewhere fixed to fall
+   from, so this is that snapshot rather than an exception to the rule.
+   stack() writes into the shared ballPos as a side effect; that is fine here
+   because updateGarden() calls it again, for the real t, before the first
+   frame is ever drawn. */
+const ARM_FALL_T = 80.0, ARM_FALL_DUR = 1.6;
+(function prepareArmFall(){
+  const localUp = new THREE.Vector3(0,1,0);
+  const f80 = simFrac(ARM_FALL_T);
+  const r80 = stack(f80);
+  for(const p of props){
+    const d = p.userData;
+    if(!d.isArm) continue;
+    const b = d.ball;
+    const pos = ballPos[b].clone().addScaledVector(d.dir, r80[b]*d.out);
+    const support = supportUnder(pos.x, pos.z, b, r80, d.rest);
+    if(pos.y < support) pos.y = support;
+    const horiz = new THREE.Vector3(d.dir.x, 0, d.dir.z);
+    if(horiz.lengthSq() < 1e-6) horiz.set(1,0,0);
+    horiz.normalize();
+    d.fallFrom = {pos, quat:new THREE.Quaternion().setFromUnitVectors(localUp, d.dir)};
+    /* tipped outward and down, clear of the body, to rest on the ground */
+    d.fallLand = new THREE.Vector3(pos.x + horiz.x*0.34, 0.030, pos.z + horiz.z*0.34);
+    d.fallRestQuat = new THREE.Quaternion().setFromUnitVectors(localUp, horiz);
+  }
+})();
+
+/* the scarf sits at the join, so it is a child of nothing and placed by hand */
+const scarf = new THREE.Mesh(new THREE.TorusGeometry(1, 0.20, 10, 28), scarfMat);
+scarf.rotation.x = Math.PI/2;
+scarf.castShadow = true;
+snowman.add(scarf);
+const scarfTail = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.34, 0.022), scarfMat);
+scarfTail.castShadow = true;
+snowman.add(scarfTail);
+
+/* ---------- the puddle ----------
+   Its size is not chosen. The water in it is the snow that has gone, at the
+   density of water instead of the density of snow, spread to a depth a puddle
+   on rough ground actually holds. */
+const puddleMat = new THREE.MeshStandardMaterial({
+  color:WATER_COL, roughness:0.08, metalness:0.0, envMapIntensity:1.25,
+  transparent:true, opacity:0.0
+});
+const puddle = new THREE.Mesh(new THREE.CircleGeometry(1, 64), puddleMat);
+puddle.rotation.x = -Math.PI/2;
+puddle.position.y = 0.006;
+garden.add(puddle);
+
+
+/* ---------- drips ----------
+   Each one slides down the ball it is on and then falls. Its whole life is a
+   function of a phase and t, so there is nothing accumulating between frames. */
+const DRIP_N = 18;
+/* One material each, not one shared between them. Opacity is written per drip
+   per frame, so a shared material would give every drip whichever fade the
+   last one in the loop happened to want. */
+const DRIP_MAT = {color:0xbfe0f5, roughness:0.1, metalness:0,
+  envMapIntensity:1.3, transparent:true, opacity:0.9};
+const drips = [];
+(function makeDrips(){
+  const rand = rng(30517);
+  for(let i=0;i<DRIP_N;i++){
+    const m = new THREE.Mesh(SPH, new THREE.MeshStandardMaterial(DRIP_MAT));
+    m.scale.setScalar(0.017);
+    const ball = i%3;
+    const th = rand()*Math.PI*2, ph = 0.25 + rand()*0.75;
+    m.userData = {
+      ball,
+      dir: new THREE.Vector3(Math.sin(ph)*Math.cos(th), Math.cos(ph), Math.sin(ph)*Math.sin(th)),
+      phase: rand(),
+      rate: 0.30 + rand()*0.16
+    };
+    garden.add(m);
+    drips.push(m);
+  }
+})();
+
+/* ---------- the energy arriving ----------
+   Two clouds of motes. The sun's come in along one direction, and most of them
+   turn round and leave again, because snow is white — that is the albedo, and
+   it is the reason the sun is the smaller of the two supplies on a warm day.
+   The air's come in from every direction and none of them leave. How many of
+   each there are is set from the energy balance, so the picture agrees with
+   the panel. */
+function moteCloud(size){
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MOTE_N*3), 3));
+  g.setAttribute('color',    new THREE.BufferAttribute(new Float32Array(MOTE_N*3), 3));
+  const m = new THREE.PointsMaterial({
+    size, map:GLOW_TEX, vertexColors:true, transparent:true,
+    blending:THREE.AdditiveBlending, depthWrite:false, sizeAttenuation:true
+  });
+  const p = new THREE.Points(g, m);
+  p.frustumCulled = false;
+  garden.add(p);
+  return p;
+}
+const sunMotes = moteCloud(0.050);
+const airMotes = moteCloud(0.042);
+/* the colours, converted once — the per-mote colours written every frame are
+   these scaled by a brightness, so they must already be linear. The sun's
+   motes are not one flat orange: each is its own blend of two shades, orange
+   through to yellow, picked per mote in aimMotes() below, so the stream reads
+   as sunlight rather than a single paint colour. */
+const HEAT_COL_ORANGE = new THREE.Color(0xff7a2e).convertSRGBToLinear();
+const HEAT_COL_YELLOW = new THREE.Color(0xffe066).convertSRGBToLinear();
+const AIR_MOTE_RGB = new THREE.Color(AIRHEAT_COL).convertSRGBToLinear();
+
+/* where each mote is aimed, and whether it bounces off */
+const moteAim = [];
+(function aimMotes(){
+  const rand = rng(77213);
+  for(let i=0;i<MOTE_N;i++){
+    /* a point on one of the balls, weighted towards the bigger ones because
+       that is where more of the surface is */
+    const pick = rand();
+    const ball = pick < 0.50 ? 0 : pick < 0.82 ? 1 : 2;
+    const th = rand()*Math.PI*2, u = rand()*2-1, s = Math.sqrt(1-u*u);
+    moteAim.push({
+      ball,
+      dir: new THREE.Vector3(s*Math.cos(th), u, s*Math.sin(th)),
+      phase: rand(),
+      rate: 0.42 + rand()*0.26,
+      wob: rand()*6.28,
+      wob2: rand()*6.28,
+      /* orange through to yellow, and how tight a squiggle it travels in —
+         both picked once per mote so the stream has some variety rather than
+         every mote doing exactly the same thing */
+      col: new THREE.Color().lerpColors(HEAT_COL_ORANGE, HEAT_COL_YELLOW, rand()),
+      wiggle: 0.75 + rand()*0.6,
+      /* whether this one is thrown back, decided by the albedo of the snow */
+      bounce: rand() < SNOW.ALBEDO
+    });
+  }
+})();
+
+const _mp = new THREE.Vector3(), _mq = new THREE.Vector3(), _mr = new THREE.Vector3();
+
+
+/* An arm mid-fall: a straight lerp outward and down from the pose it let go
+   at to where it lands, gravity-like (eased IN on the drop, so it starts slow
+   and picks up speed) rather than eased both ends like the props that settle
+   gently onto a shrinking ball. The tumble from "stuck in at an angle" to
+   "lying flat" is a single slerp between the two orientations — the arm is a
+   plain cylinder, so no spin about its own length would show, and none is
+   needed to read as a fall. */
+function updateFallenArm(p, d, t){
+  const u = ramp(t, ARM_FALL_T, ARM_FALL_T+ARM_FALL_DUR);
+  const from = d.fallFrom, land = d.fallLand;
+  _pp.set(
+    lerp(from.pos.x, land.x, smooth(u)),
+    lerp(from.pos.y, land.y, u*u),
+    lerp(from.pos.z, land.z, smooth(u))
+  );
+  p.position.copy(_pp);
+  p.quaternion.copy(from.quat).slerp(d.fallRestQuat, smooth(u));
+  p.visible = true;
+}
+
+/* ---------- the garden, frame by frame ---------- */
+const _pp = new THREE.Vector3(), _pd = new THREE.Vector3();
+const _down = new THREE.Vector3(0,-1,0), _up = new THREE.Vector3(0,1,0);
+
+function updateGarden(t){
+  const f = simFrac(t);
+  const r = stack(f);
+
+  /* the sky, and the sun coming up */
+  placeSun(t);
+  const day = ramp(t, 2.0, 20.0);
+  dawnDome.material.opacity = 1 - day;
+  sunLight.intensity = lerp(0.25, 2.15, day) * lerp(0.42, 1.0, SN.G/850);
+  skyFill.intensity = lerp(0.22, 0.58, day);
+  sunGlow.material.opacity = lerp(0.35, 0.95, day) * lerp(0.30, 1.0, SN.G/850);
+  sunBall.material.opacity = 1;
+
+  /* the balls */
+  for(let i=0;i<3;i++){
+    const vis = r[i] > 0.004;
+    balls[i].visible = vis;
+    if(!vis) continue;
+    balls[i].position.copy(ballPos[i]);
+    /* wet snow slumps: the lower balls flatten a little as they lose their
+       shoulders, which is what a real one does long before it disappears */
+    const slump = 1 - 0.16*clamp01(f*1.6)*(i===0?1:i===1?0.7:0.4);
+    balls[i].scale.set(r[i], r[i]*slump, r[i]);
+  }
+  /* wet snow is shinier than dry snow */
+  SNOW_MAT.roughness = lerp(0.88, 0.46, clamp01(f*3.2));
+  SNOW_MAT.envMapIntensity = lerp(0.5, 0.95, clamp01(f*3.2));
+
+  /* the things stuck in it */
+  for(const p of props){
+    const d = p.userData, b = d.ball;
+    if(d.isArm && t >= ARM_FALL_T){ updateFallenArm(p, d, t); continue; }
+    _pp.copy(ballPos[b]).addScaledVector(d.dir, r[b]*d.out);
+    /* What is underneath it. A prop rides its own ball's surface down as the
+       ball shrinks, and when the ball has gone it has to come to rest on
+       whatever is below — the shoulders of the next ball down, and then the
+       ground. Without this the hat and the carrot end up inside the body for a
+       while and then pop back out of it, because the centre a vanished ball
+       leaves behind sits below the top of the one it was standing on. */
+    const support = supportUnder(_pp.x, _pp.z, b, r, d.rest);
+    let tip = 0;
+    if(_pp.y < support){
+      tip = clamp01((support - _pp.y)/0.10);
+      /* shoved a little way out as it settles, so they do not all stack up in
+         the middle of the puddle */
+      _pp.x += d.dir.x*0.10*tip; _pp.z += d.dir.z*0.10*tip;
+      _pp.y = support;
+    }
+    p.position.copy(_pp);
+    p.visible = true;
+    if(d.tip) p.rotation.set(-Math.PI/2*tip, 0, 0);
+    /* the coals and the carrot point out of the surface they are stuck in */
+    if(!d.tip){
+      _pd.copy(d.dir);
+      p.quaternion.setFromUnitVectors(_up, _pd);
+    }
+  }
+  /* the scarf, round the neck until there is no neck left, and then down onto
+     the shoulders of whatever is still standing */
+  const ringR = Math.max(r[2]*0.94, 0.13);
+  const neckY = Math.max(ballPos[2].y - r[2]*0.70, supportUnder(ringR, 0, 2, r, 0.028));
+  scarf.scale.setScalar(ringR);
+  scarf.position.set(0, neckY, 0);
+  scarfTail.scale.setScalar(Math.max(r[2]/BALLS[2].r, 0.55));
+  scarfTail.position.set(ringR*0.80, Math.max(neckY - 0.13*Math.max(r[2]/BALLS[2].r,0.55), 0.028), ringR*0.36);
+  scarfTail.rotation.z = 0.22 + 1.34*clamp01((0.03-neckY+0.03)/0.06);
+
+  /* the puddle */
+  const pr = puddleRadius(f);
+  puddle.scale.setScalar(Math.max(pr, 0.001));
+  puddle.material.opacity = 0.86*clamp01(pr/0.22);
+  puddle.visible = pr > 0.01;
+
+  /* the drips */
+  const dripping = ramp(t, 20.0, 26.0);
+  for(const dr of drips){
+    const d = dr.userData, b = d.ball;
+    if(r[b] < 0.03 || dripping < 0.02){ dr.visible=false; continue; }
+    dr.visible = true;
+    const u = (t*d.rate + d.phase) % 1;
+    if(u < 0.58){
+      /* sliding down the side */
+      const s = u/0.58;
+      _pd.copy(d.dir).lerp(_down, s*0.72).normalize();
+      dr.position.copy(ballPos[b]).addScaledVector(_pd, r[b]*1.02);
+      dr.material.opacity = 0.9*dripping*smooth(s*4);
+      dr.scale.setScalar(0.012 + 0.010*s);
+    }else{
+      /* and then falling off the bottom of it */
+      const s = (u-0.58)/0.42;
+      _pd.copy(d.dir).lerp(_down, 0.72).normalize();
+      _pp.copy(ballPos[b]).addScaledVector(_pd, r[b]*1.02);
+      const yEnd = 0.012;
+      const yy = _pp.y - (_pp.y-yEnd)*s*s;
+      dr.position.set(_pp.x, Math.max(yy,yEnd), _pp.z);
+      dr.material.opacity = 0.9*dripping*(1-smooth((s-0.75)/0.25));
+      dr.scale.setScalar(0.022*(1-0.5*s));
+    }
+  }
+
+  /* ---- the energy arriving ---- */
+  updateMotes(t, r);
+}
+
+function updateMotes(t, r){
+  const {nSun, nAir} = moteCounts();
+  /* on screen while the first act is explaining them, and again, fainter,
+     once we are back outside */
+  const show = ramp(t,5.0,8.0)*(1-ramp(t,28.0,30.0)) + 0.55*ramp(t,67.0,70.0)*(1-ramp(t,90.0,93.0));
+  const sunP = sunMotes.geometry.attributes.position.array;
+  const sunC = sunMotes.geometry.attributes.color.array;
+  const airP = airMotes.geometry.attributes.position.array;
+  const airC = airMotes.geometry.attributes.color.array;
+  const D = 2.3;
+
+  for(let i=0;i<MOTE_N;i++){
+    const m = moteAim[i], b = m.ball;
+    const gone = r[b] < 0.03;
+    /* ---- sunlight ---- */
+    let bright = 0;
+    if(i < nSun && !gone){
+      const face = -m.dir.dot(sunDir);            // is this bit of surface facing the sun?
+      if(face > 0.12){
+        _mp.copy(ballPos[b]).addScaledVector(m.dir, r[b]);       // where it lands
+        const u = (t*m.rate + m.phase) % 1;
+        /* how far through this leg of the trip — out to the snow, or back off
+           it again. Declared out here rather than in each branch because the
+           squiggle below needs it once the branches have closed. */
+        let s;
+        if(u < 0.5){
+          s = u*2;
+          _mq.copy(_mp).addScaledVector(sunDir, -D*(1-s));
+          bright = smooth(s*6)*0.9;
+        }else{
+          s = (u-0.5)*2;
+          if(m.bounce){
+            /* thrown back off the surface, at the mirror angle */
+            _mr.copy(sunDir).addScaledVector(m.dir, -2*sunDir.dot(m.dir));
+            _mq.copy(_mp).addScaledVector(_mr, D*s);
+            bright = 0.9*(1-smooth(s));
+          }else{
+            /* absorbed: in it goes, and it does not come out */
+            _mq.copy(_mp).addScaledVector(m.dir, -0.10*s);
+            bright = 1.5*(1-smooth(s*1.6));
+          }
+        }
+        /* a squiggle down the length of the flight — zero at each end, so it
+           still lands where it is aimed, and strongest in the middle of the
+           journey. Driven by s rather than t, so it is a wavy SHAPE traced
+           along the path rather than a flicker in place. */
+        const wig = s*(1-s)*4*m.wiggle;
+        _mq.x += Math.sin(m.wob      + s*10.5)*0.13*wig;
+        _mq.y += Math.sin(m.wob*1.4  + s*8.7 )*0.11*wig;
+        _mq.z += Math.sin(m.wob2     + s*9.6 )*0.13*wig;
+        sunP[i*3]=_mq.x; sunP[i*3+1]=_mq.y; sunP[i*3+2]=_mq.z;
+      }
+    }
+    bright *= show;
+    sunC[i*3]   = m.col.r*bright;
+    sunC[i*3+1] = m.col.g*bright;
+    sunC[i*3+2] = m.col.b*bright;
+
+    /* ---- the air ---- */
+    let ab = 0;
+    if(i < nAir && !gone){
+      const am = moteAim[(i*7+3) % MOTE_N];      // a different scatter from the sun's
+      _mp.copy(ballPos[b]).addScaledVector(am.dir, r[b]);
+      const u = (t*m.rate*0.7 + m.phase*1.7) % 1;
+      const s = smooth(u);
+      _mq.copy(_mp).addScaledVector(am.dir, D*0.62*(1-s));
+      /* air does not travel in straight lines */
+      _mq.x += Math.sin(m.wob + t*1.7)*0.07*(1-s);
+      _mq.y += Math.cos(m.wob*1.7 + t*1.3)*0.07*(1-s);
+      _mq.z += Math.sin(m.wob*0.7 + t*1.5)*0.07*(1-s);
+      ab = 1.15*smooth(u*5)*(1-smooth((u-0.80)/0.20)) * show;
+      airP[i*3]=_mq.x; airP[i*3+1]=_mq.y; airP[i*3+2]=_mq.z;
+    }
+    airC[i*3]   = AIR_MOTE_RGB.r*ab;
+    airC[i*3+1] = AIR_MOTE_RGB.g*ab;
+    airC[i*3+2] = AIR_MOTE_RGB.b*ab;
+  }
+  sunMotes.geometry.attributes.position.needsUpdate = true;
+  sunMotes.geometry.attributes.color.needsUpdate = true;
+  airMotes.geometry.attributes.position.needsUpdate = true;
+  airMotes.geometry.attributes.color.needsUpdate = true;
+}
+
+/* =====================================================================
+   INSIDE THE ICE
+===================================================================== */
+const ice = new THREE.Group(); ice.position.y = ICE_Y; scene.add(ice);
+const iceInner = new THREE.Group(); ice.add(iceInner);
+
+const MD_N  = 4*MD.nx*MD.ny*MD.nz;
+const MD_LX = MD.nx*MD.a, MD_LZ = MD.nz*MD.a, MD_LY = MD.ny*MD.a*MD.head;
+const BLOCK_H = MD.ny*MD.a;
+iceInner.position.set(-MD_LX/2, -BLOCK_H*0.52, -MD_LZ/2);
+
+/* One instanced mesh for all of them. A few hundred separate meshes would be a
+   few hundred draw calls and as many matrices a frame; this is one of each. */
+const MOL_R = 0.54;
+const molMat = new THREE.MeshStandardMaterial({
+  color:0xffffff, roughness:0.30, metalness:0.02, envMapIntensity:0.35
+});
+const mols = new THREE.InstancedMesh(new THREE.SphereGeometry(MOL_R, 18, 12), molMat, MD_N);
+mols.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+mols.frustumCulled = false;
+iceInner.add(mols);
+/* the two colours the molecules are drawn in, converted to linear ONCE here,
+   because they are written into the instance buffer every frame and anything
+   written per frame has to go in already converted */
+const COL_SOLID  = new THREE.Color(SOLID_COL).convertSRGBToLinear();
+const COL_LIQUID = new THREE.Color(LIQUID_COL).convertSRGBToLinear();
+const COL_FLASH  = new THREE.Color(HEAT_COL).convertSRGBToLinear();
+mols.setColorAt(0, COL_SOLID);           // allocates the instanceColor buffer
+for(let i=0;i<MD_N;i++) mols.setColorAt(i, COL_SOLID);
+
+/* the edges of the little region we are looking inside — enough to explain why
+   nothing wanders off sideways, without drawing a box round the subject */
+const cage = new THREE.LineSegments(
+  new THREE.EdgesGeometry(new THREE.BoxGeometry(MD_LX, MD_LY, MD_LZ)),
+  new THREE.LineBasicMaterial({color:0x3b556f, transparent:true, opacity:0.22}));
+cage.position.set(MD_LX/2, MD_LY/2, MD_LZ/2);
+iceInner.add(cage);
+const iceFloor = new THREE.Mesh(new THREE.PlaneGeometry(MD_LX, MD_LZ),
+  new THREE.MeshStandardMaterial({color:0x18293c, roughness:0.55, metalness:0.0,
+    envMapIntensity:0.2}));
+iceFloor.rotation.x = -Math.PI/2;
+iceFloor.position.set(MD_LX/2, 0.002, MD_LZ/2);
+iceInner.add(iceFloor);
+
+/* ---------- the energy arriving, down here ----------
+   Same story as outside, one level down: packets come in and land on a
+   molecule, and that molecule is shaken harder. They are drawn at the rate
+   the simulation is actually being fed at, and they stop when it stops. */
+const PACK_N = 40;
+const packGeo = new THREE.BufferGeometry();
+packGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(PACK_N*3),3));
+packGeo.setAttribute('color',    new THREE.BufferAttribute(new Float32Array(PACK_N*3),3));
+const packs = new THREE.Points(packGeo, new THREE.PointsMaterial({
+  size:0.60, map:GLOW_TEX, vertexColors:true, transparent:true,
+  blending:THREE.AdditiveBlending, depthWrite:false, sizeAttenuation:true}));
+packs.frustumCulled = false;
+iceInner.add(packs);
+const packSeed = (function(){
+  const rand = rng(60431), a=[];
+  for(let i=0;i<PACK_N;i++) a.push({phase:rand(), rate:0.55+rand()*0.22, jitter:rand()});
+  return a;
+})();
+const flash = new Float32Array(MD_N);
+const _im = new THREE.Matrix4(), _iv = new THREE.Vector3(), _ic = new THREE.Color();
+
+/* ---------- the simulation, and when it is run ----------
+   It takes a couple of seconds, which is far too long to spend with a blank
+   screen on a projector. So it is stepped a slice at a time in the frames the
+   first act is already using, and finished off in one go if the timeline is
+   scrubbed into the close-up before the slices have got there. Either way the
+   answer is identical — the same seeded run, the same number of steps. */
+
+
+function updateIce(t){
+  const P = ensureSim();
+  const fi = iceFrame(t);
+  const i0 = Math.floor(fi), i1 = Math.min(i0+1, P.frames-1), u = fi-i0;
+  const p0 = i0*P.N*3, p1 = i1*P.N*3, s0 = i0*P.N;
+
+  /* ---- the energy packets, and which molecule each is about to hit ---- */
+  flash.fill(0);
+  const packOn = ramp(t, 38.0, 41.0)*(1-ramp(t, 63.0, 65.0));
+  const pp = packGeo.attributes.position.array, pc = packGeo.attributes.color.array;
+  for(let k=0;k<PACK_N;k++){
+    const q = packSeed[k];
+    const w = t*q.rate + q.phase;
+    const cyc = Math.floor(w), uu = w - cyc;
+    /* a different molecule each time round, picked deterministically */
+    const tgt = ((cyc*2654435761 + k*40503 + Math.floor(q.jitter*997))>>>0) % P.N;
+    const tx = lerp(P.pos[p0+tgt*3],   P.pos[p1+tgt*3],   u);
+    const ty = lerp(P.pos[p0+tgt*3+1], P.pos[p1+tgt*3+1], u);
+    const tz = lerp(P.pos[p0+tgt*3+2], P.pos[p1+tgt*3+2], u);
+    const drop = 9.0;
+    const s = smooth(uu);
+    pp[k*3]   = tx + (q.jitter-0.5)*1.2*(1-s);
+    pp[k*3+1] = ty + drop*(1-s);
+    pp[k*3+2] = tz + (q.phase-0.5)*1.2*(1-s);
+    const b = packOn * (1-smooth((uu-0.86)/0.14)) * smooth(uu*7);
+    pc[k*3]=COL_FLASH.r*b*1.5; pc[k*3+1]=COL_FLASH.g*b*1.5; pc[k*3+2]=COL_FLASH.b*b*1.5;
+    if(uu > 0.84) flash[tgt] = Math.max(flash[tgt], packOn*(1-(uu-0.84)/0.16));
+  }
+  packGeo.attributes.position.needsUpdate = true;
+  packGeo.attributes.color.needsUpdate = true;
+
+  /* ---- the molecules ---- */
+  for(let i=0;i<P.N;i++){
+    _iv.set(
+      lerp(P.pos[p0+i*3],   P.pos[p1+i*3],   u),
+      lerp(P.pos[p0+i*3+1], P.pos[p1+i*3+1], u),
+      lerp(P.pos[p0+i*3+2], P.pos[p1+i*3+2], u)
+    );
+    _im.makeTranslation(_iv.x, _iv.y, _iv.z);
+    mols.setMatrixAt(i, _im);
+    /* blue while it is still keeping its place in the pattern, and the paler
+       colour once it has swapped its neighbours — which is the measurement the
+       heating curve's second line is drawn from, not a separate guess */
+    const isSolid = P.solid[s0+i];
+    _ic.copy(isSolid ? COL_SOLID : COL_LIQUID);
+    const fl = flash[i];
+    if(fl > 0) _ic.lerp(COL_FLASH, fl*0.8);
+    mols.setColorAt(i, _ic);
+  }
+  mols.instanceMatrix.needsUpdate = true;
+  mols.instanceColor.needsUpdate = true;
+
+  drawGraph(fi);
+}
+
+/* =====================================================================
+   THE HEATING CURVE
+
+   The curve is drawn from curveParts() — water's specific heat capacities and
+   its specific latent heat of fusion, nothing else — so the flat section is
+   flat, and it is eight times as long as the run up to it, which is what a
+   pupil has to come away with.
+
+   What the simulation supplies is the MARKER: how far along that curve the
+   molecules on screen have got. It crosses the flat part in step with the
+   pattern actually coming apart, so the graph and the block agree without the
+   graph having to be measured off a sample far too small to hold a
+   temperature still.
+===================================================================== */
+const gEl = document.getElementById('graph');
+const gx = gEl.getContext('2d');
+function drawGraph(fi){
+  const P = PHYS, W = PHYS_WIN;
+  if(!P || !W) return;
+  const CW = gEl.width, CH = gEl.height;
+  const L = 62, R = 16, TT = 26, B = 46;
+  const C = curveParts();
+  gx.clearRect(0, 0, CW, CH);
+
+  const X = e => L + (CW-L-R)*(e/C.total);
+  const Y = v => CH-B - (CH-B-TT)*((v-CURVE.T0)/(CURVE.T1-CURVE.T0));
+  const x0 = X(0), xa = X(C.iceE), xb = X(C.iceE+C.meltE), x1 = X(C.total);
+  const yFreeze = Y(0);
+
+  /* the stretch where it is melting, and its label */
+  gx.fillStyle = 'rgba(127,196,255,.13)';
+  gx.fillRect(xa, TT, xb-xa, CH-B-TT);
+
+  /* the zero line, because that is the number the flat part sits on */
+  gx.strokeStyle = 'rgba(127,196,255,.42)';
+  gx.setLineDash([4,4]); gx.lineWidth = 1.4;
+  gx.beginPath(); gx.moveTo(L, yFreeze); gx.lineTo(CW-R, yFreeze); gx.stroke();
+  gx.setLineDash([]);
+
+  /* axes */
+  gx.strokeStyle = 'rgba(147,162,182,.40)';
+  gx.lineWidth = 1.5;
+  gx.beginPath(); gx.moveTo(L, TT); gx.lineTo(L, CH-B); gx.lineTo(CW-R, CH-B); gx.stroke();
+
+  gx.fillStyle = 'rgba(147,162,182,.9)';
+  gx.font = '17px ui-sans-serif, system-ui, sans-serif';
+  gx.textAlign = 'right'; gx.textBaseline = 'middle';
+  gx.fillText('20', L-8, Y(20));
+  gx.fillText('0',  L-8, yFreeze);
+  gx.fillText('-20', L-8, Y(-20));
+  gx.textAlign = 'center'; gx.textBaseline = 'top';
+  gx.fillText('0', x0, CH-B+8);
+  gx.fillText('42', xa, CH-B+8);
+  gx.fillText('376', xb, CH-B+8);
+  gx.fillText('460', x1, CH-B+8);
+  gx.fillText('energy in, kJ per kg', (L+CW-R)/2, CH-22);
+  gx.save();
+  gx.translate(18, (TT+CH-B)/2); gx.rotate(-Math.PI/2);
+  gx.textBaseline = 'middle';
+  gx.fillText('temperature, °C', 0, 0);
+  gx.restore();
+
+  /* the whole curve, faint, so where it is going is visible before it gets
+     there — then the part already travelled, over the top of it */
+  const path = () => {
+    gx.beginPath();
+    gx.moveTo(x0, Y(CURVE.T0));
+    gx.lineTo(xa, yFreeze);
+    gx.lineTo(xb, yFreeze);
+    gx.lineTo(x1, Y(CURVE.T1));
+  };
+  gx.strokeStyle = 'rgba(147,162,182,.28)';
+  gx.lineWidth = 2.2; gx.lineJoin = 'round';
+  path(); gx.stroke();
+
+  const upto = Math.min(P.frames-1, Math.round(fi));
+  const e = curveEnergy(P, W, upto);
+  gx.save();
+  gx.beginPath(); gx.rect(0, 0, X(e), CH); gx.clip();
+  gx.strokeStyle = '#ffc04a';
+  gx.lineWidth = 3.0;
+  path(); gx.stroke();
+  gx.restore();
+
+  /* the labels for the three stretches, once the marker has reached each */
+  gx.font = '600 17px ui-sans-serif, system-ui, sans-serif';
+  gx.textAlign = 'center'; gx.textBaseline = 'bottom';
+  gx.fillStyle = 'rgba(168,201,255,.9)';
+  if(e > C.iceE*0.55) gx.fillText('melting', (xa+xb)/2, yFreeze-10);
+  gx.fillStyle = 'rgba(147,162,182,.75)';
+  gx.font = '15px ui-sans-serif, system-ui, sans-serif';
+  gx.fillText('ice', (x0+xa)/2, Y(CURVE.T0)-6);
+  if(e > C.iceE + C.meltE*0.9) gx.fillText('water', (xb+x1)/2 + 6, Y(CURVE.T1)+34);
+
+  /* where we are on it */
+  gx.fillStyle = '#fff2d2';
+  gx.beginPath(); gx.arc(X(e), Y(curveTemp(e)), 5.5, 0, 6.2832); gx.fill();
+}
+
+/* =====================================================================
+   TIMELINE
+===================================================================== */
+const TOTAL = 96;
+let SEGS = [];
+
+function buildCaptions(){
+  const airPc = Math.round(MELT.airShare*100);
+  SEGS = [
+    {t:0,    c:'A snowman, at first light. The snow, the air and the ground have all been below freezing overnight.'},
+    {t:4.0,  c:'Then the sun comes up.'},
+    {t:8.0,  c:'Sunlight brings energy, and some of it is absorbed by the snow.'},
+    {t:12.0, c:'But snow is white — and white means most of the light is thrown straight back off. About four fifths of it never gets in at all.'},
+    {t:16.0, c:`The other supply is quieter. The air is at ${AIR.label} and the snow is at 0 °C, and the air is touching every part of it.`},
+    {t:19.5, c:'Air particles collide with the surface and give up a little energy at each collision. So does the ground, and so does everything else around it.'},
+    {t:23.0, c:`Put the two together at these settings and ${airPc}% of the energy going in is coming from the surroundings, not from the sunshine.`},
+    {t:26.5, c:'It has begun. The surface has reached 0 °C, and the first meltwater is running off it.'},
+    {t:29.0, c:'So what is all that energy actually doing to the snow? Close enough to see the molecules.'},
+
+    {t:31.0, c:'A few hundred water molecules, from just under the surface.'},
+    {t:34.5, c:'In ice, each one has its own place in a pattern, and the molecules around it hold it there.'},
+    {t:38.0, c:'They are not still. Every one is vibrating on the spot — and how hard they vibrate is what temperature is.'},
+    {t:41.5, c:'Here is energy arriving. Each packet that lands sets one molecule vibrating harder, and the shaking passes on to its neighbours.'},
+    {t:44.5, c:`More energy in, harder vibration, higher temperature. It takes ${WATER.C_ICE} joules to warm a kilogram of ice by one degree, and up it goes — until it reaches 0 °C.`},
+    {t:46.5, c:'And there, something else starts. A molecule is shaken hard enough to break away from the ones holding it.'},
+    {t:49.0, c:'There goes the pattern. The molecules are sliding past each other now — still touching, still pulling on each other, but no longer fixed in place. That is melting.'},
+    {t:51.5, c:'Now look at the graph. Energy is still pouring in at exactly the same rate — and the temperature is not moving at all.'},
+    {t:53.5, c:'Every joule of it is going into pulling molecules away from their neighbours instead of speeding them up. That is what the flat part is.'},
+    {t:56.5, c:`It takes ${(WATER.L_FUS/1000).toFixed(0)},000 joules to get a kilogram of ice through it — the specific latent heat of fusion. For this snowman, about ${(MELT.mass*WATER.L_FUS/1e6).toFixed(0)} million joules, and not one of them makes anything hotter.`},
+    {t:60.5, c:`Only once the last of the pattern has gone does the temperature climb again — and more slowly now, because water takes ${WATER.C_WATER} joules per kilogram per degree against ice's ${WATER.C_ICE}.`},
+    {t:66.5, c:'Back outside, where hours have gone by.'},
+    {t:70.0, c:'The same thing is going on everywhere at once, over the whole surface.'},
+    {t:74.0, c:'And every surface loses the same depth of snow per hour, whatever size it is — so the smallest part runs out first.'},
+    {t:81.0, c:'The head goes.'},
+    {t:85.0, c:'Then the middle. Nothing about the weather has changed; there is simply less left to melt.'},
+    {t:89.0, c:`Start to finish, about ${hoursText(MELT.hours)} at these settings. Try a colder day, or thicker cloud, and see how far that moves.`},
+    {t:92.0, c:`The puddle is not new water. It is the same ${MELT.mass.toFixed(0)} kg the snowman was built from, no longer held in a pattern.`},
+    {t:94.5, c:'Melting: energy in from the sunshine and from everything around it, spent on breaking molecules out of their places rather than on making them hotter.'}
+  ];
+}
+
+const TRANSITIONS = [30.0, 66.0];
+const FADE = 0.65;
+function worldAt(t){ return (t >= 30.0 && t < 66.0) ? 'ice' : 'garden'; }
+
+const CAM = {
+  garden:[
+    {t:0,    p:[ 2.60, 1.90, 3.60], l:[0, 0.85, 0]},
+    {t:4.0,  p:[ 2.20, 1.72, 3.15], l:[0, 0.90, 0]},
+    {t:8.0,  p:[ 1.70, 1.50, 2.50], l:[0, 1.00, 0]},
+    {t:12.0, p:[ 1.28, 1.36, 1.90], l:[0.08, 1.05, 0]},
+    /* round to the side away from the sun, where the only thing arriving is
+       the air — the shot has to make that visible or the caption is a claim */
+    {t:16.0, p:[-1.55, 1.26, 1.98], l:[0, 0.95, 0]},
+    {t:19.5, p:[-1.12, 1.08, 1.48], l:[0, 0.90, 0]},
+    {t:23.0, p:[ 1.90, 1.80, 2.90], l:[0, 0.90, 0]},
+    {t:26.5, p:[ 0.92, 0.56, 1.30], l:[0, 0.36, 0]},
+    /* and in towards the surface, so the cut to the molecules lands as a
+       continuation of the same move rather than a jump */
+    {t:29.0, p:[ 0.38, 0.64, 0.76], l:[0, 0.56, 0]},
+    {t:30.0, p:[ 0.21, 0.61, 0.46], l:[0, 0.57, 0]},
+
+    {t:66.0, p:[ 0.95, 0.92, 1.62], l:[0, 0.70, 0]},
+    {t:70.0, p:[ 1.95, 1.60, 2.90], l:[0, 0.75, 0]},
+    {t:74.0, p:[ 1.55, 1.48, 2.32], l:[0, 0.85, 0]},
+    {t:81.0, p:[ 1.20, 1.24, 1.88], l:[0, 0.78, 0]},
+    {t:85.0, p:[ 1.52, 1.00, 2.20], l:[0, 0.50, 0]},
+    {t:89.0, p:[ 2.05, 0.86, 2.80], l:[0, 0.34, 0]},
+    {t:92.0, p:[ 2.45, 1.20, 3.25], l:[0, 0.20, 0]},
+    {t:96.0, p:[ 3.05, 1.75, 4.05], l:[0, 0.26, 0]}
+  ],
+  ice:[
+    {t:30.0, p:[0.0,  0.0, 22.0], l:[0, 0.0, 0]},
+    {t:31.0, p:[0.0,  0.0, 17.0], l:[0, 0.0, 0]},
+    {t:34.5, p:[4.2,  2.2, 12.8], l:[0, 0.0, 0]},
+    {t:38.0, p:[2.4, -1.0,  7.6], l:[0,-1.5, 0]},
+    {t:41.5, p:[3.0,  2.6,  9.2], l:[0, 0.6, 0]},
+    {t:45.0, p:[5.0,  2.0, 14.0], l:[0, 0.4, 0]},
+    {t:48.5, p:[3.2,  0.6, 10.0], l:[0, 0.6, 0]},
+    {t:52.0, p:[2.6,  1.3,  9.4], l:[0, 1.0, 0]},
+    {t:56.0, p:[5.0,  1.6, 15.0], l:[0, 0.6, 0]},
+    {t:59.5, p:[4.0,  1.0, 12.6], l:[0, 0.2, 0]},
+    {t:63.0, p:[5.0,  0.6, 16.0], l:[0, 0.0, 0]},
+    {t:66.0, p:[5.0,  0.6, 18.0], l:[0, 0.0, 0]}
+  ]
+};
+
+const camPos = new THREE.Vector3(), camTgt = new THREE.Vector3();
+function sampleCam(t){
+  const w = worldAt(t), keys = CAM[w];
+  let i=0; while(i<keys.length-2 && t>=keys[i+1].t) i++;
+  const a=keys[i], b=keys[Math.min(i+1,keys.length-1)];
+  const u = b.t===a.t ? 0 : smooth((t-a.t)/(b.t-a.t));
+  const off = w==='ice' ? ICE_Y : 0;
+  camPos.set(lerp(a.p[0],b.p[0],u), lerp(a.p[1],b.p[1],u)+off, lerp(a.p[2],b.p[2],u));
+  camTgt.set(lerp(a.l[0],b.l[0],u), lerp(a.l[1],b.l[1],u)+off, lerp(a.l[2],b.l[2],u));
+}
+
+/* =====================================================================
+   LOOKING AROUND
+===================================================================== */
+let yaw=0, pitch=0, dragging=false, lx=0, ly=0;
+const el = renderer.domElement;
+el.style.cursor = 'grab';
+function down(x,y){ dragging=true; lx=x; ly=y; el.style.cursor='grabbing'; }
+function move(x,y){
+  if(!dragging) return;
+  yaw   -= (x-lx)*0.005;
+  pitch  = Math.max(-0.9, Math.min(0.9, pitch + (y-ly)*0.004));
+  lx=x; ly=y;
+}
+function up(){ dragging=false; el.style.cursor='grab'; }
+el.addEventListener('pointerdown', e=>down(e.clientX,e.clientY));
+addEventListener('pointermove', e=>move(e.clientX,e.clientY));
+addEventListener('pointerup', up);
+addEventListener('pointercancel', up);
+
+const _sph = new THREE.Spherical(), _off = new THREE.Vector3();
+function applyCamera(){
+  _off.copy(camPos).sub(camTgt);
+  _sph.setFromVector3(_off);
+  _sph.theta += yaw;
+  _sph.phi = Math.max(0.08, Math.min(Math.PI-0.08, _sph.phi + pitch));
+  camera.position.copy(camTgt).add(_off.setFromSpherical(_sph));
+  camera.lookAt(camTgt);
+}
+
+/* =====================================================================
+   UI
+===================================================================== */
+const capEl   = document.getElementById('caption');
+const fadeEl  = document.getElementById('fade');
+const scaleEl = document.getElementById('scale');
+const playBtn = document.getElementById('play');
+const scrub   = document.getElementById('scrub');
+const clockEl = document.getElementById('clock');
+const keyEl   = document.getElementById('key');
+const menuEl  = document.getElementById('menu');
+const gearEl  = document.getElementById('gear');
+const energyEl= document.getElementById('energy');
+const elapsedEl = document.getElementById('elapsed');
+const graphEl = document.getElementById('graphWrap');
+const graphNote = document.getElementById('graphNote');
+const GRAPH_NOTE = graphNote.innerHTML;
+
+let t = 0, playing = true, lastFrame = performance.now(), curSeg = -1;
+
+playBtn.onclick = ()=>{ playing = !playing; playBtn.textContent = playing?'Pause':'Play'; };
+document.getElementById('restart').onclick = ()=>{ t=0; curSeg=-1; playing=true; playBtn.textContent='Pause'; };
+scrub.oninput = ()=>{ t = parseFloat(scrub.value); curSeg=-1; };
+addEventListener('keydown', e=>{
+  if(e.code==='Space'){ e.preventDefault(); playBtn.click(); }
+  if(e.code==='ArrowRight'){ t = Math.min(TOTAL, t+2); curSeg=-1; }
+  if(e.code==='ArrowLeft'){  t = Math.max(0, t-2);     curSeg=-1; }
+  if(e.code==='Escape') setMenu(false);
+});
+
+function captionFor(time){
+  let i=0; for(let k=0;k<SEGS.length;k++) if(time>=SEGS[k].t) i=k;
+  return i;
+}
+function fadeAmount(time){
+  let f=0;
+  for(const T of TRANSITIONS) f = Math.max(f, 1 - Math.min(1, Math.abs(time-T)/FADE));
+  return f;
+}
+
+const hexCss = k => '#'+k.toString(16).padStart(6,'0');
+function buildLegend(){
+  const rows = [
+    {name:'in its place in the pattern', col:SOLID_COL},
+    {name:'free to slide past', col:LIQUID_COL},
+    {name:'energy arriving', col:HEAT_COL}
+  ];
+  keyEl.innerHTML = rows.map(r=>
+    `<div><span class="dot" style="background:${hexCss(r.col)}"></span>${r.name}</div>`).join('');
+}
+
+/* the energy panel. The power is worked out from the surface the snowman has
+   LEFT, so it falls away as it shrinks — which is the reason the melt takes
+   twice as long as the figure at the top of the hour would suggest. */
+const eAir=document.getElementById('eAir'), eSun=document.getElementById('eSun'),
+      ePow=document.getElementById('ePow'), eTime=document.getElementById('eTime'),
+      eNote=document.getElementById('eNote'), eClock=document.getElementById('eClock'),
+      eLapse=document.getElementById('eLapse'),
+      splitAir=document.getElementById('splitAir'), splitSun=document.getElementById('splitSun');
+
+function buildPanel(){
+  eAir.textContent = MELT.fromAir.toFixed(0)+' W/m²';
+  eSun.textContent = MELT.fromSun.toFixed(0)+' W/m²';
+  const pc = MELT.airShare*100;
+  splitAir.style.width = pc.toFixed(1)+'%';
+  splitAir.style.background = '#7fb6e8';
+  splitSun.style.width = (100-pc).toFixed(1)+'%';
+  splitSun.style.background = '#ffc04a';
+  eTime.textContent = hoursText(MELT.hours);
+  eNote.innerHTML = MELT.airShare > 0.5
+    ? `Snow throws back ${(SNOW.ALBEDO*100).toFixed(0)}% of the sunlight, so on a day like this most of the energy comes from the air.`
+    : `The air is barely above freezing, so today the sunshine is the bigger supply even after ${(SNOW.ALBEDO*100).toFixed(0)}% of it bounces off.`;
+}
+function updatePanel(t){
+  const f = simFrac(t);
+  let area = 0;
+  for(let i=0;i<3;i++){ const r = radiusAt(i,f); area += 4*Math.PI*r*r; }
+  ePow.textContent = (MELT.flux*area).toFixed(0)+' W';
+  const h = f*MELT.hours;
+  eClock.textContent = h < 1 ? (h*60).toFixed(0)+' min'
+                     : h < 48 ? h.toFixed(1)+' h'
+                     : (h/24).toFixed(1)+' days';
+  const rate = lapseRate(t);
+  eLapse.textContent = rate > 0.02 ? `(${rate.toFixed(1)} h per second)` : '';
+}
+
+function buildMenu(){
+  const mk = (obj, cur, group) => Object.keys(obj).map(k=>
+    `<button class="opt ${k===cur?'on':''}" data-group="${group}" data-key="${k}">` +
+    `${obj[k].name} · <span class="f">${obj[k].label}</span></button>`).join('');
+  document.getElementById('sunOpts').innerHTML = mk(SUNS, sunKey, 'sun');
+  document.getElementById('airOpts').innerHTML = mk(AIRS, airKey, 'air');
+  document.getElementById('menuNote').innerHTML =
+    `<b>${cap1(SN.word)}</b>, and ${AIR.word}. That works out at ` +
+    `<i>${MELT.flux.toFixed(0)} W per square metre</i> of snow, so the whole snowman takes ` +
+    `<i>${hoursText(MELT.hours)}</i> to go. Neither number is typed in: both come out of the ` +
+    `sunlight left after the snow has reflected ${(SNOW.ALBEDO*100).toFixed(0)}% of it, plus the heat ` +
+    `from air ${AIR.C} °C above the melting snow, divided by the energy it takes to melt a ` +
+    `kilogram of ice. The close-up is the same molecular run whatever the weather — the ` +
+    `weather changes how fast the energy turns up, not what it does when it gets there.`;
+  menuEl.querySelectorAll('.opt').forEach(b=>{
+    b.onclick = ()=>{
+      if(b.dataset.group==='sun') sunKey = b.dataset.key; else airKey = b.dataset.key;
+      build();
+      playing = true; playBtn.textContent = 'Pause';
+    };
+  });
+}
+function setMenu(open){
+  menuEl.classList.toggle('open', open);
+  gearEl.classList.toggle('open', open);
+  if(open) buildMenu();
+}
+gearEl.onclick = ()=> setMenu(!menuEl.classList.contains('open'));
+
+/* ---------- rebuild what depends on the weather ----------
+   Not the molecular run: the weather decides how fast energy arrives at the
+   snowman, not what a molecule does when it gets some. So changing it is
+   instant, and the close-up is the same run every time. */
+function build(){
+  derive();
+  buildCaptions();
+  buildLegend();
+  buildPanel();
+  linearise(scene);
+  if(menuEl.classList.contains('open')) buildMenu();
+  history.replaceState(null,'',`?sun=${sunKey}&air=${airKey}`);
+  t = 0; curSeg = -1;
+}
+build();
+
+/* =====================================================================
+   LOOP
+===================================================================== */
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt = Math.min((now-lastFrame)/1000, 1/24);
+  lastFrame = now;
+
+  if(playing){
+    t += dt;
+    if(t >= TOTAL){ t = TOTAL; playing=false; playBtn.textContent='Play'; }
+  }
+
+  const inIce = worldAt(t) === 'ice';
+  /* Get the molecular run done in the time the first act is not using. It is a
+     couple of seconds' work and it is needed at t = 30, so a few milliseconds
+     a frame is plenty — and a caption that quotes it is rewritten when it
+     lands. Scrubbing straight into the close-up finishes it on the spot. */
+  if(!PHYS && !inIce){
+    sliceSim(6);
+    if(PHYS){ buildCaptions(); curSeg = -1; }
+    graphNote.innerHTML = PHYS ? GRAPH_NOTE
+      : `Working out the molecules… ${(simProgress()*100).toFixed(0)}%`;
+  }
+
+  updateGarden(t);
+  if(inIce) updateIce(t);
+  sampleCam(t); applyCamera();
+
+  /* light only the world being looked at */
+  iceLight.intensity = inIce ? 2.6 : 0;
+  iceFill.intensity  = inIce ? 0.55 : 0;
+  sunLight.visible   = !inIce;
+  garden.visible = !inIce;
+  ice.visible = inIce;
+  skyDome.visible = dawnDome.visible = sunBall.visible = sunGlow.visible = !inIce;
+  /* nobody can see the garden's shadows from inside the ice, so stop redrawing
+     the shadow map while we are down there */
+  renderer.shadowMap.autoUpdate = !inIce;
+
+  const f = fadeAmount(t);
+  fadeEl.style.opacity = f;
+  const vis = (1-f).toFixed(3);
+  energyEl.style.opacity  = (inIce ? 0 : (1-f)*ramp(t,6,9)).toFixed(3);
+  elapsedEl.style.opacity = (inIce ? 0 : (1-f)*ramp(t,6,9)).toFixed(3);
+  keyEl.style.opacity     = (inIce ? (1-f)*ramp(t,31,33) : 0).toFixed(3);
+  graphEl.style.opacity   = (inIce ? (1-f)*ramp(t,42.5,45) : 0).toFixed(3);
+  scaleEl.style.opacity   = (inIce ? (1-f)*ramp(t,31.5,33)*(1-ramp(t,40,42)) : 0).toFixed(3);
+  if(!inIce) updatePanel(t);
+
+  const seg = captionFor(t);
+  if(seg !== curSeg){ curSeg = seg; capEl.textContent = SEGS[seg].c; }
+  capEl.style.opacity = 1-f;
+  scrub.value = t;
+  scrub.style.setProperty('--p', (t/TOTAL*100)+'%');
+  clockEl.textContent = t.toFixed(1)+' / '+TOTAL.toFixed(1)+'s';
+
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(frame);
+
+addEventListener('resize', ()=>{
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+</script>
+</body>
+</html>

@@ -10,7 +10,7 @@ as one file, and hosted on GitHub Pages. Do not introduce a build step, a bundle
 index.html                  the catalogue everything is listed in
 reactionbuilder/            drag-and-drop reaction builder (+ test.js)
 3dreactionscenes/           15 three.js scenes, one per GCSE reaction type
-particles/                  particle-theory scenes (Brownian motion so far)
+particles/                  particle-theory scenes (Brownian motion, melting)
 tools/                      one-off colour-migration scripts (animcolour.mjs, colourfix.mjs)
 ```
 
@@ -154,7 +154,7 @@ Every scene follows the same shape. Keep it.
   reflecting billiards. This is what makes scrubbing instant and every frame
   reproducible. **Do not introduce per-frame integration.**
 - **If a scene needs real dynamics, precompute it and leave a closed form
-  behind.** `particles/brownian-motion.html` does the one case of this: the
+  behind.** Two scenes do this. `particles/brownian-motion.html`: the
   water is a hard-sphere gas and the pollen grains move because molecules hit
   them, so there is genuine integration — but it happens once, in `runSim()`,
   at build. What it records is analytic again (a molecule is a straight line
@@ -163,6 +163,29 @@ Every scene follows the same shape. Keep it.
   still instant. The hot loop is written with flat typed arrays and no
   three.js in it, which is also what lets `test-particles.js` run it under
   node and measure what it produces.
+
+  `particles/melting-snowman.html` does the same for melting: a Lennard-Jones
+  crystal integrated with velocity Verlet while energy is fed in at a steady
+  rate, which comes apart on its own, and whose heating curve is measured
+  rather than drawn. Two things there are worth knowing before touching it.
+  The side walls and the floor are placed so that the crystal's mirror image
+  in them IS the crystal continued — the lattice is offset a quarter of a cell
+  from each wall — and that is what makes 216 molecules behave like the inside
+  of a block. Earlier attempts with free faces melted gradually from every side
+  at once and smeared the transition across the whole run, leaving no flat
+  section at all; constant volume gave none either, since the coexistence line
+  is not flat in T at fixed V. And the run takes about two seconds, far too
+  long to freeze a projector on load, so `meltRun()` hands back a stepper and
+  the scene advances it a few milliseconds a frame during the first act, while
+  `runMelt()` drives it to completion in one go for the tests. The suite
+  asserts the two agree exactly.
+
+  The macro half of that scene needs no simulation at all. The energy balance
+  says every snow surface loses the same DEPTH per hour whatever its radius, so
+  each ball's radius is a straight line in time — which is also the reason the
+  head goes first, and why the melt time is what it is. If you change the
+  snowman, keep that: it is a prediction the tests check, not a shape the
+  choreography was built around.
 - **Determinism.** Any randomness comes from the seeded `rng(seed)` so a rebuild
   looks identical. `Math.random()` at build time is tolerable for decorative
   scatter; never for anything the timeline depends on.
@@ -217,6 +240,22 @@ These are a teacher's materials. Accuracy is the product.
 - **Do not offer chemistry that does not work.** Pairs that fail are either
   blocked with the reason on the button (CaCO₃ + H₂SO₄ — insoluble) or omitted
   with a note (dilute HNO₃ with metals — it oxidises rather than giving H₂).
+- **Do not let a model overrule the curriculum.** The melting scene's molecules
+  are Lennard-Jones spheres in a close-packed lattice, which is not the open
+  six-sided pattern hydrogen bonds actually build in ice — and there are no
+  hydrogen bonds in the model at all. It says so on screen.
+
+  The heating curve there used to be plotted from the run's own temperature.
+  It was honest and it was wrong to teach from: a few hundred molecules is far
+  too small a thermometer to hold a temperature still, so the curve sagged
+  through the melt where a pupil is taught it stays flat. It is now calculated
+  from `WATER` — 2100 and 4200 J/kg°C and 334,000 J/kg — and the simulation
+  supplies only the marker, which crosses the flat part in step with the
+  pattern measurably coming apart (`curveEnergy`, `meltProgress`). Keep that
+  division: work the physics a pupil must read off the screen out from the data
+  book, and let the simulation drive where on it we are. The suite asserts the
+  flat part is dead flat at 0 °C, that the two slopes are 1/c, and that every
+  figure a caption quotes is one of the constants.
 - **Say when something is not to scale.** The Brownian scene puts a note on
   screen the moment the water molecules appear — size, number AND mass, since
   its molecules have to be thousands of times too heavy for a countable number
