@@ -202,7 +202,7 @@ scene.add(fill);
    ============================================================ */
 const headMat    = new THREE.MeshPhongMaterial({ color:0xcbb8e0, shininess:12, specular:0x3a2f4a, transparent:true, opacity:0.4, side:THREE.DoubleSide, depthWrite:false });
 const nucleusMat = Organelles.materials.nucleus;
-const acroMat    = new THREE.MeshPhongMaterial({ color:0xf0dcc0, shininess:22, specular:0x6a5544, transparent:true, opacity:0.9, side:THREE.DoubleSide });
+const acroMat    = new THREE.MeshPhongMaterial({ color:0xffffff, shininess:30, specular:0x888888, emissive:0x3a3a3a, emissiveIntensity:0.5, transparent:true, opacity:0.9, side:THREE.DoubleSide });
 const centriMat  = new THREE.MeshPhongMaterial({ color:0x4fd8e8, shininess:30, specular:0x88ffff, emissive:0x0d4c55, emissiveIntensity:0.5 });
 const midMat     = new THREE.MeshPhongMaterial({ color:0x9d86c4, shininess:14, specular:0x332844 });
 const mitoMat    = Organelles.materials.mitochondrion;
