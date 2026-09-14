@@ -75,6 +75,7 @@ const P = {
   elements:         4,
   elementLength:    3.2,
   tubeRadius:       1.10,
+  caveDepth:        0.18,   // how far each element's wall bows in between sieve plates
   wallThickness:    0.10,   // thin wall — these cells are alive, not lignified
   wallOpacity:      0.24,
   cytoLayer:        0.16,   // thin lining of cytoplasm pushed to the edges
@@ -85,30 +86,31 @@ const P = {
   poreRadius:       0.115,
   plateOpacity:     0.80,
   plateSpread:      0.80,   // how far out across the plate the pores reach
+  plateRing:        0.10,   // rim around each plate, grows outward from the plate edge; match wall thickness
 
   /* --- companion cell --- */
-  compRadius:       0.62,
-  compLength:       5.2,
-  compGap:          0.28,
+  compRadius:       0.53,   // thickness of the companion cell out from the tube
+  compLength:       2.9,    // capped at 1.4 elements, and kept within the tube's ends
+  compGap:          0,      // it presses right up against the sieve tube
+  compWrap:         0.35,   // half-angle (radians) it wraps around the tube
   compOpacity:      0.22,
-  compNucleus:      0.36,
-  compMito:         14,
-  compMitoSize:     0.115,
-  mitoMembraneOpacity: 0.55,
+  compNucleus:      0.15,
+  compMito:         9,
+  compMitoSize:     0.05,
+  mitoMembraneOpacity: 0.45,
   cristaeFolds:     5,
   cristaeAmplitude: 0.46,
   cristaeThickness: 0.15,
   plasmodesmata:    7,
-  pdRadius:         0.065,
 
   /* --- translocation --- */
   sucroseCount:     170,
-  flowSpeed:        1.15,   // set to 0 to freeze the stream for inspection
-  sucroseSize:      0.075,
+  flowSpeed:        0.6,   // set to 0 to freeze the stream for inspection
+  sucroseSize:      0.055,
   downFraction:     0.38,   // fraction travelling down — flow goes both ways
   spread:           0.78,   // how much of the lumen the stream fills
   funnel:           0.45,   // how sharply the stream converges into the pores
-  loadCount:        18,     // sucrose being pumped in from the companion cell
+  loadCount:        12,     // sucrose being pumped in from the companion cell
   loadSpeed:        0.30,
 
   /* --- view --- */
@@ -121,6 +123,7 @@ const CONTROLS = [
   ['elements',        'sieve elements',      1,    8,    1   ],
   ['elementLength',   'element length',      1.0,  8.0,  0.1 ],
   ['tubeRadius',      'radius',              0.3,  3.0,  0.05],
+  ['caveDepth',       'cave-in depth',       0.00, 0.40, 0.01],
   ['wallThickness',   'wall thickness',      0.02, 0.50, 0.01],
   ['wallOpacity',     'wall opacity',        0.02, 1.00, 0.01],
   ['cytoLayer',       'cytoplasm layer',     0.02, 0.60, 0.01],
@@ -130,10 +133,12 @@ const CONTROLS = [
   ['poreRadius',      'pore radius',         0.02, 0.30, 0.005],
   ['plateOpacity',    'plate opacity',       0.05, 1.00, 0.01],
   ['plateSpread',     'pore spread',         0.20, 0.95, 0.01],
+  ['plateRing',       'plate ring thickness',0.00, 0.50, 0.005],
   ['COMPANION CELL'],
-  ['compRadius',      'radius',              0.15, 1.50, 0.01],
-  ['compLength',      'length',              1.0,  14.0, 0.1 ],
-  ['compGap',         'gap from tube',       0.00, 1.50, 0.01],
+  ['compRadius',      'thickness',           0.20, 1.60, 0.01],
+  ['compLength',      'length',              0.5,  8.0,  0.1 ],
+  ['compGap',         'gap from tube',       0.00, 0.60, 0.01],
+  ['compWrap',        'wrap around tube',    0.20, 1.50, 0.01],
   ['compOpacity',     'wall opacity',        0.02, 1.00, 0.01],
   ['compNucleus',     'nucleus size',        0.05, 0.70, 0.01],
   ['compMito',        'mitochondria',        0,    50,   1   ],
@@ -142,8 +147,7 @@ const CONTROLS = [
   ['cristaeFolds',    'cristae folds',       2,    12,   1   ],
   ['cristaeAmplitude','cristae spread',      0.10, 0.80, 0.01],
   ['cristaeThickness','cristae thickness',   0.03, 0.35, 0.005],
-  ['plasmodesmata',   'plasmodesmata',       0,    20,   1   ],
-  ['pdRadius',        'plasmodesma radius',  0.01, 0.20, 0.005],
+  ['plasmodesmata',   'sucrose crossing points', 0, 20,  1   ],
   ['TRANSLOCATION'],
   ['sucroseCount',    'sucrose particles',   0,    500,  5   ],
   ['flowSpeed',       'flow speed',          0.00, 5.00, 0.05],
@@ -199,7 +203,6 @@ const wallMat    = Organelles.wallMaterial({ opacity:0.24 });
 const cytoMat    = Organelles.cytoplasmMaterial({ opacity:0.26 });
 const plateMat   = new THREE.MeshPhongMaterial({ color:0xe0b055, shininess:26, specular:0x7a5a2c, transparent:true, opacity:0.80, side:THREE.DoubleSide, emissive:0x3a2708, emissiveIntensity:0.28 });
 const compMat    = Organelles.wallMaterial({ opacity:0.22 });
-const pdMat      = new THREE.MeshPhongMaterial({ color:0x7fd8c0, shininess:26, specular:0x88ffee, emissive:0x0d4a3d, emissiveIntensity:0.42 });
 const sucroseMat = new THREE.MeshPhongMaterial({ color:0xf2c141, shininess:45, specular:0xffe9a0, emissive:0x4a3505, emissiveIntensity:0.58 });
 const loadMat    = new THREE.MeshPhongMaterial({ color:0xff9a3c, shininess:45, specular:0xffd0a0, emissive:0x4a2205, emissiveIntensity:0.60 });
 
@@ -227,8 +230,20 @@ class PhloemTube {
     this.total = this.n * P.elementLength;
     this.bottom = -this.total / 2;
     this.top = this.total / 2;
-    this.lumen = Math.max(P.tubeRadius - P.wallThickness, 0.06);
-    this.compX = P.tubeRadius + P.compGap + P.compRadius;
+    this.lumen = Math.max(P.tubeRadius - P.wallThickness, 0.06);   // at the sieve plates
+
+    // companion cells sit in the hollows of the middle element and the
+    // bottom element, on opposite sides of the tube
+    this.compHalf = Math.min(P.compLength, P.elementLength * 1.4, this.total) / 2;
+    this.compX = P.tubeRadius + P.compGap + P.compRadius * 0.5;
+    const midEl = Math.min(this.n - 1, Math.floor(this.n / 2));
+    this.companions = [{ el: midEl, side: 0 }];
+    if (midEl !== 0) this.companions.push({ el: 0, side: Math.PI });
+    for (const c of this.companions) {
+      // centred on its element's hollow, but never hanging off either end of the tube
+      const centre = this.bottom + (c.el + 0.5) * P.elementLength;
+      c.y = THREE.MathUtils.clamp(centre, this.bottom + this.compHalf, this.top - this.compHalf);
+    }
 
     this._pores();
     this._buildTube();
@@ -258,21 +273,37 @@ class PhloemTube {
   /* y positions of the sieve plates: one at each junction and each end */
   plateY(i) { return this.bottom + i * P.elementLength; }
 
+  /* each element's wall bows inward between its two sieve plates: full
+     radius at a plate, narrowest halfway along */
+  tubeRAt(y) {
+    const f = (((y - this.bottom) / P.elementLength) % 1 + 1) % 1;
+    const s = Math.sin(Math.PI * f);
+    return P.tubeRadius * (1 - P.caveDepth * s * s);
+  }
+  lumenAt(y) { return Math.max(this.tubeRAt(y) - P.wallThickness, 0.06); }
+
+  // an open surface of revolution about the tube axis, following a radius profile
+  _lathe(radiusAt, material, radial) {
+    const pts = [];
+    const samples = this.n * 28;
+    for (let i = 0; i <= samples; i++) {
+      const y = this.bottom + (i / samples) * this.total;
+      pts.push(new THREE.Vector2(radiusAt(y), y));
+    }
+    const mesh = new THREE.Mesh(new THREE.LatheGeometry(pts, radial), material);
+    this.group.add(mesh);
+    return mesh;
+  }
+
   /* ---------------- the tube wall and its thin cytoplasm lining ---------------- */
   _buildTube() {
-    const R = P.tubeRadius, L = this.total;
-
-    this.group.add(new THREE.Mesh(
-      new THREE.CylinderGeometry(R, R, L, 38, 1, true), wallMat));
+    this._lathe(y => this.tubeRAt(y), wallMat, 38);
 
     // sieve tube elements keep only a thin layer of cytoplasm around the
     // edge — the middle is left clear for the sap to move through
     if (P.cytoOpacity > 0.004) {
-      const ri = Math.max(this.lumen - P.cytoLayer, 0.04);
-      this.group.add(new THREE.Mesh(
-        new THREE.CylinderGeometry(this.lumen, this.lumen, L, 34, 1, true), cytoMat));
-      this.group.add(new THREE.Mesh(
-        new THREE.CylinderGeometry(ri, ri, L, 34, 1, true), cytoMat));
+      this._lathe(y => this.lumenAt(y), cytoMat, 34);
+      this._lathe(y => Math.max(this.lumenAt(y) - P.cytoLayer, 0.04), cytoMat, 34);
     }
   }
 
@@ -299,60 +330,103 @@ class PhloemTube {
       this.plates.push(plate);
     }
     geo.dispose();
+
+    // a rim round each plate, running from the plate's edge outward; when
+    // plateRing equals wallThickness it fills the wall exactly
+    if (P.plateRing > 0.002) {
+      const t = P.plateRing;
+      const ringGeo = new THREE.TorusGeometry(this.lumen + t / 2, t / 2, 10, 56);
+      ringGeo.rotateX(Math.PI / 2);
+      for (let i = 0; i <= this.n; i++) {
+        const ring = new THREE.Mesh(ringGeo.clone(), plateMat);
+        ring.position.y = this.plateY(i);
+        this.group.add(ring);
+      }
+      ringGeo.dispose();
+    }
+  }
+
+  /* A point in the companion cell. v runs along its length (-1..1),
+     depth runs from the tube-facing face (0) out to its outer face (1),
+     and around runs across its width (-1..1). The inner face follows the
+     tube's caved-in wall, so the cell nestles into the hollow. */
+  compPoint(c, v, depth, around) {
+    const y = c.y + v * this.compHalf;
+    // cosine falls off linearly at v = ±1, so both ends close to a point
+    const w = Math.cos(Math.PI / 2 * THREE.MathUtils.clamp(v, -1, 1));
+    const r = this.tubeRAt(y) + P.compGap + P.compRadius * w * depth;
+    const th = c.side + P.compWrap * around * w;
+    return new THREE.Vector3(Math.cos(th) * r, y, Math.sin(th) * r);
+  }
+
+  // a sphere remapped so its inner half lies flat on the tube and its outer half arches out
+  _companionGeometry(c) {
+    const geo = new THREE.SphereGeometry(1, 44, 30);
+    const pos = geo.attributes.position;
+    const v = new THREE.Vector3();
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i);
+      const ring = Math.sqrt(Math.max(1 - v.y * v.y, 0));
+      const a = ring > 1e-6 ? v.x / ring : 0;
+      const b = ring > 1e-6 ? v.z / ring : 0;
+      const p = this.compPoint(c, v.y, Math.pow(Math.max(a, 0), 0.75), b);
+      pos.setXYZ(i, p.x, p.y, p.z);
+    }
+    geo.computeVertexNormals();
+    return geo;
   }
 
   /* ---------------- companion cell, plasmodesmata ---------------- */
+  // nucleus, mitochondria and pds keep the first (middle) companion's entries
+  // first, so the adaptation anchors keep pointing at that cell
   _buildCompanion() {
-    const cr = P.compRadius, cl = Math.min(P.compLength, this.total);
-
-    const comp = new THREE.Mesh(
-      new THREE.CylinderGeometry(cr, cr, cl, 24, 1, false), compMat);
-    comp.position.set(this.compX, 0, 0);
-    this.group.add(comp);
-    this.companion = comp;
-
-    // nucleus — the companion cell has one, the sieve tube element does not
-    const nuc = Organelles.nucleus({ radius: P.compNucleus });
-    nuc.position.set(this.compX, cl * 0.24, 0);
-    this.group.add(nuc);
-    this.nucleus = nuc;
-
-    // dense mitochondria — this is where the ATP for loading sucrose comes from
     this.mitos = [];
-    const r = rng(77001);
-    const n = Math.round(P.compMito);
+    this.pds = [];
     const makeMito = Organelles.mitochondrionMaker({
       length: P.compMitoSize * 2.7, width: P.compMitoSize,
       folds: P.cristaeFolds, amplitude: P.cristaeAmplitude, thickness: P.cristaeThickness
     });
-    for (let i = 0; i < n; i++) {
-      const m = makeMito(i * 2.399963);
-      const a = r() * Math.PI * 2, rad = (0.30 + r() * 0.52) * cr;
-      m.position.set(this.compX + Math.cos(a) * rad, (r() * 2 - 1) * cl * 0.44, Math.sin(a) * rad);
-      m.rotation.set(r() * 3, r() * 3, r() * 3);
-      this.group.add(m);
-      this.mitos.push(m);
-    }
 
-    // plasmodesmata — cytoplasm-filled channels linking the two cells
-    this.pds = [];
-    const pn = Math.round(P.plasmodesmata);
-    if (pn > 0 && P.pdRadius > 0.004) {
-      const gap = this.compX - cr - P.tubeRadius;
-      const len = Math.max(gap + P.wallThickness * 2, 0.05);
-      const g = new THREE.CylinderGeometry(P.pdRadius, P.pdRadius, len, 8);
-      g.rotateZ(Math.PI / 2);                       // lay the channel along X
+    this.companions.forEach((c, ci) => {
+      const comp = new THREE.Mesh(this._companionGeometry(c), compMat);
+      this.group.add(comp);
+      c.mesh = comp;
+
+      // nucleus — the companion cell has one, the sieve tube element does not
+      const nuc = Organelles.nucleus({ radius: P.compNucleus });
+      nuc.position.copy(this.compPoint(c, ci === 0 ? 0.3 : -0.3, 0.45, 0));
+      this.group.add(nuc);
+      if (ci === 0) this.nucleus = nuc;
+
+      // dense mitochondria — this is where the ATP for loading sucrose comes from
+      const r = rng(77001 + ci * 911);
+      const n = Math.round(P.compMito);
+      for (let i = 0; i < n; i++) {
+        const m = makeMito(i * 2.399963);
+        // kept nearer the middle, where the pointed cell is still thick enough to hold them
+        const around = (r() * 2 - 1) * 0.5, depth = 0.25 + r() * 0.3, v = (r() * 2 - 1) * 0.5;
+        m.position.copy(this.compPoint(c, v, depth, around));
+        m.rotation.set(r() * 3, r() * 3, r() * 3);
+        this.group.add(m);
+        this.mitos.push(m);
+      }
+
+      // plasmodesmata — cytoplasm-filled channels linking the two cells
+      const pn = Math.round(P.plasmodesmata);
+      // not drawn: just the points in the shared wall where loaded sucrose
+      // crosses from the companion cell into the sieve tube
       for (let i = 0; i < pn; i++) {
-        const y = (pn === 1) ? 0 : (-0.45 + 0.9 * i / (pn - 1)) * cl;
-        const pd = new THREE.Mesh(g.clone(), pdMat);
-        pd.position.set(P.tubeRadius + gap / 2, y, 0);
+        const v = (pn === 1) ? 0 : -0.6 + 1.2 * i / (pn - 1);
+        const y = c.y + v * this.compHalf;
+        const mid = (this.lumenAt(y) + this.tubeRAt(y) + P.compGap) / 2;
+        const pd = new THREE.Object3D();
+        pd.position.set(Math.cos(c.side) * mid, y, Math.sin(c.side) * mid);
+        pd.userData.comp = c;
         this.group.add(pd);
         this.pds.push(pd);
       }
-      g.dispose();
-      this.pdLen = len;
-    }
-    this.compLen = cl;
+    });
+    this.compLen = this.compHalf * 2;
   }
 
   /* ---------------- sucrose in transit ---------------- */
@@ -386,18 +460,18 @@ class PhloemTube {
       if (!this.pds.length) break;
       const m = new THREE.Mesh(lgeo, loadMat);
       this.group.add(m);
+      const s = r();
+      const pd = this.pds[Math.floor(r() * this.pds.length)];
+      const c = pd.userData.comp;
       this.loading.push({
         mesh: m,
-        s: r(),
-        pd: this.pds[Math.floor(r() * this.pds.length)],
-        start: new THREE.Vector3(
-          this.compX + (r() * 2 - 1) * P.compRadius * 0.5,
-          (r() * 2 - 1) * this.compLen * 0.42,
-          (r() * 2 - 1) * P.compRadius * 0.5),
+        s,
+        pd,
+        start: this.compPoint(c, (r() * 2 - 1) * 0.55, 0.3 + r() * 0.4, (r() * 2 - 1) * 0.5),
         end: new THREE.Vector3(
-          (r() * 2 - 1) * this.lumen * 0.5,
-          (r() * 2 - 1) * this.total * 0.3,
-          (r() * 2 - 1) * this.lumen * 0.5),
+          (r() * 2 - 1) * this.lumen * 0.45,
+          c.y + (r() * 2 - 1) * P.elementLength * 0.8,
+          (r() * 2 - 1) * this.lumen * 0.45),
         rate: P.loadSpeed * (0.7 + r() * 0.6)
       });
     }
@@ -422,7 +496,9 @@ class PhloemTube {
       // out in the open lumen the particle drifts freely; approaching a
       // sieve plate it is funnelled toward one of the pores
       const b = this._plateBlend(p.y);
-      const fx = Math.cos(p.ang) * p.rad, fz = Math.sin(p.ang) * p.rad;
+      // squeeze the stream in with the caved wall so it never leaves the lumen
+      const rad = p.rad * this.lumenAt(p.y) / this.lumen;
+      const fx = Math.cos(p.ang) * rad, fz = Math.sin(p.ang) * rad;
       p.mesh.position.set(
         THREE.MathUtils.lerp(fx, p.pore.x, b),
         p.y,
@@ -561,7 +637,7 @@ build();
    CAMERA CONTROLS
    ============================================================ */
 let isDragging = false, prevX = 0, prevY = 0;
-let theta = 0.7, phiAngle = 1.40, camDist = 20;
+let theta = 3.03, phiAngle = 1.40, camDist = 20;
 let autoOrbit = true;
 const camTarget = new THREE.Vector3();
 
@@ -576,7 +652,12 @@ function updateCamera() {
 }
 
 renderer.domElement.addEventListener('mousedown', (e) => { isDragging = true; autoOrbit = false; prevX = e.clientX; prevY = e.clientY; });
-window.addEventListener('mouseup', () => isDragging = false);
+// after orbiting or zooming, show the camera view in the values box so it can be copied as a default
+function dumpView() {
+  dumpValues();
+  dump.value += `\nview: theta ${theta.toFixed(2)}, phi ${phiAngle.toFixed(2)}, dist ${camDist.toFixed(1)}`;
+}
+window.addEventListener('mouseup', () => { if (isDragging) dumpView(); isDragging = false; });
 window.addEventListener('mousemove', (e) => {
   if (!isDragging) return;
   const dx = e.clientX - prevX, dy = e.clientY - prevY;
@@ -586,6 +667,7 @@ window.addEventListener('mousemove', (e) => {
 });
 renderer.domElement.addEventListener('wheel', (e) => {
   camDist = THREE.MathUtils.clamp(camDist + e.deltaY * 0.015, 3, 60);
+  dumpView();
 });
 
 let lastTouch = null;
@@ -598,7 +680,7 @@ renderer.domElement.addEventListener('touchmove', (e) => {
   phiAngle = THREE.MathUtils.clamp(phiAngle - dy * 0.006, 0.2, Math.PI - 0.2);
   lastTouch = t;
 }, { passive:true });
-renderer.domElement.addEventListener('touchend', () => lastTouch = null);
+renderer.domElement.addEventListener('touchend', () => { lastTouch = null; dumpView(); });
 
 /* ============================================================
    RENDER LOOP
@@ -669,7 +751,7 @@ CellAdaptations.init({
     {
       title: 'Living cells with thin walls',
       text: 'Phloem cells are <b>alive</b> and their walls stay <b>thin and unlignified</b>. Translocation is an <b>active process</b> that needs living cytoplasm &mdash; it would stop if the cells died.',
-      anchor: () => phPoint(P.tubeRadius, -cell.total * 0.20, 0)
+      anchor: () => phPoint(-cell.tubeRAt(-cell.total * 0.20), -cell.total * 0.20, 0)
     }
   ]
 });
