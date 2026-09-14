@@ -61,6 +61,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="organelles.js"></script>
 <script src="adaptations.js"></script>
 <script>
 /* ============================================================
@@ -244,7 +245,7 @@ scene.add(fill);
    MATERIALS
    ============================================================ */
 const somaMat     = new THREE.MeshPhongMaterial({ color:0x3fb4e8, shininess:70, specular:0xbfe8ff, emissive:0x0e5480, emissiveIntensity:0.45, transparent:true, side:THREE.DoubleSide });
-const nucleusMat  = new THREE.MeshPhongMaterial({ color:0xe0359a, shininess:60, specular:0xffc2e8, emissive:0x8e0f5c, emissiveIntensity:0.55 });
+const nucleusMat  = Organelles.materials.nucleus;
 const dendriteMat = new THREE.MeshPhongMaterial({ color:0x1f7fe0, shininess:65, specular:0xa8dcff, emissive:0x0b3f7a, emissiveIntensity:0.45 });
 const axonMat     = new THREE.MeshPhongMaterial({ color:0xb9c4dd, shininess:50, specular:0xffffff, emissive:0x2a3550, emissiveIntensity:0.3 });
 const myelinMat   = new THREE.MeshPhongMaterial({ color:0xf2b01e, shininess:80, specular:0xffeab0, emissive:0x8a5f00, emissiveIntensity:0.35, transparent:true, side:THREE.DoubleSide });

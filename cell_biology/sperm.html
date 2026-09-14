@@ -61,6 +61,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="organelles.js"></script>
 <script src="adaptations.js"></script>
 <script>
 /* ============================================================
@@ -200,11 +201,11 @@ scene.add(fill);
    are never occluded by the sac around them.
    ============================================================ */
 const headMat    = new THREE.MeshPhongMaterial({ color:0xcbb8e0, shininess:12, specular:0x3a2f4a, transparent:true, opacity:0.4, side:THREE.DoubleSide, depthWrite:false });
-const nucleusMat = new THREE.MeshPhongMaterial({ color:0xa78fd1, shininess:8,  specular:0x2a1f3a });
+const nucleusMat = Organelles.materials.nucleus;
 const acroMat    = new THREE.MeshPhongMaterial({ color:0xf0dcc0, shininess:22, specular:0x6a5544, transparent:true, opacity:0.9, side:THREE.DoubleSide });
 const centriMat  = new THREE.MeshPhongMaterial({ color:0x4fd8e8, shininess:30, specular:0x88ffff, emissive:0x0d4c55, emissiveIntensity:0.5 });
 const midMat     = new THREE.MeshPhongMaterial({ color:0x9d86c4, shininess:14, specular:0x332844 });
-const mitoMat    = new THREE.MeshPhongMaterial({ color:0xd4576f, shininess:24, specular:0x662233, emissive:0x3d0d1a, emissiveIntensity:0.35 });
+const mitoMat    = Organelles.materials.mitochondrion;
 const membraneMat= new THREE.MeshPhongMaterial({ color:0xb9a6c9, shininess:18, specular:0x4a3d55, transparent:true, opacity:0.3, side:THREE.DoubleSide, depthWrite:false });
 const tailMat    = new THREE.MeshPhongMaterial({ color:0x7b3fe4, shininess:20, specular:0x442a66, emissive:0x2a1152, emissiveIntensity:0.4 });
 const tailSkinMat= new THREE.MeshPhongMaterial({ color:0xc2b0d4, shininess:16, specular:0x4a3d55, transparent:true, opacity:0.26, side:THREE.DoubleSide, depthWrite:false });

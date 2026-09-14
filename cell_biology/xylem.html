@@ -61,6 +61,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="organelles.js"></script>
 <script src="adaptations.js"></script>
 <script>
 /* ============================================================
@@ -173,8 +174,9 @@ scene.add(fill);
 /* ============================================================
    MATERIALS
    ============================================================ */
-const wallMat   = new THREE.MeshPhongMaterial({ color:0xb8c9d6, shininess:14, specular:0x40505e, transparent:true, opacity:0.26, side:THREE.DoubleSide, depthWrite:false });
-const innerMat  = new THREE.MeshPhongMaterial({ color:0x8fa6b8, shininess:10, specular:0x33424e, transparent:true, opacity:0.18, side:THREE.DoubleSide, depthWrite:false });
+// wall colours come from organelles.js
+const wallMat   = Organelles.wallMaterial({ opacity:0.26 });
+const innerMat  = Organelles.wallInnerMaterial({ opacity:0.18, side:THREE.DoubleSide });
 const ligninMat = new THREE.MeshPhongMaterial({ color:0xc99a55, shininess:26, specular:0x6b4d24, emissive:0x3a2609, emissiveIntensity:0.32 });
 const ringMat   = new THREE.MeshPhongMaterial({ color:0xdcae64, shininess:30, specular:0x7a5a2c, emissive:0x402a0a, emissiveIntensity:0.30 });
 const endRingMat= new THREE.MeshPhongMaterial({ color:0x7fd8c0, shininess:28, specular:0x88ffee, emissive:0x0d4a3d, emissiveIntensity:0.45 });

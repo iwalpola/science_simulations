@@ -162,6 +162,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="organelles.js"></script>
 <script>
 /* ============================================================
    TUNABLE PARAMETERS — every slider writes here and rebuilds
@@ -176,6 +177,7 @@ const P = {
   cellDepth:       2.40,
   cornerRound:     5.0,    // 2 = ellipsoid, high = sharp-cornered box
   cellWobble:      0.30,   // slight organic irregularity on top of the box
+  shellPadding:    0.40,   // pushes wall + membrane out past the organelles without moving them
   wallThickness:   0.10,   // wall depth as a fraction of the cell
   wallOpacity:     0.42,
   membraneOpacity: 0.55,
@@ -252,6 +254,7 @@ const CONTROLS = [
   ['cellDepth',        'depth',             1.0,  7.0,  0.05],
   ['cornerRound',      'corner sharpness',  2.0,  12.0, 0.1 ],
   ['cellWobble',       'wobble',            0.0,  1.5,  0.01],
+  ['shellPadding',     'membrane clearance',0.00, 1.20, 0.01],
   ['wallThickness',    'wall thickness',    0.01, 0.30, 0.005],
   ['wallOpacity',      'wall opacity',      0.02, 1.00, 0.01],
   ['membraneOpacity',  'membrane opacity',  0.02, 1.00, 0.01],
@@ -366,21 +369,12 @@ scene.add(fill);
 /* ============================================================
    MATERIALS
    ============================================================ */
-const wallMat     = new THREE.MeshPhongMaterial({ color:0x8ac46a, shininess:30, specular:0xd9ffc2, emissive:0x2c4a1e, emissiveIntensity:0.35, transparent:true, opacity:0.42, side:THREE.DoubleSide, depthWrite:false });
-const wallInnerMat= new THREE.MeshPhongMaterial({ color:0x6ba84c, shininess:15, specular:0x8fbf72, transparent:true, opacity:0.45, side:THREE.BackSide, depthWrite:false });
-const membraneMat = new THREE.MeshPhongMaterial({ color:0xe0664a, shininess:45, specular:0xffc2b0, emissive:0x5e1c10, emissiveIntensity:0.4, transparent:true, opacity:0.55, side:THREE.DoubleSide, depthWrite:false });
-const cytosolMat  = new THREE.MeshPhongMaterial({ color:0xf4efc4, shininess:6,  specular:0x55553a, transparent:true, opacity:0.16, side:THREE.FrontSide, depthWrite:false });
-const vacuoleMat  = new THREE.MeshPhongMaterial({ color:0xeef6f8, shininess:70, specular:0xffffff, emissive:0x35434a, emissiveIntensity:0.3, transparent:true, opacity:0.42, side:THREE.DoubleSide, depthWrite:false });
-const nucleusMat  = new THREE.MeshPhongMaterial({ color:0x7e3f9d, shininess:35, specular:0xd9a8ee, emissive:0x30103f, emissiveIntensity:0.5 });
-const nucleolusMat= new THREE.MeshPhongMaterial({ color:0x4d1f66, shininess:25, specular:0xa878c4, emissive:0x1d0a28, emissiveIntensity:0.6 });
-const envelopeMat = new THREE.MeshPhongMaterial({ color:0xb478d0, shininess:50, specular:0xf0d8ff, transparent:true, opacity:0.30, side:THREE.DoubleSide, depthWrite:false });
-const chloroMat   = new THREE.MeshPhongMaterial({ color:0x74b354, shininess:35, specular:0xc8f0aa, emissive:0x1e3d14, emissiveIntensity:0.45 });
-const granaMat    = new THREE.MeshPhongMaterial({ color:0x3d7a2b, shininess:20, specular:0x6aa855 });
-const mitoMat     = new THREE.MeshPhongMaterial({ color:0xe0847f, shininess:30, specular:0xffc9c2, emissive:0x5a201d, emissiveIntensity:0.4, transparent:true, opacity:0.55, side:THREE.DoubleSide, depthWrite:false });
-const cristaeZigzagMat = new THREE.MeshPhongMaterial({ color:0x5aa8e8, shininess:65, specular:0xcfe8ff, emissive:0x0d3a5c, emissiveIntensity:0.55 });
-const erMat       = new THREE.MeshPhongMaterial({ color:0xc07ad8, shininess:45, specular:0xf2ddff, emissive:0x3d1a4d, emissiveIntensity:0.45 });
-const riboMat     = new THREE.MeshPhongMaterial({ color:0x6a2f8a, shininess:60, specular:0xe0b8f0, emissive:0x2a0d38, emissiveIntensity:0.55 });
-
+// organelle materials and builders live in organelles.js
+const wallMat     = Organelles.wallMaterial();
+const wallInnerMat= Organelles.wallInnerMaterial();
+const membraneMat = Organelles.membraneMaterial();
+const cytosolMat  = Organelles.cytoplasmMaterial();
+const vacuoleMat  = Organelles.vacuoleMaterial();
 let cell = new THREE.Group();
 scene.add(cell);
 
@@ -427,13 +421,19 @@ function placeInside(x, y, z, reach) {
   return interiorPoint(n.normalize(), Math.min(len, 1) * reach);
 }
 
+// a point on one of the enclosing shells (wall, membrane, cytosol); the
+// padding enlarges only these, so organelles placed by interiorPoint stay put
+function shellPoint(n, scale) {
+  return surfacePoint(n).multiplyScalar(scale).addScaledVector(n, P.shellPadding);
+}
+
 function shellMesh(material, scale, detail = 5) {
   const geo = new THREE.IcosahedronGeometry(1, detail);
   const pos = geo.attributes.position;
   const v = new THREE.Vector3();
   for (let i = 0; i < pos.count; i++) {
     v.fromBufferAttribute(pos, i);
-    const p = surfacePoint(v.normalize()).multiplyScalar(scale);
+    const p = shellPoint(v.normalize(), scale);
     pos.setXYZ(i, p.x, p.y, p.z);
   }
   geo.computeVertexNormals();
@@ -481,28 +481,12 @@ function inVacuole(p, pad) {
    ============================================================ */
 function createNucleus(group) {
   const c = placeInside(P.nucleusX, P.nucleusY, P.nucleusZ, 0.62);
-  const R = P.nucleusRadius;
-
-  const geo = new THREE.SphereGeometry(R, 32, 24);
-  geo.scale(1, P.nucleusFlatten, 1);
-  const nuc = new THREE.Mesh(geo, nucleusMat);
+  const nuc = Organelles.nucleus({
+    radius: P.nucleusRadius, flatten: P.nucleusFlatten,
+    nucleolusSize: P.nucleolusSize, envelopeGap: P.envelopeGap
+  });
   nuc.position.copy(c);
   group.add(nuc);
-
-  if (P.nucleolusSize > 0.01) {
-    const nl = new THREE.Mesh(new THREE.SphereGeometry(R * P.nucleolusSize, 16, 12), nucleolusMat);
-    nl.position.set(R * 0.28, R * 0.12 * P.nucleusFlatten, R * 0.22);
-    nuc.add(nl);
-  }
-
-  if (P.envelopeGap > 0.005) {
-    const eg = new THREE.SphereGeometry(R * (1 + P.envelopeGap), 28, 20);
-    eg.scale(1, P.nucleusFlatten, 1);
-    const env = new THREE.Mesh(eg, envelopeMat);
-    env.position.copy(c);
-    group.add(env);
-  }
-
   return c;
 }
 
@@ -527,124 +511,51 @@ function scatterPoint(clearOf) {
 function createChloroplasts(group, clearOf) {
   const anchors = [];
   const count = Math.round(P.chloroCount);
-  const geo = new THREE.SphereGeometry(1, 14, 10);
+  const makeChloro = Organelles.chloroplastMaker({
+    length: P.chloroLength, width: P.chloroWidth, flatten: P.chloroFlatten, grana: P.chloroGrana > 0.5
+  });
 
   for (let i = 0; i < count; i++) {
     const p = scatterPoint(clearOf);
     if (!p) continue;
 
-    const c = new THREE.Mesh(geo, chloroMat);
+    const c = makeChloro();
     c.position.copy(p);
-    // lens-shaped: long, moderately wide, squashed through the third axis
-    c.scale.set(P.chloroLength, P.chloroWidth, P.chloroWidth * P.chloroFlatten);
     c.rotation.set(rnd() * Math.PI * 2, rnd() * Math.PI * 2, rnd() * Math.PI * 2);
     group.add(c);
-
-    if (P.chloroGrana > 0.5) {
-      // darker stacked interior standing in for grana at this scale
-      const g = new THREE.Mesh(geo, granaMat);
-      g.scale.set(0.6, 0.55, 0.5);
-      c.add(g);
-    }
     anchors.push(p);
   }
   return anchors;
-}
-
-// One zigzag ridge, shared by every mitochondrion this build — the cheap
-// stand-in for the folded inner membrane (cristae). Built in the unit-sphere
-// space of the mitochondrion body and added as a child, so it inherits that
-// body's non-uniform scale and stretches along with it.
-function buildCristaeZigzag() {
-  const pts = [];
-  const N = Math.max(2, Math.round(P.cristaeFolds));
-  for (let i = 0; i <= N; i++) {
-    const x = -0.55 + (i / N) * 1.10;
-    const y = (i % 2 === 0 ? 1 : -1) * P.cristaeAmplitude;
-    pts.push(new THREE.Vector3(x, y, 0));
-  }
-  const curve = new THREE.CatmullRomCurve3(pts);
-  return new THREE.TubeGeometry(curve, N * 6, P.cristaeThickness, 6, false);
 }
 
 function createMitochondria(group, clearOf) {
   const anchors = [];
   const count = Math.round(P.mitoCount);
-  const geo = new THREE.SphereGeometry(1, 12, 9);
-  const zigzagGeo = P.mitoCristae > 0.5 ? buildCristaeZigzag() : null;
+  const makeMito = Organelles.mitochondrionMaker({
+    length: P.mitoLength, width: P.mitoWidth, cristae: P.mitoCristae > 0.5,
+    folds: P.cristaeFolds, amplitude: P.cristaeAmplitude, thickness: P.cristaeThickness
+  });
 
   for (let i = 0; i < count; i++) {
     const p = scatterPoint(clearOf);
     if (!p) continue;
 
-    const m = new THREE.Mesh(geo, mitoMat);
+    const rx = rnd() * Math.PI * 2, ry = rnd() * Math.PI * 2, rz = rnd() * Math.PI * 2;
+    const m = makeMito(P.mitoCristae > 0.5 ? rnd() * Math.PI * 2 : 0);
     m.position.copy(p);
-    m.scale.set(P.mitoLength, P.mitoWidth, P.mitoWidth);
-    m.rotation.set(rnd() * Math.PI * 2, rnd() * Math.PI * 2, rnd() * Math.PI * 2);
+    m.rotation.set(rx, ry, rz);
     group.add(m);
-
-    if (zigzagGeo) {
-      // The cristae ridge is the only thing inside the membrane. An opaque
-      // matrix body used to sit here too, but it enclosed the ridge entirely
-      // and hid it — a translucent membrane is no help when the occluder is
-      // on the inside.
-      const zz = new THREE.Mesh(zigzagGeo, cristaeZigzagMat);
-      zz.rotation.x = rnd() * Math.PI * 2;   // spin around the long axis so folds don't all line up
-      m.add(zz);
-    }
     anchors.push(p);
   }
   return anchors;
 }
 
-/* Rough ER: a serpentine path folded back on itself, tubed, then
-   squashed flat so the tubes read as stacked cisternae rather than pipes.
-   Ribosomes are studded along the same curve. */
 function createRoughER(group) {
-  const er = new THREE.Group();
-  const F = Math.max(1, Math.round(P.erFolds));
-  const W = P.erWidth;
-  const pts = [];
-
-  for (let i = 0; i < F; i++) {
-    const y = (i - (F - 1) / 2) * P.erSpacing;
-    const dir = i % 2 === 0 ? 1 : -1;
-    const N = 12;
-    for (let k = 0; k <= N; k++) {
-      const t = k / N;
-      const x = (-W / 2 + t * W) * dir;
-      const z = Math.sin(t * Math.PI * 2 + i * 1.3) * P.erRipple;
-      pts.push(new THREE.Vector3(x, y + Math.sin(t * Math.PI) * P.erSpacing * 0.12, z));
-    }
-    // a rounded U-turn out past the end so the folds do not pinch
-    if (i < F - 1) {
-      const nextY = (i + 1 - (F - 1) / 2) * P.erSpacing;
-      pts.push(new THREE.Vector3((W / 2 + P.erSpacing * 0.5) * dir, (y + nextY) / 2, 0));
-    }
-  }
-
-  const curve = new THREE.CatmullRomCurve3(pts);
-  const tube = new THREE.TubeGeometry(curve, pts.length * 3, P.erTube, 8, false);
-  er.add(new THREE.Mesh(tube, erMat));
-
-  const count = Math.round(P.riboDensity) * F;
-  if (count > 0 && P.riboSize > 0.005) {
-    const rg = new THREE.SphereGeometry(P.riboSize, 7, 6);
-    for (let i = 0; i < count; i++) {
-      const t = Math.min((i + 0.5) / count, 0.999);
-      const p = curve.getPointAt(t);
-      const tan = curve.getTangentAt(t);
-      const ref = Math.abs(tan.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
-      const side = new THREE.Vector3().crossVectors(tan, ref).normalize()
-        .applyAxisAngle(tan, rnd() * Math.PI * 2);
-      const r = new THREE.Mesh(rg, riboMat);
-      r.position.copy(p).addScaledVector(side, P.erTube * 0.9);
-      er.add(r);
-    }
-  }
-
-  er.scale.set(1, 1, P.erFlatten);
-  er.rotation.set(0, THREE.MathUtils.degToRad(P.erTilt), THREE.MathUtils.degToRad(P.erTilt * 0.4));
+  const er = Organelles.roughER({
+    folds: P.erFolds, width: P.erWidth, spacing: P.erSpacing, ripple: P.erRipple,
+    tube: P.erTube, flatten: P.erFlatten, tilt: P.erTilt,
+    riboSize: P.riboSize, riboDensity: P.riboDensity, random: rnd
+  });
 
   const centre = placeInside(P.erX, P.erY, P.erZ, 0.62);
   er.position.copy(centre);
@@ -655,11 +566,11 @@ function createRoughER(group) {
 function createFreeRibosomes(group, clearOf) {
   const count = Math.round(P.riboFree);
   if (count < 1 || P.riboSize < 0.005) return;
-  const geo = new THREE.SphereGeometry(P.riboSize * 0.8, 6, 5);
+  const geo = Organelles.ribosomeGeometry(P.riboSize * 0.8);
   for (let i = 0; i < count; i++) {
     const p = scatterPoint(clearOf);
     if (!p) continue;
-    const r = new THREE.Mesh(geo, riboMat);
+    const r = Organelles.ribosome(geo);
     r.position.copy(p);
     group.add(r);
   }
@@ -780,10 +691,7 @@ function build() {
   wallMat.needsUpdate = membraneMat.needsUpdate = cytosolMat.needsUpdate =
     vacuoleMat.needsUpdate = wallInnerMat.needsUpdate = true;
 
-  mitoMat.opacity = P.mitoMembraneOpacity;
-  mitoMat.transparent = P.mitoMembraneOpacity < 1;
-  mitoMat.depthWrite = P.mitoMembraneOpacity >= 1;
-  mitoMat.needsUpdate = true;
+  Organelles.setOpacity(Organelles.materials.mitochondrion, P.mitoMembraneOpacity);
 
   seedRng(P.seed);
   cell = new THREE.Group();
@@ -814,8 +722,8 @@ function build() {
   const wallDir = new THREE.Vector3(-1.0, -0.15, 0.30).normalize();
   const memDir  = new THREE.Vector3(-0.85, 0.70, 0.25).normalize();
   anchors = {
-    wall:      surfacePoint(wallDir),
-    membrane:  surfacePoint(memDir).multiplyScalar(1 - t),
+    wall:      shellPoint(wallDir, 1),
+    membrane:  shellPoint(memDir, 1 - t),
     ribosomes: erC.clone(),
     vacuole:   vacC.clone(),
     nucleus:   nucC.clone(),

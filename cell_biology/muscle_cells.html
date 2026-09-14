@@ -78,6 +78,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="organelles.js"></script>
 <script src="adaptations.js"></script>
 <script>
 /* ============================================================
@@ -293,9 +294,8 @@ let striationTex = null;
 /* ============================================================
    MATERIALS
    ============================================================ */
-const nucleusMat = new THREE.MeshPhongMaterial({ color:0xffb3c6, shininess:70, specular:0xffffff, emissive:0x5a2030, emissiveIntensity:0.35 });
-const mitoMat    = new THREE.MeshPhongMaterial({ color:0xe0847f, shininess:30, specular:0xffc9c2, emissive:0x5a201d, emissiveIntensity:0.4, transparent:true, opacity:0.60, side:THREE.DoubleSide, depthWrite:false });
-const cristaeZigzagMat = new THREE.MeshPhongMaterial({ color:0x5aa8e8, shininess:65, specular:0xcfe8ff, emissive:0x0d3a5c, emissiveIntensity:0.55 });
+// nucleus and mitochondrion appearance come from organelles.js
+const nucleusMat = Organelles.materials.nucleus;
 const sheathMat  = new THREE.MeshPhongMaterial({ color:0xffcbb0, shininess:25, specular:0x8a6a55, transparent:true, opacity:0.10, side:THREE.DoubleSide, depthWrite:false });
 let fibreMat = null;
 
@@ -322,25 +322,8 @@ function buildFibreGeometry(length, radius) {
   return geo;
 }
 
-/* ============================================================
-   MITOCHONDRION PARTS — one body and one cristae ridge, built
-   once per rebuild and shared by every mitochondrion in every
-   fibre. The ridge lives in the body's unit-sphere space and is
-   added as a child, so it inherits the body's non-uniform scale.
-   ============================================================ */
-let mitoBodyGeo = null, cristaeGeo = null;
-
-function buildCristaeZigzag() {
-  const pts = [];
-  const N = Math.max(2, Math.round(P.cristaeFolds));
-  for (let i = 0; i <= N; i++) {
-    const x = -0.55 + (i / N) * 1.10;
-    const y = (i % 2 === 0 ? 1 : -1) * P.cristaeAmplitude;
-    pts.push(new THREE.Vector3(x, y, 0));
-  }
-  const curve = new THREE.CatmullRomCurve3(pts);
-  return new THREE.TubeGeometry(curve, N * 6, P.cristaeThickness, 6, false);
-}
+// rebuilt each build and shared by every mitochondrion in every fibre
+let makeMito = null;
 
 /* ============================================================
    MUSCLE FIBRE
@@ -391,7 +374,7 @@ class MuscleFibre {
     // mitochondria: scattered through the sarcoplasm and lying along the
     // fibre axis, the way they pack into the grooves between myofibrils
     this.mitos = [];
-    const mn = mitoBodyGeo ? Math.round(P.mitoPerFibre) : 0;
+    const mn = Math.round(P.mitoPerFibre);
     for (let i = 0; i < mn; i++) {
       const u = 0.10 + 0.80 * rnd();
       const ang = rnd() * Math.PI * 2;
@@ -400,15 +383,13 @@ class MuscleFibre {
       const rad = this.radius * P.mitoSpread * Math.pow(Math.sin(Math.PI * u), P.taperPower)
                 * (0.2 + 0.8 * rnd());
 
-      const mito = new THREE.Mesh(mitoBodyGeo, mitoMat);
-      mito.scale.set(P.mitoLength, P.mitoWidth, P.mitoWidth);
+      const mito = makeMito();
       // a random roll about the long axis varies which way the folds face;
       // the small yaw/pitch keeps the rows from looking mechanically regular
       mito.rotation.set(rnd() * Math.PI * 2, (rnd() - 0.5) * 0.45, (rnd() - 0.5) * 0.45);
       mito.userData.u = u;
       mito.userData.ang = ang;
       mito.userData.rad = rad;
-      if (cristaeGeo) mito.add(new THREE.Mesh(cristaeGeo, cristaeZigzagMat));
       this.group.add(mito);
       this.mitos.push(mito);
     }
@@ -529,13 +510,11 @@ function build() {
   });
   sheathMat.opacity = P.sheathOpacity;
 
-  mitoMat.opacity = P.mitoOpacity;
-  mitoMat.transparent = P.mitoOpacity < 1;
-  mitoMat.depthWrite = P.mitoOpacity >= 1;
-  mitoMat.needsUpdate = true;
-
-  mitoBodyGeo = Math.round(P.mitoPerFibre) > 0 ? new THREE.SphereGeometry(1, 10, 8) : null;
-  cristaeGeo = (mitoBodyGeo && P.mitoCristae > 0.5) ? buildCristaeZigzag() : null;
+  Organelles.setOpacity(Organelles.materials.mitochondrion, P.mitoOpacity);
+  makeMito = Organelles.mitochondrionMaker({
+    length: P.mitoLength, width: P.mitoWidth, cristae: P.mitoCristae > 0.5,
+    folds: P.cristaeFolds, amplitude: P.cristaeAmplitude, thickness: P.cristaeThickness
+  });
 
   bundle = new THREE.Group();
   fibres = [];

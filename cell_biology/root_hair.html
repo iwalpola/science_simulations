@@ -44,6 +44,13 @@
     font-family:inherit; font-size:11px; padding:5px 0; cursor:pointer;
   }
   #panel button:hover { background:#1c3625; color:#e8f7ea; }
+  #viewToggle {
+    position:absolute; bottom:16px; left:50%; transform:translateX(-50%);
+    background:rgba(8,18,12,0.9); color:#e4f4e6; border:1px solid #2b4a34; border-radius:20px;
+    font-family:'Courier New', monospace; font-size:12px; letter-spacing:0.5px;
+    padding:8px 18px; cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,0.45);
+  }
+  #viewToggle:hover { background:#1c3625; border-color:#8fd694; }
   #dump {
     width:100%; box-sizing:border-box; margin-top:8px; height:96px; resize:vertical;
     background:#0b160f; color:#8ec99a; border:1px solid #24402c; border-radius:4px;
@@ -55,12 +62,15 @@
 <div id="info"><b>ROOT HAIR CELL</b><br>hair projection / cytoplasm + mitochondria / permanent vacuole</div>
 <div id="hud">drag to orbit · scroll to zoom · &#9664; &#9654; to step adaptations</div>
 
+<button id="viewToggle">show whole cell</button>
+
 <div id="panel">
   <h2 id="panelHead"><span>PARAMETERS</span><span id="caret">[&ndash;]</span></h2>
   <div class="body" id="panelBody"></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="organelles.js"></script>
 <script src="adaptations.js"></script>
 <script>
 /* ============================================================
@@ -74,8 +84,11 @@ const P = {
   bodyLength:       3.2,    // along X, toward the hair
   bodyHeight:       2.0,
   bodyDepth:        1.8,
+  bodyRound:        4.0,    // 2 = ellipsoid, high = sharp-cornered box
+  neighbourCell:    1,      // 0/1 — hairless epidermal cell on the far side from the hair
+  cellGap:          0.06,
   wallThickness:    0.10,   // cellulose wall drawn as an outer shell
-  wallOpacity:      0.20,
+  wallOpacity:      0.55,
   membraneOpacity:  0.30,
 
   /* --- contents --- */
@@ -86,6 +99,10 @@ const P = {
   mitoCount:        16,
   mitoSize:         0.125,
   mitoBias:         0.70,   // 0 = spread evenly, 1 = crowded at the hair base
+  mitoMembraneOpacity: 0.55,
+  cristaeFolds:     5,
+  cristaeAmplitude: 0.46,
+  cristaeThickness: 0.15,
 
   /* --- the root hair itself --- */
   hairLength:       7.5,    // this is the whole point of the cell
@@ -95,7 +112,7 @@ const P = {
   hairWaves:        1.5,
   hairSegments:     90,
   hairSides:        14,
-  hairOpacity:      0.26,
+  hairOpacity:      0.55,
 
   /* --- uptake --- */
   waterCount:       110,    // water entering by osmosis
@@ -115,6 +132,9 @@ const CONTROLS = [
   ['bodyLength',      'length',              1.0,  6.0,  0.05],
   ['bodyHeight',      'height',              0.8,  4.0,  0.05],
   ['bodyDepth',       'depth',               0.8,  4.0,  0.05],
+  ['bodyRound',       'corner sharpness',    2.0,  12.0, 0.1 ],
+  ['neighbourCell',   'neighbour cell (0/1)',0,    1,    1   ],
+  ['cellGap',         'gap between cells',   0.00, 0.60, 0.01],
   ['wallThickness',   'wall thickness',      0.02, 0.40, 0.01],
   ['wallOpacity',     'wall opacity',        0.02, 1.00, 0.01],
   ['membraneOpacity', 'membrane opacity',    0.02, 1.00, 0.01],
@@ -126,6 +146,10 @@ const CONTROLS = [
   ['mitoCount',       'mitochondria',        0,    60,   1   ],
   ['mitoSize',        'mitochondrion size',  0.04, 0.30, 0.005],
   ['mitoBias',        'crowding at hair',    0.00, 1.00, 0.01],
+  ['mitoMembraneOpacity', 'mito membrane opacity', 0.05, 1.00, 0.01],
+  ['cristaeFolds',    'cristae folds',       2,    12,   1   ],
+  ['cristaeAmplitude','cristae spread',      0.10, 0.80, 0.01],
+  ['cristaeThickness','cristae thickness',   0.03, 0.35, 0.005],
   ['ROOT HAIR'],
   ['hairLength',      'length',              1.0,  16.0, 0.1 ],
   ['hairRadius',      'base radius',         0.08, 1.00, 0.01],
@@ -160,7 +184,12 @@ const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHei
 const renderer = new THREE.WebGLRenderer({ antialias:true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.localClippingEnabled = true;
 document.body.appendChild(renderer.domElement);
+
+// section view: the wall keeps only the z <= 0 half, exposing the contents
+const sectionPlane = new THREE.Plane(new THREE.Vector3(0, 0, -1), 0);
+let sectioned = true;
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth/window.innerHeight;
@@ -188,11 +217,10 @@ scene.add(fill);
    inside are never hidden by the shell around them.
    ============================================================ */
 const wallMat     = new THREE.MeshPhongMaterial({ color:0x9ad6a4, shininess:10, specular:0x2e4a34, transparent:true, opacity:0.20, side:THREE.DoubleSide, depthWrite:false });
-const membraneMat = new THREE.MeshPhongMaterial({ color:0xd8e8a8, shininess:18, specular:0x4a5a35, transparent:true, opacity:0.30, side:THREE.DoubleSide, depthWrite:false });
-const cytoMat     = new THREE.MeshPhongMaterial({ color:0x7fae86, shininess:6,  specular:0x233a28, transparent:true, opacity:0.22, side:THREE.DoubleSide, depthWrite:false });
-const vacuoleMat  = new THREE.MeshPhongMaterial({ color:0x6fb7d8, shininess:26, specular:0x33566a, transparent:true, opacity:0.42, side:THREE.DoubleSide, depthWrite:false });
-const nucleusMat  = new THREE.MeshPhongMaterial({ color:0xb98fd1, shininess:10, specular:0x33254a });
-const mitoMat     = new THREE.MeshPhongMaterial({ color:0xe0714f, shininess:26, specular:0x66332a, emissive:0x3d1208, emissiveIntensity:0.40 });
+// the wall stays local for the section toggle; the rest comes from organelles.js
+const membraneMat = Organelles.membraneMaterial({ opacity:0.30 });
+const cytoMat     = Organelles.cytoplasmMaterial({ opacity:0.22, side:THREE.DoubleSide });
+const vacuoleMat  = Organelles.vacuoleMaterial();
 const waterMat    = new THREE.MeshPhongMaterial({ color:0x63c8f0, shininess:40, specular:0x99e8ff, emissive:0x0d3a4c, emissiveIntensity:0.55 });
 const ionMat      = new THREE.MeshPhongMaterial({ color:0xf2c141, shininess:40, specular:0xffe9a0, emissive:0x4a3505, emissiveIntensity:0.60 });
 const soilMat     = new THREE.MeshPhongMaterial({ color:0x4e6f5c, shininess:8,  specular:0x223328, transparent:true, opacity:0.42, depthWrite:false });
@@ -202,6 +230,24 @@ const soilMat     = new THREE.MeshPhongMaterial({ color:0x4e6f5c, shininess:8,  
 function rng(seed) {
   let s = seed >>> 0;
   return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+}
+
+/* rounded brick: a sphere pushed out onto the superellipsoid
+   |x/a|^p + |y/b|^p + |z/c|^p = 1, so p = 2 is an ellipsoid and
+   larger p sharpens the corners toward a box */
+function roundedBoxGeometry(w, h, d, p) {
+  const geo = new THREE.SphereGeometry(1, 48, 32);
+  const pos = geo.attributes.position;
+  const v = new THREE.Vector3();
+  const a = w / 2, b = h / 2, c = d / 2;
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i).normalize();
+    const s = Math.pow(Math.abs(v.x) / a, p) + Math.pow(Math.abs(v.y) / b, p) + Math.pow(Math.abs(v.z) / c, p);
+    const r = Math.pow(s, -1 / p);
+    pos.setXYZ(i, v.x * r, v.y * r, v.z * r);
+  }
+  geo.computeVertexNormals();
+  return geo;
 }
 
 /* ============================================================
@@ -284,55 +330,72 @@ class RootHairCell {
 
   /* ---------------- body: wall, membrane, vacuole, nucleus, mitochondria ---------------- */
   _buildBody() {
+    this._buildCellBody(this.group, rng(20240607), true);
+
+    // neighbouring epidermal cell with no hair, on the side away from the hair
+    if (P.neighbourCell > 0.5) {
+      const g = new THREE.Group();
+      g.position.x = -(P.bodyLength + P.cellGap);
+      this.group.add(g);
+      this._buildCellBody(g, rng(31337), false);
+    }
+  }
+
+  _buildCellBody(parent, r, main) {
     const L = P.bodyLength, H = P.bodyHeight, D = P.bodyDepth, w = P.wallThickness;
 
-    // cellulose cell wall — the rigid outer box
-    const wall = new THREE.Mesh(new THREE.BoxGeometry(L, H, D), wallMat);
-    this.group.add(wall);
-    this.wallMesh = wall;
+    // cellulose cell wall — a rigid rounded brick
+    const wall = new THREE.Mesh(roundedBoxGeometry(L, H, D, P.bodyRound), wallMat);
+    parent.add(wall);
 
     // plasma membrane — partially permeable, just inside the wall
-    const mem = new THREE.Mesh(new THREE.BoxGeometry(L - w * 2, H - w * 2, D - w * 2), membraneMat);
-    this.group.add(mem);
+    const mem = new THREE.Mesh(roundedBoxGeometry(L - w * 2, H - w * 2, D - w * 2, P.bodyRound), membraneMat);
+    parent.add(mem);
 
     // cytoplasm — a soft rounded volume filling the space the vacuole leaves
     const cytoGeo = new THREE.SphereGeometry(1, 22, 16);
     cytoGeo.scale((L - w * 2) * 0.49, (H - w * 2) * 0.49, (D - w * 2) * 0.49);
-    this.group.add(new THREE.Mesh(cytoGeo, cytoMat));
+    parent.add(new THREE.Mesh(cytoGeo, cytoMat));
 
     // large permanent vacuole — cell sap, pushed slightly away from the hair
     const f = P.vacuoleFill;
     const vacGeo = new THREE.SphereGeometry(1, 26, 18);
     vacGeo.scale(L * 0.5 * f, H * 0.5 * f, D * 0.5 * f);
     const vac = new THREE.Mesh(vacGeo, vacuoleMat);
-    vac.position.set(-L * 0.06, 0, 0);
-    this.group.add(vac);
-    this.vacuole = vac;
+    vac.position.set(main ? -L * 0.06 : L * 0.04, 0, 0);
+    parent.add(vac);
 
     // nucleus
-    const nucGeo = new THREE.SphereGeometry(P.nucleusSize, 20, 14);
-    const nuc = new THREE.Mesh(nucGeo, nucleusMat);
-    nuc.position.set(P.nucleusX * L * 0.5 * 0.8, H * 0.22, D * 0.14);
-    this.group.add(nuc);
-    this.nucleus = nuc;
+    const nuc = Organelles.nucleus({ radius: P.nucleusSize });
+    if (main) nuc.position.set(P.nucleusX * L * 0.5 * 0.8, H * 0.22, D * 0.14);
+    else      nuc.position.set(L * 0.30, -H * 0.24, -D * 0.14);
+    parent.add(nuc);
 
-    // mitochondria — biased toward the hair end, where the ion pumps are
-    this.mitos = [];
-    const r = rng(20240607);
+    if (main) {
+      this.wallMesh = wall;
+      this.vacuole = vac;
+      this.nucleus = nuc;
+      this.mitos = [];
+    }
+
+    // mitochondria — in the hair cell, biased toward the hair end where the ion pumps are
+    const bias = main ? P.mitoBias : 0;
     const n = Math.round(P.mitoCount);
+    const makeMito = Organelles.mitochondrionMaker({
+      length: P.mitoSize * 2.7, width: P.mitoSize,
+      folds: P.cristaeFolds, amplitude: P.cristaeAmplitude, thickness: P.cristaeThickness
+    });
     for (let i = 0; i < n; i++) {
-      const g = new THREE.SphereGeometry(1, 10, 8);
-      g.scale(P.mitoSize * 1.7, P.mitoSize, P.mitoSize);
-      const m = new THREE.Mesh(g, mitoMat);
+      const m = makeMito(i * 2.399963);
       // push x toward +1 (the hair base) as mitoBias rises
       const raw = r() * 2 - 1;
-      const x = THREE.MathUtils.lerp(raw, 0.35 + 0.6 * r(), P.mitoBias);
+      const x = THREE.MathUtils.lerp(raw, 0.35 + 0.6 * r(), bias);
       const ang = r() * Math.PI * 2;
       const rad = 0.62 + r() * 0.34;
       m.position.set(x * L * 0.42, Math.sin(ang) * rad * H * 0.40, Math.cos(ang) * rad * D * 0.40);
       m.rotation.set(r() * 3, r() * 3, r() * 3);
-      this.group.add(m);
-      this.mitos.push(m);
+      parent.add(m);
+      if (main) this.mitos.push(m);
     }
   }
 
@@ -396,6 +459,8 @@ class RootHairCell {
       const ang = r() * Math.PI * 2;
       const rad = this.hairOuter(u) + 0.15 + r() * P.soilSpread;
       m.position.set(base.x + (r() * 2 - 1) * 0.6, base.y + Math.sin(ang) * rad, base.z + Math.cos(ang) * rad);
+      // keep soil water out of the cell bodies
+      if (m.position.x < P.bodyLength / 2 + 0.15) continue;
       this.group.add(m);
       this.soil.push({ mesh: m, home: m.position.clone(), ph: r() * Math.PI * 2, sp: 0.4 + r() * 1.2 });
     }
@@ -455,8 +520,11 @@ function build() {
   if (cell) cell.dispose();
 
   wallMat.opacity     = P.wallOpacity;
+  wallMat.clippingPlanes = sectioned ? [sectionPlane] : [];
+  wallMat.needsUpdate = true;
   membraneMat.opacity = P.membraneOpacity;
   vacuoleMat.opacity  = P.vacuoleOpacity;
+  Organelles.setOpacity(Organelles.materials.mitochondrion, P.mitoMembraneOpacity);
 
   cell = new RootHairCell(state);
 }
@@ -528,6 +596,8 @@ dumpValues();
 
 resetBtn.addEventListener('click', () => {
   Object.assign(P, DEFAULTS);
+  sectioned = true;
+  viewToggle.textContent = 'show whole cell';
   for (const k in readouts) {
     readouts[k].slider.value = P[k];
     readouts[k].val.textContent = P[k];
@@ -552,6 +622,26 @@ document.getElementById('panelHead').addEventListener('click', () => {
 panel.addEventListener('mousedown', e => e.stopPropagation());
 panel.addEventListener('wheel', e => e.stopPropagation());
 
+// toggles between the sectioned view and the original intact, faint wall
+const VIEW_OPACITY = {
+  section: { wallOpacity: DEFAULTS.wallOpacity, hairOpacity: DEFAULTS.hairOpacity },
+  whole:   { wallOpacity: 0.20, hairOpacity: 0.26 }
+};
+const viewToggle = document.getElementById('viewToggle');
+viewToggle.addEventListener('mousedown', e => e.stopPropagation());
+viewToggle.addEventListener('click', () => {
+  sectioned = !sectioned;
+  const vals = VIEW_OPACITY[sectioned ? 'section' : 'whole'];
+  Object.assign(P, vals);
+  for (const k in vals) {
+    readouts[k].slider.value = P[k];
+    readouts[k].val.textContent = P[k];
+  }
+  viewToggle.textContent = sectioned ? 'show whole cell' : 'show section view';
+  build();
+  dumpValues();
+});
+
 build();
 
 /* ============================================================
@@ -565,7 +655,8 @@ const camTarget = new THREE.Vector3();
 function updateCamera() {
   // frame the whole cell, hair included, rather than just the body
   const mid = (P.bodyLength / 2 + P.hairLength * 0.45) * P.cellScale * 0.55;
-  camTarget.set(mid, 0, 0);
+  const shift = P.neighbourCell > 0.5 ? (P.bodyLength + P.cellGap) * 0.35 * P.cellScale : 0;
+  camTarget.set(mid - shift, 0, 0);
   camera.position.set(
     camTarget.x + camDist * Math.sin(phiAngle) * Math.sin(theta),
     camTarget.y + camDist * Math.cos(phiAngle),
@@ -659,7 +750,7 @@ CellAdaptations.init({
     {
       title: 'Thin wall and membrane',
       text: 'The cellulose wall is <b>thin and freely permeable</b>, and the membrane just inside it is <b>partially permeable</b>. Together they give a <b>short diffusion distance</b> into the cytoplasm.',
-      anchor: () => rootPoint(P.bodyLength * 0.5, P.bodyHeight * 0.5, 0)
+      anchor: () => rootPoint(0, P.bodyHeight * 0.5, 0)
     },
     {
       title: 'No chloroplasts',

@@ -61,6 +61,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="organelles.js"></script>
 <script src="adaptations.js"></script>
 <script>
 /* ============================================================
@@ -93,6 +94,10 @@ const P = {
   compNucleus:      0.36,
   compMito:         14,
   compMitoSize:     0.115,
+  mitoMembraneOpacity: 0.55,
+  cristaeFolds:     5,
+  cristaeAmplitude: 0.46,
+  cristaeThickness: 0.15,
   plasmodesmata:    7,
   pdRadius:         0.065,
 
@@ -133,6 +138,10 @@ const CONTROLS = [
   ['compNucleus',     'nucleus size',        0.05, 0.70, 0.01],
   ['compMito',        'mitochondria',        0,    50,   1   ],
   ['compMitoSize',    'mitochondrion size',  0.03, 0.30, 0.005],
+  ['mitoMembraneOpacity', 'mito membrane opacity', 0.05, 1.00, 0.01],
+  ['cristaeFolds',    'cristae folds',       2,    12,   1   ],
+  ['cristaeAmplitude','cristae spread',      0.10, 0.80, 0.01],
+  ['cristaeThickness','cristae thickness',   0.03, 0.35, 0.005],
   ['plasmodesmata',   'plasmodesmata',       0,    20,   1   ],
   ['pdRadius',        'plasmodesma radius',  0.01, 0.20, 0.005],
   ['TRANSLOCATION'],
@@ -185,12 +194,11 @@ scene.add(fill);
 /* ============================================================
    MATERIALS
    ============================================================ */
-const wallMat    = new THREE.MeshPhongMaterial({ color:0xd8c89a, shininess:12, specular:0x4a4030, transparent:true, opacity:0.24, side:THREE.DoubleSide, depthWrite:false });
-const cytoMat    = new THREE.MeshPhongMaterial({ color:0xb2c58a, shininess:10, specular:0x3a4430, transparent:true, opacity:0.26, side:THREE.DoubleSide, depthWrite:false });
+// wall, cytoplasm and organelle appearance come from organelles.js
+const wallMat    = Organelles.wallMaterial({ opacity:0.24 });
+const cytoMat    = Organelles.cytoplasmMaterial({ opacity:0.26 });
 const plateMat   = new THREE.MeshPhongMaterial({ color:0xe0b055, shininess:26, specular:0x7a5a2c, transparent:true, opacity:0.80, side:THREE.DoubleSide, emissive:0x3a2708, emissiveIntensity:0.28 });
-const compMat    = new THREE.MeshPhongMaterial({ color:0xc9d89a, shininess:14, specular:0x40502e, transparent:true, opacity:0.22, side:THREE.DoubleSide, depthWrite:false });
-const nucleusMat = new THREE.MeshPhongMaterial({ color:0xb98fd1, shininess:10, specular:0x33254a });
-const mitoMat    = new THREE.MeshPhongMaterial({ color:0xe0714f, shininess:26, specular:0x66332a, emissive:0x3d1208, emissiveIntensity:0.42 });
+const compMat    = Organelles.wallMaterial({ opacity:0.22 });
 const pdMat      = new THREE.MeshPhongMaterial({ color:0x7fd8c0, shininess:26, specular:0x88ffee, emissive:0x0d4a3d, emissiveIntensity:0.42 });
 const sucroseMat = new THREE.MeshPhongMaterial({ color:0xf2c141, shininess:45, specular:0xffe9a0, emissive:0x4a3505, emissiveIntensity:0.58 });
 const loadMat    = new THREE.MeshPhongMaterial({ color:0xff9a3c, shininess:45, specular:0xffd0a0, emissive:0x4a2205, emissiveIntensity:0.60 });
@@ -304,7 +312,7 @@ class PhloemTube {
     this.companion = comp;
 
     // nucleus — the companion cell has one, the sieve tube element does not
-    const nuc = new THREE.Mesh(new THREE.SphereGeometry(P.compNucleus, 18, 13), nucleusMat);
+    const nuc = Organelles.nucleus({ radius: P.compNucleus });
     nuc.position.set(this.compX, cl * 0.24, 0);
     this.group.add(nuc);
     this.nucleus = nuc;
@@ -313,10 +321,12 @@ class PhloemTube {
     this.mitos = [];
     const r = rng(77001);
     const n = Math.round(P.compMito);
+    const makeMito = Organelles.mitochondrionMaker({
+      length: P.compMitoSize * 2.7, width: P.compMitoSize,
+      folds: P.cristaeFolds, amplitude: P.cristaeAmplitude, thickness: P.cristaeThickness
+    });
     for (let i = 0; i < n; i++) {
-      const g = new THREE.SphereGeometry(1, 10, 8);
-      g.scale(P.compMitoSize * 1.7, P.compMitoSize, P.compMitoSize);
-      const m = new THREE.Mesh(g, mitoMat);
+      const m = makeMito(i * 2.399963);
       const a = r() * Math.PI * 2, rad = (0.30 + r() * 0.52) * cr;
       m.position.set(this.compX + Math.cos(a) * rad, (r() * 2 - 1) * cl * 0.44, Math.sin(a) * rad);
       m.rotation.set(r() * 3, r() * 3, r() * 3);
@@ -451,6 +461,7 @@ function build() {
   cytoMat.opacity  = P.cytoOpacity;
   plateMat.opacity = P.plateOpacity;
   compMat.opacity  = P.compOpacity;
+  Organelles.setOpacity(Organelles.materials.mitochondrion, P.mitoMembraneOpacity);
 
   cell = new PhloemTube(state);
 }
