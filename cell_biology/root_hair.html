@@ -87,14 +87,14 @@ const P = {
   bodyRound:        4.0,    // 2 = ellipsoid, high = sharp-cornered box
   neighbourCell:    1,      // 0/1 — hairless epidermal cell on the far side from the hair
   cellGap:          0.06,
-  wallThickness:    0.10,   // cellulose wall drawn as an outer shell
+  wallThickness:    0.24,   // grows outward; the contents keep their size
   wallOpacity:      0.55,
   membraneOpacity:  0.30,
 
   /* --- contents --- */
   vacuoleFill:      0.66,   // fraction of the body the vacuole occupies
   vacuoleOpacity:   0.42,
-  nucleusSize:      0.40,
+  nucleusSize:      0.31,
   nucleusX:        -0.52,   // position along the body, -1 = far end, +1 = hair end
   mitoCount:        16,
   mitoSize:         0.125,
@@ -113,6 +113,8 @@ const P = {
   hairSegments:     90,
   hairSides:        14,
   hairOpacity:      0.55,
+  vacuoleReach:     0.85,   // how far along the hair the vacuole extends
+  hairVacuoleWidth: 0.62,   // vacuole radius / hair lumen radius
 
   /* --- uptake --- */
   waterCount:       110,    // water entering by osmosis
@@ -135,7 +137,7 @@ const CONTROLS = [
   ['bodyRound',       'corner sharpness',    2.0,  12.0, 0.1 ],
   ['neighbourCell',   'neighbour cell (0/1)',0,    1,    1   ],
   ['cellGap',         'gap between cells',   0.00, 0.60, 0.01],
-  ['wallThickness',   'wall thickness',      0.02, 0.40, 0.01],
+  ['wallThickness',   'wall thickness',      0.10, 0.60, 0.01],
   ['wallOpacity',     'wall opacity',        0.02, 1.00, 0.01],
   ['membraneOpacity', 'membrane opacity',    0.02, 1.00, 0.01],
   ['CONTENTS'],
@@ -159,6 +161,8 @@ const CONTROLS = [
   ['hairSegments',    'smoothness',          12,   200,  2   ],
   ['hairSides',       'tube sides',          5,    28,   1   ],
   ['hairOpacity',     'hair wall opacity',   0.03, 1.00, 0.01],
+  ['vacuoleReach',    'vacuole reach',       0.00, 0.97, 0.01],
+  ['hairVacuoleWidth','vacuole width',       0.20, 0.90, 0.01],
   ['UPTAKE'],
   ['waterCount',      'water particles',     0,    400,  5   ],
   ['waterSpeed',      'water speed',         0.00, 0.80, 0.005],
@@ -232,6 +236,11 @@ function rng(seed) {
   return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
 }
 
+// the contents are sized as if the wall were WALL_INSET thick; any extra
+// thickness is added outside, so the membrane and everything in it keep their size
+const WALL_INSET = 0.10;
+const wallGrowth = () => P.wallThickness - WALL_INSET;
+
 /* rounded brick: a sphere pushed out onto the superellipsoid
    |x/a|^p + |y/b|^p + |z/c|^p = 1, so p = 2 is an ellipsoid and
    larger p sharpens the corners toward a box */
@@ -256,7 +265,9 @@ function roundedBoxGeometry(w, h, d, p) {
    hand. The frame uses a fixed up-vector, which is safe here
    because the hair never turns far from the +X axis.
    ============================================================ */
-function taperedTube(pointAt, radiusAt, segs, radial) {
+// a0..a1 sweeps part of the circumference; a = 0 points toward +Z, so
+// PI/2..3PI/2 keeps just the back (-Z) half of the tube
+function taperedTube(pointAt, radiusAt, segs, radial, a0 = 0, a1 = Math.PI * 2) {
   const pos = [], nor = [], idx = [];
   const up = new THREE.Vector3(0, 1, 0);
   const T = new THREE.Vector3(), N = new THREE.Vector3(), B = new THREE.Vector3();
@@ -272,7 +283,7 @@ function taperedTube(pointAt, radiusAt, segs, radial) {
     const r = radiusAt(u);
 
     for (let j = 0; j <= radial; j++) {
-      const a = j / radial * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a);
+      const a = a0 + (a1 - a0) * j / radial, ca = Math.cos(a), sa = Math.sin(a);
       const nx = N.x * ca + B.x * sa, ny = N.y * ca + B.y * sa, nz = N.z * ca + B.z * sa;
       pos.push(p.x + nx * r, p.y + ny * r, p.z + nz * r);
       nor.push(nx, ny, nz);
@@ -325,8 +336,10 @@ class RootHairCell {
       P.hairWave * 0.65 * u * Math.cos(ang * 0.8)
     );
   }
-  hairOuter(u) { return P.hairRadius * (1 - (1 - P.hairTaper) * u); }
-  hairInner(u) { return Math.max(this.hairOuter(u) - P.wallThickness * 0.6, 0.02); }
+  // the lumen is fixed by the hair radius; wall thickness only adds outward
+  // floor keeps room for the vacuole extension; only widens the hair when it would otherwise be too thin
+  hairInner(u) { return Math.max(P.hairRadius * (1 - (1 - P.hairTaper) * u) - WALL_INSET * 0.6, 0.09); }
+  hairOuter(u) { return this.hairInner(u) + P.wallThickness * 0.6; }
 
   /* ---------------- body: wall, membrane, vacuole, nucleus, mitochondria ---------------- */
   _buildBody() {
@@ -335,17 +348,17 @@ class RootHairCell {
     // neighbouring epidermal cell with no hair, on the side away from the hair
     if (P.neighbourCell > 0.5) {
       const g = new THREE.Group();
-      g.position.x = -(P.bodyLength + P.cellGap);
+      g.position.x = -(P.bodyLength + wallGrowth() * 2 + P.cellGap);
       this.group.add(g);
       this._buildCellBody(g, rng(31337), false);
     }
   }
 
   _buildCellBody(parent, r, main) {
-    const L = P.bodyLength, H = P.bodyHeight, D = P.bodyDepth, w = P.wallThickness;
+    const L = P.bodyLength, H = P.bodyHeight, D = P.bodyDepth, w = WALL_INSET, g = wallGrowth();
 
-    // cellulose cell wall — a rigid rounded brick
-    const wall = new THREE.Mesh(roundedBoxGeometry(L, H, D, P.bodyRound), wallMat);
+    // cellulose cell wall — a rigid rounded brick, thickening outward
+    const wall = new THREE.Mesh(roundedBoxGeometry(L + g * 2, H + g * 2, D + g * 2, P.bodyRound), wallMat);
     parent.add(wall);
 
     // plasma membrane — partially permeable, just inside the wall
@@ -404,18 +417,54 @@ class RootHairCell {
     const segs = Math.round(P.hairSegments), sides = Math.round(P.hairSides);
     const pt = u => this.hairPoint(u);
 
+    // A flat clipping plane can't follow the hair's bends, so in section view
+    // the hair wall is built as a half-tube around its own centreline instead.
     const outerMat = wallMat.clone();
     outerMat.opacity = P.hairOpacity;
-    const outer = new THREE.Mesh(taperedTube(pt, u => this.hairOuter(u), segs, sides), outerMat);
+    outerMat.clippingPlanes = [];
+    const [a0, a1] = sectioned ? [Math.PI / 2, Math.PI * 1.5] : [0, Math.PI * 2];
+    const outerSides = sectioned ? Math.max(3, Math.ceil(sides / 2)) : sides;
+    const outer = new THREE.Mesh(taperedTube(pt, u => this.hairOuter(u), segs, outerSides, a0, a1), outerMat);
     this.group.add(outer);
 
     const inner = new THREE.Mesh(taperedTube(pt, u => this.hairInner(u), segs, Math.max(5, sides - 2)), cytoMat);
     this.group.add(inner);
 
-    // rounded tip so the hair does not end on an open ring
-    const tip = new THREE.Mesh(new THREE.SphereGeometry(this.hairOuter(1), 14, 10), outerMat);
+    // rounded tip so the hair does not end on an open ring (back half only when sectioned)
+    const tipGeo = sectioned
+      ? new THREE.SphereGeometry(this.hairOuter(1), 14, 10, Math.PI, Math.PI)
+      : new THREE.SphereGeometry(this.hairOuter(1), 14, 10);
+    const tip = new THREE.Mesh(tipGeo, outerMat);
     tip.position.copy(this.hairPoint(1));
     this.group.add(tip);
+
+    this._buildHairVacuole(segs, sides);
+  }
+
+  /* the permanent vacuole runs on out of the cell body and along the hair,
+     leaving a thin layer of cytoplasm between it and the hair wall */
+  _buildHairVacuole(segs, sides) {
+    if (P.vacuoleReach < 0.01) return;
+    const L = P.bodyLength;
+    const vacHalf = L * 0.5 * P.vacuoleFill;
+    const startX = -L * 0.06 + vacHalf * 0.7;          // begins inside the main vacuole
+    const base = this.hairPoint(0);
+    const bodyLen = Math.max(base.x - startX, 0.01);
+    const hairLen = P.hairLength * P.vacuoleReach;
+    const split = bodyLen / (bodyLen + hairLen);
+
+    const uAt = s => s < split ? 0 : (s - split) / (1 - split) * P.vacuoleReach;
+    const pointAt = s => s < split
+      ? new THREE.Vector3(THREE.MathUtils.lerp(startX, base.x, s / split), base.y, base.z)
+      : this.hairPoint(uAt(s));
+    const radiusAt = s => this.hairInner(uAt(s)) * P.hairVacuoleWidth;
+
+    const tube = new THREE.Mesh(taperedTube(pointAt, radiusAt, segs, Math.max(6, sides - 2)), vacuoleMat);
+    this.group.add(tube);
+
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(radiusAt(1), 12, 9), vacuoleMat);
+    cap.position.copy(pointAt(1));
+    this.group.add(cap);
   }
 
   /* ---------------- uptake particles ---------------- */
@@ -460,7 +509,7 @@ class RootHairCell {
       const rad = this.hairOuter(u) + 0.15 + r() * P.soilSpread;
       m.position.set(base.x + (r() * 2 - 1) * 0.6, base.y + Math.sin(ang) * rad, base.z + Math.cos(ang) * rad);
       // keep soil water out of the cell bodies
-      if (m.position.x < P.bodyLength / 2 + 0.15) continue;
+      if (m.position.x < P.bodyLength / 2 + wallGrowth() + 0.15) continue;
       this.group.add(m);
       this.soil.push({ mesh: m, home: m.position.clone(), ph: r() * Math.PI * 2, sp: 0.4 + r() * 1.2 });
     }
@@ -655,7 +704,7 @@ const camTarget = new THREE.Vector3();
 function updateCamera() {
   // frame the whole cell, hair included, rather than just the body
   const mid = (P.bodyLength / 2 + P.hairLength * 0.45) * P.cellScale * 0.55;
-  const shift = P.neighbourCell > 0.5 ? (P.bodyLength + P.cellGap) * 0.35 * P.cellScale : 0;
+  const shift = P.neighbourCell > 0.5 ? (P.bodyLength + wallGrowth() * 2 + P.cellGap) * 0.35 * P.cellScale : 0;
   camTarget.set(mid - shift, 0, 0);
   camera.position.set(
     camTarget.x + camDist * Math.sin(phiAngle) * Math.sin(theta),
