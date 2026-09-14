@@ -51,6 +51,37 @@
     padding:8px 18px; cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,0.45);
   }
   #viewToggle:hover { background:#1c3625; border-color:#8fd694; }
+
+  /* ---- osmosis vs active transport tour ---- */
+  #tourStart {
+    display:block; width:100%; margin-top:12px; padding:8px 0;
+    background:#1c3625 !important; border:1px solid #8fd694 !important; color:#e4f4e6 !important;
+    border-radius:4px; font-family:inherit; font-size:12px; cursor:pointer;
+  }
+  #tourStart:hover { background:#24462f !important; }
+  #tourCard {
+    position:absolute; left:16px; top:84px; width:320px; max-height:calc(100vh - 130px);
+    overflow-y:auto; box-sizing:border-box; background:rgba(8,18,12,0.92); border:1px solid #2b4a34;
+    border-left:3px solid #63c8f0; border-radius:6px; padding:12px 14px;
+    font-family:'Courier New', monospace; color:#a8c4ae; z-index:6;
+  }
+  #tourCard[hidden] { display:none; }
+  #tourCard .hd { display:flex; justify-content:space-between; font-size:10px; letter-spacing:1.5px; color:#8fd694; }
+  #tourCard h3 { margin:8px 0 6px; font-size:14px; color:#e4f4e6; line-height:1.3; }
+  #tourCard p { margin:0 0 6px; font-size:12px; line-height:1.55; }
+  #tourCard b { color:#e4f4e6; }
+  #tourCard .w { color:#63c8f0; font-weight:bold; }
+  #tourCard .i { color:#f2c141; font-weight:bold; }
+  #tourCard table { width:100%; border-collapse:collapse; font-size:11px; margin-top:4px; }
+  #tourCard th, #tourCard td { border-top:1px solid #24402c; padding:4px 3px; text-align:left; vertical-align:top; }
+  #tourCard th { color:#e4f4e6; }
+  #tourCard .nav { display:flex; gap:6px; margin-top:10px; }
+  #tourCard button {
+    flex:1; background:transparent; color:#e4f4e6; border:1px solid #2b4a34;
+    border-radius:4px; font-family:inherit; font-size:12px; padding:6px 0; cursor:pointer;
+  }
+  #tourCard button:hover { border-color:#8fd694; color:#8fd694; }
+  #tourSvg { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:5; }
   #dump {
     width:100%; box-sizing:border-box; margin-top:8px; height:96px; resize:vertical;
     background:#0b160f; color:#8ec99a; border:1px solid #24402c; border-radius:4px;
@@ -113,6 +144,7 @@ const P = {
   hairSegments:     90,
   hairSides:        14,
   hairOpacity:      0.55,
+  hairTipLength:    0.90,   // length of the pointed end
   vacuoleReach:     0.85,   // how far along the hair the vacuole extends
   hairVacuoleWidth: 0.62,   // vacuole radius / hair lumen radius
 
@@ -123,6 +155,7 @@ const P = {
   ionCount:         30,     // mineral ions entering by active transport
   ionSpeed:         0.095,
   ionSize:          0.080,
+  ionFlash:         1,      // 0/1 — flash where an ion is actively pumped in
   soilCount:        70,     // soil water outside the hair, for context
   soilSpread:       1.9,
   soilDrift:        0.12
@@ -161,6 +194,7 @@ const CONTROLS = [
   ['hairSegments',    'smoothness',          12,   200,  2   ],
   ['hairSides',       'tube sides',          5,    28,   1   ],
   ['hairOpacity',     'hair wall opacity',   0.03, 1.00, 0.01],
+  ['hairTipLength',   'tip point length',    0.05, 3.00, 0.05],
   ['vacuoleReach',    'vacuole reach',       0.00, 0.97, 0.01],
   ['hairVacuoleWidth','vacuole width',       0.20, 0.90, 0.01],
   ['UPTAKE'],
@@ -170,6 +204,7 @@ const CONTROLS = [
   ['ionCount',        'mineral ions',        0,    150,  1   ],
   ['ionSpeed',        'ion speed',           0.00, 0.80, 0.005],
   ['ionSize',         'ion size',            0.01, 0.25, 0.005],
+  ['ionFlash',        'pump flash (0/1)',    0,    1,    1   ],
   ['soilCount',       'soil water',          0,    300,  5   ],
   ['soilSpread',      'soil spread',         0.5,  5.0,  0.05],
   ['soilDrift',       'soil drift',          0.00, 0.80, 0.01],
@@ -235,6 +270,13 @@ function rng(seed) {
   let s = seed >>> 0;
   return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
 }
+
+// stage boundaries along each particle's journey (fractions of s, 0 -> 1):
+// arrive at the membrane, get pumped (ions), be inside the lumen, reach the hair base
+const ROUTE = {
+  water: { arrive: 0.18, pump: 0.18, inside: 0.18, base: 0.78 },
+  ion:   { arrive: 0.12, pump: 0.20, inside: 0.215, base: 0.78 }
+};
 
 // the contents are sized as if the wall were WALL_INSET thick; any extra
 // thickness is added outside, so the membrane and everything in it keep their size
@@ -430,13 +472,19 @@ class RootHairCell {
     const inner = new THREE.Mesh(taperedTube(pt, u => this.hairInner(u), segs, Math.max(5, sides - 2)), cytoMat);
     this.group.add(inner);
 
-    // rounded tip so the hair does not end on an open ring (back half only when sectioned)
-    const tipGeo = sectioned
-      ? new THREE.SphereGeometry(this.hairOuter(1), 14, 10, Math.PI, Math.PI)
-      : new THREE.SphereGeometry(this.hairOuter(1), 14, 10);
-    const tip = new THREE.Mesh(tipGeo, outerMat);
-    tip.position.copy(this.hairPoint(1));
-    this.group.add(tip);
+    // pointed tip: the hair carries on along its end direction and narrows to
+    // nothing, swept with the same frame so it joins the tube seamlessly
+    const end = this.hairPoint(1);
+    const dir = end.clone().sub(this.hairPoint(0.995)).normalize();
+    const tipAt = len => s => end.clone().addScaledVector(dir, s * len);
+    const tipSegs = 14;
+    const tipLen = P.hairTipLength;
+    const outerTip = taperedTube(tipAt(tipLen), s => this.hairOuter(1) * Math.pow(1 - s, 0.85),
+                                 tipSegs, outerSides, a0, a1);
+    this.group.add(new THREE.Mesh(outerTip, outerMat));
+    const innerTip = taperedTube(tipAt(tipLen * 0.8), s => this.hairInner(1) * Math.pow(1 - s, 0.85),
+                                 tipSegs, Math.max(5, sides - 2));
+    this.group.add(new THREE.Mesh(innerTip, cytoMat));
 
     this._buildHairVacuole(segs, sides);
   }
@@ -471,9 +519,10 @@ class RootHairCell {
   _buildParticles() {
     const r = rng(991);
 
-    // water and mineral ions travel the same route: in through the hair
-    // surface, along the lumen, then out into the cell and the vacuole
-    const makeStream = (count, size, mat, speed) => {
+    // water and mineral ions both start out in the soil, cross into the hair,
+    // run along the lumen, then out into the cell body and the vacuole —
+    // but they cross the membrane differently (see _route)
+    const makeStream = (count, size, mat, speed, kind) => {
       const list = [];
       const geo = new THREE.SphereGeometry(size, 7, 6);
       for (let i = 0; i < count; i++) {
@@ -481,10 +530,13 @@ class RootHairCell {
         this.group.add(m);
         list.push({
           mesh: m,
+          kind,
+          size,
           s:      r(),                       // progress 0 -> 1 along the route
-          entry:  0.12 + r() * 0.88,         // where on the hair it crosses the membrane
-          ang:    r() * Math.PI * 2,         // radial offset inside the lumen
-          rad:    r() * 0.8,
+          entry:  0.12 + r() * 0.80,         // where on the hair it crosses the membrane
+          ang:    r() * Math.PI * 2,         // direction it arrives from, around the hair
+          rad:    r() * 0.8,                 // radial offset inside the lumen
+          far:    0.6 + r() * 0.9,           // how far out in the soil it starts
           rate:   speed * (0.7 + r() * 0.6),
           target: new THREE.Vector3(
             (r() * 2 - 1) * P.bodyLength * 0.30,
@@ -495,8 +547,12 @@ class RootHairCell {
       return list;
     };
 
-    this.water = makeStream(Math.round(P.waterCount), P.waterSize, waterMat, P.waterSpeed);
-    this.ions  = makeStream(Math.round(P.ionCount),  P.ionSize,  ionMat,   P.ionSpeed);
+    this.water = makeStream(Math.round(P.waterCount), P.waterSize, waterMat, P.waterSpeed, 'water');
+    this.ions  = makeStream(Math.round(P.ionCount),  P.ionSize,  ionMat,   P.ionSpeed,   'ion');
+
+    // flashes marking each ion pumped across the membrane, reused from a pool
+    this.flashes = [];
+    this.flashGeo = new THREE.SphereGeometry(1, 12, 9);
 
     // free soil water sitting around the hair, drifting slowly
     this.soil = [];
@@ -515,23 +571,57 @@ class RootHairCell {
     }
   }
 
-  /* route a particle: along the hair lumen from its entry point to the
-     base (0 -> 0.72 of the journey), then across into the cell interior */
+  /* Route a particle along its journey, s = 0 -> 1:
+       soil approach -> membrane crossing -> along the lumen -> into the cell.
+     WATER (osmosis) is passive: it glides straight through the wall and
+     membrane without stopping.
+     IONS (active transport) pass the freely permeable wall, then wait at the
+     membrane for a carrier protein, and are pumped in with a burst of energy
+     (the flash fires at ROUTE.pump). */
   _route(p, out) {
-    if (p.s < 0.72) {
-      const u = p.entry * (1 - p.s / 0.72);
+    const R = ROUTE[p.kind];
+    const dirY = Math.sin(p.ang), dirZ = Math.cos(p.ang);
+    const c0 = this.hairPoint(p.entry);
+    const lumenR = this.hairInner(p.entry) * p.rad;
+
+    if (p.s < R.arrive) {
+      // soil -> membrane (ions) or straight on into the lumen (water)
+      const k = p.s / R.arrive;
+      const startR = this.hairOuter(p.entry) + p.far;
+      const endR = p.kind === 'ion' ? this.hairInner(p.entry) + p.size : lumenR;
+      const rr = THREE.MathUtils.lerp(startR, endR, k);
+      out.set(c0.x, c0.y + dirY * rr, c0.z + dirZ * rr);
+    } else if (p.s < R.inside) {
+      // ions only: hold at the membrane, then snap through once pumped
+      const memR = this.hairInner(p.entry) + p.size;
+      let rr = memR;
+      if (p.s >= R.pump) rr = THREE.MathUtils.lerp(memR, lumenR, (p.s - R.pump) / (R.inside - R.pump));
+      else rr += Math.sin(p.s * 900) * p.size * 0.15;   // jostling while it waits
+      out.set(c0.x, c0.y + dirY * rr, c0.z + dirZ * rr);
+    } else if (p.s < R.base) {
+      const u = p.entry * (1 - (p.s - R.inside) / (R.base - R.inside));
       const c = this.hairPoint(u);
       const rr = this.hairInner(u) * p.rad;
-      out.set(c.x, c.y + Math.sin(p.ang) * rr, c.z + Math.cos(p.ang) * rr);
+      out.set(c.x, c.y + dirY * rr, c.z + dirZ * rr);
     } else {
-      const k = (p.s - 0.72) / 0.28;
-      const c = this.hairPoint(0);
-      out.set(
-        THREE.MathUtils.lerp(c.x, p.target.x, k),
-        THREE.MathUtils.lerp(c.y, p.target.y, k),
-        THREE.MathUtils.lerp(c.z, p.target.z, k)
-      );
+      const k = (p.s - R.base) / (1 - R.base);
+      out.copy(this.hairPoint(0)).lerp(p.target, k);
     }
+  }
+
+  _spawnFlash(pos) {
+    let f = this.flashes.find(x => !x.mesh.visible);
+    if (!f) {
+      if (this.flashes.length >= 24) return;
+      const mat = new THREE.MeshBasicMaterial({ color:0xfff0a0, transparent:true, opacity:1,
+                                                blending:THREE.AdditiveBlending, depthWrite:false });
+      f = { mesh: new THREE.Mesh(this.flashGeo, mat), t: 0 };
+      this.group.add(f.mesh);
+      this.flashes.push(f);
+    }
+    f.t = 0;
+    f.mesh.position.copy(pos);
+    f.mesh.visible = true;
   }
 
   update(dt, t) {
@@ -540,11 +630,27 @@ class RootHairCell {
 
     for (const list of [this.water, this.ions]) {
       for (const p of list) {
+        const prev = p.s;
         p.s += dt * p.rate;
         if (p.s >= 1) { p.s -= 1; }
         this._route(p, tmp);
         p.mesh.position.copy(tmp);
+        // grow in out in the soil and shrink away inside the cell, so the loop doesn't pop
+        p.mesh.scale.setScalar(Math.min(1, p.s / 0.03, (1 - p.s) / 0.03));
+
+        if (p.kind === 'ion' && P.ionFlash > 0.5 && prev < ROUTE.ion.pump && p.s >= ROUTE.ion.pump) {
+          this._spawnFlash(tmp);
+        }
       }
+    }
+
+    for (const f of this.flashes) {
+      if (!f.mesh.visible) continue;
+      f.t += dt;
+      const k = f.t / 0.55;
+      if (k >= 1) { f.mesh.visible = false; continue; }
+      f.mesh.scale.setScalar(P.ionSize * (1.2 + 4.5 * k));
+      f.mesh.material.opacity = Math.pow(1 - k, 1.6);
     }
 
     for (const s of this.soil) {
@@ -700,12 +806,34 @@ let isDragging = false, prevX = 0, prevY = 0;
 let theta = 0.75, phiAngle = 1.20, camDist = 15;
 let autoOrbit = true;
 const camTarget = new THREE.Vector3();
+const camGoal = new THREE.Vector3();
+let camPlaced = false;
+
+// tour state lives here because the render loop reads it from the first frame;
+// the tour UI and its steps are set up at the end of the script
+const tour = { active:false, step:0, userOrbit:false, userZoom:false, tracked:null };
+let TOUR_STEPS = [];
+
+const wrapAngle = a => ((a + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
 
 function updateCamera() {
-  // frame the whole cell, hair included, rather than just the body
-  const mid = (P.bodyLength / 2 + P.hairLength * 0.45) * P.cellScale * 0.55;
-  const shift = P.neighbourCell > 0.5 ? (P.bodyLength + wallGrowth() * 2 + P.cellGap) * 0.35 * P.cellScale : 0;
-  camTarget.set(mid - shift, 0, 0);
+  if (tour.active) {
+    // ease toward the step's framing; a drag or scroll hands that axis back to the user
+    const st = TOUR_STEPS[tour.step];
+    camGoal.copy(st.target());
+    if (!tour.userZoom) camDist += (st.dist - camDist) * 0.04;
+    if (!tour.userOrbit) {
+      theta += wrapAngle(st.theta - theta) * 0.04;
+      phiAngle += (st.phi - phiAngle) * 0.04;
+    }
+  } else {
+    // frame the whole cell, hair included, rather than just the body
+    const mid = (P.bodyLength / 2 + P.hairLength * 0.45) * P.cellScale * 0.55;
+    const shift = P.neighbourCell > 0.5 ? (P.bodyLength + wallGrowth() * 2 + P.cellGap) * 0.35 * P.cellScale : 0;
+    camGoal.set(mid - shift, 0, 0);
+  }
+  if (!camPlaced) { camTarget.copy(camGoal); camPlaced = true; }
+  camTarget.lerp(camGoal, tour.active ? 0.05 : 0.12);
   camera.position.set(
     camTarget.x + camDist * Math.sin(phiAngle) * Math.sin(theta),
     camTarget.y + camDist * Math.cos(phiAngle),
@@ -714,7 +842,7 @@ function updateCamera() {
   camera.lookAt(camTarget);
 }
 
-renderer.domElement.addEventListener('mousedown', (e) => { isDragging = true; autoOrbit = false; prevX = e.clientX; prevY = e.clientY; });
+renderer.domElement.addEventListener('mousedown', (e) => { isDragging = true; autoOrbit = false; tour.userOrbit = true; prevX = e.clientX; prevY = e.clientY; });
 window.addEventListener('mouseup', () => isDragging = false);
 window.addEventListener('mousemove', (e) => {
   if (!isDragging) return;
@@ -724,11 +852,12 @@ window.addEventListener('mousemove', (e) => {
   prevX = e.clientX; prevY = e.clientY;
 });
 renderer.domElement.addEventListener('wheel', (e) => {
+  tour.userZoom = true;
   camDist = THREE.MathUtils.clamp(camDist + e.deltaY * 0.015, 3, 45);
 });
 
 let lastTouch = null;
-renderer.domElement.addEventListener('touchstart', (e) => { lastTouch = e.touches[0]; autoOrbit = false; });
+renderer.domElement.addEventListener('touchstart', (e) => { lastTouch = e.touches[0]; autoOrbit = false; tour.userOrbit = true; });
 renderer.domElement.addEventListener('touchmove', (e) => {
   if (!lastTouch) return;
   const t = e.touches[0];
@@ -748,9 +877,10 @@ function animate() {
   const dt = Math.min(clock.getDelta(), 0.05);
   const t = clock.elapsedTime;
 
-  cell.update(dt, t);
+  // close-up tour steps slow the particles down so each crossing can be followed
+  cell.update(dt * (tour.active ? TOUR_STEPS[tour.step].speed : 1), t);
 
-  if (autoOrbit) theta += 0.0012;
+  if (autoOrbit && !tour.active) theta += 0.0012;
   updateCamera();
 
   renderer.render(scene, camera);
@@ -762,7 +892,7 @@ animate();
    carried into world space by its group
    ============================================================ */
 const rootPoint = (x, y, z) => cell.group.localToWorld(new THREE.Vector3(x, y, z));
-CellAdaptations.init({
+const adaptations = CellAdaptations.init({
   camera,
   heading: 'ROOT HAIR CELL ADAPTATIONS',
   theme: { accent:'#8fd694', text:'#a8c4ae', bright:'#e4f4e6', bg:'rgba(8,18,12,0.9)', border:'#2b4a34' },
@@ -813,6 +943,188 @@ CellAdaptations.init({
     }
   ]
 });
+
+/* ============================================================
+   TOUR — OSMOSIS vs ACTIVE TRANSPORT
+   Moves the camera in on the hair and steps through annotated
+   cards. The stream being discussed stays bright while the other
+   is dimmed, and a leader line follows a particle that is
+   crossing the membrane right now.
+   ============================================================ */
+const hairWorld = (u, lift = 0) => {
+  const p = cell.hairPoint(u);
+  return cell.group.localToWorld(new THREE.Vector3(p.x, p.y + lift, p.z));
+};
+
+// follow one particle through a stage of its route; stick with it until it moves on
+function trackParticle(list, lo, hi) {
+  const ok = p => p.s >= lo && p.s < hi && Math.cos(p.ang) > 0.3 && p.entry > 0.35 && p.entry < 0.85;
+  if (!tour.tracked || !list.includes(tour.tracked) || !ok(tour.tracked)) {
+    tour.tracked = list.find(p => ok(p) && p.s < hi - 0.03) || null;
+  }
+  return tour.tracked ? cell.group.localToWorld(tour.tracked.mesh.position.clone()) : null;
+}
+
+TOUR_STEPS = [
+  {
+    title: 'Two ways into the root hair',
+    text: 'Both <span class="w">water</span> and <span class="i">mineral ions</span> come in from the soil through the root hair &mdash; but they cross the cell membrane in <b>completely different ways</b>. Watch how each one gets in.',
+    focus: 'both', speed: 1, dist: 12, theta: 0.12, phi: 1.30,
+    target: () => hairWorld(0.45),
+    anchor: () => hairWorld(0.55, cell.hairOuter(0.55))
+  },
+  {
+    title: 'Water: osmosis',
+    text: 'The soil water is a <b>dilute solution</b>; the cell sap inside is <b>concentrated</b>. Water moves from the dilute solution to the concentrated one, through the <b>partially permeable membrane</b>. This is <b>osmosis</b>.<br><br>It is <b>passive</b>: no energy is needed, so the <span class="w">water</span> glides straight in without stopping.',
+    focus: 'water', speed: 0.45, dist: 4.2, theta: 0.10, phi: 1.35,
+    target: () => hairWorld(0.6),
+    anchor: () => trackParticle(cell.water, 0.06, ROUTE.water.arrive + 0.04)
+  },
+  {
+    title: 'Mineral ions: active transport',
+    text: 'The cell already holds <b>more mineral ions</b> than the soil, so ions have to be moved <b>against their concentration gradient</b>.<br><br>Each <span class="i">ion</span> passes the wall, <b>waits at the membrane</b> for a <b>carrier protein</b>, then is pumped in using energy from respiration. <b>Each flash is one ion being pumped.</b>',
+    focus: 'ions', speed: 0.45, dist: 4.0, theta: 0.10, phi: 1.35,
+    target: () => hairWorld(0.6),
+    anchor: () => trackParticle(cell.ions, ROUTE.ion.arrive - 0.01, ROUTE.ion.inside)
+  },
+  {
+    title: 'Why not just diffusion?',
+    text: '<b>Diffusion</b> only moves particles from a <b>higher</b> concentration to a <b>lower</b> one, and needs no energy. Because there are already more ions inside the cell than in the soil, diffusion would carry ions <b>out</b>, not in.<br><br><b>Osmosis</b> is a special case of diffusion &mdash; the movement of <b>water</b> across a partially permeable membrane &mdash; so it is passive too. Only <b>active transport</b> can take ions in against the gradient.',
+    focus: 'ions', speed: 0.6, dist: 5.2, theta: -0.15, phi: 1.30,
+    target: () => hairWorld(0.6),
+    anchor: () => trackParticle(cell.ions, ROUTE.ion.arrive - 0.01, ROUTE.ion.inside)
+  },
+  {
+    title: 'The energy comes from mitochondria',
+    text: 'Active transport needs <b>energy</b>. Root hair cells contain <b>many mitochondria</b>, where <b>aerobic respiration</b> releases the energy the carrier proteins use to pump ions in. Osmosis does not use any of it.',
+    focus: 'both', speed: 1, dist: 5.5, theta: 0.35, phi: 1.25,
+    target: () => {
+      const m = cell.mitos[Math.floor(cell.mitos.length * 0.3)];
+      return m ? cell.group.localToWorld(m.position.clone()) : hairWorld(0);
+    },
+    anchor: () => {
+      const m = cell.mitos[Math.floor(cell.mitos.length * 0.3)];
+      return m ? cell.group.localToWorld(m.position.clone()) : null;
+    }
+  },
+  {
+    title: 'Summary',
+    text: '<table>' +
+      '<tr><th></th><th class="w">Osmosis</th><th class="i">Active transport</th></tr>' +
+      '<tr><td>What moves</td><td>water</td><td>mineral ions</td></tr>' +
+      '<tr><td>Direction</td><td>dilute &rarr; concentrated solution</td><td>against the concentration gradient</td></tr>' +
+      '<tr><td>Energy</td><td>none (passive)</td><td>needed, from respiration</td></tr>' +
+      '<tr><td>Crosses via</td><td>partially permeable membrane</td><td>carrier proteins in the membrane</td></tr>' +
+      '</table>',
+    focus: 'both', speed: 1, dist: 12, theta: 0.12, phi: 1.30,
+    target: () => hairWorld(0.45),
+    anchor: null
+  }
+];
+
+const tourCard = document.createElement('div');
+tourCard.id = 'tourCard';
+tourCard.hidden = true;
+tourCard.innerHTML = `
+  <div class="hd"><span>OSMOSIS vs ACTIVE TRANSPORT</span><span id="tourCount"></span></div>
+  <h3 id="tourTitle"></h3>
+  <div id="tourText"></div>
+  <div class="nav">
+    <button id="tourPrev">&#9664; back</button>
+    <button id="tourNext">next &#9654;</button>
+    <button id="tourExit">exit</button>
+  </div>`;
+document.body.appendChild(tourCard);
+['mousedown', 'wheel', 'touchstart'].forEach(ev => tourCard.addEventListener(ev, e => e.stopPropagation()));
+
+const tourSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+tourSvg.id = 'tourSvg';
+tourSvg.innerHTML = `
+  <path id="tourLine" fill="none" stroke="#63c8f0" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.9"/>
+  <circle id="tourRing" r="9" fill="none" stroke="#63c8f0" stroke-width="1.5"/>`;
+tourSvg.style.display = 'none';
+document.body.appendChild(tourSvg);
+
+const tourStart = document.createElement('button');
+tourStart.id = 'tourStart';
+tourStart.textContent = '▶ tour: osmosis vs active transport';
+adaptations.box.appendChild(tourStart);
+
+function setFocus(mode) {
+  const dim = (mat, on) => {
+    mat.transparent = !on;
+    mat.opacity = on ? 1 : 0.12;
+    mat.needsUpdate = true;
+  };
+  dim(waterMat, mode !== 'ions');
+  dim(ionMat, mode !== 'water');
+}
+
+function tourShow(i) {
+  tour.step = (i + TOUR_STEPS.length) % TOUR_STEPS.length;
+  tour.userOrbit = tour.userZoom = false;
+  tour.tracked = null;
+  const st = TOUR_STEPS[tour.step];
+  document.getElementById('tourCount').textContent = `${tour.step + 1} / ${TOUR_STEPS.length}`;
+  document.getElementById('tourTitle').textContent = st.title;
+  document.getElementById('tourText').innerHTML = st.text;
+  document.getElementById('tourNext').innerHTML = tour.step === TOUR_STEPS.length - 1 ? 'finish' : 'next &#9654;';
+  tourCard.style.borderLeftColor = st.focus === 'ions' ? '#f2c141' : '#63c8f0';
+  const accent = st.focus === 'ions' ? '#f2c141' : '#63c8f0';
+  document.getElementById('tourLine').setAttribute('stroke', accent);
+  document.getElementById('tourRing').setAttribute('stroke', accent);
+  setFocus(st.focus);
+}
+
+function tourBegin() {
+  if (!sectioned) viewToggle.click();   // the tour needs to see inside the hair
+  tour.active = true;
+  autoOrbit = false;
+  adaptations.setPaused(true);
+  tourCard.hidden = false;
+  tourShow(0);
+}
+
+function tourEnd() {
+  tour.active = false;
+  tourCard.hidden = true;
+  tourSvg.style.display = 'none';
+  setFocus('both');
+  adaptations.setPaused(false);
+}
+
+tourStart.addEventListener('click', tourBegin);
+document.getElementById('tourPrev').addEventListener('click', () => tourShow(tour.step - 1));
+document.getElementById('tourNext').addEventListener('click', () => {
+  if (tour.step === TOUR_STEPS.length - 1) tourEnd(); else tourShow(tour.step + 1);
+});
+document.getElementById('tourExit').addEventListener('click', tourEnd);
+window.addEventListener('keydown', e => {
+  if (!tour.active || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'ArrowRight') document.getElementById('tourNext').click();
+  if (e.key === 'ArrowLeft' && tour.step > 0) tourShow(tour.step - 1);
+  if (e.key === 'Escape') tourEnd();
+});
+
+// leader line from the card to whatever the step is pointing at
+(function trackTour() {
+  requestAnimationFrame(trackTour);
+  if (!tour.active) return;
+  const st = TOUR_STEPS[tour.step];
+  const p = st.anchor ? st.anchor() : null;
+  if (!p) { tourSvg.style.display = 'none'; return; }
+  const v = p.project(camera);
+  if (v.z >= 1 || v.z <= -1) { tourSvg.style.display = 'none'; return; }
+  const x = (v.x + 1) / 2 * window.innerWidth;
+  const y = (1 - v.y) / 2 * window.innerHeight;
+  const cr = tourCard.getBoundingClientRect();
+  const tr = document.getElementById('tourTitle').getBoundingClientRect();
+  const sx = cr.right, sy = tr.top + tr.height / 2;
+  document.getElementById('tourLine').setAttribute('d', `M${sx},${sy} H${sx + 22} L${x},${y}`);
+  const ring = document.getElementById('tourRing');
+  ring.setAttribute('cx', x); ring.setAttribute('cy', y);
+  tourSvg.style.display = '';
+})();
 </script>
 </body>
 </html>

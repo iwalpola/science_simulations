@@ -9,6 +9,10 @@
      items: [{ title, text, anchor: () => THREE.Vector3 | null }]
    })
    anchor returns a WORLD-space point, or null for "not shown".
+
+   Returns { box, setPaused } — box is the card element (pages can
+   append their own controls), setPaused(true) hides the card and
+   its leader line and ignores the arrow keys.
    ============================================================ */
 const CellAdaptations = (() => {
   function init(opts) {
@@ -78,7 +82,7 @@ const CellAdaptations = (() => {
       return d;
     });
 
-    let idx = 0;
+    let idx = 0, paused = false;
     function show(i) {
       idx = (i + items.length) % items.length;
       const it = items[idx];
@@ -91,7 +95,7 @@ const CellAdaptations = (() => {
     $('adaptPrev').addEventListener('click', () => show(idx - 1));
     $('adaptNext').addEventListener('click', () => show(idx + 1));
     window.addEventListener('keydown', e => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (paused || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
       if (e.key === 'ArrowLeft') show(idx - 1);
       if (e.key === 'ArrowRight') show(idx + 1);
     });
@@ -100,6 +104,7 @@ const CellAdaptations = (() => {
     // registered after the page's own render loop, so it reads this frame's matrices
     function track() {
       requestAnimationFrame(track);
+      if (paused) { svg.style.display = 'none'; return; }
       const it = items[idx];
       let p = null;
       try { p = it.anchor ? it.anchor() : null; } catch (err) { p = null; }
@@ -120,6 +125,11 @@ const CellAdaptations = (() => {
       svg.style.display = visible ? '' : 'none';
     }
     track();
+
+    return {
+      box,
+      setPaused(p) { paused = p; box.hidden = p; }
+    };
   }
   return { init };
 })();
