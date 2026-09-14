@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Phloem Sieve Tube — 3D Translocation Simulation</title>
+<style>
+  html, body { margin:0; padding:0; overflow:hidden; background:#100c05; height:100%; }
+  canvas { display:block; }
+  #info {
+    position:absolute; top:16px; left:16px; color:#c9b78f; font-family:'Courier New', monospace;
+    font-size:12px; letter-spacing:0.5px; line-height:1.6; pointer-events:none; user-select:none;
+    text-shadow:0 0 8px rgba(0,0,0,0.8);
+  }
+  #info b { color:#fbf3e0; }
+  #hud {
+    position:absolute; bottom:16px; left:16px; color:#6b5c3e; font-family:'Courier New', monospace;
+    font-size:11px; pointer-events:none; user-select:none;
+  }
+
+  /* ---- tuning panel ---- */
+  #panel {
+    position:absolute; top:16px; right:16px; width:268px; max-height:calc(100vh - 32px);
+    overflow-y:auto; background:rgba(18,13,6,0.88); border:1px solid #3a2d14; border-radius:6px;
+    font-family:'Courier New', monospace; font-size:11px; color:#c9b78f; padding:10px 12px 12px;
+    backdrop-filter:blur(4px);
+  }
+  #panel h2 {
+    margin:0 0 8px; font-size:11px; letter-spacing:1.5px; color:#fbf3e0; font-weight:bold;
+    display:flex; justify-content:space-between; align-items:center; cursor:pointer;
+  }
+  #panel.collapsed .body { display:none; }
+  #panel .grp {
+    margin:12px 0 4px; color:#f2b01e; letter-spacing:1px; border-bottom:1px solid #4a3a1c; padding-bottom:3px;
+  }
+  #panel label { display:block; margin:7px 0 0; }
+  #panel .row { display:flex; justify-content:space-between; }
+  #panel .val { color:#fbf3e0; }
+  #panel input[type=range] {
+    width:100%; margin:2px 0 0; height:14px; accent-color:#e0a52a; background:transparent;
+  }
+  #panel .btns { display:flex; gap:6px; margin-top:12px; }
+  #panel button {
+    flex:1; background:#2a2010; color:#dcc794; border:1px solid #4a3a1c; border-radius:4px;
+    font-family:inherit; font-size:11px; padding:5px 0; cursor:pointer;
+  }
+  #panel button:hover { background:#3a2c14; color:#fbf3e0; }
+  #dump {
+    width:100%; box-sizing:border-box; margin-top:8px; height:96px; resize:vertical;
+    background:#161006; color:#d0ab55; border:1px solid #4a3a1c; border-radius:4px;
+    font-family:inherit; font-size:10px; padding:5px;
+  }
+</style>
+</head>
+<body>
+<div id="info"><b>PHLOEM SIEVE TUBE</b><br>sieve plates / companion cell / translocation of sucrose (source &harr; sink)</div>
+<div id="hud">drag to orbit · scroll to zoom · &#9664; &#9654; to step adaptations</div>
+
+<div id="panel">
+  <h2 id="panelHead"><span>PARAMETERS</span><span id="caret">[&ndash;]</span></h2>
+  <div class="body" id="panelBody"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="adaptations.js"></script>
+<script>
+/* Fallback copy of the shared annotation library. adaptations.js is a sibling
+   file in the repo; when this page is opened on its own (or that file is
+   missing) the <script src> above fails silently and CellAdaptations would be
+   undefined, so the page is kept self-sufficient. If adaptations.js DID load,
+   its binding already exists and this block is skipped entirely. */
+if (typeof CellAdaptations === 'undefined') {
+window.CellAdaptations = (() => {
+  function init(opts) {
+    const { camera, items, heading = 'ADAPTATIONS' } = opts;
+    const th = Object.assign({
+      accent: '#f2b01e', text: '#b8c2ca', bright: '#eef3f6',
+      bg: 'rgba(12,12,16,0.9)', border: '#2a2f38'
+    }, opts.theme || {});
+
+    const css = document.createElement('style');
+    css.textContent = `
+      #adapt {
+        position:absolute; left:16px; top:84px; width:290px; max-height:calc(100vh - 130px);
+        overflow-y:auto; box-sizing:border-box; background:${th.bg}; border:1px solid ${th.border};
+        border-left:3px solid ${th.accent}; border-radius:6px; padding:12px 14px 12px;
+        font-family:'Courier New', monospace; color:${th.text}; backdrop-filter:blur(4px);
+        z-index:5;
+      }
+      #adapt .hd { display:flex; justify-content:space-between; font-size:10px; letter-spacing:1.5px; color:${th.accent}; }
+      #adapt h3 { margin:8px 0 6px; font-size:14px; color:${th.bright}; letter-spacing:0.5px; line-height:1.3; }
+      #adapt p { margin:0; font-size:12px; line-height:1.55; }
+      #adapt p b { color:${th.bright}; font-weight:bold; }
+      #adapt .ns { margin-top:6px; font-size:10px; font-style:italic; opacity:0.75; }
+      #adapt .nav { display:flex; gap:6px; margin-top:12px; }
+      #adapt button {
+        flex:1; background:transparent; color:${th.bright}; border:1px solid ${th.border};
+        border-radius:4px; font-family:inherit; font-size:12px; padding:6px 0; cursor:pointer;
+      }
+      #adapt button:hover { border-color:${th.accent}; color:${th.accent}; }
+      #adapt .dots { display:flex; gap:5px; justify-content:center; margin-top:10px; }
+      #adapt .dots span { width:7px; height:7px; border-radius:50%; background:${th.border}; cursor:pointer; }
+      #adapt .dots span.on { background:${th.accent}; }
+      #adaptSvg { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:4; }
+      #adaptSvg .pulse { transform-box:fill-box; transform-origin:center; animation:adaptPulse 1.6s ease-out infinite; }
+      @keyframes adaptPulse { from { transform:scale(1); opacity:0.9; } to { transform:scale(3.2); opacity:0; } }
+    `;
+    document.head.appendChild(css);
+
+    const box = document.createElement('div');
+    box.id = 'adapt';
+    box.innerHTML = `
+      <div class="hd"><span>${heading}</span><span id="adaptCount"></span></div>
+      <h3 id="adaptTitle"></h3>
+      <p id="adaptText"></p>
+      <div class="ns" id="adaptNote" hidden>not shown on this model</div>
+      <div class="nav"><button id="adaptPrev">&#9664; previous</button><button id="adaptNext">next &#9654;</button></div>
+      <div class="dots" id="adaptDots"></div>`;
+    document.body.appendChild(box);
+    ['mousedown', 'wheel', 'touchstart'].forEach(ev => box.addEventListener(ev, e => e.stopPropagation()));
+
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.id = 'adaptSvg';
+    svg.innerHTML = `
+      <path id="adaptLine" fill="none" stroke="${th.accent}" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.85"/>
+      <circle id="adaptRing" class="pulse" r="6" fill="none" stroke="${th.accent}" stroke-width="1.5"/>
+      <circle id="adaptDot" r="4" fill="${th.accent}" stroke="#000" stroke-width="1"/>`;
+    document.body.appendChild(svg);
+
+    const $ = id => document.getElementById(id);
+    const line = $('adaptLine'), ring = $('adaptRing'), dot = $('adaptDot');
+    const dots = items.map((_, i) => {
+      const d = document.createElement('span');
+      d.title = items[i].title;
+      d.addEventListener('click', () => show(i));
+      $('adaptDots').appendChild(d);
+      return d;
+    });
+
+    let idx = 0;
+    function show(i) {
+      idx = (i + items.length) % items.length;
+      const it = items[idx];
+      $('adaptCount').textContent = `${idx + 1} / ${items.length}`;
+      $('adaptTitle').textContent = it.title;
+      $('adaptText').innerHTML = it.text;
+      $('adaptNote').hidden = !!it.anchor;
+      dots.forEach((d, k) => d.classList.toggle('on', k === idx));
+    }
+    $('adaptPrev').addEventListener('click', () => show(idx - 1));
+    $('adaptNext').addEventListener('click', () => show(idx + 1));
+    window.addEventListener('keydown', e => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.key === 'ArrowLeft') show(idx - 1);
+      if (e.key === 'ArrowRight') show(idx + 1);
+    });
+    show(0);
+
+    // registered after the page's own render loop, so it reads this frame's matrices
+    function track() {
+      requestAnimationFrame(track);
+      const it = items[idx];
+      let p = null;
+      try { p = it.anchor ? it.anchor() : null; } catch (err) { p = null; }
+      let visible = false;
+      if (p) {
+        const v = p.clone().project(camera);
+        if (v.z < 1 && v.z > -1) {
+          const x = (v.x + 1) / 2 * window.innerWidth;
+          const y = (1 - v.y) / 2 * window.innerHeight;
+          const r = $('adaptTitle').getBoundingClientRect();
+          const sx = box.getBoundingClientRect().right, sy = r.top + r.height / 2;
+          line.setAttribute('d', `M${sx},${sy} H${sx + 22} L${x},${y}`);
+          dot.setAttribute('cx', x); dot.setAttribute('cy', y);
+          ring.setAttribute('cx', x); ring.setAttribute('cy', y);
+          visible = true;
+        }
+      }
+      svg.style.display = visible ? '' : 'none';
+    }
+    track();
+  }
+  return { init };
+})();
+}
+</script>
+<script>
+/* ============================================================
+   TUNABLE PARAMETERS — every slider writes here and rebuilds
+   the tissue. These values are the defaults.
+   ============================================================ */
+const P = {
+  cellScale:        1.0,
+
+  /* --- the sieve tube: a column of living sieve tube elements --- */
+  elements:         4,
+  elementLength:    3.2,
+  tubeRadius:       1.10,
+  wallThickness:    0.10,   // thin wall — these cells are alive, not lignified
+  wallOpacity:      0.24,
+  cytoLayer:        0.16,   // thin lining of cytoplasm pushed to the edges
+  cytoOpacity:      0.26,
+
+  /* --- sieve plates --- */
+  poreCount:        19,
+  poreRadius:       0.115,
+  plateOpacity:     0.80,
+  plateSpread:      0.80,   // how far out across the plate the pores reach
+
+  /* --- companion cell --- */
+  compRadius:       0.62,
+  compLength:       5.2,
+  compGap:          0.28,
+  compOpacity:      0.22,
+  compNucleus:      0.36,
+  compMito:         14,
+  compMitoSize:     0.115,
+  plasmodesmata:    7,
+  pdRadius:         0.065,
+
+  /* --- translocation --- */
+  sucroseCount:     170,
+  flowSpeed:        1.15,   // set to 0 to freeze the stream for inspection
+  sucroseSize:      0.075,
+  downFraction:     0.38,   // fraction travelling down — flow goes both ways
+  spread:           0.78,   // how much of the lumen the stream fills
+  funnel:           0.45,   // how sharply the stream converges into the pores
+  loadCount:        18,     // sucrose being pumped in from the companion cell
+  loadSpeed:        0.30,
+
+  /* --- view --- */
+  spin:             0.0
+};
+
+/* slider definitions: [key, label, min, max, step] — a 1-item row is a heading */
+const CONTROLS = [
+  ['SIEVE TUBE'],
+  ['elements',        'sieve elements',      1,    8,    1   ],
+  ['elementLength',   'element length',      1.0,  8.0,  0.1 ],
+  ['tubeRadius',      'radius',              0.3,  3.0,  0.05],
+  ['wallThickness',   'wall thickness',      0.02, 0.50, 0.01],
+  ['wallOpacity',     'wall opacity',        0.02, 1.00, 0.01],
+  ['cytoLayer',       'cytoplasm layer',     0.02, 0.60, 0.01],
+  ['cytoOpacity',     'cytoplasm opacity',   0.00, 1.00, 0.01],
+  ['SIEVE PLATES'],
+  ['poreCount',       'pores per plate',     1,    60,   1   ],
+  ['poreRadius',      'pore radius',         0.02, 0.30, 0.005],
+  ['plateOpacity',    'plate opacity',       0.05, 1.00, 0.01],
+  ['plateSpread',     'pore spread',         0.20, 0.95, 0.01],
+  ['COMPANION CELL'],
+  ['compRadius',      'radius',              0.15, 1.50, 0.01],
+  ['compLength',      'length',              1.0,  14.0, 0.1 ],
+  ['compGap',         'gap from tube',       0.00, 1.50, 0.01],
+  ['compOpacity',     'wall opacity',        0.02, 1.00, 0.01],
+  ['compNucleus',     'nucleus size',        0.05, 0.70, 0.01],
+  ['compMito',        'mitochondria',        0,    50,   1   ],
+  ['compMitoSize',    'mitochondrion size',  0.03, 0.30, 0.005],
+  ['plasmodesmata',   'plasmodesmata',       0,    20,   1   ],
+  ['pdRadius',        'plasmodesma radius',  0.01, 0.20, 0.005],
+  ['TRANSLOCATION'],
+  ['sucroseCount',    'sucrose particles',   0,    500,  5   ],
+  ['flowSpeed',       'flow speed',          0.00, 5.00, 0.05],
+  ['sucroseSize',     'particle size',       0.01, 0.25, 0.005],
+  ['downFraction',    'fraction flowing down',0.00,1.00, 0.01],
+  ['spread',          'stream width',        0.10, 1.00, 0.01],
+  ['funnel',          'funnel into pores',   0.05, 1.00, 0.01],
+  ['loadCount',       'loading particles',   0,    80,   1   ],
+  ['loadSpeed',       'loading speed',       0.00, 1.50, 0.01],
+  ['VIEW'],
+  ['cellScale',       'scale',               0.3,  2.5,  0.05],
+  ['spin',            'spin',                0.0,  2.0,  0.02]
+];
+
+/* ============================================================
+   SCENE / CAMERA / RENDERER
+   ============================================================ */
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x100c05, 0.012);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 500);
+
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+document.body.appendChild(renderer.domElement);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+/* ============================================================
+   LIGHTING
+   ============================================================ */
+scene.add(new THREE.AmbientLight(0x5a5040, 0.58));
+const key = new THREE.DirectionalLight(0xfff0d0, 0.72);
+key.position.set(7, 9, 6);
+scene.add(key);
+const rim = new THREE.PointLight(0xd89a2a, 0.48, 70);
+rim.position.set(-9, -3, -7);
+scene.add(rim);
+const fill = new THREE.PointLight(0x6aa87f, 0.22, 70);
+fill.position.set(6, -6, 6);
+scene.add(fill);
+
+/* ============================================================
+   MATERIALS
+   ============================================================ */
+const wallMat    = new THREE.MeshPhongMaterial({ color:0xd8c89a, shininess:12, specular:0x4a4030, transparent:true, opacity:0.24, side:THREE.DoubleSide, depthWrite:false });
+const cytoMat    = new THREE.MeshPhongMaterial({ color:0xb2c58a, shininess:10, specular:0x3a4430, transparent:true, opacity:0.26, side:THREE.DoubleSide, depthWrite:false });
+const plateMat   = new THREE.MeshPhongMaterial({ color:0xe0b055, shininess:26, specular:0x7a5a2c, transparent:true, opacity:0.80, side:THREE.DoubleSide, emissive:0x3a2708, emissiveIntensity:0.28 });
+const compMat    = new THREE.MeshPhongMaterial({ color:0xc9d89a, shininess:14, specular:0x40502e, transparent:true, opacity:0.22, side:THREE.DoubleSide, depthWrite:false });
+const nucleusMat = new THREE.MeshPhongMaterial({ color:0xb98fd1, shininess:10, specular:0x33254a });
+const mitoMat    = new THREE.MeshPhongMaterial({ color:0xe0714f, shininess:26, specular:0x66332a, emissive:0x3d1208, emissiveIntensity:0.42 });
+const pdMat      = new THREE.MeshPhongMaterial({ color:0x7fd8c0, shininess:26, specular:0x88ffee, emissive:0x0d4a3d, emissiveIntensity:0.42 });
+const sucroseMat = new THREE.MeshPhongMaterial({ color:0xf2c141, shininess:45, specular:0xffe9a0, emissive:0x4a3505, emissiveIntensity:0.58 });
+const loadMat    = new THREE.MeshPhongMaterial({ color:0xff9a3c, shininess:45, specular:0xffd0a0, emissive:0x4a2205, emissiveIntensity:0.60 });
+
+/* deterministic RNG so rebuilding keeps the organelles put */
+function rng(seed) {
+  let s = seed >>> 0;
+  return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+}
+
+/* ============================================================
+   PHLOEM SIEVE TUBE + COMPANION CELL
+   Local frame: the tube runs along +Y. Sieve plates sit at every
+   junction, and the sucrose stream funnels through their pores.
+   ============================================================ */
+class PhloemTube {
+  constructor(state = {}) {
+    this.group = new THREE.Group();
+    this.group.scale.setScalar(P.cellScale);
+    scene.add(this.group);
+
+    this.t = state.t || 0;
+    this.yaw = state.yaw || 0;
+
+    this.n = Math.max(1, Math.round(P.elements));
+    this.total = this.n * P.elementLength;
+    this.bottom = -this.total / 2;
+    this.top = this.total / 2;
+    this.lumen = Math.max(P.tubeRadius - P.wallThickness, 0.06);
+    this.compX = P.tubeRadius + P.compGap + P.compRadius;
+
+    this._pores();
+    this._buildTube();
+    this._buildPlates();
+    this._buildCompanion();
+    this._buildStream();
+  }
+
+  dispose() {
+    this.group.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+    scene.remove(this.group);
+  }
+
+  /* pore positions, shared by every plate and used as targets by the
+     particles. A Vogel (sunflower) spiral spaces them evenly. */
+  _pores() {
+    const n = Math.max(1, Math.round(P.poreCount));
+    const maxR = Math.max(this.lumen * P.plateSpread - P.poreRadius, 0);
+    this.pores = [];
+    for (let i = 0; i < n; i++) {
+      const r = n === 1 ? 0 : maxR * Math.sqrt(i / (n - 1));
+      const a = i * 2.399963;               // golden angle
+      this.pores.push(new THREE.Vector2(Math.cos(a) * r, Math.sin(a) * r));
+    }
+  }
+
+  /* y positions of the sieve plates: one at each junction and each end */
+  plateY(i) { return this.bottom + i * P.elementLength; }
+
+  /* ---------------- the tube wall and its thin cytoplasm lining ---------------- */
+  _buildTube() {
+    const R = P.tubeRadius, L = this.total;
+
+    this.group.add(new THREE.Mesh(
+      new THREE.CylinderGeometry(R, R, L, 38, 1, true), wallMat));
+
+    // sieve tube elements keep only a thin layer of cytoplasm around the
+    // edge — the middle is left clear for the sap to move through
+    if (P.cytoOpacity > 0.004) {
+      const ri = Math.max(this.lumen - P.cytoLayer, 0.04);
+      this.group.add(new THREE.Mesh(
+        new THREE.CylinderGeometry(this.lumen, this.lumen, L, 34, 1, true), cytoMat));
+      this.group.add(new THREE.Mesh(
+        new THREE.CylinderGeometry(ri, ri, L, 34, 1, true), cytoMat));
+    }
+  }
+
+  /* ---------------- sieve plates: real perforated discs ---------------- */
+  _buildPlates() {
+    // A Shape with circular holes gives a disc that genuinely has pores in
+    // it, so the sucrose can be seen passing through rather than over it.
+    const shape = new THREE.Shape();
+    shape.absarc(0, 0, this.lumen, 0, Math.PI * 2, false);
+    for (const p of this.pores) {
+      const h = new THREE.Path();
+      // shape-space y maps to -z after the rotation below
+      h.absarc(p.x, -p.y, P.poreRadius, 0, Math.PI * 2, true);
+      shape.holes.push(h);
+    }
+    const geo = new THREE.ShapeGeometry(shape, 40);
+    geo.rotateX(-Math.PI / 2);
+
+    this.plates = [];
+    for (let i = 0; i <= this.n; i++) {
+      const plate = new THREE.Mesh(geo.clone(), plateMat);
+      plate.position.y = this.plateY(i);
+      this.group.add(plate);
+      this.plates.push(plate);
+    }
+    geo.dispose();
+  }
+
+  /* ---------------- companion cell, plasmodesmata ---------------- */
+  _buildCompanion() {
+    const cr = P.compRadius, cl = Math.min(P.compLength, this.total);
+
+    const comp = new THREE.Mesh(
+      new THREE.CylinderGeometry(cr, cr, cl, 24, 1, false), compMat);
+    comp.position.set(this.compX, 0, 0);
+    this.group.add(comp);
+    this.companion = comp;
+
+    // nucleus — the companion cell has one, the sieve tube element does not
+    const nuc = new THREE.Mesh(new THREE.SphereGeometry(P.compNucleus, 18, 13), nucleusMat);
+    nuc.position.set(this.compX, cl * 0.24, 0);
+    this.group.add(nuc);
+    this.nucleus = nuc;
+
+    // dense mitochondria — this is where the ATP for loading sucrose comes from
+    this.mitos = [];
+    const r = rng(77001);
+    const n = Math.round(P.compMito);
+    for (let i = 0; i < n; i++) {
+      const g = new THREE.SphereGeometry(1, 10, 8);
+      g.scale(P.compMitoSize * 1.7, P.compMitoSize, P.compMitoSize);
+      const m = new THREE.Mesh(g, mitoMat);
+      const a = r() * Math.PI * 2, rad = (0.30 + r() * 0.52) * cr;
+      m.position.set(this.compX + Math.cos(a) * rad, (r() * 2 - 1) * cl * 0.44, Math.sin(a) * rad);
+      m.rotation.set(r() * 3, r() * 3, r() * 3);
+      this.group.add(m);
+      this.mitos.push(m);
+    }
+
+    // plasmodesmata — cytoplasm-filled channels linking the two cells
+    this.pds = [];
+    const pn = Math.round(P.plasmodesmata);
+    if (pn > 0 && P.pdRadius > 0.004) {
+      const gap = this.compX - cr - P.tubeRadius;
+      const len = Math.max(gap + P.wallThickness * 2, 0.05);
+      const g = new THREE.CylinderGeometry(P.pdRadius, P.pdRadius, len, 8);
+      g.rotateZ(Math.PI / 2);                       // lay the channel along X
+      for (let i = 0; i < pn; i++) {
+        const y = (pn === 1) ? 0 : (-0.45 + 0.9 * i / (pn - 1)) * cl;
+        const pd = new THREE.Mesh(g.clone(), pdMat);
+        pd.position.set(P.tubeRadius + gap / 2, y, 0);
+        this.group.add(pd);
+        this.pds.push(pd);
+      }
+      g.dispose();
+      this.pdLen = len;
+    }
+    this.compLen = cl;
+  }
+
+  /* ---------------- sucrose in transit ---------------- */
+  _buildStream() {
+    const r = rng(5150);
+
+    this.sucrose = [];
+    const geo = new THREE.SphereGeometry(P.sucroseSize, 7, 6);
+    const count = Math.round(P.sucroseCount);
+    for (let i = 0; i < count; i++) {
+      const m = new THREE.Mesh(geo, sucroseMat);
+      const a = r() * Math.PI * 2;
+      const rad = Math.sqrt(r()) * this.lumen * P.spread;
+      this.group.add(m);
+      this.sucrose.push({
+        mesh: m,
+        ang: a,
+        rad: rad,
+        y: this.bottom + r() * this.total,
+        dir: r() < P.downFraction ? -1 : 1,       // translocation runs both ways
+        pore: this.pores[Math.floor(r() * this.pores.length)],
+        rate: 0.8 + r() * 0.4
+      });
+    }
+
+    // sucrose being actively pumped in from the companion cell
+    this.loading = [];
+    const lgeo = new THREE.SphereGeometry(P.sucroseSize * 1.05, 7, 6);
+    const ln = Math.round(P.loadCount);
+    for (let i = 0; i < ln; i++) {
+      if (!this.pds.length) break;
+      const m = new THREE.Mesh(lgeo, loadMat);
+      this.group.add(m);
+      this.loading.push({
+        mesh: m,
+        s: r(),
+        pd: this.pds[Math.floor(r() * this.pds.length)],
+        start: new THREE.Vector3(
+          this.compX + (r() * 2 - 1) * P.compRadius * 0.5,
+          (r() * 2 - 1) * this.compLen * 0.42,
+          (r() * 2 - 1) * P.compRadius * 0.5),
+        end: new THREE.Vector3(
+          (r() * 2 - 1) * this.lumen * 0.5,
+          (r() * 2 - 1) * this.total * 0.3,
+          (r() * 2 - 1) * this.lumen * 0.5),
+        rate: P.loadSpeed * (0.7 + r() * 0.6)
+      });
+    }
+  }
+
+  /* how close this y is to a sieve plate, 0 (far) -> 1 (at the plate) */
+  _plateBlend(y) {
+    const e = P.elementLength;
+    const d = Math.abs(y - this.bottom - Math.round((y - this.bottom) / e) * e);
+    const k = THREE.MathUtils.clamp(1 - d / (e * 0.5 * P.funnel), 0, 1);
+    return k * k * (3 - 2 * k);      // smoothstep, so the funnelling eases in
+  }
+
+  update(dt, t) {
+    this.t = t;
+
+    for (const p of this.sucrose) {
+      p.y += dt * P.flowSpeed * p.rate * p.dir;
+      if (p.y > this.top)    p.y = this.bottom + (p.y - this.top);
+      if (p.y < this.bottom) p.y = this.top - (this.bottom - p.y);
+
+      // out in the open lumen the particle drifts freely; approaching a
+      // sieve plate it is funnelled toward one of the pores
+      const b = this._plateBlend(p.y);
+      const fx = Math.cos(p.ang) * p.rad, fz = Math.sin(p.ang) * p.rad;
+      p.mesh.position.set(
+        THREE.MathUtils.lerp(fx, p.pore.x, b),
+        p.y,
+        THREE.MathUtils.lerp(fz, p.pore.y, b)
+      );
+    }
+
+    for (const p of this.loading) {
+      p.s += dt * p.rate;
+      if (p.s >= 1) p.s -= 1;
+      const via = p.pd.position;
+      if (p.s < 0.5) {
+        const k = p.s / 0.5;
+        p.mesh.position.lerpVectors(p.start, via, k);
+      } else {
+        const k = (p.s - 0.5) / 0.5;
+        p.mesh.position.lerpVectors(via, p.end, k);
+      }
+    }
+
+    this.yaw += dt * P.spin;
+    this.group.rotation.y = this.yaw;
+  }
+}
+
+/* ============================================================
+   BUILD / REBUILD
+   ============================================================ */
+let cell = null;
+
+function build() {
+  const state = cell ? { t: cell.t, yaw: cell.yaw } : {};
+  if (cell) cell.dispose();
+
+  wallMat.opacity  = P.wallOpacity;
+  cytoMat.opacity  = P.cytoOpacity;
+  plateMat.opacity = P.plateOpacity;
+  compMat.opacity  = P.compOpacity;
+
+  cell = new PhloemTube(state);
+}
+
+/* ============================================================
+   CONTROL PANEL
+   ============================================================ */
+const panelBody = document.getElementById('panelBody');
+const readouts = {};
+
+for (const c of CONTROLS) {
+  if (c.length === 1) {
+    const h = document.createElement('div');
+    h.className = 'grp';
+    h.textContent = c[0];
+    panelBody.appendChild(h);
+    continue;
+  }
+  const [k, label, min, max, step] = c;
+  const wrap = document.createElement('label');
+  const row = document.createElement('div');
+  row.className = 'row';
+  const name = document.createElement('span');
+  name.textContent = label;
+  const val = document.createElement('span');
+  val.className = 'val';
+  val.textContent = P[k];
+  row.appendChild(name); row.appendChild(val);
+
+  const slider = document.createElement('input');
+  slider.type = 'range';
+  slider.min = min; slider.max = max; slider.step = step; slider.value = P[k];
+  slider.addEventListener('input', () => {
+    P[k] = parseFloat(slider.value);
+    val.textContent = slider.value;
+    build();
+    dumpValues();
+  });
+
+  wrap.appendChild(row); wrap.appendChild(slider);
+  panelBody.appendChild(wrap);
+  readouts[k] = { slider, val };
+}
+
+const btns = document.createElement('div');
+btns.className = 'btns';
+const resetBtn = document.createElement('button');
+resetBtn.textContent = 'reset';
+const copyBtn = document.createElement('button');
+copyBtn.textContent = 'copy values';
+btns.appendChild(resetBtn); btns.appendChild(copyBtn);
+panelBody.appendChild(btns);
+
+const dump = document.createElement('textarea');
+dump.id = 'dump';
+dump.readOnly = true;
+panelBody.appendChild(dump);
+
+const DEFAULTS = JSON.parse(JSON.stringify(P));
+function dumpValues() {
+  const changed = {};
+  for (const k in P) if (P[k] !== DEFAULTS[k]) changed[k] = P[k];
+  dump.value = Object.keys(changed).length
+    ? JSON.stringify(changed, null, 1)
+    : '(all defaults)';
+}
+dumpValues();
+
+resetBtn.addEventListener('click', () => {
+  Object.assign(P, DEFAULTS);
+  for (const k in readouts) {
+    readouts[k].slider.value = P[k];
+    readouts[k].val.textContent = P[k];
+  }
+  build();
+  dumpValues();
+});
+
+copyBtn.addEventListener('click', () => {
+  dump.select();
+  if (navigator.clipboard) navigator.clipboard.writeText(dump.value).catch(() => {});
+  copyBtn.textContent = 'copied!';
+  setTimeout(() => copyBtn.textContent = 'copy values', 900);
+});
+
+const panel = document.getElementById('panel');
+document.getElementById('panelHead').addEventListener('click', () => {
+  panel.classList.toggle('collapsed');
+  document.getElementById('caret').textContent = panel.classList.contains('collapsed') ? '[+]' : '[\u2013]';
+});
+panel.addEventListener('mousedown', e => e.stopPropagation());
+panel.addEventListener('wheel', e => e.stopPropagation());
+
+build();
+
+/* ============================================================
+   CAMERA CONTROLS
+   ============================================================ */
+let isDragging = false, prevX = 0, prevY = 0;
+let theta = 0.7, phiAngle = 1.40, camDist = 20;
+let autoOrbit = true;
+const camTarget = new THREE.Vector3();
+
+function updateCamera() {
+  camTarget.set(cell.compX * 0.35, 0, 0);
+  camera.position.set(
+    camTarget.x + camDist * Math.sin(phiAngle) * Math.sin(theta),
+    camTarget.y + camDist * Math.cos(phiAngle),
+    camTarget.z + camDist * Math.sin(phiAngle) * Math.cos(theta)
+  );
+  camera.lookAt(camTarget);
+}
+
+renderer.domElement.addEventListener('mousedown', (e) => { isDragging = true; autoOrbit = false; prevX = e.clientX; prevY = e.clientY; });
+window.addEventListener('mouseup', () => isDragging = false);
+window.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  const dx = e.clientX - prevX, dy = e.clientY - prevY;
+  theta -= dx * 0.006;
+  phiAngle = THREE.MathUtils.clamp(phiAngle - dy * 0.006, 0.2, Math.PI - 0.2);
+  prevX = e.clientX; prevY = e.clientY;
+});
+renderer.domElement.addEventListener('wheel', (e) => {
+  camDist = THREE.MathUtils.clamp(camDist + e.deltaY * 0.015, 3, 60);
+});
+
+let lastTouch = null;
+renderer.domElement.addEventListener('touchstart', (e) => { lastTouch = e.touches[0]; autoOrbit = false; });
+renderer.domElement.addEventListener('touchmove', (e) => {
+  if (!lastTouch) return;
+  const t = e.touches[0];
+  const dx = t.clientX - lastTouch.clientX, dy = t.clientY - lastTouch.clientY;
+  theta -= dx * 0.006;
+  phiAngle = THREE.MathUtils.clamp(phiAngle - dy * 0.006, 0.2, Math.PI - 0.2);
+  lastTouch = t;
+}, { passive:true });
+renderer.domElement.addEventListener('touchend', () => lastTouch = null);
+
+/* ============================================================
+   RENDER LOOP
+   ============================================================ */
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const t = clock.elapsedTime;
+
+  cell.update(dt, t);
+
+  if (autoOrbit) theta += 0.0012;
+  updateCamera();
+
+  renderer.render(scene, camera);
+}
+animate();
+
+/* ============================================================
+   ADAPTATIONS
+   ============================================================ */
+const phPoint = (x, y, z) => cell.group.localToWorld(new THREE.Vector3(x, y, z));
+CellAdaptations.init({
+  camera,
+  heading: 'PHLOEM ADAPTATIONS',
+  theme: { accent:'#f2b01e', text:'#c9b78f', bright:'#fbf3e0', bg:'rgba(18,13,6,0.9)', border:'#4a3a1c' },
+  items: [
+    {
+      title: 'Sieve plates with pores',
+      text: 'The end walls are not lost as in xylem &mdash; they become <b>sieve plates</b> perforated with holes. Dissolved sugars can flow <b>from one cell into the next</b> while the plate still supports the column.',
+      anchor: () => {
+        const p = cell.plates[Math.floor(cell.plates.length / 2)];
+        return p ? cell.group.localToWorld(new THREE.Vector3(0, p.position.y, 0)) : null;
+      }
+    },
+    {
+      title: 'Little cytoplasm, no nucleus',
+      text: 'A sieve tube element is alive but has <b>no nucleus</b> and only a <b>thin lining of cytoplasm</b> at the edges. This leaves the centre <b>clear</b>, so sap can move through with as little resistance as possible.',
+      anchor: () => phPoint(cell.lumen * 0.9, cell.total * 0.16, 0)
+    },
+    {
+      title: 'Companion cell',
+      text: 'Because the sieve tube has lost its nucleus, it <b>cannot survive alone</b>. The companion cell beside it keeps its nucleus and <b>carries out the metabolic reactions</b> for both cells.',
+      anchor: () => cell.group.localToWorld(cell.nucleus.position.clone())
+    },
+    {
+      title: 'Many mitochondria',
+      text: 'The companion cell is packed with mitochondria. Respiration here releases the <b>energy (ATP)</b> needed for <b>active transport</b>, loading sucrose into the sieve tube <b>against</b> its concentration gradient.',
+      anchor: () => {
+        const m = cell.mitos[Math.floor(cell.mitos.length * 0.4)];
+        return m ? cell.group.localToWorld(m.position.clone()) : null;
+      }
+    },
+    {
+      title: 'Plasmodesmata',
+      text: 'Narrow channels through the walls link the cytoplasm of the companion cell to the sieve tube. Sucrose loaded by the companion cell <b>passes straight through</b> into the flow.',
+      anchor: () => {
+        const pd = cell.pds[Math.floor(cell.pds.length / 2)];
+        return pd ? cell.group.localToWorld(pd.position.clone()) : null;
+      }
+    },
+    {
+      title: 'Translocation goes both ways',
+      text: 'Sugars move from a <b>source</b> (a photosynthesising leaf, or a store) to a <b>sink</b> (a growing root, a fruit). Sinks lie above and below, so unlike xylem, phloem carries sap <b>up or down</b>.',
+      anchor: () => phPoint(0, -cell.total * 0.40, 0)
+    },
+    {
+      title: 'Living cells with thin walls',
+      text: 'Phloem cells are <b>alive</b> and their walls stay <b>thin and unlignified</b>. Translocation is an <b>active process</b> that needs living cytoplasm &mdash; it would stop if the cells died.',
+      anchor: () => phPoint(P.tubeRadius, -cell.total * 0.20, 0)
+    }
+  ]
+});
+</script>
+</body>
+</html>
