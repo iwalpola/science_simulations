@@ -113,7 +113,8 @@ const P = {
   tailSheathOpacity:0.26,
 
   /* --- motion --- */
-  steerAmount:     1.0     // rate of the slow turn-in-place; 0 freezes the pose
+  steerAmount:     1.0,    // rate of the slow turn-in-place; 0 freezes the pose
+  headSway:        0.55    // how far head + midpiece follow the tail base; 0 = rigid
 };
 
 /* slider definitions: [key, label, min, max, step] — a 1-item row is a heading */
@@ -158,7 +159,8 @@ const CONTROLS = [
   ['tailSheathOpacity','sheath opacity',   0.00, 1.00, 0.01],
   ['MOTION'],
   ['cellScale',       'cell scale',        0.5,  3.0,  0.05],
-  ['steerAmount',     'turn rate',         0.0,  3.0,  0.05]
+  ['steerAmount',     'turn rate',         0.0,  3.0,  0.05],
+  ['headSway',        'head sway',         0.0,  1.5,  0.01]
 ];
 
 /* ============================================================
@@ -232,8 +234,17 @@ class SpermCell {
     this.group = new THREE.Group();
     scene.add(this.group);
 
+    // head + midpiece ride in their own group, pivoting at the neck/tail
+    // junction, so they can swing with the beat instead of staying rigid
+    this.front = new THREE.Group();
+    this.group.add(this.front);
+
     this._buildHead();
     this._buildMidpiece();
+
+    this.front.position.z = this.tailStartZ;
+    for (const c of this.front.children) c.position.z -= this.tailStartZ;
+
     this._buildTail();
   }
 
@@ -254,7 +265,7 @@ class SpermCell {
     nucGeo.scale(hx * k, hy * k, hz * k);
     const nucleus = new THREE.Mesh(nucGeo, nucleusMat);
     nucleus.position.set(0, 0, centre);
-    this.group.add(nucleus);
+    this.front.add(nucleus);
 
     // acrosome: a cap of hydrolytic enzymes over the leading face of the
     // nucleus. Built as a partial sphere (thetaLength = coverage) whose pole
@@ -267,7 +278,7 @@ class SpermCell {
       acroGeo.scale(hx * a, hy * a, hz * a);
       const acro = new THREE.Mesh(acroGeo, acroMat);
       acro.position.set(0, 0, centre);
-      this.group.add(acro);
+      this.front.add(acro);
     }
 
     // plasma membrane: the outermost envelope of the head
@@ -275,7 +286,7 @@ class SpermCell {
     headGeo.scale(hx, hy, hz);
     const head = new THREE.Mesh(headGeo, headMat);
     head.position.set(0, 0, centre);
-    this.group.add(head);
+    this.front.add(head);
 
     // neck: narrows the head down toward the midpiece connector
     if (P.neckLength > 0.01) {
@@ -283,7 +294,7 @@ class SpermCell {
       neckGeo.rotateX(-Math.PI / 2);      // apex now points toward -Z (backward)
       const neck = new THREE.Mesh(neckGeo, headMat);
       neck.position.set(0, 0, P.midStart * s + P.neckLength * s * 0.5);
-      this.group.add(neck);
+      this.front.add(neck);
     }
 
     // centriole: the small bright collar at the head/midpiece junction
@@ -293,7 +304,7 @@ class SpermCell {
       cGeo.rotateX(Math.PI / 2);
       const centri = new THREE.Mesh(cGeo, centriMat);
       centri.position.set(0, 0, P.midStart * s);
-      this.group.add(centri);
+      this.front.add(centri);
     }
   }
 
@@ -311,7 +322,7 @@ class SpermCell {
     coreGeo.rotateX(Math.PI / 2);
     const core = new THREE.Mesh(coreGeo, midMat);
     core.position.set(0, 0, startZ - len / 2);
-    this.group.add(core);
+    this.front.add(core);
 
     // mitochondrial sheath: a static helix wrap (safe for TubeGeometry —
     // constant curvature/torsion means no Frenet-frame flip artifacts)
@@ -325,7 +336,7 @@ class SpermCell {
     }
     const helixGeo = new THREE.TubeGeometry(
       new THREE.CatmullRomCurve3(pts), segs, P.mitoThickness * s, Math.round(P.mitoSides), false);
-    this.group.add(new THREE.Mesh(helixGeo, mitoMat));
+    this.front.add(new THREE.Mesh(helixGeo, mitoMat));
 
     // translucent membrane enclosing the whole midpiece
     if (P.midSheathOpacity > 0.005) {
@@ -335,7 +346,7 @@ class SpermCell {
       const sheath = new THREE.Mesh(sheathGeo, membraneMat.clone());
       sheath.material.opacity = P.midSheathOpacity;
       sheath.position.set(0, 0, startZ - len / 2);
-      this.group.add(sheath);
+      this.front.add(sheath);
     }
 
     this.tailStartZ = endZ;
@@ -470,6 +481,15 @@ class SpermCell {
     const pts = this._tailPoints();
     const up = new THREE.Vector3(0, 1, 0);
     const skin = this.skinMeshes.length > 0;
+
+    // Swing head + midpiece so their axis partly continues the tail's base
+    // direction, read a few segments in where the bend is visible. This is
+    // the recoil a real sperm shows: the head yaws against each tail stroke.
+    const k = Math.min(3, n);
+    const base = new THREE.Vector3().subVectors(pts[k], pts[0]).normalize();
+    const yaw = Math.atan2(-base.x, -base.z);
+    const pitch = Math.atan2(base.y, -base.z);
+    this.front.rotation.set(pitch * P.headSway, yaw * P.headSway, 0);
 
     for (let i = 0; i < n; i++) {
       const start = pts[i], end = pts[i + 1];
@@ -683,7 +703,8 @@ animate();
    ADAPTATIONS — anchors are built in the cell's local frame
    (+Z forward) and carried into world space by its group
    ============================================================ */
-const spermPoint = (x, y, z) => cell.group.localToWorld(new THREE.Vector3(x, y, z));
+// head/midpiece anchors follow the swinging front group
+const spermPoint = (x, y, z) => cell.front.localToWorld(new THREE.Vector3(x, y, z - cell.tailStartZ));
 CellAdaptations.init({
   camera,
   heading: 'SPERM CELL ADAPTATIONS',
