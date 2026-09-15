@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diffusion, osmosis &amp; active transport — the 3D story</title>
+<style>
+  :root{
+    --ink:#eef2f7;
+    --dim:#93a2b6;
+    --panel:rgba(10,14,21,.78);
+    --line:rgba(147,162,182,.22);
+    --side:376px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;background:#080b11;color:var(--ink);overflow:hidden;
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+
+  #stage{position:fixed;top:0;right:0;bottom:0;left:var(--side);}
+  canvas{display:block;}
+
+  #side{
+    position:fixed;top:0;left:0;bottom:0;width:var(--side);
+    background:var(--panel);backdrop-filter:blur(16px);
+    border-right:1px solid var(--line);
+    padding:20px 22px 16px;
+    display:flex;flex-direction:column;gap:14px;
+    overflow-y:auto;
+  }
+  #side h1{
+    margin:0;
+    font-family:"Iowan Old Style","Charter","Palatino Linotype",Georgia,serif;
+    font-weight:600;font-size:19px;letter-spacing:.2px;line-height:1.25;
+  }
+  #side .byline{margin:4px 0 0;font-size:12px;line-height:1.5;color:var(--dim);}
+  #side a{color:var(--dim);text-decoration:none;font-size:12px;
+    border-bottom:1px solid rgba(147,162,182,.3);}
+  #side a:hover{color:var(--ink);}
+  .links{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;}
+
+  .cards{display:flex;flex-direction:column;gap:8px;}
+  .card{
+    background:rgba(255,255,255,.04);
+    border:1px solid var(--line);border-radius:11px;
+    padding:8px 12px;
+  }
+  .card .who{font-size:10px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;}
+  .card .nums{display:flex;gap:16px;margin-top:5px;}
+  .card .n{font-size:10px;color:var(--dim);line-height:1.2;}
+  .card .n b{display:block;color:var(--ink);font-size:16px;font-weight:600;
+    font-variant-numeric:tabular-nums;margin-top:2px;}
+
+  .story{flex:1;min-height:0;}
+  .story .step{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:700;}
+  .story h2{
+    margin:3px 0 0;font-family:"Iowan Old Style","Charter",Georgia,serif;
+    font-size:17px;font-weight:600;letter-spacing:.2px;
+  }
+  .story p{margin:8px 0 0;font-size:13px;line-height:1.62;color:#cbd5e1;}
+  .story p b{color:#ffd9a0;font-weight:600;}
+  .story .look{
+    margin-top:10px;font-size:12px;line-height:1.5;color:#a9c7ee;
+    border-left:2px solid rgba(127,176,255,.45);padding-left:10px;
+  }
+  .terms{
+    margin:12px 0 0;padding:10px 12px;
+    background:rgba(255,217,160,.05);border:1px solid rgba(255,217,160,.18);border-radius:10px;
+  }
+  .terms .hd{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#d9b98a;font-weight:700;margin-bottom:6px;}
+  .terms dt{font-size:12.5px;font-weight:700;color:#ffd9a0;}
+  .terms dd{margin:1px 0 7px;font-size:12.5px;line-height:1.5;color:#cbd5e1;}
+  .terms dd:last-child{margin-bottom:0;}
+
+  table.sum{width:100%;border-collapse:collapse;margin-top:10px;font-size:12px;}
+  table.sum th,table.sum td{text-align:left;padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:top;}
+  table.sum th{color:var(--dim);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;}
+  table.sum td{color:#cbd5e1;}
+  table.sum td:first-child{color:var(--ink);font-weight:600;}
+
+  .nav{
+    position:fixed;left:var(--side);right:0;bottom:20px;z-index:5;
+    margin:0 auto;width:fit-content;max-width:calc(100% - var(--side) - 32px);
+    display:flex;align-items:center;gap:8px;flex-wrap:nowrap;justify-content:center;
+    background:var(--panel);backdrop-filter:blur(16px);
+    border:1px solid var(--line);border-radius:999px;
+    padding:9px 12px;white-space:nowrap;
+  }
+  .nav button{
+    font:inherit;font-size:12.5px;font-weight:500;color:var(--dim);
+    background:rgba(255,255,255,.05);border:1px solid var(--line);
+    border-radius:999px;padding:7px 14px;cursor:pointer;
+    transition:background .15s ease,color .15s ease,opacity .15s ease;
+  }
+  .nav button:hover:not(:disabled){background:rgba(255,255,255,.12);color:var(--ink);}
+  .nav button:disabled{opacity:.32;cursor:default;}
+  .nav button.primary{background:rgba(127,176,255,.2);color:#dce9ff;border-color:rgba(127,176,255,.35);}
+  .dots{display:flex;gap:6px;padding:0 4px;}
+  .dots i{
+    width:7px;height:7px;border-radius:50%;background:rgba(147,162,182,.3);
+    cursor:pointer;transition:background .2s ease,transform .2s ease;
+  }
+  .dots i.on{background:var(--ink);transform:scale(1.25);}
+
+  #key{
+    position:fixed;top:18px;right:20px;z-index:5;
+    background:var(--panel);backdrop-filter:blur(16px);
+    border:1px solid var(--line);border-radius:12px;
+    padding:11px 14px;
+    font-size:11.5px;line-height:1.75;color:var(--dim);
+  }
+  #key div{display:flex;align-items:center;gap:8px;}
+  .dot{width:11px;height:11px;border-radius:50%;flex:none;
+    box-shadow:inset -2px -2px 3px rgba(0,0,0,.45);}
+  .sq{width:11px;height:11px;border-radius:2px;flex:none;}
+
+  .hint{
+    position:fixed;right:20px;bottom:20px;z-index:3;
+    font-size:11px;color:#5a687d;pointer-events:none;
+  }
+
+  @media (max-width:860px){
+    :root{--side:0px;}
+    #stage{left:0;bottom:44vh;}
+    #side{
+      top:auto;left:0;right:0;bottom:0;width:auto;height:44vh;
+      border-right:none;border-top:1px solid var(--line);
+      padding:14px 16px;gap:11px;
+    }
+    #side h1{font-size:16px;}
+    #side .byline{display:none;}
+    .cards{flex-direction:row;}
+    .card{flex:1;min-width:0;}
+    .card .nums{gap:8px;}
+    .card .n b{font-size:14px;}
+    .nav{
+      left:0;right:0;bottom:44vh;
+      width:auto;max-width:none;margin:0;
+      border-radius:0;border-width:1px 0 0;
+      flex-wrap:wrap;white-space:normal;justify-content:center;
+    }
+    #key{top:14px;right:14px;padding:8px 10px;font-size:11px;line-height:1.6;}
+    .hint{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<div id="stage"></div>
+
+<div id="side">
+  <div>
+    <h1>Diffusion, osmosis &amp; active transport</h1>
+    <p class="byline">How particles get across membranes — on their own, or with a push</p>
+    <div class="links">
+      <a href="../index.html">← All simulations</a>
+    </div>
+  </div>
+
+  <div class="cards" id="cards"></div>
+
+  <div class="story">
+    <div class="step" id="sStep"></div>
+    <h2 id="sTitle"></h2>
+    <p id="sText"></p>
+    <div class="look" id="sLook"></div>
+    <dl class="terms" id="sTerms"></dl>
+  </div>
+</div>
+
+<!-- outside #side: its backdrop-filter would otherwise pin fixed children to the column -->
+<div class="nav">
+  <button id="back">← Back</button>
+  <button id="next" class="primary">Next →</button>
+  <button id="replay">Replay</button>
+  <div class="dots" id="dots"></div>
+</div>
+
+<div id="key"></div>
+
+<div class="hint">drag to orbit · scroll to zoom</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ===========================================================================
+   DIFFUSION, OSMOSIS & ACTIVE TRANSPORT — the 3D story
+
+   Every scene is one or more glass tanks, split down the middle by a membrane.
+   Particles wander at random; the only rules are at the membrane:
+
+     diffusion  — a particle that hits the open part of the membrane may pass
+                  (less likely, and slower, the thicker the membrane)
+     osmosis    — only water may pass; sugar always bounces. The chance a water
+                  molecule gets through falls as the solute around it rises,
+                  and each side's liquid level follows its particle count
+     active     — nothing passes on its own; carrier proteins grab an ion from
+                  the low side, wait for energy, change shape and let it out
+                  on the high side
+
+   Net movement is never scripted: it falls out of more particles hitting the
+   membrane from the crowded side.
+=========================================================================== */
+
+const W = 8, H = 4.2, D = 3.2;         // tank size
+const MEM_THIN = 0.16;
+const TURN = 4.0;                      // how quickly a particle changes direction
+const TUNNEL = 0.9;                    // speed through the membrane
+const LEVEL_PER = 0.025;                // osmosis: liquid height per particle
+
+const PT = {
+  dye:   {col:0xff5fa2, r:0.13, sp:2.2, name:'particle (e.g. oxygen)'},
+  water: {col:0x5aa9ff, r:0.10, sp:2.6, name:'water molecule'},
+  sugar: {col:0xffa43a, r:0.27, sp:1.1, name:'sugar molecule (solute)'},
+  ion:   {col:0x6fe08a, r:0.15, sp:1.8, name:'mineral ion'}
+};
+const CARRIER_COL = 0xa27cf0, ENERGY_COL = 0xffe45c, MEMBRANE_COL = 0xe3c28f, WALL_COL = 0x46505f;
+const hexCss = n => '#'+n.toString(16).padStart(6,'0');
+
+/* ------------------------------------------------------------------ three */
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio||1));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x080b11);
+scene.fog = new THREE.Fog(0x080b11, 42, 85);
+const camera = new THREE.PerspectiveCamera(44, 1, 0.1, 200);
+
+scene.add(new THREE.HemisphereLight(0x9fb4d0, 0x0a0d13, 0.6));
+const keyL = new THREE.DirectionalLight(0xffffff, 0.95); keyL.position.set(6,11,8); scene.add(keyL);
+const fillL = new THREE.DirectionalLight(0x9ec3ff, 0.40); fillL.position.set(-8,4,-6); scene.add(fillL);
+const rimL  = new THREE.DirectionalLight(0xffd9b0, 0.32); rimL.position.set(0,3,-10); scene.add(rimL);
+
+(function environment(){
+  const env = new THREE.Scene();
+  const box = new THREE.BoxGeometry(1,1,1);
+  env.add(new THREE.Mesh(new THREE.BoxGeometry(30,18,30),
+    new THREE.MeshBasicMaterial({color:0x1d2634, side:THREE.BackSide})));
+  const panel=(hex,gain,x,y,z,sx,sy,sz)=>{
+    const m=new THREE.Mesh(box,new THREE.MeshBasicMaterial({color:hex}));
+    m.material.color.multiplyScalar(gain);
+    m.position.set(x,y,z); m.scale.set(sx,sy,sz); env.add(m);
+  };
+  panel(0xffffff,1.1,  0, 8.4,  0, 14,0.1,14);
+  panel(0xbcd6ff,1.3,-11, 1.5,  0, 0.1,11,20);
+  panel(0xffd7b0,0.9, 11, 1.5,  2, 0.1,11,20);
+  panel(0x8fb0e0,0.5,  0, 0.0,-12, 22,11,0.1);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(env, 0.04).texture;
+  pmrem.dispose();
+})();
+
+const benchMap = (function(){
+  const S = 512, c = document.createElement('canvas');
+  c.width = c.height = S;
+  const x = c.getContext('2d');
+  x.fillStyle = '#000'; x.fillRect(0,0,S,S);
+  const g = x.createRadialGradient(S/2,S/2,0, S/2,S/2,S*0.5);
+  g.addColorStop(0.00,'rgba(255,255,255,1)');
+  g.addColorStop(0.16,'rgba(226,232,242,0.78)');
+  g.addColorStop(0.32,'rgba(140,152,172,0.24)');
+  g.addColorStop(0.44,'rgba(56,64,78,0.06)');
+  g.addColorStop(0.50,'rgba(0,0,0,0)');
+  x.fillStyle = g; x.fillRect(0,0,S,S);
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+})();
+const bench = new THREE.Mesh(
+  new THREE.CylinderGeometry(24,24,0.4,64),
+  new THREE.MeshStandardMaterial({color:0x4a515d, map:benchMap,
+    roughness:0.94, metalness:0, envMapIntensity:0.10})
+);
+bench.position.y = -0.3; scene.add(bench);
+
+/* ------------------------------------------------------------- shared bits */
+const SPH = new THREE.SphereGeometry(1,20,14);
+const BOX = new THREE.BoxGeometry(1,1,1);
+const CYL = new THREE.CylinderGeometry(1,1,1,16);
+const CONE = new THREE.ConeGeometry(1,1,20);
+const SHARED = new Set([SPH, BOX, CYL, CONE]);
+
+function linearise(root){
+  root.traverse(o=>{
+    if(!o.material) return;
+    (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{
+      if(!m || m.userData.__lin) return;
+      m.userData.__lin = true;
+      if(m.color)    m.color.convertSRGBToLinear();
+      if(m.emissive) m.emissive.convertSRGBToLinear();
+    });
+  });
+}
+
+function makeLabel(text, opt){
+  opt = opt || {};
+  const size = opt.size || 54, pad = 18;
+  const c = document.createElement('canvas'), ctx = c.getContext('2d');
+  const font = '600 '+size+'px "Iowan Old Style", Charter, Georgia, serif';
+  ctx.font = font;
+  const w = Math.ceil(ctx.measureText(text).width) + pad*2, h = size + pad*2;
+  c.width = w; c.height = h;
+  ctx.font = font; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.shadowColor = 'rgba(0,0,0,.9)'; ctx.shadowBlur = 14;
+  ctx.fillStyle = opt.color || '#eef2f7';
+  ctx.fillText(text, w/2, h/2 + size*0.04);
+  const tex = new THREE.CanvasTexture(c); tex.anisotropy = 4;
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({
+    map:tex, transparent:true, depthTest:false, depthWrite:false}));
+  spr.renderOrder = 10;
+  const scale = opt.scale || 0.62;
+  spr.scale.set(w/h*scale, scale, 1);
+  return spr;
+}
+function setLabel(spr, text, opt){
+  const fresh = makeLabel(text, opt);
+  if(spr.material.map) spr.material.map.dispose();
+  spr.material.map = fresh.material.map;
+  spr.scale.copy(fresh.scale);
+  fresh.material.dispose();
+}
+
+/* the membrane's surface: pale with small pores, tiled to its size */
+function poreTexture(repU, repV, pores){
+  const S = 128, c = document.createElement('canvas');
+  c.width = c.height = S;
+  const x = c.getContext('2d');
+  x.fillStyle = '#e3c28f'; x.fillRect(0,0,S,S);
+  if(pores){
+    x.fillStyle = '#5b3d22';
+    [[32,32],[96,96]].forEach(p=>{ x.beginPath(); x.arc(p[0],p[1],11,0,Math.PI*2); x.fill(); });
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(repU, repV);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+}
+
+const rand = (a,b) => a + Math.random()*(b-a);
+const ease = t => t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+function stepToward(pos, target, step){
+  const dx = target.x-pos.x, dy = target.y-pos.y, dz = target.z-pos.z;
+  const len = Math.hypot(dx,dy,dz);
+  if(len <= step){ pos.copy(target); return true; }
+  pos.x += dx/len*step; pos.y += dy/len*step; pos.z += dz/len*step;
+  return false;
+}
+
+/* ------------------------------------------------------------------- tanks */
+function buildTank(cfg){
+  const g = new THREE.Group();
+  g.position.x = cfg.x || 0;
+  scene.add(g);
+
+  const mem = cfg.membrane || null;
+  const t = {
+    cfg, group:g, mem, th: mem ? mem.th : 0, temp: cfg.temp || 1,
+    osmosis: !!(mem && mem.kind === 'osmosis'),
+    parts:[], carriers:[], mats:{}, countLbls:[], shown:[-1,-1],
+    counts:{dye:[0,0], water:[0,0], sugar:[0,0], ion:[0,0]}
+  };
+
+  /* glass */
+  const glassGeo = new THREE.BoxGeometry(W+0.1, H+0.1, D+0.1);
+  const glass = new THREE.Mesh(glassGeo, new THREE.MeshStandardMaterial({
+    color:0xbfd6e8, roughness:0.08, transparent:true, opacity:0.06,
+    side:THREE.DoubleSide, depthWrite:false}));
+  glass.position.y = H/2; g.add(glass);
+  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(glassGeo),
+    new THREE.LineBasicMaterial({color:0x9fb4cc, transparent:true, opacity:0.45}));
+  edges.position.y = H/2; g.add(edges);
+
+  /* liquid levels: full, unless osmosis moves water from side to side */
+  t.level = [H-0.1, H-0.1];
+  if(t.osmosis){
+    const tot = side => (side.water||0) + (side.sugar||0);
+    t.level = [LEVEL_PER*tot(cfg.left||{}), LEVEL_PER*tot(cfg.right||{})];
+  }
+  t.levelTarget = t.level.slice();
+
+  const chW = W/2 - t.th/2;
+  t.liquids = [0,1].map(s=>{
+    const m = new THREE.Mesh(BOX, new THREE.MeshStandardMaterial({
+      color:cfg.liquidCol || 0x7fa8cc, roughness:0.1, transparent:true,
+      opacity:t.osmosis ? 0.16 : 0.10, depthWrite:false}));
+    m.position.x = (s ? 1 : -1) * (t.th/2 + chW/2);
+    m.scale.set(chW, 1, D);
+    g.add(m);
+    return m;
+  });
+
+  if(mem) buildMembrane(t);
+
+  /* particles */
+  for(const type in PT){
+    t.mats[type] = new THREE.MeshStandardMaterial({
+      color:PT[type].col, roughness:0.35, metalness:0.15,
+      emissive:new THREE.Color(PT[type].col).multiplyScalar(0.12)});
+  }
+  [cfg.left||{}, cfg.right||{}].forEach((spec, s)=>{
+    for(const type in spec) for(let i=0;i<spec[type];i++) t.parts.push(spawn(t, type, s));
+  });
+  tally(t);
+  t.startRight = t.counts[cfg.count][1];
+
+  (cfg.carriers||[]).forEach((cy,i)=>t.carriers.push(buildCarrier(t, cy, i)));
+
+  /* labels */
+  if(cfg.name){
+    const nl = makeLabel(cfg.name, {scale:0.5, color:cfg.nameCol || '#eef2f7'});
+    nl.position.set(0, H+1.55, 0); g.add(nl);
+  }
+  [0,1].forEach(s=>{
+    const l = makeLabel('0', {scale:0.52, color:hexCss(PT[cfg.count].col)});
+    l.position.set((s?1:-1)*2.3, H+0.7, 0); g.add(l);
+    t.countLbls.push(l);
+  });
+  if(cfg.sideLabels){
+    cfg.sideLabels.forEach((txt,s)=>{
+      const l = makeLabel(txt, {scale:0.36, color:'#b8c4d4'});
+      l.position.set((s?1:-1)*2.1, -0.6, D/2+0.2); g.add(l);
+    });
+  }
+  if(cfg.arrow){
+    const a = makeArrow(cfg.arrow.dir, cfg.arrow.col);
+    a.position.set(0, H+0.7, 0); g.add(a);
+  }
+  if(cfg.carrierLabel && cfg.carriers){
+    const l = makeLabel('carrier protein', {scale:0.34, color:hexCss(CARRIER_COL)});
+    l.position.set(-1.35, cfg.carriers[cfg.carriers.length-1]+0.75, 0); g.add(l);
+  }
+  if(cfg.energyLabel){
+    const l = makeLabel('energy from respiration', {scale:0.32, color:hexCss(ENERGY_COL)});
+    l.position.set(2.3, H-0.35, 0); g.add(l);
+  }
+
+  linearise(g);
+  return t;
+}
+
+function buildMembrane(t){
+  const m = t.mem, g = t.group, th = m.th;
+  if(m.kind === 'active'){
+    // a cell membrane: nothing gets through except by the carriers
+    const tex = poreTexture(D/0.9, H/0.9, false);
+    const sheet = new THREE.Mesh(BOX, new THREE.MeshStandardMaterial({
+      color:0xffffff, map:tex, roughness:0.7, transparent:true, opacity:0.5, depthWrite:false}));
+    sheet.scale.set(th, H, D); sheet.position.y = H/2; g.add(sheet);
+    return;
+  }
+  const wh = m.wh = Math.min(m.wh || H, H), wd = m.wd = Math.min(m.wd || D, D);
+  const tex = poreTexture(wd/0.55, wh/0.55, true);
+  const win = new THREE.Mesh(BOX, new THREE.MeshStandardMaterial({
+    color:0xffffff, map:tex, roughness:0.7, transparent:true, opacity:0.55, depthWrite:false}));
+  win.scale.set(th, wh, wd); win.position.y = H/2; g.add(win);
+
+  // anything not membrane is a solid wall — this is how surface area is set
+  const wall = (sy, sz, y, z)=>{
+    if(sy <= 0.001 || sz <= 0.001) return;
+    const w = new THREE.Mesh(BOX, new THREE.MeshStandardMaterial({
+      color:WALL_COL, roughness:0.75, metalness:0.05}));
+    w.scale.set(Math.max(th, 0.12), sy, sz); w.position.set(0, y, z); g.add(w);
+  };
+  const gapY = (H - wh)/2, gapZ = (D - wd)/2;
+  wall(gapY, D, gapY/2, 0);
+  wall(gapY, D, H - gapY/2, 0);
+  wall(wh, gapZ, H/2, -D/2 + gapZ/2);
+  wall(wh, gapZ,  H/2,  D/2 - gapZ/2);
+}
+
+function makeArrow(dir, col){
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({color:col, roughness:0.4,
+    emissive:new THREE.Color(col).multiplyScalar(0.25)});
+  const shaft = new THREE.Mesh(CYL, mat);
+  shaft.scale.set(0.07, 1.1, 0.07); shaft.rotation.z = Math.PI/2; shaft.position.x = -0.2*dir;
+  const head = new THREE.Mesh(CONE, mat);
+  head.scale.set(0.2, 0.42, 0.2); head.rotation.z = -dir*Math.PI/2; head.position.x = 0.55*dir;
+  g.add(shaft, head);
+  return g;
+}
+
+function spawn(t, type, s){
+  const P = PT[type], r = P.r;
+  const mesh = new THREE.Mesh(SPH, t.mats[type]);
+  mesh.scale.setScalar(r);
+  t.group.add(mesh);
+  let x0, x1;
+  if(t.cfg.packLeft){ x0 = -W/2+r+0.05; x1 = -W/2+1.8; }
+  else if(s === 0){ x0 = -W/2+r+0.05; x1 = -t.th/2-r-0.05; }
+  else            { x0 =  t.th/2+r+0.05; x1 = W/2-r-0.05; }
+  const pos = new THREE.Vector3(rand(x0,x1), rand(r+0.05, t.level[s]-r-0.05), rand(-D/2+r+0.05, D/2-r-0.05));
+  const vel = new THREE.Vector3(rand(-1,1), rand(-1,1), rand(-1,1)).setLength(P.sp*t.temp);
+  mesh.position.copy(pos);
+  return {type, r, mesh, pos, vel, side:s, state:'free', tdir:0};
+}
+
+function tally(t){
+  for(const k in t.counts){ t.counts[k][0] = 0; t.counts[k][1] = 0; }
+  t.parts.forEach(p=>{ t.counts[p.type][p.side]++; });
+}
+
+/* may this particle go through the membrane where it has just hit it? */
+function canPass(t, p, s, n){
+  const m = t.mem;
+  if(m.kind === 'active') return false;
+  if(m.kind === 'osmosis' && p.type !== 'water') return false;
+  if(Math.abs(n.y - H/2) > m.wh/2 - p.r || Math.abs(n.z) > m.wd/2 - p.r) return false;   // hit the wall
+  let prob = Math.min(0.85, 0.04/m.th);
+  if(m.kind === 'osmosis'){
+    // more solute around it → less chance for water to get through
+    const w = t.counts.water[s], su = t.counts.sugar[s];
+    const f = w / (w + 3*su);
+    // a taller column pushes back a little, so the levels settle rather than run away
+    const dL = t.levelTarget[1] - t.levelTarget[0];
+    const press = Math.max(0.05, s === 0 ? 1 - 0.1*dL : 1 + 0.1*dL);
+    prob *= f * press;
+  }
+  return Math.random() < prob;
+}
+
+const _n = new THREE.Vector3();
+function updateParticle(t, p, dt){
+  if(p.state === 'held'){ p.mesh.position.copy(p.pos); return; }
+  const sp = PT[p.type].sp * t.temp;
+  const face = t.th/2 + p.r;
+
+  if(p.state === 'tunnel'){
+    p.pos.x += p.tdir * TUNNEL * t.temp * dt;
+    if((p.tdir > 0 && p.pos.x >= face) || (p.tdir < 0 && p.pos.x <= -face)){
+      p.side = p.tdir > 0 ? 1 : 0;
+      p.state = 'free';
+      p.vel.set(p.tdir*sp*0.8, rand(-0.4,0.4)*sp, rand(-0.4,0.4)*sp);
+    }
+    p.mesh.position.copy(p.pos);
+    return;
+  }
+
+  p.vel.x += (Math.random()-0.5)*TURN*sp*dt;
+  p.vel.y += (Math.random()-0.5)*TURN*sp*dt;
+  p.vel.z += (Math.random()-0.5)*TURN*sp*dt;
+  p.vel.setLength(sp);
+  const n = _n.copy(p.pos).addScaledVector(p.vel, dt), r = p.r;
+
+  if(n.x < -W/2+r){ n.x = -W/2+r; p.vel.x =  Math.abs(p.vel.x); }
+  if(n.x >  W/2-r){ n.x =  W/2-r; p.vel.x = -Math.abs(p.vel.x); }
+  if(n.z < -D/2+r){ n.z = -D/2+r; p.vel.z =  Math.abs(p.vel.z); }
+  if(n.z >  D/2-r){ n.z =  D/2-r; p.vel.z = -Math.abs(p.vel.z); }
+  if(n.y < r+0.03){ n.y = r+0.03; p.vel.y = Math.abs(p.vel.y); }
+  const top = t.level[p.side] - r;
+  if(n.y > top){ n.y = Math.max(r+0.03, top); p.vel.y = -Math.abs(p.vel.y); }
+
+  if(t.mem){
+    if(p.side === 0 && n.x > -face){
+      if(canPass(t, p, 0, n)){ p.state = 'tunnel'; p.tdir = 1; }
+      else p.vel.x = -Math.abs(p.vel.x);
+      n.x = -face;
+    } else if(p.side === 1 && n.x < face){
+      if(canPass(t, p, 1, n)){ p.state = 'tunnel'; p.tdir = -1; }
+      else p.vel.x = Math.abs(p.vel.x);
+      n.x = face;
+    }
+  } else {
+    p.side = n.x < 0 ? 0 : 1;
+  }
+  p.pos.copy(n);
+  p.mesh.position.copy(p.pos);
+}
+
+/* ---------------------------------------------------------- carrier protein */
+const OPEN_ANGLE = 0.4;
+
+function buildCarrier(t, cy, i){
+  const grp = new THREE.Group();
+  grp.position.set(0, cy, 0);
+  t.group.add(grp);
+  const half = y=>{
+    const m = new THREE.Mesh(BOX, new THREE.MeshStandardMaterial({
+      color:CARRIER_COL, roughness:0.4, metalness:0.1, emissive:0x000000}));
+    m.scale.set(1.25, 0.3, 1.1); m.position.y = y; grp.add(m);
+    return m;
+  };
+  return {cy, grp, top:half(0.34), bot:half(-0.34), o:-1, state:'cool', t:-i*1.6,
+          ion:null, energy:null, flash:0};
+}
+
+function buildEnergy(t, c){
+  const g = new THREE.Group();
+  const core = new THREE.Mesh(SPH, new THREE.MeshStandardMaterial({
+    color:ENERGY_COL, emissive:ENERGY_COL, roughness:0.3}));
+  core.scale.setScalar(0.12);
+  const halo = new THREE.Mesh(SPH, new THREE.MeshBasicMaterial({
+    color:ENERGY_COL, transparent:true, opacity:0.35,
+    blending:THREE.AdditiveBlending, depthWrite:false}));
+  halo.scale.setScalar(0.34);
+  g.add(core, halo);
+  g.position.set(2.8, Math.min(H-0.5, c.cy+0.9), 0.8);
+  t.group.add(g);
+  linearise(g);
+  return g;
+}
+
+const _tgt = new THREE.Vector3();
+function updateCarrier(t, c, dt){
+  c.t += dt;
+  const face = t.th/2;
+  switch(c.state){
+    case 'cool':
+      c.o += (-1 - c.o)*Math.min(1, dt*4);
+      if(c.t >= 0.5){ c.state = 'idle'; c.t = 0; }
+      break;
+    case 'idle': {
+      // pick the nearest ion outside the cell
+      _tgt.set(-face-0.75, c.cy, 0);
+      let best = null, bd = Infinity;
+      t.parts.forEach(p=>{
+        if(p.type !== 'ion' || p.side !== 0 || p.state !== 'free') return;
+        const d = p.pos.distanceToSquared(_tgt);
+        if(d < bd){ bd = d; best = p; }
+      });
+      if(best){ best.state = 'held'; c.ion = best; c.state = 'pull'; c.t = 0; }
+      break;
+    }
+    case 'pull':
+      if(stepToward(c.ion.pos, _tgt.set(-face-0.75, c.cy, 0), 1.8*dt)){ c.state = 'bind'; c.t = 0; }
+      break;
+    case 'bind':
+      if(stepToward(c.ion.pos, _tgt.set(0, c.cy, 0), 1.4*dt)){
+        c.energy = buildEnergy(t, c); c.state = 'energy'; c.t = 0;
+      }
+      break;
+    case 'energy':
+      if(stepToward(c.energy.position, _tgt.set(0.5, c.cy, 0), 2.0*dt)){
+        disposeTree(c.energy); t.group.remove(c.energy); c.energy = null;
+        c.flash = 1; c.state = 'flip'; c.t = 0;
+      }
+      break;
+    case 'flip':
+      c.o = -1 + 2*ease(Math.min(1, c.t/0.8));
+      if(c.t >= 0.8){ c.state = 'release'; c.t = 0; }
+      break;
+    case 'release':
+      if(stepToward(c.ion.pos, _tgt.set(face+0.6, c.cy, 0), 2.0*dt)){
+        const sp = PT.ion.sp*t.temp;
+        c.ion.side = 1; c.ion.state = 'free';
+        c.ion.vel.set(sp*0.8, rand(-0.4,0.4)*sp, rand(-0.4,0.4)*sp);
+        c.ion = null; c.state = 'reset'; c.t = 0;
+      }
+      break;
+    case 'reset':
+      c.o = 1 - 2*ease(Math.min(1, c.t/0.8));
+      if(c.t >= 0.8){ c.state = 'cool'; c.t = 0; }
+      break;
+  }
+  // o = -1: open to the outside (left); o = +1: open to the inside (right)
+  c.top.rotation.z =  c.o*OPEN_ANGLE;
+  c.bot.rotation.z = -c.o*OPEN_ANGLE;
+  c.flash = Math.max(0, c.flash - dt*1.2);
+  [c.top, c.bot].forEach(m=>m.material.emissive.copy(m.material.color).multiplyScalar(0.05 + c.flash*0.9));
+}
+
+function disposeTree(root){
+  root.traverse(o=>{
+    if(o.geometry && !o.isSprite && !SHARED.has(o.geometry)) o.geometry.dispose();
+    if(o.material){
+      if(o.material.map) o.material.map.dispose();
+      o.material.dispose();
+    }
+  });
+}
+
+/* ------------------------------------------------------------------- story */
+const TWO = [-5.6, 5.6];
+const diffMem = o => Object.assign({kind:'diffusion', th:MEM_THIN, wh:H, wd:D}, o||{});
+const diffCounts = ['Left', 'Right', 'Net moved →'];
+
+const SCENES = [
+  {
+    part:'Diffusion',
+    cam:{dist:14, az:0, el:0.26, look:[0,2.2,0]},
+    tanks:[{left:{dye:80}, packLeft:true, count:'dye', countNames:diffCounts}],
+    title:'Particles spread out',
+    text:'Particles in liquids and gases are <b>always moving</b> in random directions. Here they all start squashed into the left end of the tank.',
+    look:'The crowded end empties, and the particles spread until they are even across the tank.',
+    terms:[
+      ['Particle', 'a tiny piece of a substance, such as an atom or a molecule.'],
+      ['Concentration', 'how many particles there are in a certain space.']
+    ]
+  },
+  {
+    part:'Diffusion',
+    cam:{dist:14, az:0.35, el:0.26, look:[0,2.2,0]},
+    tanks:[{left:{dye:80}, membrane:diffMem(), count:'dye', countNames:diffCounts,
+            sideLabels:['high concentration','low concentration'], arrow:{dir:1, col:PT.dye.col}}],
+    title:'Diffusion across a membrane',
+    text:'Now a membrane splits the tank. Particles cross it both ways, but far more hit it from the crowded side — so <b>more cross from high to low</b> than back again.',
+    look:'The right-hand count rises until both sides are about the same.',
+    terms:[
+      ['Diffusion', 'the net movement of particles from an area of higher concentration to an area of lower concentration.'],
+      ['Membrane', 'a thin layer that separates two areas — every cell has one around it.'],
+      ['Net movement', 'the overall movement, after taking away the particles going the other way.']
+    ]
+  },
+  {
+    part:'Diffusion',
+    cam:{dist:14, az:-0.3, el:0.26, look:[0,2.2,0]},
+    tanks:[{left:{dye:40}, right:{dye:40}, membrane:diffMem(), count:'dye', countNames:diffCounts,
+            sideLabels:['same concentration','same concentration']}],
+    title:'When it evens out',
+    text:'Particles still cross, but as many go left as go right. There is <b>no net movement</b>. Diffusion needs no energy from the cell — it is <b>passive</b>.',
+    look:'The counts wobble a little but stay close to 40 each.',
+    terms:[
+      ['Passive', 'happens on its own, without energy from the cell.']
+    ]
+  },
+  {
+    part:'Factor 1 · Difference in concentration',
+    cam:{dist:24, az:0, el:0.30, look:[0,2.2,0]},
+    tanks:[
+      {x:TWO[0], name:'BIG DIFFERENCE',   nameCol:'#9ec3ff', left:{dye:80}, membrane:diffMem(),
+       count:'dye', countNames:diffCounts, sideLabels:['80 particles','0 particles'], arrow:{dir:1, col:PT.dye.col}},
+      {x:TWO[1], name:'SMALL DIFFERENCE', nameCol:'#ffcf8a', left:{dye:48}, right:{dye:32}, membrane:diffMem(),
+       count:'dye', countNames:diffCounts, sideLabels:['48 particles','32 particles'], arrow:{dir:1, col:PT.dye.col}}
+    ],
+    title:'Bigger difference, faster diffusion',
+    text:'Both tanks hold 80 particles. The bigger the <b>difference in concentration</b> between the two sides, the faster the net movement.',
+    look:'Compare "Net moved" on the two cards — the big difference pulls ahead quickly.',
+    terms:[
+      ['Concentration gradient', 'the difference in concentration between two areas. A steeper gradient means faster diffusion.']
+    ]
+  },
+  {
+    part:'Factor 2 · Surface area',
+    cam:{dist:24, az:0.25, el:0.30, look:[0,2.2,0]},
+    tanks:[
+      {x:TWO[0], name:'SMALL SURFACE AREA', nameCol:'#9ec3ff', left:{dye:80}, membrane:diffMem({wh:2.2, wd:2.0}),
+       count:'dye', countNames:diffCounts, arrow:{dir:1, col:PT.dye.col}},
+      {x:TWO[1], name:'LARGE SURFACE AREA', nameCol:'#ffcf8a', left:{dye:80}, membrane:diffMem(),
+       count:'dye', countNames:diffCounts, arrow:{dir:1, col:PT.dye.col}}
+    ],
+    title:'More membrane, faster diffusion',
+    text:'The grey wall blocks particles, so they only cross where there is membrane. A <b>larger surface area</b> means more particles hit the membrane each second.',
+    look:'This is why root hair cells and villi in the gut have shapes with a large surface area.',
+    terms:[
+      ['Surface area', 'the total area of the outside of something.']
+    ]
+  },
+  {
+    part:'Factor 3 · Membrane thickness',
+    cam:{dist:24, az:-0.25, el:0.30, look:[0,2.2,0]},
+    tanks:[
+      {x:TWO[0], name:'THIN MEMBRANE',  nameCol:'#9ec3ff', left:{dye:80}, membrane:diffMem({th:MEM_THIN}),
+       count:'dye', countNames:diffCounts, arrow:{dir:1, col:PT.dye.col}},
+      {x:TWO[1], name:'THICK MEMBRANE', nameCol:'#ffcf8a', left:{dye:80}, membrane:diffMem({th:0.9}),
+       count:'dye', countNames:diffCounts, arrow:{dir:1, col:PT.dye.col}}
+    ],
+    title:'Thinner membrane, faster diffusion',
+    text:'In a thick membrane particles have <b>further to travel</b>, so fewer get across each second. A thin membrane gives a short distance.',
+    look:'This is why the walls of the alveoli in the lungs are only one cell thick.',
+    terms:[
+      ['Diffusion distance', 'how far the particles have to travel to get across.']
+    ]
+  },
+  {
+    part:'Factor 4 · Temperature',
+    cam:{dist:24, az:0, el:0.30, look:[0,2.2,0]},
+    tanks:[
+      {x:TWO[0], name:'COLD', nameCol:'#9ec3ff', left:{dye:80}, membrane:diffMem(), temp:0.45, liquidCol:0x6f9fd8,
+       count:'dye', countNames:diffCounts, arrow:{dir:1, col:PT.dye.col}},
+      {x:TWO[1], name:'WARM', nameCol:'#ff9f7a', left:{dye:80}, membrane:diffMem(), temp:1.45, liquidCol:0xd88a6f,
+       count:'dye', countNames:diffCounts, arrow:{dir:1, col:PT.dye.col}}
+    ],
+    title:'Warmer, faster diffusion',
+    text:'At a higher temperature particles have <b>more kinetic energy</b>, so they move faster. They hit the membrane more often and cross it more quickly.',
+    look:'The warm particles zip about; the cold ones crawl.',
+    terms:[
+      ['Kinetic energy', 'the energy something has because it is moving.']
+    ]
+  },
+  {
+    part:'Osmosis',
+    cam:{dist:8.5, az:0.62, el:0.16, look:[0,1.5,0]},
+    tanks:[{left:{water:88, sugar:8}, right:{water:64, sugar:32}, liquidCol:0x5aa9ff,
+            membrane:{kind:'osmosis', th:MEM_THIN, wh:H, wd:D},
+            count:'water', countNames:['Water left','Water right','Net moved →'],
+            sideLabels:['dilute solution','concentrated solution']}],
+    title:'Osmosis: diffusion of water',
+    text:'Osmosis is diffusion of <b>water only</b>. This membrane has tiny holes: small water molecules fit through, but big sugar molecules do not.',
+    look:'Orange sugar molecules bounce off the membrane. Blue water molecules pass through.',
+    terms:[
+      ['Partially permeable membrane', 'a membrane that lets small molecules through but not larger ones.'],
+      ['Solute', 'a substance dissolved in a liquid, such as sugar in water.']
+    ]
+  },
+  {
+    part:'Osmosis',
+    cam:{dist:15, az:-0.2, el:0.24, look:[0,2.2,0]},
+    tanks:[{left:{water:88, sugar:8}, right:{water:64, sugar:32}, liquidCol:0x5aa9ff,
+            membrane:{kind:'osmosis', th:MEM_THIN, wh:H, wd:D},
+            count:'water', countNames:['Water left','Water right','Net moved →'],
+            sideLabels:['dilute solution','concentrated solution'], arrow:{dir:1, col:PT.water.col}}],
+    title:'Water moves to the concentrated side',
+    text:'The dilute side has more water, so <b>more water crosses from left to right</b>. The sugar cannot follow, so the water level rises on the concentrated side.',
+    look:'The right-hand level rises and the left one falls, then they settle.',
+    terms:[
+      ['Osmosis', 'the diffusion of water from a dilute solution to a concentrated solution through a partially permeable membrane.'],
+      ['Dilute solution', 'lots of water and not much solute.'],
+      ['Concentrated solution', 'less water and more solute.']
+    ]
+  },
+  {
+    part:'Active transport',
+    cam:{dist:14, az:0.3, el:0.2, look:[0,2.2,0]},
+    tanks:[{left:{ion:14}, right:{ion:22}, liquidCol:0x7fb89a,
+            membrane:{kind:'active', th:0.34}, carriers:[1.2, 3.0], carrierLabel:true, energyLabel:true,
+            count:'ion', countNames:['Outside cell','Inside cell','Moved in →'],
+            sideLabels:['soil water: low','inside root hair cell: high'], arrow:{dir:1, col:ENERGY_COL}}],
+    title:'Active transport',
+    text:'A root hair cell already holds <b>more mineral ions than the soil</b>, so diffusion would carry them out. Instead, <b>carrier proteins</b> use energy to move ions in — from low to high concentration.',
+    look:'An ion enters a carrier, a yellow energy spark arrives, the carrier changes shape and lets the ion out inside the cell.',
+    terms:[
+      ['Active transport', 'moving particles from a lower to a higher concentration (against the concentration gradient), using energy.'],
+      ['Carrier protein', 'a protein in the membrane that picks up a particle on one side and releases it on the other.'],
+      ['Respiration', 'the reaction in cells that releases energy — much of it happens in the mitochondria.']
+    ]
+  },
+  {
+    part:'Summary',
+    cam:{dist:32, az:0, el:0.34, look:[0,2.0,0]},
+    tanks:[
+      {x:-10.5, name:'DIFFUSION', nameCol:hexCss(PT.dye.col), left:{dye:80}, membrane:diffMem(),
+       count:'dye', countNames:diffCounts, arrow:{dir:1, col:PT.dye.col}},
+      {x:0, name:'OSMOSIS', nameCol:hexCss(PT.water.col), left:{water:88, sugar:8}, right:{water:64, sugar:32},
+       liquidCol:0x5aa9ff, membrane:{kind:'osmosis', th:MEM_THIN, wh:H, wd:D},
+       count:'water', countNames:['Water L','Water R','Net →'], arrow:{dir:1, col:PT.water.col}},
+      {x:10.5, name:'ACTIVE TRANSPORT', nameCol:hexCss(PT.ion.col), left:{ion:14}, right:{ion:22}, liquidCol:0x7fb89a,
+       membrane:{kind:'active', th:0.34}, carriers:[1.2, 3.0],
+       count:'ion', countNames:['Outside','Inside','Moved in'], arrow:{dir:1, col:ENERGY_COL}}
+    ],
+    title:'Three ways across a membrane',
+    text:'All three move substances into and out of cells. Only active transport needs energy.'+
+      '<table class="sum"><tr><th></th><th>Moves</th><th>Energy?</th></tr>'+
+      '<tr><td>Diffusion</td><td>any small particles, high → low concentration</td><td>No</td></tr>'+
+      '<tr><td>Osmosis</td><td>water only, dilute → concentrated solution, through a partially permeable membrane</td><td>No</td></tr>'+
+      '<tr><td>Active transport</td><td>particles low → high concentration, using carrier proteins</td><td>Yes</td></tr></table>',
+    look:'',
+    terms:[]
+  }
+];
+
+/* ------------------------------------------------------------ scene state */
+let sceneIdx = 0, tanks = [], cardRefs = [];
+
+function enterScene(i){
+  sceneIdx = i;
+  const s = SCENES[i];
+
+  tanks.forEach(t=>{ scene.remove(t.group); disposeTree(t.group); });
+  tanks = s.tanks.map(buildTank);
+
+  document.getElementById('sStep').textContent = (i+1)+' / '+SCENES.length+' · '+s.part;
+  document.getElementById('sTitle').innerHTML = s.title;
+  document.getElementById('sText').innerHTML = s.text;
+  const lookEl = document.getElementById('sLook');
+  lookEl.textContent = s.look ? 'Watch for: '+s.look : '';
+  lookEl.hidden = !s.look;
+  const termsEl = document.getElementById('sTerms');
+  termsEl.innerHTML = s.terms.length
+    ? '<div class="hd">Key words</div>' + s.terms.map(t=>`<dt>${t[0]}</dt><dd>${t[1]}</dd>`).join('')
+    : '';
+  termsEl.hidden = !s.terms.length;
+
+  document.getElementById('back').disabled = (i === 0);
+  document.getElementById('next').disabled = (i === SCENES.length-1);
+  document.querySelectorAll('#dots i').forEach((d,k)=>d.classList.toggle('on', k === i));
+
+  desired.dist = s.cam.dist; desired.az = s.cam.az; desired.el = s.cam.el;
+  desired.look.set(s.cam.look[0], s.cam.look[1], s.cam.look[2]);
+
+  buildCards();
+  buildKey();
+}
+
+function buildCards(){
+  const box = document.getElementById('cards');
+  box.innerHTML = '';
+  cardRefs = tanks.map(t=>{
+    const c = t.cfg, card = document.createElement('div');
+    card.className = 'card';
+    const col = c.nameCol || hexCss(PT[c.count].col);
+    card.innerHTML =
+      `<div class="who" style="color:${col}">${c.name || {dye:'Particles', water:'Water molecules', ion:'Mineral ions'}[c.count]}</div>`+
+      `<div class="nums">`+
+      c.countNames.map(n=>`<div class="n">${n}<b>—</b></div>`).join('')+
+      `</div>`;
+    box.appendChild(card);
+    return Array.from(card.querySelectorAll('b'));
+  });
+}
+
+function buildKey(){
+  const types = new Set();
+  let membrane = false, walls = false, carriers = false;
+  tanks.forEach(t=>{
+    [t.cfg.left||{}, t.cfg.right||{}].forEach(sp=>Object.keys(sp).forEach(k=>types.add(k)));
+    if(t.mem) membrane = true;
+    if(t.mem && t.mem.kind === 'diffusion' && (t.mem.wh < H || t.mem.wd < D)) walls = true;
+    if(t.carriers.length) carriers = true;
+  });
+  let html = Array.from(types).map(k=>
+    `<div><span class="dot" style="background:${hexCss(PT[k].col)}"></span>${PT[k].name}</div>`).join('');
+  if(membrane) html += `<div><span class="sq" style="background:${hexCss(MEMBRANE_COL)}"></span>membrane</div>`;
+  if(walls)    html += `<div><span class="sq" style="background:${hexCss(WALL_COL)}"></span>solid wall</div>`;
+  if(carriers){
+    html += `<div><span class="sq" style="background:${hexCss(CARRIER_COL)}"></span>carrier protein</div>`;
+    html += `<div><span class="dot" style="background:${hexCss(ENERGY_COL)}"></span>energy</div>`;
+  }
+  document.getElementById('key').innerHTML = html;
+}
+
+/* ------------------------------------------------------------ camera orbit */
+const desired = {dist:14, az:0, el:0.26, look:new THREE.Vector3(0,2.2,0)};
+const cur     = {dist:14, az:0, el:0.26, look:new THREE.Vector3(0,2.2,0)};
+let dragAz = 0, dragEl = 0, zoomAdj = 0;
+let dragging = false, lastX = 0, lastY = 0;
+
+const cv = renderer.domElement;
+cv.style.touchAction = 'none';
+cv.style.cursor = 'grab';
+cv.addEventListener('pointerdown', e=>{
+  dragging = true; lastX = e.clientX; lastY = e.clientY;
+  cv.style.cursor = 'grabbing';
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove', e=>{
+  if(!dragging) return;
+  dragAz += (e.clientX - lastX) * 0.006;
+  dragEl = Math.max(-0.4, Math.min(1.05, dragEl + (e.clientY - lastY) * 0.004));
+  lastX = e.clientX; lastY = e.clientY;
+});
+['pointerup','pointercancel'].forEach(ev=>
+  cv.addEventListener(ev, ()=>{ dragging = false; cv.style.cursor = 'grab'; }));
+cv.addEventListener('wheel', e=>{
+  e.preventDefault();
+  zoomAdj = Math.max(-8, Math.min(20, zoomAdj + e.deltaY*0.008));
+}, {passive:false});
+
+function placeCamera(dt){
+  const k = Math.min(1, dt*2.6);
+  cur.dist += (desired.dist - cur.dist)*k;
+  cur.az   += (desired.az   - cur.az)*k;
+  cur.el   += (desired.el   - cur.el)*k;
+  cur.look.lerp(desired.look, k);
+  const az = cur.az + dragAz, el = cur.el + dragEl;
+  const d = Math.max(4, cur.dist + zoomAdj);
+  camera.position.set(
+    cur.look.x + d*Math.cos(el)*Math.sin(az),
+    cur.look.y + d*Math.sin(el),
+    cur.look.z + d*Math.cos(el)*Math.cos(az)
+  );
+  camera.lookAt(cur.look);
+}
+
+/* ------------------------------------------------------------------- loop */
+let lastT = performance.now();
+function animate(now){
+  requestAnimationFrame(animate);
+  const dt = Math.min(0.05, (now - lastT)/1000);
+  lastT = now;
+
+  tanks.forEach((t, ti)=>{
+    tally(t);
+
+    if(t.osmosis){
+      [0,1].forEach(s=>{
+        t.levelTarget[s] = Math.min(H-0.1, LEVEL_PER*(t.counts.water[s] + t.counts.sugar[s]));
+        t.level[s] += (t.levelTarget[s] - t.level[s]) * Math.min(1, dt*1.5);
+      });
+    }
+    t.liquids.forEach((m,s)=>{ m.scale.y = t.level[s]; m.position.y = t.level[s]/2; });
+
+    t.carriers.forEach(c=>updateCarrier(t, c, dt));
+    t.parts.forEach(p=>updateParticle(t, p, dt));
+
+    const cnt = t.counts[t.cfg.count];
+    [0,1].forEach(s=>{
+      if(t.shown[s] !== cnt[s]){
+        t.shown[s] = cnt[s];
+        setLabel(t.countLbls[s], String(cnt[s]), {scale:0.52, color:hexCss(PT[t.cfg.count].col)});
+      }
+    });
+    const refs = cardRefs[ti];
+    if(refs){
+      refs[0].textContent = cnt[0];
+      refs[1].textContent = cnt[1];
+      const net = cnt[1] - t.startRight;
+      refs[2].textContent = (net > 0 ? '+' : '') + net;
+    }
+  });
+
+  placeCamera(dt);
+  renderer.render(scene, camera);
+}
+
+/* ------------------------------------------------------------------ wiring */
+const dotsEl = document.getElementById('dots');
+SCENES.forEach((s,i)=>{
+  const d = document.createElement('i');
+  d.title = s.title;
+  d.addEventListener('click', ()=>enterScene(i));
+  dotsEl.appendChild(d);
+});
+document.getElementById('next').addEventListener('click', ()=>{
+  if(sceneIdx < SCENES.length-1) enterScene(sceneIdx+1);
+});
+document.getElementById('back').addEventListener('click', ()=>{
+  if(sceneIdx > 0) enterScene(sceneIdx-1);
+});
+document.getElementById('replay').addEventListener('click', ()=>enterScene(sceneIdx));
+window.addEventListener('keydown', e=>{
+  if(e.key === 'ArrowRight' && sceneIdx < SCENES.length-1) enterScene(sceneIdx+1);
+  if(e.key === 'ArrowLeft'  && sceneIdx > 0) enterScene(sceneIdx-1);
+});
+
+function resize(){
+  const w = stage.clientWidth || window.innerWidth;
+  const h = stage.clientHeight || window.innerHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w/h;
+  camera.fov = (w/h < 1.1) ? 62 : 44;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+resize();
+
+enterScene(0);
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>
