@@ -548,6 +548,208 @@ function acidStory(THREE){
       'the scene still mentions magnesium, a ribbon or a syringe');
 }
 
+/* ===========================================================================
+   ATOM, MOLECULE, COMPOUND, MIXTURE — the 3D story
+
+   The tags over the boxes and the readout card are worked out from the
+   particles by classify(), not typed in. So the checks that matter are that
+   classify() gives the answer the narration gives, box by box, and that the
+   periodic table lights the squares the narration talks about.
+=========================================================================== */
+function particleTypesStory(THREE){
+  section('PARTICLE TYPES  atoms-molecules-compounds-mixtures-3d-story.html  (render path)');
+  const html = read('atoms-molecules-compounds-mixtures-3d-story.html');
+
+  const numbers = [];
+  const dom = makeDom(600, 400, numbers);
+  dom.querySelectorAll = () => [];
+  stubRenderer(THREE, dom, numbers);
+
+  const expose = ['animate','enterScene','SCENES','camera','renderer','BOXES',
+                  'classify','atomTarget','HS',
+                  'TABLE','PT_SYMBOLS','TABLE_X','bondFx','BOND_T'].join(',');
+  const js = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+  let clock = 1000;
+  const win = {addEventListener(){}, removeEventListener(){},
+               innerWidth:1280, innerHeight:720, devicePixelRatio:1};
+  let S = null;
+  try {
+    S = new Function(
+      'THREE','document','window','performance','requestAnimationFrame','navigator',
+      js + '\nreturn {' + expose + '};'
+    )(THREE, dom, win, {now(){ clock += 16; return clock; }}, () => 0, {userAgent:'node'});
+  } catch(e){
+    chk(false, 'the scene threw while loading: ' + e.message);
+    console.log((e.stack || '').split('\n').slice(0, 4).join('\n'));
+    return;
+  }
+  chk(true, 'the scene loads');
+
+  let now = 5000;
+  function run(frames){ for(let i=0;i<frames;i++){ now += 16.7; S.animate(now); } }
+
+  function sane(){
+    for(const bx of S.BOXES){
+      for(const a of bx.atoms){
+        const p = a.disp;
+        if(!isFinite(p.x) || !isFinite(p.y) || !isFinite(p.z)) return 'non-finite atom';
+        if(Math.max(Math.abs(p.x), Math.abs(p.y), Math.abs(p.z)) > S.HS + 1e-6) return 'atom outside its box';
+      }
+    }
+    const c = S.camera.position;
+    return (isFinite(c.x) && isFinite(c.y) && isFinite(c.z)) ? null : 'camera non-finite';
+  }
+
+  /* ---------- every scene survives a long run ---------- */
+  section('    every scene');
+  for(let i=0;i<S.SCENES.length;i++){
+    S.enterScene(i);
+    const before = S.renderer.__renders;
+    try { run(600); }
+    catch(e){
+      chk(false, `scene ${i} ("${S.SCENES[i].title}") threw: ${e.message}`);
+      console.log('      ' + (e.stack || '').split('\n').slice(1, 3).join('\n      '));
+      return;
+    }
+    const bad = sane();
+    chk(!bad, `scene ${i}: ${bad}`);
+    chk(S.renderer.__renders > before, `scene ${i} drew nothing`);
+  }
+  chk(true, `all ${S.SCENES.length} scenes run for 10 s without throwing`);
+
+  /* ---------- the tags say what the narration says ---------- */
+  section('    classification');
+  S.enterScene(0); run(30);
+  const expect = [
+    [0, 'Element',  'single atoms'],
+    [1, 'Element',  'molecules'],
+    [2, 'Compound', 'molecules'],
+    [3, 'Mixture',  'molecules'],
+    [4, 'Mixture',  'atoms and molecules']
+  ];
+  for(const [b, verdict, particles] of expect){
+    const c = S.classify(S.BOXES[b]);
+    chk(c.verdict === verdict, `box ${b} classified ${c.verdict}, narration says ${verdict}`);
+    chk(c.particles === particles, `box ${b} holds "${c.particles}", expected "${particles}"`);
+  }
+  chk(S.classify(S.BOXES[1]).kinds.join() === 'O', 'the oxygen box should hold only oxygen atoms');
+  chk(S.classify(S.BOXES[2]).kinds.length === 2, 'water should be made of two elements');
+
+  /* the mixture box holds the same two elements as water, unbonded */
+  const mix = S.classify(S.BOXES[3]);
+  chk(mix.kinds.join() === S.classify(S.BOXES[2]).kinds.join(),
+      'the mixture box should hold the same elements as the water box');
+  chk(!mix.subs.H2O, 'the mixture box should contain no water');
+
+  /* every box keeps its molecules in one piece */
+  section('    the molecules');
+  let worst = 0, atomsInMols = 0;
+  const tmp = new THREE.Vector3();
+  for(const bx of S.BOXES){
+    const inUse = new Set();
+    bx.molecules.forEach(m=>m.atoms.forEach((a,k)=>{
+      inUse.add(a); atomsInMols++;
+      worst = Math.max(worst, a.disp.distanceTo(S.atomTarget(m, k, tmp)));
+    }));
+    chk(inUse.size === bx.atoms.length, `box ${bx.index}: an atom is in no molecule, or in two`);
+  }
+  chk(worst < 1e-6, `an atom sits ${worst.toFixed(4)} away from its place in its molecule`);
+  console.log(`      ${atomsInMols} atoms, all held in their molecules`);
+
+  /* ---------- the bond callout ---------- */
+  section('    the bond callout');
+  const FX = S.bondFx;
+  const heroScenes = S.SCENES.map((s,i)=>[s,i]).filter(p=>p[0].hero);
+  for(const [s, i] of heroScenes){
+    S.enterScene(i);
+    run(Math.round((S.BOND_T + 1.8) * 60));       // well into the close-up, past the fade-in
+    const m = S.BOXES[s.box].hero;
+    const nb = m ? m.bonds.length : 0;
+    if(nb === 0){
+      chk(FX.label.material.opacity < 0.01 && FX.glows.every(g=>!g.visible),
+          `"${s.title}": a lone atom has no bond, but the callout showed`);
+      continue;
+    }
+    chk(FX.label.material.opacity > 0.9, `"${s.title}": the bond label never appeared`);
+    chk(FX.glows.filter(g=>g.visible).length === nb, `"${s.title}": ${nb} bonds but a different number glow`);
+    chk(FX.lines.filter(l=>l.visible).length === nb, `"${s.title}": ${nb} bonds but a different number of dotted lines`);
+    let off = 0;
+    m.bonds.forEach((b,k)=>{
+      const mid = m.atoms[b.i].disp.clone().add(m.atoms[b.j].disp).multiplyScalar(0.5);
+      const p = FX.lines[k].geometry.attributes.position;
+      off = Math.max(off, mid.distanceTo(new THREE.Vector3(p.getX(1), p.getY(1), p.getZ(1))));
+      chk(FX.glows[k].position.distanceTo(mid) < 1e-6, `"${s.title}": glow ${k} is not on its bond`);
+      chk(b.mesh.material.emissive.r > 0.05, `"${s.title}": bond ${k} is not tinted`);
+    });
+    chk(off < 1e-6, `"${s.title}": a dotted line misses its bond by ${off.toFixed(4)}`);
+    chk(FX.label.parent === S.BOXES[s.box].group, `"${s.title}": the callout is not in the molecule's box`);
+    const wantText = nb > 1 ? 'chemical bonds' : 'chemical bond';
+    chk(/chemical bond/.test(s.text), `"${s.title}": the narration should name the chemical bond`);
+    console.log(`      "${s.title}": ${nb} bond(s) glowing, "${wantText}" label, dotted lines on target`);
+
+    /* and it goes away with the close-up, leaving no tint behind */
+    run(Math.round(((s.heroT || 5) + 1.5) * 60));
+    chk(FX.label.material.opacity < 0.05, `"${s.title}": the bond label outlived the close-up`);
+    S.enterScene(0); run(5);
+    chk(m.bonds.every(b=>b.mesh.material.emissive.r === 0), `"${s.title}": a bond stayed tinted afterwards`);
+  }
+
+  /* the reaction step was cut: nothing in the story should still mention it */
+  section('    no reaction');
+  chk(!S.SCENES.some(s=>s.react), 'a scene is still flagged as a reaction');
+  chk(!/spark|left over|leftover|rearrange/i.test(S.SCENES.map(s=>s.text + s.caveat).join(' ')),
+      'the narration still describes the hydrogen–oxygen reaction');
+
+  /* ---------- the periodic table ---------- */
+  section('    the periodic table');
+  const T = S.TABLE;
+  chk(S.PT_SYMBOLS.length === 118, `the table should have 118 elements, has ${S.PT_SYMBOLS.length}`);
+  chk(new Set(S.PT_SYMBOLS).size === 118, 'a symbol appears twice in the table');
+  const spots = new Set(T.tiles.map(t=>t.col + ',' + t.row));
+  chk(spots.size === 118, `two elements share a square (${spots.size} distinct places)`);
+  chk(T.tiles.every(t=>t.col >= 1 && t.col <= 18), 'a square is outside columns 1–18');
+  /* spot checks on the layout pupils know */
+  const at = sym => { const t = T.bySym[sym]; return t.col + ',' + t.row; };
+  for(const [sym, place] of [['H','1,1'],['He','18,1'],['C','14,2'],['N','15,2'],['O','16,2'],
+                             ['Na','1,3'],['Cl','17,3'],['Ar','18,3'],['Fe','8,4'],['Au','11,6'],['Og','18,7']])
+    chk(at(sym) === place, `${sym} is at ${at(sym)}, should be at ${place}`);
+  /* every element the boxes use must have a lit square to point at */
+  for(const bx of S.BOXES) for(const a of bx.atoms)
+    chk(!!T.bySym[a.el].texL, `${a.el} is used in a box but its square cannot light up`);
+  /* the atom floated beside a lit square has to go into an empty space */
+  for(const t of T.tiles.filter(t=>t.texL)){
+    const c2 = t.col + t.atomDir[0], r2 = t.row - t.atomDir[1];
+    chk(!T.tiles.some(u=>u.col === c2 && u.row === r2),
+        `the atom for ${t.sym} would sit over the square at ${c2},${r2}`);
+  }
+
+  const tableScenes = S.SCENES.map((s,i)=>[s,i]).filter(p=>p[0].table);
+  chk(tableScenes.length >= 2, 'the story should visit the periodic table at least twice');
+  for(const [s, i] of tableScenes){
+    S.enterScene(i); run(600);
+    const lit = T.tiles.filter(t=>t.lit).map(t=>t.sym).sort().join();
+    const want = s.table.lights.map(l=>l[0]).sort().join();
+    chk(lit === want, `"${s.title}": lit ${lit}, narration expects ${want}`);
+    chk(Math.abs(S.camera.position.x - S.TABLE_X) < 20,
+        `"${s.title}": the camera ended up at x=${S.camera.position.x.toFixed(1)}, not at the table`);
+    const text = (s.text + s.caveat).replace(/<[^>]+>/g,'');
+    chk(/periodic table/i.test(text), `"${s.title}" never names the periodic table`);
+    console.log(`      "${s.title}": ${lit} lit, camera at the table`);
+  }
+  const wScene = tableScenes.find(p=>p[0].table.water !== undefined);
+  chk(!!wScene, 'no scene shows water missing from the table');
+  if(wScene){
+    S.enterScene(wScene[1]); run(600);
+    chk(T.waterAmt > 0.95, 'the water molecule never appeared by the table');
+    chk(!S.PT_SYMBOLS.some(x=>/H2O|H₂O|water/i.test(x)), 'water has a square');
+  }
+  S.enterScene(0); run(300);
+  chk(T.tiles.every(t=>!t.lit) && T.waterAmt < 0.05, 'the table should go dark once the story leaves it');
+  /* the Ar scene's number must match the table */
+  const argonText = tableScenes[0][0].text;
+  chk(argonText.includes('number ' + T.bySym.Ar.z), `the narration gives argon the wrong number (it is ${T.bySym.Ar.z})`);
+}
+
 /* =========================================================================== */
 (async function main(){
   const url = threeUrlOf(read('melting-snowman.html'));
@@ -571,6 +773,7 @@ function acidStory(THREE){
     melting(THREE);
     brownian(THREE);
     acidStory(THREE);
+    particleTypesStory(THREE);
     console.log('\n' + (fails ? `${fails} of ${checks} checks FAILED`
                                : `all ${checks} checks pass`));
     if(fails) process.exitCode = 1;

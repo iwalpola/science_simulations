@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atom, molecule, compound, mixture — the 3D story</title>
+<style>
+  :root{
+    --ink:#eef2f7;
+    --dim:#93a2b6;
+    --panel:rgba(10,14,21,.78);
+    --line:rgba(147,162,182,.22);
+    --element:#7fb0ff;
+    --compound:#ff8a5c;
+    --mixture:#7ee0a1;
+    --side:376px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;background:#080b11;color:var(--ink);overflow:hidden;
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+
+  /* ── the 3D takes everything the narration does not ── */
+  #stage{position:fixed;top:0;right:0;bottom:0;left:var(--side);}
+  canvas{display:block;}
+
+  /* ── narration column, down the left ── */
+  #side{
+    position:fixed;top:0;left:0;bottom:0;width:var(--side);
+    background:var(--panel);backdrop-filter:blur(16px);
+    border-right:1px solid var(--line);
+    padding:20px 22px 16px;
+    display:flex;flex-direction:column;gap:14px;
+    overflow-y:auto;
+  }
+
+  #side h1{
+    margin:0;
+    font-family:"Iowan Old Style","Charter","Palatino Linotype",Georgia,serif;
+    font-weight:600;font-size:19px;letter-spacing:.2px;line-height:1.25;
+  }
+  #side .byline{margin:4px 0 0;font-size:12px;line-height:1.5;color:var(--dim);}
+  #side a{color:var(--dim);text-decoration:none;font-size:12px;
+    border-bottom:1px solid rgba(147,162,182,.3);}
+  #side a:hover{color:var(--ink);}
+  .links{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;}
+
+  /* the "what is in this box" readout — worked out live from the particles */
+  .card{
+    background:rgba(255,255,255,.04);
+    border:1px solid var(--line);border-radius:11px;
+    padding:10px 12px;
+  }
+  .card .who{font-size:10px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;color:var(--dim);}
+  .card .nm{font-size:13px;color:var(--ink);margin-top:2px;font-weight:600;}
+  .card .rows{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin-top:8px;font-size:11.5px;}
+  .card .rows span{color:var(--dim);}
+  .card .rows b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums;}
+  .card .verdict{
+    margin-top:9px;padding-top:8px;border-top:1px solid var(--line);
+    font-family:"Iowan Old Style","Charter",Georgia,serif;
+    font-size:18px;font-weight:600;letter-spacing:.3px;
+  }
+  .verdict.element{color:var(--element);}
+  .verdict.compound{color:var(--compound);}
+  .verdict.mixture{color:var(--mixture);}
+
+  /* the narration itself */
+  .story{flex:1;min-height:0;}
+  .story h2{
+    margin:0;font-family:"Iowan Old Style","Charter",Georgia,serif;
+    font-size:17px;font-weight:600;letter-spacing:.2px;
+  }
+  .story p{margin:8px 0 0;font-size:13px;line-height:1.62;color:#cbd5e1;}
+  .story p b{color:#ffd9a0;font-weight:600;}
+  .story .caveat{
+    margin-top:10px;font-size:11px;line-height:1.5;color:#6b7a8f;
+    border-left:2px solid rgba(147,162,182,.25);padding-left:10px;
+  }
+
+  /* ── playback controls, floating bottom-centre over the stage ── */
+  .nav{
+    position:fixed;left:var(--side);right:0;bottom:20px;z-index:5;
+    margin:0 auto;width:fit-content;max-width:calc(100% - var(--side) - 32px);
+    display:flex;align-items:center;gap:8px;flex-wrap:nowrap;justify-content:center;
+    background:var(--panel);backdrop-filter:blur(16px);
+    border:1px solid var(--line);border-radius:999px;
+    padding:9px 12px;white-space:nowrap;
+  }
+  .nav button{
+    font:inherit;font-size:12.5px;font-weight:500;color:var(--dim);
+    background:rgba(255,255,255,.05);border:1px solid var(--line);
+    border-radius:999px;padding:7px 14px;cursor:pointer;
+    transition:background .15s ease,color .15s ease,opacity .15s ease;
+  }
+  .nav button:hover:not(:disabled){background:rgba(255,255,255,.12);color:var(--ink);}
+  .nav button:disabled{opacity:.32;cursor:default;}
+  .nav button.primary{background:rgba(127,176,255,.2);color:#dce9ff;border-color:rgba(127,176,255,.35);}
+  .dots{display:flex;gap:6px;padding:0 4px;}
+  .dots i{
+    width:7px;height:7px;border-radius:50%;background:rgba(147,162,182,.3);
+    cursor:pointer;transition:background .2s ease,transform .2s ease;
+  }
+  .dots i.on{background:var(--ink);transform:scale(1.25);}
+
+  /* ── atom key, floating top-right over the stage ── */
+  #key{
+    position:fixed;top:18px;right:20px;z-index:5;
+    background:var(--panel);backdrop-filter:blur(16px);
+    border:1px solid var(--line);border-radius:12px;
+    padding:11px 14px;
+    font-size:11.5px;line-height:1.75;color:var(--dim);
+  }
+  #key div{display:flex;align-items:center;gap:8px;}
+  #key b{color:var(--ink);font-weight:600;min-width:18px;}
+  .dot{width:11px;height:11px;border-radius:50%;flex:none;
+    box-shadow:inset -2px -2px 3px rgba(0,0,0,.45);}
+
+  .hint{
+    position:fixed;right:20px;bottom:20px;z-index:3;
+    font-size:11px;color:#5a687d;pointer-events:none;
+  }
+
+  /* ── narrow: narration goes to the bottom, controls sit above it ── */
+  @media (max-width:860px){
+    :root{--side:0px;}
+    #stage{left:0;bottom:44vh;}
+    #side{
+      top:auto;left:0;right:0;bottom:0;width:auto;height:44vh;
+      border-right:none;border-top:1px solid var(--line);
+      padding:14px 16px;gap:11px;
+    }
+    #side h1{font-size:16px;}
+    #side .byline{display:none;}
+    .nav{
+      left:0;right:0;bottom:44vh;
+      width:auto;max-width:none;margin:0;
+      border-radius:0;border-width:1px 0 0;
+      flex-wrap:wrap;white-space:normal;justify-content:center;
+    }
+    #key{top:14px;right:14px;padding:8px 10px;font-size:11px;line-height:1.6;}
+    .hint{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<div id="stage"></div>
+
+<div id="side">
+  <div>
+    <h1>Atom, molecule, compound, mixture</h1>
+    <p class="byline">Four words that get muddled — sorted out by looking at what is actually in the box</p>
+    <div class="links">
+      <a href="../index.html">← All simulations</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="who">In this box</div>
+    <div class="nm" id="cName">—</div>
+    <div class="rows">
+      <span>Particles</span><b id="cPart">—</b>
+      <span>Kinds of atom</span><b id="cKinds">—</b>
+      <span>Substances</span><b id="cSubs">—</b>
+      <span>Bonded to each other?</span><b id="cBond">—</b>
+    </div>
+    <div class="verdict" id="cVerdict">—</div>
+  </div>
+
+  <div class="story">
+    <h2 id="sTitle"></h2>
+    <p id="sText"></p>
+    <div class="caveat" id="sCaveat"></div>
+  </div>
+</div>
+
+<!-- outside #side: that panel's backdrop-filter would otherwise make it the
+     containing block for anything fixed-position inside it -->
+<div class="nav">
+  <button id="back">← Back</button>
+  <button id="next" class="primary">Next →</button>
+  <button id="replay">Replay</button>
+  <div class="dots" id="dots"></div>
+</div>
+
+<div id="key"></div>
+
+<div class="hint">drag to orbit · scroll to zoom</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ===========================================================================
+   ATOM, MOLECULE, COMPOUND, MIXTURE — the 3D story
+
+   Five glass boxes of gas on one bench, visited in turn:
+
+     argon            an element made of single atoms
+     oxygen           an element made of molecules (O2)
+     water (steam)    a compound made of molecules (H2O)
+     hydrogen+oxygen  a mixture of two elements — the same elements as water,
+                      but not bonded to each other
+     air             a mixture of atoms, element molecules and a compound
+
+   Off to the left stands a full periodic table. The camera goes there twice:
+   after the argon atom (one square per element — the five squares every atom
+   here comes from) and after water (it has no square; it is built from H and O).
+
+   The readout card and the ELEMENT / COMPOUND / MIXTURE tag over each box are
+   not typed in. classify() counts the kinds of atom and the kinds of particle
+   actually in the box and applies the definitions.
+
+   Gases are drawn because their particles are separate enough to see which
+   atoms are joined to which. Molecules fly in straight lines and bounce off the
+   walls; they do not collide with each other. Lighter molecules are drawn
+   moving faster, as they do (though not by the full factor).
+
+   Colours and radii are the shared palette from 3dreactionscenes/. Argon does
+   not appear there, so its colour is new.
+=========================================================================== */
+
+const EL = {
+  Ar:{name:'argon',    col:0x6fd0e0, r:0.70},
+  O: {name:'oxygen',   col:0x2f47b8, r:0.50},
+  H: {name:'hydrogen', col:0xd8402f, r:0.34},
+  N: {name:'nitrogen', col:0x8f6fd8, r:0.55},
+  C: {name:'carbon',   col:0x4d5560, r:0.58}
+};
+const MASS = {Ar:40, O:16, H:1, N:14, C:12};
+
+/* molecule templates, in Å-ish units: [element, x, y, z]. Bond lengths are a
+   little stretched from the real ones so the sticks show between the balls. */
+const HOH = 104.5*Math.PI/180/2;
+const SPECIES = {
+  Ar: {label:'Ar',  atoms:[['Ar',0,0,0]], bonds:[]},
+  O2: {label:'O₂',  atoms:[['O',-0.62,0,0],['O',0.62,0,0]], bonds:[[0,1]]},
+  H2: {label:'H₂',  atoms:[['H',-0.42,0,0],['H',0.42,0,0]], bonds:[[0,1]]},
+  N2: {label:'N₂',  atoms:[['N',-0.62,0,0],['N',0.62,0,0]], bonds:[[0,1]]},
+  H2O:{label:'H₂O', atoms:[['O',0,0.2,0],
+                           ['H', 0.98*Math.sin(HOH), 0.2-0.98*Math.cos(HOH),0],
+                           ['H',-0.98*Math.sin(HOH), 0.2-0.98*Math.cos(HOH),0]],
+       bonds:[[0,1],[0,2]]},
+  CO2:{label:'CO₂', atoms:[['C',0,0,0],['O',-1.2,0,0],['O',1.2,0,0]], bonds:[[0,1],[0,2]]}
+};
+function massOf(sp){ return SPECIES[sp].atoms.reduce((s,a)=>s+MASS[a[0]],0); }
+function speedOf(sp){ return 1.05 * Math.pow(32/massOf(sp), 0.25); }
+
+const MOL_SCALE = 0.5;
+const HS = 2.6;                     // half the inside width of a box
+const BOX_GAP = 8.5;
+const HERO_T = 5.0;                 // seconds spent close up on one particle
+
+/* seeded, so a rebuild looks the same and the tests are repeatable */
+function rng(seed){
+  let a = seed >>> 0;
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const rand = rng(20260915);
+
+/* ------------------------------------------------------------------ three */
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio||1));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.08;
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x080b11);
+scene.fog = new THREE.Fog(0x080b11, 55, 110);
+const camera = new THREE.PerspectiveCamera(44, 1, 0.1, 300);
+
+scene.add(new THREE.HemisphereLight(0x9fb4d0, 0x0a0d13, 0.6));
+const keyL = new THREE.DirectionalLight(0xffffff, 0.95); keyL.position.set(6,11,8); scene.add(keyL);
+const fillL = new THREE.DirectionalLight(0x9ec3ff, 0.40); fillL.position.set(-8,4,-6); scene.add(fillL);
+const rimL  = new THREE.DirectionalLight(0xffd9b0, 0.32); rimL.position.set(0,3,-10); scene.add(rimL);
+
+/* a small, dim room to reflect, so the atoms read as solid objects */
+(function environment(){
+  const env = new THREE.Scene();
+  const box = new THREE.BoxGeometry(1,1,1);
+  env.add(new THREE.Mesh(new THREE.BoxGeometry(30,18,30),
+    new THREE.MeshBasicMaterial({color:0x1d2634, side:THREE.BackSide})));
+  const panel=(hex,gain,x,y,z,sx,sy,sz)=>{
+    const m=new THREE.Mesh(box,new THREE.MeshBasicMaterial({color:hex}));
+    m.material.color.multiplyScalar(gain);
+    m.position.set(x,y,z); m.scale.set(sx,sy,sz); env.add(m);
+  };
+  panel(0xffffff,1.1,  0, 8.4,  0, 14,0.1,14);
+  panel(0xbcd6ff,1.3,-11, 1.5,  0, 0.1,11,20);
+  panel(0xffd7b0,0.9, 11, 1.5,  2, 0.1,11,20);
+  panel(0x8fb0e0,0.5,  0, 0.0,-12, 22,11,0.1);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(env, 0.04).texture;
+  pmrem.dispose();
+})();
+
+/* the bench: a long pool of light fading to dark, not a pale dome */
+const benchMap = (function(){
+  const S = 512, c = document.createElement('canvas');
+  c.width = c.height = S;
+  const x = c.getContext('2d');
+  x.fillStyle = '#000'; x.fillRect(0,0,S,S);
+  const g = x.createRadialGradient(S/2,S/2,0, S/2,S/2,S*0.5);
+  g.addColorStop(0.00,'rgba(230,236,246,0.85)');
+  g.addColorStop(0.20,'rgba(170,182,200,0.45)');
+  g.addColorStop(0.36,'rgba(80,90,106,0.12)');
+  g.addColorStop(0.50,'rgba(0,0,0,0)');
+  x.fillStyle = g; x.fillRect(0,0,S,S);
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+})();
+const bench = new THREE.Mesh(
+  new THREE.CylinderGeometry(30,30,0.4,72),
+  new THREE.MeshStandardMaterial({color:0x4a515d, map:benchMap,
+    roughness:0.94, metalness:0, envMapIntensity:0.10})
+);
+bench.scale.z = 0.45;
+bench.position.y = -0.2; scene.add(bench);
+
+/* ------------------------------------------------------------- shared bits */
+const SPH = new THREE.SphereGeometry(1,28,20);
+const CYL = new THREE.CylinderGeometry(1,1,1,14,1,false);
+const UP = new THREE.Vector3(0,1,0);
+const V3 = THREE.Vector3;
+
+function linearise(root){
+  root.traverse(o=>{
+    if(!o.material) return;
+    (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{
+      if(!m || m.userData.__lin) return;
+      m.userData.__lin = true;
+      if(m.color)    m.color.convertSRGBToLinear();
+      if(m.emissive) m.emissive.convertSRGBToLinear();
+    });
+  });
+}
+
+function makeLabel(text, opt){
+  opt = opt || {};
+  const size = opt.size || 54, pad = 18;
+  const c = document.createElement('canvas'), ctx = c.getContext('2d');
+  const font = (opt.weight||'600')+' '+size+'px '+(opt.sans
+    ? 'ui-sans-serif, "Segoe UI", Arial, sans-serif'
+    : '"Iowan Old Style", Charter, Georgia, serif');
+  ctx.font = font;
+  const w = Math.ceil(ctx.measureText(text).width) + pad*2, h = size + pad*2;
+  c.width = w; c.height = h;
+  ctx.font = font; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.shadowColor = 'rgba(0,0,0,.9)'; ctx.shadowBlur = 14;
+  ctx.fillStyle = opt.color || '#eef2f7';
+  ctx.fillText(text, w/2, h/2 + size*0.04);
+  const tex = new THREE.CanvasTexture(c); tex.anisotropy = 4;
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({
+    map:tex, transparent:true, depthTest:false, depthWrite:false, opacity:opt.opacity===undefined?1:opt.opacity}));
+  spr.renderOrder = 10;
+  const scale = opt.scale || 0.62;
+  spr.userData.base = [w/h*scale, scale];
+  spr.scale.set(w/h*scale, scale, 1);
+  return spr;
+}
+function setLabel(spr, text, opt){
+  const fresh = makeLabel(text, opt);
+  if(spr.material.map) spr.material.map.dispose();
+  spr.material.map = fresh.material.map;
+  spr.material.needsUpdate = true;
+  spr.userData.base = fresh.userData.base;
+  spr.scale.copy(fresh.scale);
+}
+function fadeTo(m, target, dt, rate){
+  m.opacity += (target - m.opacity) * Math.min(1, dt*(rate||4));
+}
+
+/* -------------------------------------------------------------------- boxes */
+const TAG_COL = {Element:'#7fb0ff', Compound:'#ff8a5c', Mixture:'#7ee0a1'};
+
+const hexCss = n => '#'+n.toString(16).padStart(6,'0');
+
+function buildBox(index, name){
+  const g = new THREE.Group();
+  g.position.set((index-2)*BOX_GAP, HS+0.06, 0);
+  scene.add(g);
+
+  const glass = new THREE.Mesh(new THREE.BoxGeometry(HS*2, HS*2, HS*2),
+    new THREE.MeshStandardMaterial({color:0xbfd6e8, roughness:0.08, metalness:0,
+      transparent:true, opacity:0.06, depthWrite:false, side:THREE.DoubleSide, envMapIntensity:1.4}));
+  g.add(glass);
+  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(HS*2, HS*2, HS*2)),
+    new THREE.LineBasicMaterial({color:0x9fb6cc, transparent:true, opacity:0.45}));
+  g.add(edges);
+
+  const nameLbl = makeLabel(name, {scale:0.7});
+  const tagLbl = makeLabel(' ', {scale:0.46, sans:true, weight:'700', size:44, opacity:0});
+  g.add(nameLbl, tagLbl);
+
+  const box = {index, group:g, name, nameLbl, tagLbl, tagKey:'',
+               atoms:[], molecules:[], hero:null, revealScene:-1};
+  return box;
+}
+
+function makeAtom(box, el){
+  const e = EL[el];
+  const mesh = new THREE.Mesh(SPH, new THREE.MeshStandardMaterial({
+    color:e.col, roughness:0.34, metalness:0.18,
+    emissive:new THREE.Color(e.col).multiplyScalar(0.06),
+    transparent:true, opacity:1
+  }));
+  mesh.scale.setScalar(e.r * MOL_SCALE);
+  box.group.add(mesh);
+  const a = {el, mesh, disp:new V3()};
+  box.atoms.push(a);
+  return a;
+}
+
+function makeBondMesh(box){
+  const m = new THREE.Mesh(CYL, new THREE.MeshStandardMaterial({
+    color:0xa9b6c6, roughness:0.5, metalness:0.1, transparent:true, opacity:1
+  }));
+  m.userData.radius = 0.075;
+  box.group.add(m);
+  return m;
+}
+
+function randomQuat(){
+  return new THREE.Quaternion().setFromEuler(
+    new THREE.Euler(rand()*6.283, rand()*6.283, rand()*6.283));
+}
+function randomDir(){
+  const z = rand()*2-1, th = rand()*6.283, s = Math.sqrt(1-z*z);
+  return new V3(s*Math.cos(th), s*Math.sin(th), z);
+}
+
+/* a molecule owns the atoms it is made of, and where each one sits in it */
+function makeMolecule(box, sp, atoms, pos){
+  const tpl = SPECIES[sp];
+  const offs = tpl.atoms.map(t=>new V3(t[1],t[2],t[3]).multiplyScalar(MOL_SCALE));
+  const m = {
+    sp, atoms, offs, extent:extentOf(sp),
+    pos: pos.clone(),
+    vel: randomDir().multiplyScalar(speedOf(sp)),
+    quat: randomQuat(),
+    spinAxis: randomDir(), spinRate: (0.5 + rand()*0.9) * (1.6 - Math.min(1, massOf(sp)/40)),
+    bonds: tpl.bonds.map(b=>({i:b[0], j:b[1], mesh:makeBondMesh(box)}))
+  };
+  box.molecules.push(m);
+  clampInBox(m);
+  return m;
+}
+
+/* somewhere in the box not already taken */
+function freeSpot(box, extent){
+  const lim = HS - extent - 0.05;
+  let best = null, bestD = -1;
+  for(let tries=0; tries<50; tries++){
+    const p = new V3((rand()*2-1)*lim, (rand()*2-1)*lim, (rand()*2-1)*lim);
+    let d = 1e9;
+    box.molecules.forEach(m=>{ d = Math.min(d, p.distanceTo(m.pos) - m.extent - extent); });
+    if(d > 0.35) return p;
+    if(d > bestD){ bestD = d; best = p; }
+  }
+  return best;
+}
+
+function extentOf(sp){
+  return SPECIES[sp].atoms.reduce((e,t)=>
+    Math.max(e, Math.hypot(t[1],t[2],t[3])*MOL_SCALE + EL[t[0]].r*MOL_SCALE), 0);
+}
+
+/* fill a box with a recipe like {N2:13, O2:4} */
+function fill(box, recipe){
+  Object.keys(recipe).forEach(sp=>{
+    for(let n=0;n<recipe[sp];n++){
+      const atoms = SPECIES[sp].atoms.map(t=>makeAtom(box, t[0]));
+      makeMolecule(box, sp, atoms, freeSpot(box, extentOf(sp)));
+    }
+  });
+  linearise(box.group);
+  placeAtoms(box);
+}
+
+/* ---------------------------------------------------------------- dynamics */
+const _q = new THREE.Quaternion(), _a = new V3();
+
+function clampInBox(m){
+  const lim = HS - m.extent;
+  ['x','y','z'].forEach(ax=>{
+    if(m.pos[ax] >  lim){ m.pos[ax] =  lim; m.vel[ax] = -Math.abs(m.vel[ax]); }
+    if(m.pos[ax] < -lim){ m.pos[ax] = -lim; m.vel[ax] =  Math.abs(m.vel[ax]); }
+  });
+}
+
+function stepMolecule(m, dt, slow){
+  m.pos.addScaledVector(m.vel, dt*slow);
+  clampInBox(m);
+  _q.setFromAxisAngle(m.spinAxis, m.spinRate*dt*slow);
+  m.quat.premultiply(_q);
+}
+
+function atomTarget(m, k, out){
+  return out.copy(m.offs[k]).applyQuaternion(m.quat).add(m.pos);
+}
+
+function placeBond(mesh, a, b, shrink){
+  const dir = _a.subVectors(b, a);
+  const len = Math.max(dir.length()-(shrink||0)*2, 0.001);
+  mesh.position.copy(a).addScaledVector(dir, 0.5);
+  mesh.scale.set(mesh.userData.radius, len, mesh.userData.radius);
+  mesh.quaternion.setFromUnitVectors(UP, dir.normalize());
+}
+
+/* move every atom, and the bonds between them, to where its molecule is */
+function placeAtoms(box){
+  box.molecules.forEach(m=>{
+    m.atoms.forEach((a,k)=>{
+      atomTarget(m, k, a.disp);
+      a.mesh.position.copy(a.disp);
+    });
+    m.bonds.forEach(b=>placeBond(b.mesh, m.atoms[b.i].disp, m.atoms[b.j].disp, 0.02));
+  });
+}
+
+/* ------------------------------------------------------------ what's in it */
+const EL_ORDER = Object.keys(EL);
+function classify(box){
+  const subs = {}, kinds = new Set();
+  let single = 0, bonded = 0;
+  box.molecules.forEach(m=>{
+    subs[m.sp] = (subs[m.sp]||0) + 1;
+    m.atoms.forEach(a=>kinds.add(a.el));
+    if(m.atoms.length > 1) bonded++; else single++;
+  });
+  const nSubs = Object.keys(subs).length;
+  const kindList = EL_ORDER.filter(e=>kinds.has(e));
+  const verdict = nSubs === 0 ? '' : nSubs > 1 ? 'Mixture' : kindList.length === 1 ? 'Element' : 'Compound';
+  const particles = bonded && single ? 'atoms and molecules' : bonded ? 'molecules' : single ? 'single atoms' : '—';
+  return {verdict, particles, kinds:kindList, subs, nSubs};
+}
+
+/* ------------------------------------------------------------------ the set */
+let simT = 0;
+const BOXES = [
+  buildBox(0, 'Argon'),
+  buildBox(1, 'Oxygen'),
+  buildBox(2, 'Water (as steam)'),
+  buildBox(3, 'Hydrogen + oxygen'),
+  buildBox(4, 'Air')
+];
+fill(BOXES[0], {Ar:14});
+fill(BOXES[1], {O2:12});
+fill(BOXES[2], {H2O:12});
+fill(BOXES[3], {H2:10, O2:5});
+fill(BOXES[4], {N2:13, O2:4, Ar:1, CO2:1});
+
+/* ---------------------------------------------------------- periodic table */
+/* Stands upright on its own bench, off to the left of the boxes. All 118
+   elements, the f-block pulled out underneath as usual. A square the story
+   points at slides forward, takes its element's colour, and puts one atom of
+   that element in front of it. */
+const TABLE_X = -46;
+const PT_SYMBOLS = ('H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn '+
+  'Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm '+
+  'Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu '+
+  'Am Cm Bk Cf Es Fm Md No Lr Rf Db Sg Bh Hs Mt Ds Rg Cn Nh Fl Mc Lv Ts Og').split(' ');
+
+/* [column 1–18, row] for atomic number z; rows 9 and 10 are the f-block */
+function ptPlace(z){
+  if(z === 1) return [1,1];
+  if(z === 2) return [18,1];
+  if(z <= 10)  return z <= 4  ? [z-2, 2] : [z+8, 2];
+  if(z <= 18)  return z <= 12 ? [z-10,3] : [z, 3];
+  if(z <= 36)  return [z-18, 4];
+  if(z <= 54)  return [z-36, 5];
+  if(z <= 56)  return [z-54, 6];
+  if(z <= 71)  return [z-54, 9];     // La..Lu
+  if(z <= 86)  return [z-68, 6];     // Hf..Rn
+  if(z <= 88)  return [z-86, 7];
+  if(z <= 103) return [z-86, 10];    // Ac..Lr
+  return [z-100, 7];                 // Rf..Og
+}
+const PT_STEP = 1.1, PT_TOP = 12.0;
+function ptLocal(col, row){
+  return new V3((col-9.5)*PT_STEP, PT_TOP - (row-1)*PT_STEP - (row >= 9 ? 0.35 : 0), 0);
+}
+
+function tileTexture(z, sym, lit){
+  const S = 128, c = document.createElement('canvas');
+  c.width = c.height = S;
+  const x = c.getContext('2d');
+  x.fillStyle = lit ? hexCss(EL[sym].col) : '#1a2130';
+  x.fillRect(0,0,S,S);
+  x.strokeStyle = lit ? 'rgba(255,255,255,.85)' : 'rgba(147,162,182,.35)';
+  x.lineWidth = lit ? 6 : 3;
+  x.strokeRect(2,2,S-4,S-4);
+  x.fillStyle = lit ? '#ffffff' : '#8d9bb0';
+  x.font = '600 22px ui-sans-serif, "Segoe UI", Arial, sans-serif';
+  x.textAlign = 'left'; x.textBaseline = 'top';
+  x.fillText(String(z), 10, 9);
+  x.fillStyle = lit ? '#ffffff' : '#d6dee8';
+  x.font = '700 '+(sym.length > 1 ? 52 : 58)+'px ui-sans-serif, "Segoe UI", Arial, sans-serif';
+  x.textAlign = 'center'; x.textBaseline = 'middle';
+  if(lit){ x.shadowColor = 'rgba(0,0,0,.6)'; x.shadowBlur = 6; }
+  x.fillText(sym, S/2, S/2 + 6);
+  if(lit){
+    x.font = '600 17px ui-sans-serif, "Segoe UI", Arial, sans-serif';
+    x.fillText(EL[sym].name, S/2, S - 18);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding; t.anisotropy = 4;
+  return t;
+}
+
+const TABLE = (function buildTable(){
+  const g = new THREE.Group();
+  g.position.set(TABLE_X, 0, 0);
+  scene.add(g);
+
+  const pool = new THREE.Mesh(new THREE.CylinderGeometry(15,15,0.4,64),
+    new THREE.MeshStandardMaterial({color:0x4a515d, map:benchMap,
+      roughness:0.94, metalness:0, envMapIntensity:0.10}));
+  pool.scale.z = 0.5; pool.position.set(0, -0.2, 1.5);
+  g.add(pool);
+
+  const TILE = new THREE.BoxGeometry(1, 1, 0.16);
+  const sideMat = new THREE.MeshStandardMaterial({color:0x2a3344, roughness:0.6, metalness:0.1});
+  const tiles = [], bySym = {};
+  PT_SYMBOLS.forEach((sym, k)=>{
+    const z = k+1, place = ptPlace(z);
+    const front = new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.55, metalness:0.05,
+      map:tileTexture(z, sym, false), envMapIntensity:0.3});
+    front.userData.__lin = true;            // colour is animated as a plain brightness
+    const mesh = new THREE.Mesh(TILE, [sideMat, sideMat, sideMat, sideMat, front, sideMat]);
+    const home = ptLocal(place[0], place[1]);
+    mesh.position.copy(home);
+    g.add(mesh);
+    const tile = {z, sym, col:place[0], row:place[1], mesh, front, home,
+                  texN:front.map, texL:null, lit:false, amt:0, atom:null};
+    if(EL[sym]){
+      tile.texL = tileTexture(z, sym, true);
+      tile.atom = new THREE.Mesh(SPH, new THREE.MeshStandardMaterial({
+        color:EL[sym].col, roughness:0.34, metalness:0.18,
+        emissive:new THREE.Color(EL[sym].col).multiplyScalar(0.06)}));
+      tile.atom.scale.setScalar(0.001);
+      g.add(tile.atom);
+    }
+    tiles.push(tile); bySym[sym] = tile;
+  });
+  /* the atom shown for a lit square goes into an empty space next to it:
+     above if there is room (H, C, N, O), otherwise off the right-hand edge (Ar) */
+  const taken = new Set(tiles.map(t=>t.col+','+t.row));
+  tiles.forEach(t=>{
+    t.atomDir = !taken.has(t.col+','+(t.row-1)) ? [0,1]
+              : !taken.has((t.col+1)+','+t.row) ? [1,0] : [-1,0];
+  });
+
+  const title = makeLabel('The periodic table', {scale:0.9});
+  title.position.set(0, PT_TOP + 1.3, 0);
+  g.add(title);
+
+  /* for "water is not on the table": a water molecule in the empty gap above
+     the transition metals, tied back to the two squares it is made from */
+  const water = new THREE.Group();
+  water.position.copy(ptLocal(7.5, 1.7)).add(new V3(0, 0, 1.6));
+  const WS = 1.0;
+  SPECIES.H2O.atoms.forEach(t=>{
+    const m = new THREE.Mesh(SPH, new THREE.MeshStandardMaterial({
+      color:EL[t[0]].col, roughness:0.34, metalness:0.18, transparent:true, opacity:0}));
+    m.scale.setScalar(EL[t[0]].r*WS);
+    m.position.set(t[1]*WS, t[2]*WS, t[3]*WS);
+    water.add(m);
+  });
+  SPECIES.H2O.bonds.forEach(b=>{
+    const m = new THREE.Mesh(CYL, new THREE.MeshStandardMaterial({
+      color:0xa9b6c6, roughness:0.5, metalness:0.1, transparent:true, opacity:0}));
+    m.userData.radius = 0.13;
+    const pa = SPECIES.H2O.atoms[b[0]], pb = SPECIES.H2O.atoms[b[1]];
+    placeBond(m, new V3(pa[1],pa[2],pa[3]).multiplyScalar(WS), new V3(pb[1],pb[2],pb[3]).multiplyScalar(WS), 0.02);
+    water.add(m);
+  });
+  g.add(water);
+  const waterLbl = makeLabel('H₂O — no square of its own', {scale:0.6, color:'#ffd9a0', opacity:0});
+  waterLbl.position.copy(water.position).add(new V3(0, -1.25, 0));
+  g.add(waterLbl);
+  const ties = ['H','O'].map(sym=>{
+    const geo = new THREE.BufferGeometry().setFromPoints([new V3(), new V3()]);
+    const line = new THREE.Line(geo, new THREE.LineBasicMaterial({color:0xffd9a0, transparent:true, opacity:0}));
+    g.add(line);
+    return {sym, line};
+  });
+
+  return {group:g, tiles, bySym, water, waterLbl, ties, waterAmt:0};
+})();
+
+function tileWorld(sym, out){
+  const t = TABLE.bySym[sym];
+  return out.copy(t.home).add(TABLE.group.position);
+}
+
+linearise(scene);
+
+const heroLbl = makeLabel(' ', {scale:0.42, opacity:0});
+scene.add(heroLbl);
+
+/* ------------------------------------------------------------ bond callout */
+/* During the close-up on one molecule, its bonds glow and a label underneath
+   points at each one with a dotted line. The glow is the electron yellow used
+   across the reaction scenes, because a covalent bond is shared electrons.
+   These objects are moved into whichever box holds the molecule being followed. */
+const BOND_COL = 0xffe070;
+const BOND_T = 1.8;                 // seconds into the close-up before it appears
+const BOND_LIN = new THREE.Color(BOND_COL).convertSRGBToLinear();
+const bondFx = {
+  label: makeLabel('chemical bond', {scale:0.34, color:'#ffe070', opacity:0}),
+  glows: [], lines: [], count: 0, amt: 0, tinted: []
+};
+for(let k=0;k<2;k++){
+  const glow = new THREE.Mesh(CYL, new THREE.MeshBasicMaterial({color:BOND_COL,
+    transparent:true, opacity:0, blending:THREE.AdditiveBlending, depthWrite:false}));
+  glow.userData.radius = 0.2;
+  glow.visible = false;
+  const line = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([new V3(), new V3(0,0.001,0)]),
+    new THREE.LineDashedMaterial({color:BOND_COL, dashSize:0.07, gapSize:0.055,
+      transparent:true, opacity:0, depthTest:false}));
+  line.renderOrder = 9;
+  line.visible = false;
+  linearise(glow); linearise(line);
+  bondFx.glows.push(glow); bondFx.lines.push(line);
+}
+bondFx.label.visible = false;
+
+function attachBondFx(bx){
+  bondFx.tinted.forEach(mat=>mat.emissive.setRGB(0,0,0));
+  bondFx.tinted = [];
+  bondFx.amt = 0;
+  bondFx.label.material.opacity = 0;
+  const m = bx && bx.hero;
+  bondFx.count = m ? Math.min(m.bonds.length, bondFx.glows.length) : 0;
+  if(!bondFx.count){
+    bondFx.label.visible = false;
+    bondFx.glows.forEach(g=>{ g.visible = false; });
+    bondFx.lines.forEach(l=>{ l.visible = false; });
+    return;
+  }
+  bx.group.add(bondFx.label, ...bondFx.glows, ...bondFx.lines);
+  setLabel(bondFx.label, bondFx.count > 1 ? 'chemical bonds' : 'chemical bond',
+           {scale:0.34, color:'#ffe070'});
+  bondFx.label.visible = true;
+  bondFx.tinted = m.bonds.slice(0, bondFx.count).map(b=>b.mesh.material);
+}
+
+const _mid = new V3();
+function updateBondFx(dt){
+  const s = SCENES[sceneIdx];
+  const m = s.hero ? BOXES[s.box].hero : null;
+  const want = bondFx.count && m && inHeroPhase() && sceneT >= BOND_T ? 1 : 0;
+  bondFx.amt += (want - bondFx.amt) * Math.min(1, dt*3);
+  const a = bondFx.amt;
+  if(!bondFx.count || !m) return;
+  const pulse = 0.78 + 0.22*Math.sin(simT*4);
+
+  // under the molecule; the name label is above it
+  bondFx.label.position.copy(m.pos).add(new V3(0, -(m.extent + 0.55), 0));
+  bondFx.label.material.opacity = a;
+
+  for(let k=0;k<bondFx.glows.length;k++){
+    const glow = bondFx.glows[k], line = bondFx.lines[k];
+    const b = k < bondFx.count ? m.bonds[k] : null;
+    const on = !!b && a > 0.01;
+    glow.visible = line.visible = on;
+    if(!b) continue;
+    const pa = m.atoms[b.i].disp, pb = m.atoms[b.j].disp;
+    placeBond(glow, pa, pb, 0.02);
+    glow.material.opacity = 0.5 * a * pulse;
+    b.mesh.material.emissive.copy(BOND_LIN).multiplyScalar(0.85 * a * pulse);
+
+    _mid.addVectors(pa, pb).multiplyScalar(0.5);
+    const pos = line.geometry.attributes.position;
+    pos.setXYZ(0, bondFx.label.position.x, bondFx.label.position.y + 0.17, bondFx.label.position.z);
+    pos.setXYZ(1, _mid.x, _mid.y, _mid.z);
+    pos.needsUpdate = true;
+    line.geometry.computeBoundingSphere();
+    line.computeLineDistances();
+    line.material.opacity = a;
+  }
+}
+
+/* =============================== the story ============================== */
+const SCENES = [
+  {
+    box:0, hero:'one atom · Ar',
+    title:'An atom',
+    text:'This box holds <b>argon</b>, a gas that makes up about 1% of the air. Follow one particle: it is a '+
+         '<b>single atom</b>, on its own, not joined to anything. An atom is the smallest particle of an element. '+
+         'Now pull back — every particle in the box is the same kind of atom, so the box holds an '+
+         '<b>element</b>: argon, made of single atoms.',
+    caveat:'Most elements do not drift about as lone atoms. The noble gases — helium, neon, argon — are the exception, '+
+           'which is why argon is the example here.'
+  },
+  {
+    box:null, hero:null,
+    table:{
+      lights:[['Ar',0.4],['H',3.0],['C',3.5],['N',4.0],['O',4.5]],
+      cam:[{t:0, tile:'Ar', dist:5.2}, {t:2.6, all:true}]
+    },
+    title:'One square per element',
+    text:'Argon has its own square on the <b>periodic table</b>: number 18, in group 0 on the far right. '+
+         'The periodic table is a list of every <b>element</b> — 118 kinds of atom, one square each. '+
+         'Every atom in this story comes from just <b>five squares</b>: hydrogen, carbon, nitrogen, oxygen and argon. '+
+         'Everything else you will see is those atoms, joined up or mixed.',
+    caveat:'A square stands for a kind of atom, not for one particle. Every argon atom there is belongs to the same '+
+           'square — number 18, because every argon atom has 18 protons.'
+  },
+  {
+    box:1, hero:'one molecule · O₂', heroT:8,
+    title:'A molecule',
+    text:'Oxygen is different. Its atoms come in pairs, held together by a <b>chemical bond</b>. Two or more atoms '+
+         'bonded together make a <b>molecule</b> — this one is O₂. But check the key: both atoms are oxygen. '+
+         'There is still only <b>one kind of atom</b> in the whole box — one square of the periodic table, '+
+         'number 8 — so this is still an <b>element</b>: an element made of molecules.',
+    caveat:'"Molecule" says the atoms are joined. "Element" and "compound" say which atoms they are. '+
+           'O₂ is a molecule, but it is not a compound. The glowing stick stands for the bond: electrons shared '+
+           'between the atoms hold them together.'
+  },
+  {
+    box:2, hero:'one molecule · H₂O', heroT:8,
+    title:'A compound',
+    text:'Now the atoms in each molecule are <b>different</b>: one oxygen held to two hydrogens by <b>chemical bonds</b>, H₂O. '+
+         'A <b>compound</b> is two or more different elements chemically bonded together — in a '+
+         '<b>fixed ratio</b>. Every molecule here is exactly 2 H to 1 O; there is no water molecule with three '+
+         'hydrogens. And every particle is the same, so this is <b>one substance</b>.',
+    caveat:'Drawn as steam, so the molecules are spread out like a gas. Not every compound is made of molecules: '+
+           'sodium chloride is a giant lattice of ions — but it is still a compound, two elements bonded in a fixed ratio.'
+  },
+  {
+    box:null, hero:null,
+    table:{
+      lights:[['H',0.3],['O',1.9]],
+      water:3.4,
+      cam:[{t:0, tile:'H', dist:5.2}, {t:1.6, tile:'O', dist:5.2}, {t:3.2, all:true}]
+    },
+    title:'Water is not on the table',
+    text:'Look for water on the periodic table and you will not find it. The table lists <b>elements only</b>. '+
+         'Water is made from <b>two squares</b> — hydrogen and oxygen — chemically bonded in a fixed ratio, '+
+         '2 H to every 1 O. That is what makes it a <b>compound</b>: a new substance built out of elements, '+
+         'with no square of its own.',
+    caveat:'Mixtures have no square either. There is no square for air — but every kind of atom in it has one: '+
+           'N, O, Ar, and the C and O in carbon dioxide.'
+  },
+  {
+    box:3, hero:null,
+    title:'A mixture',
+    text:'The same two elements as water, hydrogen and oxygen — but here they are <b>not bonded to each other</b>. '+
+         'H₂ molecules and O₂ molecules just share the box. That is a <b>mixture</b>: two or more substances '+
+         'together but not chemically joined. You could put in <b>any amount</b> of each, and each keeps its own '+
+         'properties — the hydrogen still zips about faster, because it is lighter.',
+    caveat:'Because nothing is bonded, a mixture can be separated by physical means — filtering, distillation, '+
+           'chromatography — with no chemical reaction needed.'
+  },
+  {
+    box:4, hero:null,
+    title:'Air is a mixture',
+    text:'The air around you is a mixture of all three kinds of particle at once: <b>nitrogen</b> and '+
+         '<b>oxygen</b> molecules (elements), a little <b>argon</b> (single atoms) and some <b>carbon dioxide</b> '+
+         '(a compound, CO₂). Inside each molecule the atoms are bonded — but the different substances are just '+
+         'mixed, <b>not bonded to each other</b>.',
+    caveat:'Real air is 78% nitrogen, 21% oxygen, 0.9% argon and 0.04% carbon dioxide, plus some water vapour. '+
+           'One argon atom and one CO₂ molecule are drawn so you can find them; a fair sample of 19 would have none.'
+  },
+  {
+    box:null, hero:null,
+    title:'Sorted',
+    text:'<b>Atom</b> — the smallest particle of an element. <b>Molecule</b> — two or more atoms bonded together, '+
+         'the same kind or different. <b>Element</b> — only one kind of atom: one square of the periodic table. <b>Compound</b> — two or more '+
+         'elements chemically bonded, in a fixed ratio. <b>Mixture</b> — different substances together, not '+
+         'bonded to each other, in any amounts.',
+    caveat:'The words overlap. O₂ is a molecule but not a compound. H₂O is a molecule and a compound. Sodium chloride '+
+           'is a compound but not made of molecules. Argon is an element made of atoms, not molecules.'
+  }
+];
+
+let sceneIdx = 0, sceneT = 0;
+BOXES.forEach(b=>{ b.revealScene = SCENES.findIndex(s=>s.box === b.index); });
+
+/* ------------------------------------------------------------ camera orbit */
+const desired = {dist:40, az:0, el:0.22, look:new V3(0,3,0)};
+const cur     = {dist:40, az:0, el:0.22, look:new V3(0,3,0)};
+let dragAz = 0, dragEl = 0, zoomAdj = 0;
+let dragging = false, lastX = 0, lastY = 0;
+
+const cv = renderer.domElement;
+cv.style.touchAction = 'none';
+cv.style.cursor = 'grab';
+cv.addEventListener('pointerdown', e=>{
+  dragging = true; lastX = e.clientX; lastY = e.clientY;
+  cv.style.cursor = 'grabbing';
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove', e=>{
+  if(!dragging) return;
+  dragAz += (e.clientX - lastX) * 0.006;
+  dragEl = Math.max(-0.4, Math.min(1.05, dragEl + (e.clientY - lastY) * 0.004));
+  lastX = e.clientX; lastY = e.clientY;
+});
+['pointerup','pointercancel'].forEach(ev=>
+  cv.addEventListener(ev, ()=>{ dragging = false; cv.style.cursor = 'grab'; }));
+cv.addEventListener('wheel', e=>{
+  e.preventDefault();
+  zoomAdj = Math.max(-8, Math.min(20, zoomAdj + e.deltaY*0.01));
+}, {passive:false});
+
+/* far enough back that all five boxes fit across the frame, whatever its shape */
+function wideDist(){
+  const halfW = 2*BOX_GAP + HS + 1.2;
+  const vf = camera.fov*Math.PI/180;
+  const hf = 2*Math.atan(Math.tan(vf/2)*camera.aspect);
+  return Math.max(halfW/Math.tan(hf/2), 5/Math.tan(vf/2)) + HS;
+}
+
+function inHeroPhase(){
+  const s = SCENES[sceneIdx];
+  return !!s.hero && sceneT < (s.heroT || HERO_T) && !!BOXES[s.box].hero;
+}
+
+/* far enough back that the whole periodic table fits */
+function tableDist(){
+  const vf = camera.fov*Math.PI/180;
+  const hf = 2*Math.atan(Math.tan(vf/2)*camera.aspect);
+  return Math.max(10.6/Math.tan(hf/2), 7.4/Math.tan(vf/2)) + 1;
+}
+
+function aimCamera(){
+  const s = SCENES[sceneIdx];
+  if(s.table){
+    let key = s.table.cam[0];
+    s.table.cam.forEach(k=>{ if(sceneT >= k.t) key = k; });
+    if(key.tile){
+      tileWorld(key.tile, desired.look).add(new V3(0, 0.45, 0.6));
+      desired.dist = key.dist; desired.az = 0.14; desired.el = 0.08;
+    } else {
+      desired.look.set(TABLE_X, PT_TOP - 4.8, 0);
+      desired.dist = tableDist(); desired.az = 0; desired.el = 0.1;
+    }
+    return;
+  }
+  if(s.box === null){
+    desired.dist = wideDist(); desired.az = 0; desired.el = 0.2;
+    desired.look.set(0, HS+0.8, 0);
+    return;
+  }
+  const bx = BOXES[s.box];
+  if(inHeroPhase()){
+    desired.dist = 4.6; desired.az = 0.25; desired.el = 0.18;
+    desired.look.copy(bx.group.position).add(bx.hero.pos);
+  } else {
+    const narrow = camera.aspect < 1.1;
+    desired.dist = narrow ? 15.5 : 13.0;
+    desired.az = 0.32 * (s.box % 2 ? -1 : 1);
+    desired.el = 0.26;
+    desired.look.copy(bx.group.position).add(new V3(0, 0.5, 0));
+  }
+}
+
+function placeCamera(dt){
+  const k = Math.min(1, dt*2.4);
+  cur.dist += (desired.dist - cur.dist)*k;
+  cur.az   += (desired.az   - cur.az)*k;
+  cur.el   += (desired.el   - cur.el)*k;
+  cur.look.lerp(desired.look, Math.min(1, dt*3.2));
+
+  const az = cur.az + dragAz, el = cur.el + dragEl;
+  const d = Math.max(2.5, cur.dist + zoomAdj * Math.max(0.3, cur.dist/14));
+  camera.position.set(
+    cur.look.x + d*Math.cos(el)*Math.sin(az),
+    cur.look.y + d*Math.sin(el),
+    cur.look.z + d*Math.cos(el)*Math.cos(az)
+  );
+  camera.lookAt(cur.look);
+}
+
+/* -------------------------------------------------------------- enter scene */
+function enterScene(i){
+  sceneIdx = i; sceneT = 0;
+  const s = SCENES[i];
+
+  document.getElementById('sTitle').innerHTML = s.title;
+  document.getElementById('sText').innerHTML = s.text;
+  document.getElementById('sCaveat').innerHTML = s.caveat;
+  document.getElementById('back').disabled = (i === 0);
+  document.getElementById('next').disabled = (i === SCENES.length-1);
+  const dotEls = document.querySelectorAll('#dots i');
+  for(let k=0;k<dotEls.length;k++) dotEls[k].classList.toggle('on', k === i);
+
+  BOXES.forEach(b=>{ b.hero = null; });
+  if(s.hero){
+    const bx = BOXES[s.box];
+    // the particle nearest the middle, so the close-up is not pressed to a wall
+    let best = null;
+    bx.molecules.forEach(m=>{ if(!best || m.pos.length() < best.pos.length()) best = m; });
+    bx.hero = best;
+    setLabel(heroLbl, s.hero, {scale:0.42});
+    heroLbl.material.opacity = 0;
+  }
+  attachBondFx(s.hero ? BOXES[s.box] : null);
+  cardKey = '';
+}
+
+/* --------------------------------------------------------------- readouts */
+const elName = document.getElementById('cName'), elPart = document.getElementById('cPart'),
+      elKinds = document.getElementById('cKinds'), elSubs = document.getElementById('cSubs'),
+      elBond = document.getElementById('cBond'), elVerdict = document.getElementById('cVerdict');
+let cardKey = '';
+
+function describeSubs(c){
+  return Object.keys(c.subs).sort((p,q)=>c.subs[q]-c.subs[p])
+    .map(sp=>SPECIES[sp].label+' ×'+c.subs[sp]).join(' · ');
+}
+
+function updateCard(){
+  const s = SCENES[sceneIdx];
+  if(s.table){
+    if(cardKey === 'table') return;
+    cardKey = 'table';
+    elName.textContent = 'The periodic table';
+    elPart.textContent = '—';
+    elKinds.textContent = PT_SYMBOLS.length + ' — one per square';
+    elSubs.textContent = 'elements only';
+    elBond.textContent = '—';
+    elVerdict.className = 'verdict element';
+    elVerdict.textContent = 'A list of elements';
+    return;
+  }
+  if(s.box === null){
+    const key = 'summary';
+    if(cardKey === key) return;
+    cardKey = key;
+    elName.textContent = 'All five boxes';
+    elPart.textContent = '—'; elKinds.textContent = '—';
+    elSubs.textContent = '—'; elBond.textContent = '—';
+    elVerdict.className = 'verdict';
+    elVerdict.textContent = 'See the tag over each box';
+    return;
+  }
+  const bx = BOXES[s.box];
+  const hero = inHeroPhase();
+  const c = classify(bx);
+  const key = [s.box, hero, bx.name, describeSubs(c), c.kinds.join()].join('|');
+  if(cardKey === key) return;
+  cardKey = key;
+
+  elName.textContent = bx.name;
+  elPart.textContent = c.particles;
+  elKinds.textContent = c.kinds.length + ' — ' + c.kinds.join(', ');
+  elSubs.textContent = c.nSubs + ' — ' + describeSubs(c);
+  elBond.textContent = c.nSubs > 1 ? 'no — only within each molecule'
+                     : c.particles === 'single atoms' ? 'no' : 'only within each molecule';
+  if(hero){
+    elVerdict.className = 'verdict';
+    elVerdict.textContent = '…';
+  } else {
+    elVerdict.className = 'verdict ' + c.verdict.toLowerCase();
+    elVerdict.textContent = c.verdict;
+  }
+}
+
+/* ---------------------------------------------------------- the table, live */
+function updateTable(s, dt){
+  const lights = s.table ? s.table.lights : [];
+  const anyLit = lights.some(l=>sceneT >= l[1]);
+  TABLE.tiles.forEach(tile=>{
+    const want = !!tile.texL && lights.some(l=>l[0] === tile.sym && sceneT >= l[1]);
+    if(want !== tile.lit){
+      tile.lit = want;
+      tile.front.map = want ? tile.texL : tile.texN;
+      tile.front.needsUpdate = true;
+    }
+    tile.amt += ((want ? 1 : 0) - tile.amt) * Math.min(1, dt*4);
+    tile.mesh.position.z = tile.home.z + tile.amt*0.7;
+    tile.mesh.scale.setScalar(1 + 0.18*tile.amt);
+    // the squares not being talked about step back into the dark
+    const b = anyLit && !want ? 0.42 : 1;
+    tile.front.color.setScalar(tile.front.color.r + (b - tile.front.color.r)*Math.min(1, dt*3));
+    if(tile.atom){
+      const r = EL[tile.sym].r * 0.95 * tile.amt;
+      tile.atom.scale.setScalar(Math.max(0.001, r));
+      tile.atom.visible = tile.amt > 0.01;
+      // beside the square, not in front of it, so the symbol stays readable
+      tile.atom.position.set(tile.home.x + tile.atomDir[0]*1.05*tile.amt,
+        tile.home.y + tile.atomDir[1]*1.05*tile.amt + Math.sin(simT*2 + tile.z)*0.06, 0.9*tile.amt);
+    }
+  });
+
+  /* water: a molecule with no square, tied back to the squares it is made of */
+  const wantW = s.table && s.table.water !== undefined && sceneT >= s.table.water ? 1 : 0;
+  TABLE.waterAmt += (wantW - TABLE.waterAmt) * Math.min(1, dt*3);
+  const wa = TABLE.waterAmt;
+  TABLE.water.visible = wa > 0.01;
+  TABLE.water.rotation.y = simT*0.6;
+  TABLE.water.scale.setScalar(0.4 + 0.6*wa);
+  TABLE.water.children.forEach(m=>{ m.material.opacity = wa; });
+  TABLE.waterLbl.material.opacity = wa;
+  TABLE.ties.forEach(tie=>{
+    const tile = TABLE.bySym[tie.sym];
+    const p = tie.line.geometry.attributes.position;
+    p.setXYZ(0, tile.home.x, tile.home.y, 0.8 + tile.amt*0.7);
+    p.setXYZ(1, TABLE.water.position.x, TABLE.water.position.y, TABLE.water.position.z);
+    p.needsUpdate = true;
+    tie.line.material.opacity = wa * 0.8;
+    tie.line.visible = wa > 0.01;
+  });
+}
+
+/* ------------------------------------------------------------------- loop */
+let lastT = performance.now();
+let labelBoost = 1;
+
+function animate(now){
+  requestAnimationFrame(animate);
+  const dt = Math.min(0.05, Math.max(0, (now - lastT)/1000));
+  lastT = now;
+  simT += dt; sceneT += dt;
+
+  const s = SCENES[sceneIdx];
+  const hero = inHeroPhase();
+  const wide = s.box === null && !s.table;
+  updateTable(s, dt);
+  labelBoost += ((wide ? 2.1 : 1) - labelBoost) * Math.min(1, dt*2.5);
+
+  BOXES.forEach(bx=>{
+    const focus = hero && s.box === bx.index;
+    bx.molecules.forEach(m=>{
+      stepMolecule(m, dt, focus && m === bx.hero ? 0.3 : 1);
+    });
+    placeAtoms(bx);
+
+    /* dim everything but the particle being followed */
+    bx.molecules.forEach(m=>{
+      const a = (focus && m !== bx.hero) ? 0.22 : 1;
+      m.atoms.forEach(at=>fadeTo(at.mesh.material, a, dt));
+      m.bonds.forEach(b=>{ b.mesh.material.opacity = m.atoms[0].mesh.material.opacity; });
+    });
+
+    /* labels over the box: the name, and a tag worked out from what is inside */
+    const nb = bx.nameLbl.userData.base, tb = bx.tagLbl.userData.base;
+    bx.nameLbl.scale.set(nb[0]*labelBoost, nb[1]*labelBoost, 1);
+    bx.nameLbl.position.set(0, HS + 0.75 + 0.55*(labelBoost-1), 0);
+    const c = classify(bx);
+    const tagKey = c.verdict + ' · ' + c.particles;
+    if(tagKey !== bx.tagKey){
+      bx.tagKey = tagKey;
+      setLabel(bx.tagLbl, c.verdict.toUpperCase() + '  ·  ' + c.particles,
+               {scale:0.46, sans:true, weight:'700', size:44, color:TAG_COL[c.verdict]});
+    }
+    bx.tagLbl.scale.set(tb[0]*labelBoost, tb[1]*labelBoost, 1);
+    bx.tagLbl.position.set(0, HS + 0.28 + 0.1*(labelBoost-1), 0);
+    const revealed = sceneIdx > bx.revealScene ||
+                     (sceneIdx === bx.revealScene && !hero);
+    fadeTo(bx.tagLbl.material, revealed ? 1 : 0, dt, 3);
+    fadeTo(bx.nameLbl.material, hero && s.box === bx.index ? 0.25 : 1, dt, 3);
+  });
+
+  /* the label that follows the one particle in the close-up */
+  if(s.hero && BOXES[s.box].hero){
+    const bx = BOXES[s.box];
+    heroLbl.position.copy(bx.group.position).add(bx.hero.pos).add(new V3(0, bx.hero.extent + 0.35, 0));
+  }
+  fadeTo(heroLbl.material, hero && sceneT > 0.8 ? 1 : 0, dt, 3);
+  updateBondFx(dt);
+
+  updateCard();
+  aimCamera();
+  placeCamera(dt);
+  renderer.render(scene, camera);
+}
+
+/* ------------------------------------------------------------------ wiring */
+const dotsEl = document.getElementById('dots');
+SCENES.forEach((s,i)=>{
+  const d = document.createElement('i');
+  d.title = s.title;
+  d.addEventListener('click', ()=>enterScene(i));
+  dotsEl.appendChild(d);
+});
+document.getElementById('next').addEventListener('click', ()=>{
+  if(sceneIdx < SCENES.length-1) enterScene(sceneIdx+1);
+});
+document.getElementById('back').addEventListener('click', ()=>{
+  if(sceneIdx > 0) enterScene(sceneIdx-1);
+});
+document.getElementById('replay').addEventListener('click', ()=>enterScene(sceneIdx));
+window.addEventListener('keydown', e=>{
+  if(e.key === 'ArrowRight' && sceneIdx < SCENES.length-1) enterScene(sceneIdx+1);
+  if(e.key === 'ArrowLeft'  && sceneIdx > 0) enterScene(sceneIdx-1);
+});
+
+/* the atom key */
+document.getElementById('key').innerHTML =
+  ['Ar','O','H','N','C'].map(s=>
+    `<div><span class="dot" style="background:${hexCss(EL[s].col)}"></span><b>${s}</b> ${EL[s].name}</div>`
+  ).join('');
+
+function resize(){
+  const w = stage.clientWidth || window.innerWidth;
+  const h = stage.clientHeight || window.innerHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w/h;
+  camera.fov = (w/h < 1.1) ? 56 : 44;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+resize();
+
+/* open on the whole bench, then fly in to the first box */
+cur.dist = wideDist();
+enterScene(0);
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>
