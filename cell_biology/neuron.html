@@ -53,7 +53,7 @@
 </head>
 <body>
 <div id="info"><b>NEURON</b> — procedural model<br>stellate soma + myelinated axon / recursive dendritic arbor</div>
-<div id="hud">drag to orbit · scroll to zoom · impulse fires dendrites → soma → terminals</div>
+<div id="hud">drag to orbit · scroll to zoom · impulse fires dendrites → soma → terminals · mitochondria re-boost the signal</div>
 
 <div id="panel">
   <h2 id="panelHead"><span>PARAMETERS</span><span id="caret">[–]</span></h2>
@@ -122,6 +122,14 @@ const P = {
   impulseWidth:    1.2,    // length of the depolarised zone
   impulseGlow:     1.0,    // brightness of the flash
 
+  /* --- mitochondria --- */
+  mitoSomaCount:   12,     // scattered through the cell body around the nucleus
+  mitoAxon:        1,      // 0/1: one inside every myelinated internode
+  mitoSize:        0.95,
+  mitoBoost:       0.6,    // signal strength restored each time the pulse passes one
+  signalFade:      0.15,   // how quickly the pulse weakens per unit of distance
+  sparkSize:       0.55,    // size of the energy burst at each boost
+
   /* --- camera (starting view; no rebuild, dragging updates these) --- */
   camYaw:          147.5,   // degrees around the vertical axis, 0 = looking from +Z
   camElevation:    27,   // degrees above the horizon
@@ -182,6 +190,13 @@ const CONTROLS = [
   ['saltatoryBoost',  'saltatory boost',   1.0,  8.0,  0.1 ],
   ['impulseWidth',    'pulse width',       0.2,  6.0,  0.1 ],
   ['impulseGlow',     'glow',              0.0,  1.5,  0.05],
+  ['MITOCHONDRIA'],
+  ['mitoSomaCount',   'soma count',        0,    30,   1   ],
+  ['mitoAxon',        'along axon (0/1)',  0,    1,    1   ],
+  ['mitoSize',        'size',              0.3,  2.0,  0.05],
+  ['mitoBoost',       'signal boost',      0.0,  1.0,  0.05],
+  ['signalFade',      'signal fade',       0.0,  0.5,  0.01],
+  ['sparkSize',       'spark size',        0.0,  3.0,  0.05],
   ['CAMERA'],
   ['camYaw',          'yaw (deg)',         -180, 180,  0.5 ],
   ['camElevation',    'elevation (deg)',   -75,  75,   0.5 ],
@@ -202,6 +217,17 @@ function seedRng(s) { _rngState = (s * 1831565813 + 0x9E3779B9) >>> 0; }
 function rnd() {
   _rngState = (_rngState + 0x6D2B79F5) >>> 0;
   let t = _rngState;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+// an independent stream for the mitochondria, so adding or moving them
+// never shifts the main sequence that shapes the dendrites and axon
+let _mitoState = 1;
+function mrnd() {
+  _mitoState = (_mitoState + 0x6D2B79F5) >>> 0;
+  let t = _mitoState;
   t = Math.imul(t ^ (t >>> 15), t | 1);
   t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
@@ -250,6 +276,7 @@ const dendriteMat = new THREE.MeshPhongMaterial({ color:0x1f7fe0, shininess:65, 
 const axonMat     = new THREE.MeshPhongMaterial({ color:0xb9c4dd, shininess:50, specular:0xffffff, emissive:0x2a3550, emissiveIntensity:0.3 });
 const myelinMat   = new THREE.MeshPhongMaterial({ color:0xf2b01e, shininess:80, specular:0xffeab0, emissive:0x8a5f00, emissiveIntensity:0.35, transparent:true, side:THREE.DoubleSide });
 const boutonMat   = new THREE.MeshPhongMaterial({ color:0x4f9fef, shininess:90, specular:0xffffff, emissive:0x14539f, emissiveIntensity:0.7 });
+const mitoMat     = Organelles.materials.mitochondrion;
 
 let neuron = new THREE.Group();
 scene.add(neuron);
@@ -273,24 +300,35 @@ function reg(mesh, u, kind) {
   return mesh;
 }
 
+// Mitochondria sit on the same u axis. When a pulse crosses one it flashes,
+// throws off a spark and tops the pulse's strength back up — the signal
+// weakens as it travels and is re-amplified at each energy supply.
+const mitos = [];
+function regMito(mesh, u) {
+  mitos.push({ mesh, u, base: mesh.material, flash: 0 });
+  return mesh;
+}
+
 // Rather than give every mesh its own material, each base material gets a
 // short ladder of progressively brighter clones and meshes are swapped
 // between rungs — a few hundred material switches a frame instead of a few
 // hundred live materials.
 const TIERS = 7;
 const GLOW = new THREE.Color(0xaff2ff);
+const MITO_GLOW = new THREE.Color(0xfff3a0);   // mitochondria flash a warm energy yellow
 const tiers = new Map();
 
 function buildTiers() {
   for (const arr of tiers.values()) for (let i = 1; i < arr.length; i++) arr[i].dispose();
   tiers.clear();
-  for (const base of [somaMat, dendriteMat, axonMat, boutonMat]) {
+  for (const base of [somaMat, dendriteMat, axonMat, boutonMat, mitoMat]) {
+    const glow = base === mitoMat ? MITO_GLOW : GLOW;
     const arr = [base];
     for (let i = 1; i < TIERS; i++) {
       const f = i / (TIERS - 1);
       const m = base.clone();
-      m.color = base.color.clone().lerp(GLOW, f * 0.8);
-      m.emissive = base.emissive.clone().lerp(GLOW, f * 0.95);
+      m.color = base.color.clone().lerp(glow, f * 0.8);
+      m.emissive = base.emissive.clone().lerp(glow, f * 0.95);
       m.emissiveIntensity = base.emissiveIntensity + f * 1.5;
       arr.push(m);
     }
@@ -415,6 +453,28 @@ function createSoma() {
   nucleus.scale.y = 0.75;
   nucleus.position.set(-P.somaRadius * 0.12, P.somaRadius * 0.06 * P.somaFlatten, P.somaRadius * 0.18);
   mesh.add(nucleus);
+
+  // mitochondria: small beans scattered in the cytoplasm, kept clear of the
+  // nucleus and of each other, lying roughly in the soma's flat plane
+  const R = P.somaRadius;
+  const makeMito = Organelles.mitochondrionMaker({ length:0.21, width:0.075 });
+  const nucXZ = new THREE.Vector2(nucleus.position.x, nucleus.position.z);
+  const nucClear = R * 0.30 + 0.28 * P.mitoSize;
+  const placed = [];
+  for (let tries = 0; placed.length < P.mitoSomaCount && tries < 400; tries++) {
+    const a = mrnd() * Math.PI * 2;
+    const rr = R * 0.82 * Math.sqrt(mrnd());
+    const p = new THREE.Vector3(Math.cos(a) * rr, (mrnd() - 0.5) * R * P.somaFlatten * 0.6, Math.sin(a) * rr);
+    if (new THREE.Vector2(p.x, p.z).distanceTo(nucXZ) < nucClear) continue;
+    if (placed.some(q => q.distanceTo(p) < 0.42 * P.mitoSize)) continue;
+    placed.push(p);
+    const m = makeMito(mrnd() * Math.PI);
+    m.scale.multiplyScalar(P.mitoSize);
+    m.position.copy(p);
+    m.rotation.set(0, mrnd() * Math.PI * 2, (mrnd() - 0.5) * 0.5);
+    mesh.add(m);
+    regMito(m, 0);
+  }
 
   return mesh;
 }
@@ -545,14 +605,28 @@ function myelinatedRun(start, dir, segments, segLength, radius, group, dist) {
     const sheath = makeSegment(a, b, r, r, myelinMat, 12);
     if (sheath) group.add(sheath);
 
+    // one mitochondrion per internode, lying along the axis and just fat
+    // enough to bulge out of the core so it reads through the sheath
+    if (axonMito && P.mitoAxon >= 0.5) {
+      const m = axonMito(mrnd() * Math.PI);
+      m.scale.set(segLength * 0.2 * P.mitoSize, r * 0.62 * P.mitoSize, r * 0.62 * P.mitoSize);
+      m.position.copy(current).lerp(end, 0.5);
+      m.quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), d);
+      group.add(m);
+      regMito(m, dist + (i + 0.5) * segLength);
+    }
+
     current = end;
     r = Math.max(r * 0.97, 0.09);
   }
   return { end: current, dir: d, radius: r, dist: dist + segments * segLength };
 }
 
+let axonMito = null;
+
 function createAxon() {
   const group = new THREE.Group();
+  axonMito = Organelles.mitochondrionMaker({ folds:7 });
 
   // hillock: short blue cone continuing out of the soma's axon lobe
   const hillockStart = rootTip(axonRoot, 0.86);
@@ -637,9 +711,12 @@ function build() {
   // lit clones inherit the same transparency as the material they brighten
   buildTiers();
   conduction.length = 0;
+  mitos.length = 0;
   pulses.length = 0;
+  clearSparks();
 
   seedRng(P.seed);
+  _mitoState = (P.seed * 2654435761 + 12345) >>> 0;
   buildRoots();
 
   neuron = new THREE.Group();
@@ -665,14 +742,70 @@ function build() {
    runs saltatoryBoost times faster, node to node, until it
    reaches the boutons.
    ============================================================ */
+// each pulse carries a position u and a strength amp: amp fades with
+// distance travelled and each mitochondrion it passes pumps it back up
 const pulses = [];
 let sinceLast = 1e9;
 
 function clearGlow() {
   for (const e of conduction) setTier(e, 0);
+  for (const m of mitos) { m.flash = 0; setTier(m, 0); }
+}
+
+/* ---- sparks: additive glowing sprites that burst off a mitochondrion ---- */
+const sparkTex = (() => {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grad.addColorStop(0.0, 'rgba(255,255,255,1)');
+  grad.addColorStop(0.2, 'rgba(255,244,170,0.9)');
+  grad.addColorStop(0.5, 'rgba(120,220,255,0.35)');
+  grad.addColorStop(1.0, 'rgba(60,160,255,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+})();
+const sparks = [];
+const SPARK_LIFE = 0.45;
+
+function spawnSpark(mesh, big) {
+  if (P.sparkSize <= 0) return;
+  let s = sparks.find(k => k.age >= SPARK_LIFE);
+  if (!s) {
+    const mat = new THREE.SpriteMaterial({ map: sparkTex, blending: THREE.AdditiveBlending,
+                                           depthWrite: false, depthTest: false, transparent: true });
+    s = { sprite: new THREE.Sprite(mat), age: SPARK_LIFE, size: 1 };
+    scene.add(s.sprite);
+    sparks.push(s);
+  }
+  mesh.getWorldPosition(s.sprite.position);
+  s.age = 0;
+  s.size = (big ? 1.6 : 1.0) * P.sparkSize * P.mitoSize;
+  s.sprite.visible = true;
+}
+
+function updateSparks(dt) {
+  for (const s of sparks) {
+    if (s.age >= SPARK_LIFE) { s.sprite.visible = false; continue; }
+    s.age += dt;
+    const t = Math.min(s.age / SPARK_LIFE, 1);
+    const sc = s.size * (0.3 + 1.4 * Math.sqrt(t));
+    s.sprite.scale.set(sc, sc, 1);
+    s.sprite.material.opacity = (1 - t) * (1 - t);
+  }
+}
+
+function clearSparks() {
+  for (const s of sparks) { s.age = SPARK_LIFE; s.sprite.visible = false; }
 }
 
 function updateImpulse(dt) {
+  updateSparks(dt);
+  for (const m of mitos) {
+    if (m.flash > 0) { m.flash = Math.max(0, m.flash - dt * 2.5); setTier(m, m.flash); }
+  }
+
   if (P.impulseOn < 0.5) {
     if (pulses.length) { pulses.length = 0; clearGlow(); }
     return;
@@ -682,13 +815,27 @@ function updateImpulse(dt) {
   const gap = 1 / Math.max(P.impulseRate, 0.01);
   if (sinceLast >= gap) {
     sinceLast = 0;
-    pulses.push(uMin - P.impulseWidth);     // start just off the dendrite tips
+    pulses.push({ u: uMin - P.impulseWidth, amp: 1 });   // start just off the dendrite tips
   }
 
   for (let i = pulses.length - 1; i >= 0; i--) {
-    const myelinated = pulses[i] > P.axonHillock;
-    pulses[i] += P.impulseSpeed * (myelinated ? P.saltatoryBoost : 1) * dt;
-    if (pulses[i] > uMax + 3 * P.impulseWidth) pulses.splice(i, 1);
+    const p = pulses[i];
+    const prev = p.u;
+    const myelinated = p.u > P.axonHillock;
+    p.u += P.impulseSpeed * (myelinated ? P.saltatoryBoost : 1) * dt;
+    // only fade once inside the cell — the approach from off the tips is free
+    const travelled = p.u - Math.max(prev, uMin);
+    if (travelled > 0) p.amp = Math.max(0.2, p.amp * Math.exp(-P.signalFade * travelled));
+
+    for (const m of mitos) {
+      if (prev < m.u && m.u <= p.u) {
+        m.flash = 1;
+        setTier(m, 1);
+        p.amp = Math.min(1, p.amp + P.mitoBoost);
+        spawnSpark(m.mesh, m.u > 0);
+      }
+    }
+    if (p.u > uMax + 3 * P.impulseWidth) pulses.splice(i, 1);
   }
 
   const w = Math.max(P.impulseWidth, 0.05);
@@ -698,8 +845,9 @@ function updateImpulse(dt) {
     // strobe on and off as the pulse crosses its single u value
     const width = e.kind === 'soma' ? w * 2.5 : w;
     for (let i = 0; i < pulses.length; i++) {
-      const d = (pulses[i] - e.u) / width;
-      const v = Math.exp(-d * d);
+      // a stronger pulse is brighter and spreads a little wider
+      const d = (pulses[i].u - e.u) / (width * (0.6 + 0.4 * pulses[i].amp));
+      const v = Math.exp(-d * d) * pulses[i].amp;
       if (v > g) g = v;
     }
     setTier(e, g * P.impulseGlow);
@@ -926,6 +1074,14 @@ CellAdaptations.init({
       title: 'Nerve endings (axon terminals)',
       text: 'At the end of the axon are branched <b>nerve endings</b>. They form <b>synapses</b> with other cells and release <b>chemical neurotransmitters</b> to pass the impulse on to the next nerve, muscle or gland.',
       anchor: () => nearestConductive(uMax, boutonMat)
+    },
+    {
+      title: 'Mitochondria along the axon',
+      text: 'Mitochondria are spread <b>all along the axon</b>, not just in the cell body. They supply <b>energy (ATP)</b> for the ion pumps that <b>keep the impulse strong</b> as it travels. Watch each one flash and re-boost the fading signal as the pulse passes.',
+      anchor: () => {
+        const m = mitos.filter(k => k.u > 0)[2];
+        return m ? m.mesh.getWorldPosition(new THREE.Vector3()) : null;
+      }
     },
     {
       title: 'Cell body with nucleus',
