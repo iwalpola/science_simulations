@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pure substance or mixture — the 3D story</title>
+<style>
+  :root{
+    --ink:#eef2f7;
+    --dim:#93a2b6;
+    --panel:rgba(10,14,21,.78);
+    --line:rgba(147,162,182,.22);
+    --pure:#7fb0ff;
+    --mixture:#7ee0a1;
+    --side:376px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;background:#080b11;color:var(--ink);overflow:hidden;
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+
+  #stage{position:fixed;top:0;right:0;bottom:0;left:var(--side);}
+  canvas{display:block;}
+
+  #side{
+    position:fixed;top:0;left:0;bottom:0;width:var(--side);
+    background:var(--panel);backdrop-filter:blur(16px);
+    border-right:1px solid var(--line);
+    padding:20px 22px 16px;
+    display:flex;flex-direction:column;gap:14px;
+    overflow-y:auto;
+  }
+  #side h1{
+    margin:0;
+    font-family:"Iowan Old Style","Charter","Palatino Linotype",Georgia,serif;
+    font-weight:600;font-size:19px;letter-spacing:.2px;line-height:1.25;
+  }
+  #side .byline{margin:4px 0 0;font-size:12px;line-height:1.5;color:var(--dim);}
+  #side a{color:var(--dim);text-decoration:none;font-size:12px;
+    border-bottom:1px solid rgba(147,162,182,.3);}
+  #side a:hover{color:var(--ink);}
+  .links{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;}
+
+  .card{
+    background:rgba(255,255,255,.04);
+    border:1px solid var(--line);border-radius:11px;
+    padding:10px 12px;
+  }
+  .card .who{font-size:10px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;color:var(--dim);}
+  .card .nm{font-size:13px;color:var(--ink);margin-top:2px;font-weight:600;}
+  .card .rows{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin-top:8px;font-size:11.5px;}
+  .card .rows span{color:var(--dim);}
+  .card .rows b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums;}
+  .card .verdict{
+    margin-top:9px;padding-top:8px;border-top:1px solid var(--line);
+    font-family:"Iowan Old Style","Charter",Georgia,serif;
+    font-size:18px;font-weight:600;letter-spacing:.3px;
+  }
+  .verdict.pure{color:var(--pure);}
+  .verdict.mixture{color:var(--mixture);}
+
+  .story{flex:1;min-height:0;}
+  .story h2{
+    margin:0;font-family:"Iowan Old Style","Charter",Georgia,serif;
+    font-size:17px;font-weight:600;letter-spacing:.2px;
+  }
+  .story p{margin:8px 0 0;font-size:13px;line-height:1.62;color:#cbd5e1;}
+  .story p b{color:#ffd9a0;font-weight:600;}
+  .story .caveat{
+    margin-top:10px;font-size:11px;line-height:1.5;color:#6b7a8f;
+    border-left:2px solid rgba(147,162,182,.25);padding-left:10px;
+  }
+
+  .nav{
+    position:fixed;left:var(--side);right:0;bottom:20px;z-index:5;
+    margin:0 auto;width:fit-content;max-width:calc(100% - var(--side) - 32px);
+    display:flex;align-items:center;gap:8px;flex-wrap:nowrap;justify-content:center;
+    background:var(--panel);backdrop-filter:blur(16px);
+    border:1px solid var(--line);border-radius:999px;
+    padding:9px 12px;white-space:nowrap;
+  }
+  .nav button{
+    font:inherit;font-size:12.5px;font-weight:500;color:var(--dim);
+    background:rgba(255,255,255,.05);border:1px solid var(--line);
+    border-radius:999px;padding:7px 14px;cursor:pointer;
+    transition:background .15s ease,color .15s ease,opacity .15s ease;
+  }
+  .nav button:hover:not(:disabled){background:rgba(255,255,255,.12);color:var(--ink);}
+  .nav button:disabled{opacity:.32;cursor:default;}
+  .nav button.primary{background:rgba(127,176,255,.2);color:#dce9ff;border-color:rgba(127,176,255,.35);}
+  .dots{display:flex;gap:6px;padding:0 4px;}
+  .dots i{
+    width:7px;height:7px;border-radius:50%;background:rgba(147,162,182,.3);
+    cursor:pointer;transition:background .2s ease,transform .2s ease;
+  }
+  .dots i.on{background:var(--ink);transform:scale(1.25);}
+
+  #key{
+    position:fixed;top:18px;right:20px;z-index:5;
+    background:var(--panel);backdrop-filter:blur(16px);
+    border:1px solid var(--line);border-radius:12px;
+    padding:11px 14px;
+    font-size:11.5px;line-height:1.75;color:var(--dim);
+  }
+  #key div{display:flex;align-items:center;gap:8px;}
+  #key b{color:var(--ink);font-weight:600;min-width:28px;}
+  .dot{width:11px;height:11px;border-radius:50%;flex:none;
+    box-shadow:inset -2px -2px 3px rgba(0,0,0,.45);}
+
+  .hint{
+    position:fixed;right:20px;bottom:20px;z-index:3;
+    font-size:11px;color:#5a687d;pointer-events:none;
+  }
+
+  @media (max-width:860px){
+    :root{--side:0px;}
+    #stage{left:0;bottom:44vh;}
+    #side{
+      top:auto;left:0;right:0;bottom:0;width:auto;height:44vh;
+      border-right:none;border-top:1px solid var(--line);
+      padding:14px 16px;gap:11px;
+    }
+    #side h1{font-size:16px;}
+    #side .byline{display:none;}
+    .nav{
+      left:0;right:0;bottom:44vh;
+      width:auto;max-width:none;margin:0;
+      border-radius:0;border-width:1px 0 0;
+      flex-wrap:wrap;white-space:normal;justify-content:center;
+    }
+    #key{top:14px;right:14px;padding:8px 10px;font-size:11px;line-height:1.6;}
+    .hint{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<div id="stage"></div>
+
+<div id="side">
+  <div>
+    <h1>Pure substance or mixture?</h1>
+    <p class="byline">What "pure" means to a shopper, and what it means to a chemist</p>
+    <div class="links">
+      <a href="./atoms-molecules-compounds-mixtures-3d-story.html">Atom, molecule, compound, mixture →</a>
+      <a href="../index.html">← All simulations</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="who">In this sample</div>
+    <div class="nm" id="cName">—</div>
+    <div class="rows">
+      <span>Kinds of particle</span><b id="cKinds">—</b>
+      <span>Substances</span><b id="cSubs">—</b>
+      <span>Elements</span><b id="cEls">—</b>
+    </div>
+    <div class="verdict" id="cVerdict">—</div>
+  </div>
+
+  <div class="story">
+    <h2 id="sTitle"></h2>
+    <p id="sText"></p>
+    <div class="caveat" id="sCaveat"></div>
+  </div>
+</div>
+
+<div class="nav">
+  <button id="back">← Back</button>
+  <button id="next" class="primary">Next →</button>
+  <button id="replay">Replay</button>
+  <div class="dots" id="dots"></div>
+</div>
+
+<div id="key" hidden></div>
+
+<div class="hint">drag to orbit · scroll to zoom</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ===========================================================================
+   PURE SUBSTANCE or MIXTURE — the 3D story
+
+   Five samples on one bench, each with a glass box behind it showing its
+   particles:
+
+     orange juice      "100% pure" on the carton; a mixture to a chemist
+     tap water         clear, but with salts dissolved in it: a mixture
+     distilled water   only H2O: a pure substance (a compound)
+     24 carat gold     only gold atoms: a pure substance (an element)
+     20 carat gold     gold with silver and copper atoms mixed in: a mixture
+                       (an alloy)
+
+   The camera starts on the object, then moves to its particles. The PURE
+   SUBSTANCE / MIXTURE tag and the readout card come from classify(), which
+   counts the substances actually in the box — they are not typed in.
+
+   Liquids: molecules wander at random and pass through each other; nothing
+   like as crowded as a real liquid. Solids: atoms sit on a face-centred cubic
+   lattice (gold, silver and copper all pack this way) and vibrate in place.
+
+   Colours for H, O, C, Cl, Na, Ca, Cu are the shared palette from
+   3dreactionscenes/; ions are drawn smaller (cations) or bigger (anions) than
+   those atoms, as everywhere else. Gold and silver are new colours.
+=========================================================================== */
+
+const EL = {
+  H: {name:'hydrogen',     col:0xd8402f, r:0.34},
+  O: {name:'oxygen',       col:0x2f47b8, r:0.50},
+  C: {name:'carbon',       col:0x4d5560, r:0.58},
+  Na:{name:'sodium ion',   col:0xd9cbb0, r:0.46, ion:'Na⁺'},
+  Ca:{name:'calcium ion',  col:0xd6d9c2, r:0.50, ion:'Ca²⁺'},
+  Cl:{name:'chloride ion', col:0x4fbf72, r:0.84, ion:'Cl⁻'},
+  Au:{name:'gold',         col:0xe8b33a, r:1.00},
+  Ag:{name:'silver',       col:0xc9ced6, r:1.00},
+  Cu:{name:'copper',       col:0xc8763c, r:0.89}   // metallic radius 128 pm against 144 for Au and Ag
+};
+const MASS = {Au:196.97, Ag:107.87, Cu:63.55};
+const CHARGE = {Na:+1, Ca:+2, Cl:-1};
+
+/* ---------------------------------------------------------------- molecules */
+/* [element, x, y, z] in Å-ish units. The sugar and the acid show only their
+   carbon and oxygen atoms — the hydrogens are left off so the shapes read. */
+const HOH = 104.5*Math.PI/180/2;
+
+function glucoseModel(){
+  const atoms = [], bonds = [];
+  ['O','C','C','C','C','C'].forEach((el,k)=>{           // the six-membered ring
+    const a = k*Math.PI/3;
+    atoms.push([el, 1.45*Math.cos(a), 1.45*Math.sin(a), k%2 ? 0.25 : -0.25]);
+  });
+  for(let k=0;k<6;k++) bonds.push([k, (k+1)%6]);
+  [1,2,3,4].forEach(k=>{                                // an O on each of C1–C4
+    const a = k*Math.PI/3;
+    atoms.push(['O', 2.85*Math.cos(a), 2.85*Math.sin(a), k%2 ? 0.6 : -0.6]);
+    bonds.push([k, atoms.length-1]);
+  });
+  const a5 = 5*Math.PI/3;                               // C6 and its O, off C5
+  atoms.push(['C', 2.95*Math.cos(a5), 2.95*Math.sin(a5), 0.55]);
+  bonds.push([5, atoms.length-1]);
+  atoms.push(['O', 3.9*Math.cos(a5+0.35), 3.9*Math.sin(a5+0.35), 1.3]);
+  bonds.push([atoms.length-2, atoms.length-1]);
+  return {atoms, bonds};
+}
+
+function citricModel(){
+  const atoms = [
+    ['C', 0, 0, 0],          // 0 central C
+    ['C',-1.5, 0.3, 0],      // 1
+    ['C', 1.5, 0.3, 0],      // 2
+    ['C', 0,-1.5, 0],        // 3 central COOH carbon
+    ['O', 0.95,-2.3, 0],     // 4
+    ['O',-0.95,-2.3, 0],     // 5
+    ['O', 0, 1.35, 0.5],     // 6 OH on the central C
+    ['C',-2.6,-0.5, 0.6],    // 7 end COOH
+    ['O',-3.7, 0.0, 0.9],    // 8
+    ['O',-2.6,-1.75,0.7],    // 9
+    ['C', 2.6,-0.5,-0.6],    // 10 end COOH
+    ['O', 3.7, 0.0,-0.9],    // 11
+    ['O', 2.6,-1.75,-0.7]    // 12
+  ];
+  const bonds = [[0,1],[0,2],[0,3],[3,4],[3,5],[0,6],[1,7],[7,8],[7,9],[2,10],[10,11],[10,12]];
+  return {atoms, bonds};
+}
+
+const SPECIES = {
+  H2O:    Object.assign({label:'H₂O', substance:'water', mass:18},
+            {atoms:[['O',0,0.2,0],
+                    ['H', 0.98*Math.sin(HOH), 0.2-0.98*Math.cos(HOH),0],
+                    ['H',-0.98*Math.sin(HOH), 0.2-0.98*Math.cos(HOH),0]],
+             bonds:[[0,1],[0,2]]}),
+  glucose:Object.assign({label:'glucose', substance:'sugar', mass:180}, glucoseModel()),
+  citric: Object.assign({label:'citric acid', substance:'citric acid', mass:192}, citricModel()),
+  Na:     {label:'Na⁺',  substance:'dissolved salts', mass:23, atoms:[['Na',0,0,0]], bonds:[]},
+  Ca:     {label:'Ca²⁺', substance:'dissolved salts', mass:40, atoms:[['Ca',0,0,0]], bonds:[]},
+  Cl:     {label:'Cl⁻',  substance:'dissolved salts', mass:35.5, atoms:[['Cl',0,0,0]], bonds:[]}
+};
+
+const MOL_SCALE = 0.5;
+const HS = 2.3;                     // half the inside width of a particle box
+const GAP = 9;                      // between stations on the bench
+const BOX_Z = -1.6, OBJ_Z = 3.4;    // particle box behind, object in front
+const ZOOM_T = 2.6;                 // seconds on the object before moving to its particles
+
+function rng(seed){
+  let a = seed >>> 0;
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const rand = rng(20260916);
+
+/* ------------------------------------------------------------------ three */
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio||1));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.08;
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x080b11);
+scene.fog = new THREE.Fog(0x080b11, 55, 110);
+const camera = new THREE.PerspectiveCamera(44, 1, 0.1, 300);
+
+scene.add(new THREE.HemisphereLight(0x9fb4d0, 0x0a0d13, 0.6));
+const keyL = new THREE.DirectionalLight(0xffffff, 0.95); keyL.position.set(6,11,8); scene.add(keyL);
+const fillL = new THREE.DirectionalLight(0x9ec3ff, 0.40); fillL.position.set(-8,4,-6); scene.add(fillL);
+const rimL  = new THREE.DirectionalLight(0xffd9b0, 0.32); rimL.position.set(0,3,-10); scene.add(rimL);
+
+(function environment(){
+  const env = new THREE.Scene();
+  const box = new THREE.BoxGeometry(1,1,1);
+  env.add(new THREE.Mesh(new THREE.BoxGeometry(30,18,30),
+    new THREE.MeshBasicMaterial({color:0x1d2634, side:THREE.BackSide})));
+  const panel=(hex,gain,x,y,z,sx,sy,sz)=>{
+    const m=new THREE.Mesh(box,new THREE.MeshBasicMaterial({color:hex}));
+    m.material.color.multiplyScalar(gain);
+    m.position.set(x,y,z); m.scale.set(sx,sy,sz); env.add(m);
+  };
+  panel(0xffffff,1.1,  0, 8.4,  0, 14,0.1,14);
+  panel(0xbcd6ff,1.3,-11, 1.5,  0, 0.1,11,20);
+  panel(0xffd7b0,0.9, 11, 1.5,  2, 0.1,11,20);
+  panel(0x8fb0e0,0.5,  0, 0.0,-12, 22,11,0.1);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(env, 0.04).texture;
+  pmrem.dispose();
+})();
+
+const benchMap = (function(){
+  const S = 512, c = document.createElement('canvas');
+  c.width = c.height = S;
+  const x = c.getContext('2d');
+  x.fillStyle = '#000'; x.fillRect(0,0,S,S);
+  const g = x.createRadialGradient(S/2,S/2,0, S/2,S/2,S*0.5);
+  g.addColorStop(0.00,'rgba(230,236,246,0.85)');
+  g.addColorStop(0.20,'rgba(170,182,200,0.45)');
+  g.addColorStop(0.36,'rgba(80,90,106,0.12)');
+  g.addColorStop(0.50,'rgba(0,0,0,0)');
+  x.fillStyle = g; x.fillRect(0,0,S,S);
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+})();
+const bench = new THREE.Mesh(
+  new THREE.CylinderGeometry(31,31,0.4,72),
+  new THREE.MeshStandardMaterial({color:0x4a515d, map:benchMap,
+    roughness:0.94, metalness:0, envMapIntensity:0.10})
+);
+bench.scale.z = 0.5;
+bench.position.set(0, -0.2, 1); scene.add(bench);
+
+/* ------------------------------------------------------------- shared bits */
+const V3 = THREE.Vector3;
+const SPH = new THREE.SphereGeometry(1,20,14);
+const CYL = new THREE.CylinderGeometry(1,1,1,10,1,false);
+const UP = new V3(0,1,0);
+const hexCss = n => '#'+n.toString(16).padStart(6,'0');
+
+function linearise(root){
+  root.traverse(o=>{
+    if(!o.material) return;
+    (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{
+      if(!m || m.userData.__lin) return;
+      m.userData.__lin = true;
+      if(m.color)    m.color.convertSRGBToLinear();
+      if(m.emissive) m.emissive.convertSRGBToLinear();
+    });
+  });
+}
+
+function makeLabel(text, opt){
+  opt = opt || {};
+  const size = opt.size || 54, pad = 18;
+  const c = document.createElement('canvas'), ctx = c.getContext('2d');
+  const font = (opt.weight||'600')+' '+size+'px '+(opt.sans
+    ? 'ui-sans-serif, "Segoe UI", Arial, sans-serif'
+    : '"Iowan Old Style", Charter, Georgia, serif');
+  ctx.font = font;
+  const w = Math.ceil(ctx.measureText(text).width) + pad*2, h = size + pad*2;
+  c.width = w; c.height = h;
+  ctx.font = font; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.shadowColor = 'rgba(0,0,0,.9)'; ctx.shadowBlur = 14;
+  ctx.fillStyle = opt.color || '#eef2f7';
+  ctx.fillText(text, w/2, h/2 + size*0.04);
+  const tex = new THREE.CanvasTexture(c); tex.anisotropy = 4;
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({
+    map:tex, transparent:true, depthTest:false, depthWrite:false,
+    opacity:opt.opacity===undefined?1:opt.opacity}));
+  spr.renderOrder = 10;
+  const scale = opt.scale || 0.62;
+  spr.userData.base = [w/h*scale, scale];
+  spr.scale.set(w/h*scale, scale, 1);
+  return spr;
+}
+function setLabel(spr, text, opt){
+  const fresh = makeLabel(text, opt);
+  if(spr.material.map) spr.material.map.dispose();
+  spr.material.map = fresh.material.map;
+  spr.material.needsUpdate = true;
+  spr.userData.base = fresh.userData.base;
+  spr.scale.copy(fresh.scale);
+}
+function fadeTo(m, target, dt, rate){
+  m.opacity += (target - m.opacity) * Math.min(1, dt*(rate||4));
+}
+function randomDir(){
+  const z = rand()*2-1, th = rand()*6.283, s = Math.sqrt(1-z*z);
+  return new V3(s*Math.cos(th), s*Math.sin(th), z);
+}
+
+/* a canvas with lettering, for the carton and the bottle */
+function lettering(w, h, bg, lines){
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const x = c.getContext('2d');
+  x.fillStyle = bg; x.fillRect(0,0,w,h);
+  x.textAlign = 'center'; x.textBaseline = 'middle';
+  lines.forEach(l=>{
+    x.fillStyle = l.color || '#ffffff';
+    x.font = (l.weight||'800')+' '+l.size+'px ui-sans-serif, "Segoe UI", Arial, sans-serif';
+    x.fillText(l.text, l.x === undefined ? w/2 : l.x, l.y);
+  });
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding; t.anisotropy = 4;
+  return t;
+}
+
+/* ------------------------------------------------------------ the objects */
+function glassOf(liquidCol, liquidOpacity){
+  const g = new THREE.Group();
+  const R = 0.72, H = 2.0, LVL = 1.55;
+  const glassMat = new THREE.MeshStandardMaterial({color:0xcfe0ee, roughness:0.06, metalness:0,
+    transparent:true, opacity:0.2, side:THREE.DoubleSide, depthWrite:false, envMapIntensity:1.4});
+  const wall = new THREE.Mesh(new THREE.CylinderGeometry(R+0.05, R, H, 40, 1, true), glassMat);
+  wall.position.y = H/2 + 0.06;
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(R, R, 0.12, 40), glassMat);
+  base.position.y = 0.06;
+  const liquid = new THREE.Mesh(new THREE.CylinderGeometry(R-0.04, R-0.05, LVL, 40),
+    new THREE.MeshStandardMaterial({color:liquidCol, roughness:0.2, metalness:0,
+      transparent:true, opacity:liquidOpacity, depthWrite:false}));
+  liquid.position.y = 0.12 + LVL/2;
+  const surface = new THREE.Mesh(new THREE.CircleGeometry(R-0.04, 40),
+    new THREE.MeshStandardMaterial({color:liquidCol, roughness:0.08, metalness:0.1,
+      transparent:true, opacity:Math.min(1, liquidOpacity+0.1)}));
+  surface.rotation.x = -Math.PI/2;
+  surface.position.y = 0.12 + LVL + 0.004;
+  g.add(liquid, surface, wall, base);
+  return g;
+}
+
+function buildJuice(){
+  const g = new THREE.Group();
+  const glass = glassOf(0xf29a2e, 0.9);
+  glass.position.x = 0.75;
+  const tex = lettering(256, 512, '#f28a1e', [
+    {text:'100%', size:78, y:150},
+    {text:'PURE', size:74, y:236},
+    {text:'ORANGE', size:40, weight:'700', y:330},
+    {text:'JUICE', size:40, weight:'700', y:378},
+    {text:'nothing added', size:24, weight:'600', y:450, color:'#fff2dc'}
+  ]);
+  const plain = new THREE.MeshStandardMaterial({color:0xf28a1e, roughness:0.7});
+  const front = new THREE.MeshStandardMaterial({color:0xffffff, map:tex, roughness:0.7});
+  front.userData.__lin = true;
+  const carton = new THREE.Mesh(new THREE.BoxGeometry(1.1, 2.6, 0.8),
+    [plain, plain, plain, plain, front, plain]);
+  carton.position.set(-0.8, 1.3, -0.35);
+  carton.rotation.y = 0.18;
+  g.add(glass, carton);
+  return g;
+}
+
+function buildTap(){
+  return glassOf(0x9cc3de, 0.28);
+}
+
+function buildBottle(){
+  const g = new THREE.Group();
+  const glassMat = new THREE.MeshStandardMaterial({color:0xcfe0ee, roughness:0.06, metalness:0,
+    transparent:true, opacity:0.24, side:THREE.DoubleSide, depthWrite:false, envMapIntensity:1.4});
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 2.0, 40, 1, true), glassMat);
+  body.position.y = 1.06;
+  const shoulder = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.7, 0.5, 40, 1, true), glassMat);
+  shoulder.position.y = 2.31;
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.35, 30, 1, true), glassMat);
+  neck.position.y = 2.73;
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.25, 30),
+    new THREE.MeshStandardMaterial({color:0x3d6fb8, roughness:0.5}));
+  cap.position.y = 3.0;
+  const water = new THREE.Mesh(new THREE.CylinderGeometry(0.66, 0.66, 1.7, 40),
+    new THREE.MeshStandardMaterial({color:0xb8d4ea, roughness:0.1, transparent:true,
+      opacity:0.22, depthWrite:false}));
+  water.position.y = 0.06 + 0.85;
+  const tex = lettering(1024, 160, '#f4f6f9', [
+    {text:'DISTILLED WATER', size:52, y:62, color:'#27466e', x:256},
+    {text:'H₂O', size:40, y:118, color:'#5b6e88', weight:'700', x:256},
+    {text:'DISTILLED WATER', size:52, y:62, color:'#27466e', x:768},
+    {text:'H₂O', size:40, y:118, color:'#5b6e88', weight:'700', x:768}
+  ]);
+  const labelMat = new THREE.MeshStandardMaterial({color:0xffffff, map:tex, roughness:0.8});
+  labelMat.userData.__lin = true;
+  const label = new THREE.Mesh(new THREE.CylinderGeometry(0.715, 0.715, 0.75, 40, 1, true), labelMat);
+  label.position.y = 1.05;
+  label.rotation.y = -Math.PI/2;
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.1, 40), glassMat);
+  base.position.y = 0.05;
+  g.add(water, label, body, shoulder, neck, cap, base);
+  return g;
+}
+
+function buildBar(){
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({color:0xe8b33a, roughness:0.24, metalness:1,
+    envMapIntensity:1.8});
+  // a four-sided frustum, stretched: the classic tapered bar
+  const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.86, 0.55, 4, 1), mat);
+  bar.rotation.y = Math.PI/4;
+  bar.scale.set(1.9, 1, 1);
+  bar.position.y = 0.3;
+  const holder = new THREE.Group();
+  holder.add(bar);
+  holder.scale.set(1, 1, 0.62);
+  const stamp = makeLabel('24 ct · 999.9', {scale:0.22, sans:true, weight:'700', size:40, color:'#5a3d0c'});
+  stamp.material.depthTest = true;
+  stamp.position.set(0, 0.62, 0);
+  g.add(holder, stamp);
+  return g;
+}
+
+function buildRing(){
+  const g = new THREE.Group();
+  const cushion = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.45, 1.1),
+    new THREE.MeshStandardMaterial({color:0x2a2238, roughness:0.95, envMapIntensity:0.3}));
+  cushion.position.y = 0.22;
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.12, 20, 56),
+    new THREE.MeshStandardMaterial({color:0xe2a95a, roughness:0.22, metalness:1, envMapIntensity:1.8}));
+  ring.position.y = 0.45 + 0.55 + 0.02;
+  g.add(cushion, ring);
+  g.userData.spin = ring;
+  return g;
+}
+
+/* ---------------------------------------------------------------- stations */
+const TAG_COL = {'Pure substance':'#7fb0ff', 'Mixture':'#7ee0a1'};
+
+function buildStation(index, name, object){
+  const g = new THREE.Group();
+  g.position.set((index-2)*GAP, 0, 0);
+  scene.add(g);
+
+  const box = new THREE.Group();
+  box.position.set(0, HS+0.06, BOX_Z);
+  g.add(box);
+  const glass = new THREE.Mesh(new THREE.BoxGeometry(HS*2, HS*2, HS*2),
+    new THREE.MeshStandardMaterial({color:0xbfd6e8, roughness:0.08, metalness:0,
+      transparent:true, opacity:0.05, depthWrite:false, side:THREE.DoubleSide, envMapIntensity:1.4}));
+  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(HS*2, HS*2, HS*2)),
+    new THREE.LineBasicMaterial({color:0x9fb6cc, transparent:true, opacity:0.45}));
+  box.add(glass, edges);
+
+  object.position.set(0, 0, OBJ_Z);
+  g.add(object);
+
+  const nameLbl = makeLabel(name, {scale:0.7});
+  const tagLbl = makeLabel(' ', {scale:0.44, sans:true, weight:'700', size:44, opacity:0});
+  box.add(nameLbl, tagLbl);
+
+  return {index, name, group:g, box, object, nameLbl, tagLbl, tagKey:'',
+          particles:[], molecules:[], lattice:null, meshes:{}, bondMesh:null,
+          chargeLbls:[], revealScene:-1};
+}
+
+/* one InstancedMesh per element, and one for every bond, per station */
+function makeInstances(st){
+  const counts = {};
+  st.particles.forEach(p=>{ counts[p.el] = (counts[p.el]||0) + 1; });
+  Object.keys(counts).forEach(el=>{
+    const metal = !!MASS[el];
+    const mat = new THREE.MeshStandardMaterial({
+      color:EL[el].col, roughness:metal ? 0.3 : 0.34, metalness:metal ? 0.75 : 0.18,
+      emissive:new THREE.Color(EL[el].col).multiplyScalar(metal ? 0.1 : 0.06),
+      envMapIntensity: metal ? 1.2 : 1});
+    const im = new THREE.InstancedMesh(SPH, mat, counts[el]);
+    im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    im.frustumCulled = false;       // r128 culls instances by the one unit sphere at the origin
+    st.box.add(im);
+    st.meshes[el] = im;
+  });
+  const slot = {};
+  st.particles.forEach(p=>{ p.slot = slot[p.el] = (slot[p.el] === undefined ? 0 : slot[p.el]+1); });
+
+  const nb = st.molecules.reduce((n,m)=>n + SPECIES[m.sp].bonds.length, 0);
+  if(nb){
+    st.bondMesh = new THREE.InstancedMesh(CYL,
+      new THREE.MeshStandardMaterial({color:0xa9b6c6, roughness:0.5, metalness:0.1}), nb);
+    st.bondMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    st.bondMesh.frustumCulled = false;
+    st.box.add(st.bondMesh);
+  }
+  linearise(st.box);
+}
+
+/* a liquid: molecules of each species in a recipe like {H2O:30, glucose:3} */
+function fillLiquid(st, recipe){
+  const extentOf = sp => SPECIES[sp].atoms.reduce((e,t)=>
+    Math.max(e, Math.hypot(t[1],t[2],t[3])*MOL_SCALE + EL[t[0]].r*MOL_SCALE), 0);
+  Object.keys(recipe).forEach(sp=>{
+    for(let n=0;n<recipe[sp];n++){
+      const extent = extentOf(sp), lim = HS - extent;
+      let pos = null;
+      for(let tries=0; tries<60 && !pos; tries++){
+        const p = new V3((rand()*2-1)*lim, (rand()*2-1)*lim, (rand()*2-1)*lim);
+        if(st.molecules.every(m=>p.distanceTo(m.pos) > m.extent + extent + 0.1)) pos = p;
+      }
+      if(!pos) pos = new V3((rand()*2-1)*lim, (rand()*2-1)*lim, (rand()*2-1)*lim);
+      const m = {sp, extent, pos, vel:new V3(),
+                 quat:new THREE.Quaternion().setFromEuler(new THREE.Euler(rand()*6.28, rand()*6.28, rand()*6.28)),
+                 spinAxis:randomDir(), spinRate:(0.3 + rand()*0.8) * Math.sqrt(18/SPECIES[sp].mass),
+                 atoms:[]};
+      SPECIES[sp].atoms.forEach(t=>{
+        const p = {el:t[0], off:new V3(t[1],t[2],t[3]).multiplyScalar(MOL_SCALE), pos:new V3(), mol:m};
+        m.atoms.push(p); st.particles.push(p);
+      });
+      st.molecules.push(m);
+    }
+  });
+  makeInstances(st);
+  st.molecules.forEach(m=>{
+    if(!CHARGE[m.sp]) return;
+    const q = CHARGE[m.sp];
+    const lbl = makeLabel(q > 0 ? (q > 1 ? q+'+' : '+') : '−',
+                          {scale:0.34, sans:true, weight:'800', size:48, color:'#ffffff'});
+    lbl.userData.mol = m;
+    st.box.add(lbl);
+    st.chargeLbls.push(lbl);
+  });
+}
+
+/* a solid: face-centred cubic sites, gold unless a site is given to another
+   metal. Sites are the integer points (i,j,k) in 0..n with i+j+k even. */
+const FCC_N = 6;
+function fccSites(){
+  const sites = [];
+  for(let i=0;i<=FCC_N;i++) for(let j=0;j<=FCC_N;j++) for(let k=0;k<=FCC_N;k++)
+    if((i+j+k) % 2 === 0) sites.push([i,j,k]);
+  return sites;
+}
+const LATTICE_R = 0.42;                            // gold atom radius in the box
+const LATTICE_U = (HS*2 - LATTICE_R*2) / FCC_N;    // one lattice step
+
+function fillSolid(st, counts){
+  const sites = fccSites();
+  const els = [];
+  Object.keys(counts).forEach(el=>{ for(let n=0;n<counts[el];n++) els.push(el); });
+  while(els.length < sites.length) els.push('Au');
+  for(let i=els.length-1;i>0;i--){                 // seeded shuffle: mixed through, not in layers
+    const j = Math.floor(rand()*(i+1)); const t = els[i]; els[i] = els[j]; els[j] = t;
+  }
+  sites.forEach((s,k)=>{
+    const home = new V3((s[0]-FCC_N/2)*LATTICE_U, (s[1]-FCC_N/2)*LATTICE_U, (s[2]-FCC_N/2)*LATTICE_U);
+    st.particles.push({el:els[k], home, pos:home.clone(),
+      ph:[rand()*6.28, rand()*6.28, rand()*6.28], w:[2.1+rand()*1.2, 2.1+rand()*1.2, 2.1+rand()*1.2]});
+  });
+  st.lattice = true;
+  makeInstances(st);
+}
+
+/* the 20 carat recipe: 20 parts in 24 gold by mass, the rest split equally
+   by mass between silver and copper. Turned into atom counts, since the
+   picture is of atoms. */
+const CARAT = 20;
+const ALLOY = (function(){
+  const N = fccSites().length;
+  const w = {Au:CARAT/24, Ag:(24-CARAT)/48, Cu:(24-CARAT)/48};
+  const mol = {Au:w.Au/MASS.Au, Ag:w.Ag/MASS.Ag, Cu:w.Cu/MASS.Cu};
+  const tot = mol.Au + mol.Ag + mol.Cu;
+  const Ag = Math.round(N*mol.Ag/tot), Cu = Math.round(N*mol.Cu/tot);
+  const Au = N - Ag - Cu;
+  const massAu = Au*MASS.Au / (Au*MASS.Au + Ag*MASS.Ag + Cu*MASS.Cu);
+  return {N, Au, Ag, Cu, massAu, atomAu: Au/N};
+})();
+
+/* ------------------------------------------------------------------ the set */
+const STATIONS = [
+  buildStation(0, 'Orange juice', buildJuice()),
+  buildStation(1, 'Tap water', buildTap()),
+  buildStation(2, 'Distilled water', buildBottle()),
+  buildStation(3, '24 carat gold', buildBar()),
+  buildStation(4, '20 carat gold', buildRing())
+];
+fillLiquid(STATIONS[0], {H2O:30, glucose:3, citric:2});
+fillLiquid(STATIONS[1], {H2O:36, Cl:3, Na:1, Ca:1});
+fillLiquid(STATIONS[2], {H2O:40});
+fillSolid(STATIONS[3], {});
+fillSolid(STATIONS[4], {Ag:ALLOY.Ag, Cu:ALLOY.Cu});
+linearise(scene);
+
+/* ----------------------------------------------------------- what's in it */
+function classify(st){
+  const kinds = {}, subs = new Set(), els = new Set();
+  if(st.lattice){
+    st.particles.forEach(p=>{ kinds[p.el] = (kinds[p.el]||0) + 1; subs.add(EL[p.el].name); els.add(p.el); });
+  } else {
+    st.molecules.forEach(m=>{
+      kinds[m.sp] = (kinds[m.sp]||0) + 1;
+      subs.add(SPECIES[m.sp].substance);
+      m.atoms.forEach(a=>els.add(a.el));
+    });
+  }
+  const subList = Array.from(subs);
+  const verdict = subList.length === 1 ? 'Pure substance' : subList.length > 1 ? 'Mixture' : '';
+  const detail = verdict === 'Pure substance' ? (els.size === 1 ? 'an element' : 'a compound')
+               : verdict === 'Mixture' ? (st.lattice ? 'an alloy' : subList.length + ' substances') : '';
+  return {kinds, subs:subList, els:Array.from(els), verdict, detail};
+}
+function kindLabel(st, k){ return st.lattice ? k : SPECIES[k].label; }
+
+/* =============================== the story ============================== */
+const CAM_OBJECT_THEN_BOX = [{t:0, on:'object'}, {t:ZOOM_T, on:'box'}];
+
+const SCENES = [
+  {
+    station:null,
+    title:'Two meanings of "pure"',
+    text:'In everyday life, <b>pure</b> means natural, clean, nothing added. In chemistry it means something '+
+         'stricter: a <b>pure substance</b> is made of <b>only one substance</b> — a single element or a single '+
+         'compound — with nothing else mixed in. A <b>mixture</b> contains two or more substances that are not '+
+         'chemically joined. Five samples on the bench. Which are pure?',
+    caveat:'Watch the tag over each box: it is worked out by counting the substances inside.'
+  },
+  {
+    station:0, cam:CAM_OBJECT_THEN_BOX,
+    title:'Orange juice',
+    text:'The carton says <b>100% pure</b>. To a shopper, that means nothing has been added. Now look inside: '+
+         '<b>water</b> molecules, <b>sugar</b> molecules and <b>citric acid</b> molecules — the sour taste — all '+
+         'jumbled together, none of them bonded to each other. That is more than one substance, so to a chemist '+
+         'orange juice is a <b>mixture</b>.',
+    caveat:'Real orange juice holds hundreds of substances — several sugars, vitamin C, flavour and colour molecules. '+
+           'The sugar and citric acid are drawn without their hydrogen atoms so their shapes stay readable.'
+  },
+  {
+    station:1, cam:CAM_OBJECT_THEN_BOX,
+    title:'Tap water',
+    text:'Tap water looks perfectly clear. But as it runs through rocks and pipes, it picks up <b>dissolved '+
+         'salts</b> — drawn here as sodium, calcium and chloride ions spread out among the water molecules. '+
+         'Clean and safe to drink, but not just one substance: tap water is a <b>mixture</b>.',
+    caveat:'Hugely exaggerated so you can find them: real tap water has roughly one dissolved ion for every few '+
+           'thousand water molecules. Hard-water areas have more calcium.'
+  },
+  {
+    station:2, cam:CAM_OBJECT_THEN_BOX,
+    title:'Distilled water',
+    text:'Distilled water has been boiled and the steam cooled back into a liquid. The dissolved salts cannot '+
+         'boil off with the water, so they are left behind. What is left is <b>only H₂O molecules</b>: one '+
+         'substance, a <b>pure substance</b>. It is made of two elements, hydrogen and oxygen — but pure means '+
+         '<b>one substance</b>, and a single compound counts.',
+    caveat:'Left open to the air, distilled water slowly dissolves a little carbon dioxide, so in practice even it '+
+           'is only very nearly pure.'
+  },
+  {
+    station:3, cam:CAM_OBJECT_THEN_BOX,
+    title:'24 carat gold',
+    text:'Now a solid. In 24 carat gold <b>every atom is a gold atom</b>, packed in a regular pattern. The atoms '+
+         'vibrate but stay in their places. Only one substance — the element gold — so this is a '+
+         '<b>pure substance</b>.',
+    caveat:'Gold sold as 24 carat is at least 99.9% gold: the stamp "999.9" on a bar means 99.99%. '+
+           'Close enough to pure for any jeweller.'
+  },
+  {
+    station:4, cam:CAM_OBJECT_THEN_BOX,
+    title:'20 carat gold',
+    text:'<b>Carat</b> counts how many parts out of 24 are gold. 20 carat gold is 20/24 gold — about '+
+         Math.round(ALLOY.massAu*100)+'% — and the rest is <b>silver</b> and <b>copper</b>. Their atoms sit in the '+
+         'same pattern, mixed in among the gold atoms, but not bonded into a compound. More than one substance: '+
+         'a <b>mixture</b>. A mixture of metals is called an <b>alloy</b> — harder than pure gold, which is why '+
+         'rings are rarely 24 carat.',
+    caveat:'Carat is by mass. Gold atoms are heavy, so gold makes up '+Math.round(ALLOY.massAu*100)+'% of the mass but only '+
+           ALLOY.Au+' of these '+ALLOY.N+' atoms — about '+Math.round(ALLOY.atomAu*100)+'%. Drawn with equal masses of '+
+           'silver and copper, one common recipe.'
+  },
+  {
+    station:null,
+    title:'Sorted',
+    text:'<b>Pure substances</b> — only one element or one compound: <b>distilled water</b> and '+
+         '<b>24 carat gold</b>. <b>Mixtures</b> — two or more substances, not chemically joined: '+
+         '<b>orange juice</b>, <b>tap water</b> and <b>20 carat gold</b>. "Pure" on a juice carton means nothing '+
+         'was added; it does not mean a pure substance.',
+    caveat:'Chemists test purity with melting and boiling points: a pure substance changes state at one fixed '+
+           'temperature, a mixture over a range of temperatures.'
+  }
+];
+
+let sceneIdx = 0, sceneT = 0, simT = 0;
+STATIONS.forEach(st=>{ st.revealScene = SCENES.findIndex(s=>s.station === st.index); });
+
+/* ------------------------------------------------------------ camera orbit */
+const desired = {dist:40, az:0, el:0.24, look:new V3(0,2.5,0)};
+const cur     = {dist:40, az:0, el:0.24, look:new V3(0,2.5,0)};
+let dragAz = 0, dragEl = 0, zoomAdj = 0;
+let dragging = false, lastX = 0, lastY = 0;
+
+const cv = renderer.domElement;
+cv.style.touchAction = 'none';
+cv.style.cursor = 'grab';
+cv.addEventListener('pointerdown', e=>{
+  dragging = true; lastX = e.clientX; lastY = e.clientY;
+  cv.style.cursor = 'grabbing';
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove', e=>{
+  if(!dragging) return;
+  dragAz += (e.clientX - lastX) * 0.006;
+  dragEl = Math.max(-0.4, Math.min(1.05, dragEl + (e.clientY - lastY) * 0.004));
+  lastX = e.clientX; lastY = e.clientY;
+});
+['pointerup','pointercancel'].forEach(ev=>
+  cv.addEventListener(ev, ()=>{ dragging = false; cv.style.cursor = 'grab'; }));
+cv.addEventListener('wheel', e=>{
+  e.preventDefault();
+  zoomAdj = Math.max(-8, Math.min(20, zoomAdj + e.deltaY*0.01));
+}, {passive:false});
+
+function wideDist(){
+  const halfW = 2*GAP + HS + 1.4;
+  const vf = camera.fov*Math.PI/180;
+  const hf = 2*Math.atan(Math.tan(vf/2)*camera.aspect);
+  return Math.max(halfW/Math.tan(hf/2), 5.5/Math.tan(vf/2)) + 4;
+}
+
+function camKey(s){
+  let key = s.cam[0];
+  s.cam.forEach(k=>{ if(sceneT >= k.t) key = k; });
+  return key;
+}
+
+function aimCamera(){
+  const s = SCENES[sceneIdx];
+  if(s.station === null){
+    desired.dist = wideDist(); desired.az = 0; desired.el = 0.24;
+    desired.look.set(0, 2.6, 0.8);
+    return;
+  }
+  const st = STATIONS[s.station];
+  const side = s.station % 2 ? -1 : 1;
+  if(camKey(s).on === 'object'){
+    desired.dist = 6.2; desired.az = 0.22*side; desired.el = 0.2;
+    desired.look.copy(st.group.position).add(new V3(0, 1.0, OBJ_Z));
+  } else {
+    desired.dist = camera.aspect < 1.1 ? 14.5 : 12.0;
+    desired.az = 0.3*side; desired.el = 0.22;
+    desired.look.copy(st.group.position).add(new V3(0, HS+0.4, BOX_Z));
+  }
+}
+
+function placeCamera(dt){
+  const k = Math.min(1, dt*2.4);
+  cur.dist += (desired.dist - cur.dist)*k;
+  cur.az   += (desired.az   - cur.az)*k;
+  cur.el   += (desired.el   - cur.el)*k;
+  cur.look.lerp(desired.look, Math.min(1, dt*2.8));
+  const az = cur.az + dragAz, el = cur.el + dragEl;
+  const d = Math.max(2.5, cur.dist + zoomAdj * Math.max(0.3, cur.dist/14));
+  camera.position.set(
+    cur.look.x + d*Math.cos(el)*Math.sin(az),
+    cur.look.y + d*Math.sin(el),
+    cur.look.z + d*Math.cos(el)*Math.cos(az)
+  );
+  camera.lookAt(cur.look);
+}
+
+/* ------------------------------------------------------------------ motion */
+const _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _qi = new THREE.Quaternion();
+const _s = new V3(), _p = new V3(), _d = new V3(), _mid = new V3();
+
+function stepLiquid(st, dt){
+  const damp = Math.pow(0.9, dt*60);
+  st.molecules.forEach(m=>{
+    const kick = 7 * Math.sqrt(18/SPECIES[m.sp].mass);
+    m.vel.x += (rand()-0.5)*kick*dt;
+    m.vel.y += (rand()-0.5)*kick*dt;
+    m.vel.z += (rand()-0.5)*kick*dt;
+    m.vel.multiplyScalar(damp);
+    m.pos.addScaledVector(m.vel, dt);
+    const lim = HS - m.extent;
+    ['x','y','z'].forEach(ax=>{
+      if(m.pos[ax] >  lim){ m.pos[ax] =  lim; m.vel[ax] = -Math.abs(m.vel[ax]); }
+      if(m.pos[ax] < -lim){ m.pos[ax] = -lim; m.vel[ax] =  Math.abs(m.vel[ax]); }
+    });
+    _q.setFromAxisAngle(m.spinAxis, m.spinRate*dt);
+    m.quat.premultiply(_q);
+    m.atoms.forEach(a=>{ a.pos.copy(a.off).applyQuaternion(m.quat).add(m.pos); });
+  });
+}
+
+function stepSolid(st){
+  const amp = 0.035;
+  st.particles.forEach(p=>{
+    p.pos.set(p.home.x + amp*Math.sin(p.w[0]*simT + p.ph[0]),
+              p.home.y + amp*Math.sin(p.w[1]*simT + p.ph[1]),
+              p.home.z + amp*Math.sin(p.w[2]*simT + p.ph[2]));
+  });
+}
+
+function drawStation(st){
+  st.particles.forEach(p=>{
+    const r = st.lattice ? LATTICE_R*EL[p.el].r : EL[p.el].r*MOL_SCALE;
+    _m4.compose(p.pos, _qi, _s.set(r, r, r));
+    st.meshes[p.el].setMatrixAt(p.slot, _m4);
+  });
+  Object.keys(st.meshes).forEach(el=>{ st.meshes[el].instanceMatrix.needsUpdate = true; });
+
+  if(st.bondMesh){
+    let k = 0;
+    st.molecules.forEach(m=>{
+      SPECIES[m.sp].bonds.forEach(b=>{
+        const pa = m.atoms[b[0]].pos, pb = m.atoms[b[1]].pos;
+        _d.subVectors(pb, pa);
+        const len = _d.length();
+        _mid.addVectors(pa, pb).multiplyScalar(0.5);
+        _q.setFromUnitVectors(UP, _d.multiplyScalar(1/len));
+        _m4.compose(_mid, _q, _s.set(0.07, len, 0.07));
+        st.bondMesh.setMatrixAt(k++, _m4);
+      });
+    });
+    st.bondMesh.instanceMatrix.needsUpdate = true;
+  }
+
+  st.chargeLbls.forEach(l=>{
+    const m = l.userData.mol;
+    l.position.copy(m.pos).add(_p.set(0, m.extent + 0.2, 0));
+  });
+}
+
+/* -------------------------------------------------------------- enter scene */
+function enterScene(i){
+  sceneIdx = i; sceneT = 0;
+  const s = SCENES[i];
+  document.getElementById('sTitle').innerHTML = s.title;
+  document.getElementById('sText').innerHTML = s.text;
+  document.getElementById('sCaveat').innerHTML = s.caveat;
+  document.getElementById('back').disabled = (i === 0);
+  document.getElementById('next').disabled = (i === SCENES.length-1);
+  const dotEls = document.querySelectorAll('#dots i');
+  for(let k=0;k<dotEls.length;k++) dotEls[k].classList.toggle('on', k === i);
+  updateKey();
+  cardKey = '';
+}
+
+/* the key shows only what is in the sample on screen */
+function updateKey(){
+  const s = SCENES[sceneIdx];
+  const key = document.getElementById('key');
+  if(s.station === null){ key.hidden = true; return; }
+  const st = STATIONS[s.station];
+  const c = classify(st);
+  key.hidden = false;
+  key.innerHTML = Object.keys(EL).filter(e=>c.els.indexOf(e) >= 0).map(e=>
+    `<div><span class="dot" style="background:${hexCss(EL[e].col)}"></span><b>${EL[e].ion || e}</b> ${EL[e].name}</div>`
+  ).join('');
+}
+
+/* --------------------------------------------------------------- readouts */
+const elName = document.getElementById('cName'), elKinds = document.getElementById('cKinds'),
+      elSubs = document.getElementById('cSubs'), elEls = document.getElementById('cEls'),
+      elVerdict = document.getElementById('cVerdict');
+let cardKey = '';
+
+function revealed(st){
+  return sceneIdx > st.revealScene || (sceneIdx === st.revealScene && sceneT >= ZOOM_T + 0.8);
+}
+
+function updateCard(){
+  const s = SCENES[sceneIdx];
+  if(s.station === null){
+    if(cardKey === 'all') return;
+    cardKey = 'all';
+    elName.textContent = 'All five samples';
+    elKinds.textContent = '—'; elSubs.textContent = '—'; elEls.textContent = '—';
+    elVerdict.className = 'verdict';
+    elVerdict.textContent = sceneIdx === 0 ? 'Which are pure?' : 'See the tag over each box';
+    return;
+  }
+  const st = STATIONS[s.station];
+  const shown = revealed(st);
+  const key = s.station + '|' + shown;
+  if(cardKey === key) return;
+  cardKey = key;
+  const c = classify(st);
+  elName.textContent = st.name;
+  elKinds.textContent = Object.keys(c.kinds).sort((a,b)=>c.kinds[b]-c.kinds[a])
+    .map(k=>kindLabel(st,k)+' ×'+c.kinds[k]).join(' · ');
+  elSubs.textContent = c.subs.length + ' — ' + c.subs.join(', ');
+  elEls.textContent = c.els.map(e=>e).join(', ');
+  if(shown){
+    elVerdict.className = 'verdict ' + (c.verdict === 'Mixture' ? 'mixture' : 'pure');
+    elVerdict.textContent = c.verdict + ' — ' + c.detail;
+  } else {
+    elVerdict.className = 'verdict';
+    elVerdict.textContent = '…';
+  }
+}
+
+/* ------------------------------------------------------------------- loop */
+let lastT = performance.now();
+let labelBoost = 1;
+
+function animate(now){
+  requestAnimationFrame(animate);
+  const dt = Math.min(0.05, Math.max(0, (now - lastT)/1000));
+  lastT = now;
+  simT += dt; sceneT += dt;
+
+  const s = SCENES[sceneIdx];
+  labelBoost += ((s.station === null ? 2.0 : 1) - labelBoost) * Math.min(1, dt*2.5);
+
+  STATIONS.forEach(st=>{
+    if(st.lattice) stepSolid(st); else stepLiquid(st, dt);
+    drawStation(st);
+    if(st.object.userData.spin) st.object.userData.spin.rotation.y = simT*0.5;
+
+    const nb = st.nameLbl.userData.base, tb = st.tagLbl.userData.base;
+    st.nameLbl.scale.set(nb[0]*labelBoost, nb[1]*labelBoost, 1);
+    st.nameLbl.position.set(0, HS + 0.8 + 0.55*(labelBoost-1), 0);
+    const c = classify(st);
+    const tagKey = c.verdict + c.detail;
+    if(tagKey !== st.tagKey){
+      st.tagKey = tagKey;
+      setLabel(st.tagLbl, c.verdict.toUpperCase() + '  ·  ' + c.detail,
+               {scale:0.44, sans:true, weight:'700', size:44, color:TAG_COL[c.verdict]});
+    }
+    st.tagLbl.scale.set(tb[0]*labelBoost, tb[1]*labelBoost, 1);
+    st.tagLbl.position.set(0, HS + 0.32 + 0.1*(labelBoost-1), 0);
+    fadeTo(st.tagLbl.material, revealed(st) ? 1 : 0, dt, 3);
+  });
+
+  updateCard();
+  aimCamera();
+  placeCamera(dt);
+  renderer.render(scene, camera);
+}
+
+/* ------------------------------------------------------------------ wiring */
+const dotsEl = document.getElementById('dots');
+SCENES.forEach((s,i)=>{
+  const d = document.createElement('i');
+  d.title = s.title;
+  d.addEventListener('click', ()=>enterScene(i));
+  dotsEl.appendChild(d);
+});
+document.getElementById('next').addEventListener('click', ()=>{
+  if(sceneIdx < SCENES.length-1) enterScene(sceneIdx+1);
+});
+document.getElementById('back').addEventListener('click', ()=>{
+  if(sceneIdx > 0) enterScene(sceneIdx-1);
+});
+document.getElementById('replay').addEventListener('click', ()=>enterScene(sceneIdx));
+window.addEventListener('keydown', e=>{
+  if(e.key === 'ArrowRight' && sceneIdx < SCENES.length-1) enterScene(sceneIdx+1);
+  if(e.key === 'ArrowLeft'  && sceneIdx > 0) enterScene(sceneIdx-1);
+});
+
+function resize(){
+  const w = stage.clientWidth || window.innerWidth;
+  const h = stage.clientHeight || window.innerHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w/h;
+  camera.fov = (w/h < 1.1) ? 56 : 44;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+resize();
+
+cur.dist = desired.dist = wideDist();
+enterScene(0);
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

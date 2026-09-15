@@ -750,6 +750,130 @@ function particleTypesStory(THREE){
   chk(argonText.includes('number ' + T.bySym.Ar.z), `the narration gives argon the wrong number (it is ${T.bySym.Ar.z})`);
 }
 
+/* ===========================================================================
+   PURE SUBSTANCE or MIXTURE — the 3D story
+
+   Like the atoms story, the tags come from classify() counting substances.
+   So: each sample must come out as the narration says, the tap water must be
+   electrically neutral, the solids must stay solid (every atom near its
+   lattice site), and the carat arithmetic the caption quotes must be right.
+=========================================================================== */
+function pureStory(THREE){
+  section('PURE vs MIXTURE  pure-substances-vs-mixtures-3d-story.html  (render path)');
+  const html = read('pure-substances-vs-mixtures-3d-story.html');
+  const numbers = [];
+  const dom = makeDom(600, 400, numbers);
+  dom.querySelectorAll = () => [];
+  stubRenderer(THREE, dom, numbers);
+
+  const expose = ['animate','enterScene','SCENES','camera','renderer','STATIONS','classify',
+                  'ALLOY','CARAT','CHARGE','HS','LATTICE_U','MASS'].join(',');
+  const js = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+  let clock = 1000;
+  const win = {addEventListener(){}, removeEventListener(){},
+               innerWidth:1280, innerHeight:720, devicePixelRatio:1};
+  let S = null;
+  try {
+    S = new Function(
+      'THREE','document','window','performance','requestAnimationFrame','navigator',
+      js + '\nreturn {' + expose + '};'
+    )(THREE, dom, win, {now(){ clock += 16; return clock; }}, () => 0, {userAgent:'node'});
+  } catch(e){
+    chk(false, 'the scene threw while loading: ' + e.message);
+    console.log((e.stack || '').split('\n').slice(0, 4).join('\n'));
+    return;
+  }
+  chk(true, 'the scene loads');
+
+  let now = 5000;
+  function run(frames){ for(let i=0;i<frames;i++){ now += 16.7; S.animate(now); } }
+
+  /* ---------- every scene ---------- */
+  section('    every scene');
+  for(let i=0;i<S.SCENES.length;i++){
+    S.enterScene(i);
+    const before = S.renderer.__renders;
+    try { run(480); }
+    catch(e){
+      chk(false, `scene ${i} ("${S.SCENES[i].title}") threw: ${e.message}`);
+      console.log('      ' + (e.stack || '').split('\n').slice(1, 3).join('\n      '));
+      return;
+    }
+    chk(S.renderer.__renders > before, `scene ${i} drew nothing`);
+    const c = S.camera.position;
+    chk(isFinite(c.x) && isFinite(c.y) && isFinite(c.z), `scene ${i}: camera non-finite`);
+    let bad = 0;
+    for(const st of S.STATIONS){
+      for(const p of st.particles){
+        if(!isFinite(p.pos.x) || !isFinite(p.pos.y) || !isFinite(p.pos.z) ||
+           Math.max(Math.abs(p.pos.x), Math.abs(p.pos.y), Math.abs(p.pos.z)) > S.HS + 1e-6) bad++;
+      }
+      for(const im of Object.values(st.meshes).concat(st.bondMesh ? [st.bondMesh] : [])){
+        if(im.instanceMatrix.array.some(v=>!isFinite(v))) bad++;
+      }
+    }
+    chk(bad === 0, `scene ${i}: ${bad} particles or instances out of the box or non-finite`);
+  }
+  chk(true, `all ${S.SCENES.length} scenes run for 8 s without throwing`);
+
+  /* ---------- classification ---------- */
+  section('    classification');
+  const expect = [
+    ['Orange juice',    'Mixture'],
+    ['Tap water',       'Mixture'],
+    ['Distilled water', 'Pure substance', 'a compound'],
+    ['24 carat gold',   'Pure substance', 'an element'],
+    ['20 carat gold',   'Mixture', 'an alloy']
+  ];
+  const sorted = S.SCENES[S.SCENES.length-1].text.replace(/<[^>]+>/g,'');
+  const [pureHalf, mixHalf] = sorted.split(/Mixtures/);
+  for(const [name, verdict, detail] of expect){
+    const st = S.STATIONS.find(s=>s.name === name);
+    chk(!!st, `no station called ${name}`);
+    if(!st) continue;
+    const c = S.classify(st);
+    chk(c.verdict === verdict, `${name} classified ${c.verdict}, narration says ${verdict}`);
+    if(detail) chk(c.detail === detail, `${name} is "${c.detail}", expected "${detail}"`);
+    const half = verdict === 'Mixture' ? mixHalf : pureHalf;
+    chk(half.toLowerCase().includes(name.toLowerCase()),
+        `the summary does not list ${name} under ${verdict === 'Mixture' ? 'mixtures' : 'pure substances'}`);
+    console.log(`      ${name}: ${c.verdict} — ${c.detail} (${c.subs.join(', ')})`);
+  }
+
+  const tap = S.STATIONS.find(s=>s.name === 'Tap water');
+  const charge = tap.molecules.reduce((q,m)=>q + (S.CHARGE[m.sp] || 0), 0);
+  chk(charge === 0, `the tap water's ions do not balance: net charge ${charge}`);
+  const dist = S.classify(S.STATIONS.find(s=>s.name === 'Distilled water'));
+  chk(dist.subs.length === 1 && dist.subs[0] === 'water', 'distilled water should hold only water');
+
+  /* ---------- the solids stay solid ---------- */
+  section('    the solids');
+  let drift = 0;
+  for(const st of S.STATIONS.filter(s=>s.lattice)){
+    for(const p of st.particles) drift = Math.max(drift, p.pos.distanceTo(p.home));
+  }
+  chk(drift < 0.1 * S.LATTICE_U, `a metal atom wandered ${drift.toFixed(3)} from its site — the solid is not solid`);
+  const pure = S.STATIONS.find(s=>s.name === '24 carat gold');
+  chk(pure.particles.every(p=>p.el === 'Au'), '24 carat gold contains an atom that is not gold');
+
+  /* ---------- carat arithmetic ---------- */
+  section('    carat');
+  const A = S.ALLOY;
+  const alloy = S.STATIONS.find(s=>s.name === '20 carat gold');
+  const n = el => alloy.particles.filter(p=>p.el === el).length;
+  chk(n('Au') === A.Au && n('Ag') === A.Ag && n('Cu') === A.Cu, 'the 20 carat box does not hold the atoms ALLOY says');
+  const mass = el => n(el) * S.MASS[el];
+  const massFrac = mass('Au') / (mass('Au') + mass('Ag') + mass('Cu'));
+  chk(Math.abs(massFrac - S.CARAT/24) < 0.01,
+      `20 carat should be ${(S.CARAT/24*100).toFixed(1)}% gold by mass, the atoms give ${(massFrac*100).toFixed(1)}%`);
+  chk(Math.abs(mass('Ag') - mass('Cu')) / mass('Ag') < 0.1, 'silver and copper should be roughly equal by mass');
+  chk(A.atomAu < massFrac, 'gold should be a smaller share of the atoms than of the mass');
+  const cap = S.SCENES.find(s=>s.title === '20 carat gold');
+  chk(cap.caveat.includes(A.Au + ' of these ' + A.N), 'the caption quotes a different atom count');
+  chk(cap.text.includes(Math.round(massFrac*100) + '%'), 'the caption quotes a different gold percentage');
+  console.log(`      ${A.Au} Au + ${A.Ag} Ag + ${A.Cu} Cu: ${(massFrac*100).toFixed(1)}% gold by mass, ${(A.atomAu*100).toFixed(0)}% of atoms`);
+}
+
 /* =========================================================================== */
 (async function main(){
   const url = threeUrlOf(read('melting-snowman.html'));
@@ -774,6 +898,7 @@ function particleTypesStory(THREE){
     brownian(THREE);
     acidStory(THREE);
     particleTypesStory(THREE);
+    pureStory(THREE);
     console.log('\n' + (fails ? `${fails} of ${checks} checks FAILED`
                                : `all ${checks} checks pass`));
     if(fails) process.exitCode = 1;
