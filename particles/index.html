@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Science Simulations by Mr. Walpola</title>
+    <title>Particle Model Simulations by Mr. Walpola</title>
     <style>
         * {
             margin: 0;
@@ -36,6 +36,17 @@
             font-size: 0.95rem;
             margin-top: 4px;
         }
+
+        .header .back {
+            display: inline-block;
+            margin-top: 14px;
+            color: rgba(255,255,255,0.85);
+            font-size: 0.85rem;
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255,255,255,0.4);
+        }
+
+        .header .back:hover { color: #fff; }
 
         /* ── Controls bar ── */
         .controls {
@@ -262,8 +273,9 @@
 <body>
 
     <div class="header">
-        <h1>🔬 Science Simulations</h1>
-        <p class="byline">by Mr. Walpola</p>
+        <h1>⚛️ Particle Model Simulations</h1>
+        <p class="byline">by Mr. Walpola — guided 3D stories built around the particle model</p>
+        <a class="back" href="../index.html">← All simulations</a>
     </div>
 
     <div class="controls">
@@ -281,134 +293,152 @@
 
     <div class="grid" id="grid">
 
-        <div class="card" data-category="physics" data-keywords="voltage energy charge battery bulb circuit">
+        <div class="card" data-category="physics" data-keywords="energy temperature thermal store heat particles vibrate kinetic average speed equilibrium thermometer specific heat capacity spark swimming pool celsius joules 3d story">
             <div class="card-header">
-                <div class="card-icon">⚡</div>
+                <div class="card-icon">🌡️</div>
                 <div class="card-meta">
-                    <div class="card-title">Voltage, Energy &amp; Charge</div>
+                    <div class="card-title">Energy &amp; Temperature</div>
                     <span class="badge badge-physics">Physics</span>
                 </div>
             </div>
             <p class="card-description">
-                Explore how energy is added to a charge in a battery and released through a bulb. Visualises the relationship between voltage, energy transfer, and charge in a simple circuit.
+                A guided 3D story of the difference between the two. Watch energy arrive dot by dot and set the particles vibrating, then see why a swimming pool and a beaker at the same temperature hold wildly different amounts of energy — and why a 1200 °C spark holds almost none. Ends with energy flowing from hot to cold until the two reach equilibrium.
             </p>
-            <a href="https://iwalpola.github.io/science_simulations/voltage_energy_charge.html" class="launch-btn">
-                Launch →
-            </a>
-        </div>
-
-        <div class="card" data-category="physics" data-keywords="circuit quiz teacher voltage current series parallel question">
-            <div class="card-header">
-                <div class="card-icon">🧠</div>
-                <div class="card-meta">
-                    <div class="card-title">Circuit Quiz Teacher Tool</div>
-                    <span class="badge badge-physics">Physics</span>
-                </div>
-            </div>
-            <p class="card-description">
-                Generate randomised voltage and current questions on the fly. Vary circuit type and difficulty — ideal for classroom assessments and homework.
-            </p>
-            <a href="https://iwalpola.github.io/science_simulations/circuit_quiz_teacher_tool.html" class="launch-btn">
-                Launch →
-            </a>
-        </div>
-
-        <div class="card" data-category="physics" data-keywords="ultrasonic ndt non-destructive testing crack steel probe oscilloscope pulse">
-            <div class="card-header">
-                <div class="card-icon">📡</div>
-                <div class="card-meta">
-                    <div class="card-title">Ultrasonic Non-Destructive Testing</div>
-                    <span class="badge badge-physics">Physics</span>
-                </div>
-            </div>
-            <p class="card-description">
-                Slide a probe across a steel beam and watch the oscilloscope respond to hidden cracks. Switch to Pulse Trace mode for a slow-motion view of the pulse travelling through the material.
-            </p>
-            <a href="https://iwalpola.github.io/science_simulations/ultrasonicv2.html" class="launch-btn">
-                Launch →
-            </a>
-        </div>
-
-        <div class="card" data-category="physics" data-keywords="energy resources fossil fuels coal power station furnace boiler turbine generator renewable wind hydroelectric solar geothermal chemical thermal kinetic electrical store 3d story">
-            <div class="card-header">
-                <div class="card-icon">🔋</div>
-                <div class="card-meta">
-                    <div class="card-title">Energy Resources</div>
-                    <span class="badge badge-physics">Physics</span>
-                </div>
-            </div>
-            <p class="card-description">
-                A guided 3D story of where electricity comes from. Follow a carbon atom through millions of years into coal, then through a power station — furnace, boiler, turbine, generator — tracking the energy store at every stage. Compare with wind, hydroelectric, solar and geothermal.
-            </p>
-            <a href="./energy/energy-resources.html" class="launch-btn">
+            <a href="./energy-vs-temperature-3d-story.html" class="launch-btn">
                 3D story →
             </a>
         </div>
 
-        <div class="card" data-category="physics chemistry biology" data-keywords="particle model particles energy temperature states of matter melting brownian motion diffusion osmosis acid strength giant covalent foams aerosols atom molecule compound mixture pure substance">
+        <div class="card" data-category="chemistry" data-keywords="atom molecule compound mixture element periodic table pure substance bond particle model 3d story argon oxygen water hydrogen air fixed ratio separate">
             <div class="card-header">
-                <div class="card-icon">⚛️</div>
+                <div class="card-icon">🫧</div>
                 <div class="card-meta">
-                    <div class="card-title">Particle Model Simulations</div>
+                    <div class="card-title">Atom, Molecule, Compound, Mixture</div>
+                    <span class="badge badge-chemistry">Chemistry</span>
+                </div>
+            </div>
+            <p class="card-description">
+                A guided 3D story through five boxes of gas — argon, oxygen, steam, a hydrogen–oxygen mixture and air. Follow a single atom, then a molecule, and watch the tag over each box work out element, compound or mixture from what is inside. Fly over to a 3D periodic table to find each element's square — and see why water doesn't have one.
+            </p>
+            <a href="./atoms-molecules-compounds-mixtures-3d-story.html" class="launch-btn">
+                3D story →
+            </a>
+        </div>
+
+        <div class="card" data-category="chemistry" data-keywords="pure substance mixture impure purity orange juice tap water distilled water gold carat karat alloy element compound particle model 3d story">
+            <div class="card-header">
+                <div class="card-icon">🥇</div>
+                <div class="card-meta">
+                    <div class="card-title">Pure Substance or Mixture?</div>
+                    <span class="badge badge-chemistry">Chemistry</span>
+                </div>
+            </div>
+            <p class="card-description">
+                A guided 3D story through five samples — orange juice, tap water, distilled water, 24 carat gold and 20 carat gold. Start at each object, then zoom in to its particles and see why a "100% pure" juice is a mixture to a chemist, while distilled water is a pure substance.
+            </p>
+            <a href="./pure-substances-vs-mixtures-3d-story.html" class="launch-btn">
+                3D story →
+            </a>
+        </div>
+
+        <div class="card" data-category="chemistry" data-keywords="foam aerosol colloid mixture solid foam liquid foam solid aerosol liquid aerosol sponge shaving foam smoke soot diesel mist spray droplet bubble states of matter particle model suspended">
+            <div class="card-header">
+                <div class="card-icon">🧽</div>
+                <div class="card-meta">
+                    <div class="card-title">Foams &amp; Aerosols</div>
+                    <span class="badge badge-chemistry">Chemistry</span>
+                </div>
+            </div>
+            <p class="card-description">
+                Four chapters on a scrubbable timeline, each starting at something you can see and ending inside its particles — a bath sponge, a heap of shaving foam, diesel smoke and a spray of mist. See why a foam is gas trapped inside something, an aerosol is the same thing turned inside out, and how solid, liquid and gas particles move differently in each.
+            </p>
+            <a href="./foams-and-aerosols.html" class="launch-btn">
+                Launch →
+            </a>
+        </div>
+
+        <div class="card" data-category="chemistry" data-keywords="brownian motion particles pollen water molecules microscope kinetic theory diffusion particle model">
+            <div class="card-header">
+                <div class="card-icon">🌸</div>
+                <div class="card-meta">
+                    <div class="card-title">Brownian Motion</div>
+                    <span class="badge badge-chemistry">Chemistry</span>
+                </div>
+            </div>
+            <p class="card-description">
+                Follow pollen from a flower onto a drop of water, then look down the microscope and watch it jitter. Turn the water molecules visible to see what has been pushing it all along. Change the grain size and the temperature to see what each does.
+            </p>
+            <a href="./brownian-motion.html" class="launch-btn">
+                Launch →
+            </a>
+        </div>
+
+        <div class="card" data-category="physics" data-keywords="melting snowman states of matter particle model latent heat energy transfer radiation conduction heating curve solid liquid ice">
+            <div class="card-header">
+                <div class="card-icon">☃️</div>
+                <div class="card-meta">
+                    <div class="card-title">Melting</div>
                     <span class="badge badge-physics">Physics</span>
+                </div>
+            </div>
+            <p class="card-description">
+                Watch a snowman melt, and see where the energy comes from — mostly from the air, not the sunshine, because snow throws most of the light back. Then go inside the ice to watch the molecules break out of their pattern, while a heating curve tracks them and holds dead flat at 0 °C through the whole melt. Change the weather to change how long it takes.
+            </p>
+            <a href="./melting-snowman.html" class="launch-btn">
+                Launch →
+            </a>
+        </div>
+
+        <div class="card" data-category="chemistry" data-keywords="giant covalent structures diamond graphite carbon lattice bonding electrons sp3 sp2 crystal">
+            <div class="card-header">
+                <div class="card-icon">💎</div>
+                <div class="card-meta">
+                    <div class="card-title">Giant Covalent Structures</div>
                     <span class="badge badge-chemistry">Chemistry</span>
+                </div>
+            </div>
+            <p class="card-description">
+                Rotate diamond and graphite in 3D and watch their electrons behave completely differently — locked into bonds in diamond, versus free to roam the sheet in graphite — and see why that difference explains conductivity and hardness.
+            </p>
+            <a href="./giant-covalent.html" class="launch-btn">
+                Launch →
+            </a>
+        </div>
+
+        <div class="card" data-category="chemistry" data-keywords="acid strength concentration weak strong dissociation ph indicator equilibrium ka particle model 3d story nitric carbonic hno3 h2co3 nitrate hydrogencarbonate">
+            <div class="card-header">
+                <div class="card-icon">🧫</div>
+                <div class="card-meta">
+                    <div class="card-title">Concentration vs Acid Strength</div>
+                    <span class="badge badge-chemistry">Chemistry</span>
+                </div>
+            </div>
+            <p class="card-description">
+                Nitric acid against carbonic acid. Watch the acid split into ions — completely for the strong one, barely at all for the weak one. Take the guided 3D story first, where concentration is held equal so strength is the only thing left to see; then open the 2D sandbox and turn both knobs yourself.
+            </p>
+            <div class="launch-group">
+                <a href="./acid-strength-3d-story.html" class="launch-btn">
+                    3D story →
+                </a>
+                <a href="./acid-strength-vs-concentration.html" class="launch-btn launch-btn-alt">
+                    2D sandbox →
+                </a>
+            </div>
+        </div>
+
+        <div class="card" data-category="biology" data-keywords="diffusion osmosis active transport membrane partially permeable carrier protein concentration gradient surface area temperature thickness water solute dilute concentrated mineral ions root hair energy respiration particle model 3d story">
+            <div class="card-header">
+                <div class="card-icon">🧫</div>
+                <div class="card-meta">
+                    <div class="card-title">Diffusion, Osmosis &amp; Active Transport</div>
                     <span class="badge badge-biology">Biology</span>
                 </div>
             </div>
             <p class="card-description">
-                Ten guided 3D stories built around the particle model: energy vs temperature, melting, Brownian motion, diffusion and osmosis, acid strength, giant covalent structures, foams and aerosols, and what makes something an element, a compound, a mixture or pure.
+                A guided 3D story of particles crossing a membrane. Watch diffusion run from high to low concentration, then race tanks side by side to test concentration difference, surface area, membrane thickness and temperature. Finish with osmosis through a partially permeable membrane, and carrier proteins using energy to pump ions the other way.
             </p>
-            <a href="./particles/index.html" class="launch-btn">
-                Browse all →
-            </a>
-        </div>
-
-        <div class="card" data-category="chemistry" data-keywords="reaction builder chemical atoms molecules gcse rearrange species">
-            <div class="card-header">
-                <div class="card-icon">⚗️</div>
-                <div class="card-meta">
-                    <div class="card-title">Reaction Builder</div>
-                    <span class="badge badge-chemistry">Chemistry</span>
-                </div>
-            </div>
-            <p class="card-description">
-                A visual GCSE chemistry tool — search a species, drop it on the reactant side, then model the products to see how atoms rearrange during a reaction.
-            </p>
-            <a href="./reactionbuilder/reaction-builder.html" class="launch-btn">
-                Launch →
-            </a>
-        </div>
-
-        <div class="card" data-category="chemistry" data-keywords="reactions 3d animation gcse fourteen acid metal electrolysis combustion ions molecular">
-            <div class="card-header">
-                <div class="card-icon">🧪</div>
-                <div class="card-meta">
-                    <div class="card-title">3D Reaction Scenes</div>
-                    <span class="badge badge-chemistry">Chemistry</span>
-                </div>
-            </div>
-            <p class="card-description">
-                Fifteen scenes, one per GCSE reaction type. Each runs from the bench down to the individual ions and back, on a timeline you can scrub — and every scene lets you swap the species.
-            </p>
-            <a href="./3dreactionscenes/index.html" class="launch-btn">
-                Launch →
-            </a>
-        </div>
-
-
-        <div class="card" data-category="biology" data-keywords="cell biology animal plant muscle neuron sperm red blood cell haemoglobin root hair xylem phloem sieve tube transpiration translocation specialised organelle nucleus mitochondria chloroplast">
-            <div class="card-header">
-                <div class="card-icon">🧬</div>
-                <div class="card-meta">
-                    <div class="card-title">Cell Biology Simulations</div>
-                    <span class="badge badge-biology">Biology</span>
-                </div>
-            </div>
-            <p class="card-description">
-                A collection of labelled 3D and animated cell models — animal and plant cells, muscle fibres, a neuron, a swimming sperm cell, a red blood cell, and specialised plant cells: root hair, xylem, and phloem.
-            </p>
-            <a href="./cell_biology/index.html" class="launch-btn">
-                Launch →
+            <a href="./diffusion-osmosis-active-transport-3d-story.html" class="launch-btn">
+                3D story →
             </a>
         </div>
 
@@ -436,12 +466,12 @@
             let visibleCount = 0;
 
             cards.forEach(card => {
-                const categories = (card.dataset.category || '').split(' ');
+                const category = card.dataset.category;
                 const keywords = card.dataset.keywords || '';
                 const title = card.querySelector('.card-title').textContent.toLowerCase();
                 const desc = card.querySelector('.card-description').textContent.toLowerCase();
 
-                const matchesFilter = activeFilter === 'all' || categories.includes(activeFilter);
+                const matchesFilter = activeFilter === 'all' || category === activeFilter;
                 const matchesSearch = !query || title.includes(query) || desc.includes(query) || keywords.includes(query);
 
                 if (matchesFilter && matchesSearch) {
