@@ -441,35 +441,9 @@ function fillSample(s, baseCol){
     s.group.add(m);
     return m;
   };
-  const r = s.state === 'solid' ? 0.125 : 0.115;
+  if(s.state === 'solid'){ fillSolid(s, mk); return; }
 
-  if(s.state === 'solid'){
-    const a = Math.cbrt(w*h*d/s.n);
-    let nx = Math.max(1, Math.round(w/a)),
-        ny = Math.max(1, Math.round(h/a)),
-        nz = Math.max(1, Math.round(d/a));
-    while(nx*ny*nz < s.n){                      // grow the roomiest direction
-      const gap = [w/nx, h/ny, d/nz];
-      const i = gap.indexOf(Math.max.apply(null, gap));
-      if(i === 0) nx++; else if(i === 1) ny++; else nz++;
-    }
-    const sx = w/nx, sy = h/ny, sz = d/nz;
-    let made = 0;
-    for(let j=0;j<ny && made<s.n;j++)
-      for(let k=0;k<nz && made<s.n;k++)
-        for(let i=0;i<nx && made<s.n;i++){
-          const mesh = mk(); mesh.scale.setScalar(r);
-          const home = new THREE.Vector3(-w/2+sx*(i+0.5), sy*(j+0.5), -d/2+sz*(k+0.5));
-          mesh.position.copy(home);
-          s.parts.push({mesh, home, pos:home.clone(), r, amp:Math.min(sx,sy,sz),
-            ph:new THREE.Vector3(rand(0,6.3), rand(0,6.3), rand(0,6.3)),
-            fr:new THREE.Vector3(rand(0.8,1.25), rand(0.9,1.4), rand(0.7,1.2)),
-            sf:rollSpeed(), reroll:rand(0,1), flash:0});
-          made++;
-        }
-    return;
-  }
-
+  const r = s.cfg.r || 0.115;
   const top = s.state === 'liquid' ? h*0.62 : h;   // a liquid sits in the bottom of its container
   for(let i=0;i<s.n;i++){
     const mesh = mk(); mesh.scale.setScalar(r);
@@ -479,6 +453,75 @@ function fillSample(s, baseCol){
       vel:new THREE.Vector3(rand(-1,1), rand(-1,1), rand(-1,1)).normalize(),
       sf: rollSpeed(), reroll: rand(0,0.8), flash:0});
   }
+}
+
+/* The regular, close-packed pattern a solid is drawn with: a face-centred
+   cubic lattice, four particles to a cell, the same arrangement (and the same
+   sphere size relative to the spacing) as the ice in melting-snowman.html.
+   The lattice is offset a quarter of a cell from each wall, so the pattern
+   would continue if the block carried on past the glass.
+
+   Scene counts are chosen to fill whole cells; anything left over is taken off
+   the top layer, which is where a real block would have its free surface. */
+const FCC_BASIS = [[0,0,0],[0.5,0.5,0],[0.5,0,0.5],[0,0.5,0.5]];
+const VIB_MAX = 0.15;        // the widest swing a particle takes, as a fraction of the spacing
+
+function fillSolid(s, mk){
+  const w = s.w, h = s.h, d = s.d;
+
+  const a = Math.cbrt(4*w*h*d/s.n);              // 4 particles per cell
+  let nx = Math.max(1, Math.round(w/a)),
+      ny = Math.max(1, Math.round(h/a)),
+      nz = Math.max(1, Math.round(d/a));
+  while(4*nx*ny*nz < s.n){                       // grow the roomiest direction
+    const gap = [w/nx, h/ny, d/nz];
+    const i = gap.indexOf(Math.max.apply(null, gap));
+    if(i === 0) nx++; else if(i === 1) ny++; else nz++;
+  }
+  const ax = w/nx, ay = h/ny, az = d/nz;
+
+  const sites = [];
+  for(let i=0;i<nx;i++) for(let j=0;j<ny;j++) for(let k=0;k<nz;k++)
+    for(let b=0;b<4;b++)
+      sites.push(new THREE.Vector3(
+        -w/2 + (i + FCC_BASIS[b][0] + 0.25)*ax,
+               (j + FCC_BASIS[b][1] + 0.25)*ay,
+        -d/2 + (k + FCC_BASIS[b][2] + 0.25)*az));
+
+  // trim any surplus off the top, outside edges first, so the block stays square
+  if(sites.length > s.n){
+    sites.sort((p,q)=> (q.y - p.y) || ((q.x*q.x+q.z*q.z) - (p.x*p.x+p.z*p.z)));
+    sites.splice(0, sites.length - s.n);
+  }
+
+  /* nearest neighbours in an fcc lattice sit across the face diagonals */
+  let nn = 0.5*Math.min(Math.hypot(ax,ay), Math.hypot(ax,az), Math.hypot(ay,az));
+  let r = 0.48*nn;                               // just short of touching
+
+  /* Shrink the whole block — spacing, spheres and swing together, so the
+     pattern is untouched — until the outermost particles sit inside the glass
+     even at the top of their vibration. */
+  const pad = () => r + VIB_MAX*nn;
+  let reach = 0;
+  sites.forEach(p=>{
+    reach = Math.max(reach, (Math.abs(p.x) + pad())/(w/2),
+                            (Math.abs(p.y - h/2) + pad())/(h/2),
+                            (Math.abs(p.z) + pad())/(d/2));
+  });
+  if(reach > 1){
+    const k = 1/reach;
+    sites.forEach(p=>{ p.x *= k; p.y = h/2 + (p.y - h/2)*k; p.z *= k; });
+    nn *= k; r *= k;
+  }
+
+  sites.forEach(home=>{
+    const mesh = mk(); mesh.scale.setScalar(r);
+    mesh.position.copy(home);
+    s.parts.push({mesh, home, pos:home.clone(), r, amp:nn,
+      ph:new THREE.Vector3(rand(0,6.3), rand(0,6.3), rand(0,6.3)),
+      fr:new THREE.Vector3(rand(0.8,1.25), rand(0.9,1.4), rand(0.7,1.2)),
+      sf:rollSpeed(), reroll:rand(0,1), flash:0});
+  });
 }
 
 /* a spread of speeds around the average — most near it, a few much faster */
@@ -631,7 +674,7 @@ function updateParticles(s, dt){
       // held in place by the ones around it — all it can do is vibrate
       const rate = 5.2*f*p.sf;
       p.ph.x += rate*p.fr.x*dt; p.ph.y += rate*p.fr.y*dt; p.ph.z += rate*p.fr.z*dt;
-      const a = Math.min(0.42, 0.20*f*f) * p.amp;
+      const a = Math.min(VIB_MAX, 0.065*f*f) * p.amp;
       p.pos.set(p.home.x + a*Math.sin(p.ph.x),
                 p.home.y + a*Math.sin(p.ph.y),
                 p.home.z + a*Math.sin(p.ph.z));
@@ -722,7 +765,7 @@ const SCENES = [
     cam:{dist:12, az:0.34, el:0.24, look:[0,1.7,0]},
     metrics:['temp','n','speed','energy'],
     samples:[{
-      name:'METAL BLOCK', state:'solid', n:60, w:2.8, h:2.4, d:2.2,
+      name:'METAL BLOCK', state:'solid', n:108, w:2.7, h:2.7, d:2.7,
       tempC:10, tScale:[0,400], target:330, col:METAL, tempColour:true,
       heat:{rate:10, dT:2.6}, caption:'a block of metal on a heater'
     }],
@@ -741,13 +784,13 @@ const SCENES = [
     cam:{dist:25, az:0.12, el:0.27, look:[0,1.5,0]},
     metrics:['temp','n','speed'],
     samples:[
-      {x:-7.4, name:'SOLID',  nameCol:'#9ec3ff', state:'solid',  n:44, w:2.4,h:2.2,d:2.0,
+      {x:-7.4, name:'SOLID',  nameCol:'#9ec3ff', state:'solid',  n:108, w:2.4,h:2.4,d:2.4,
        tempC:15, tScale:[0,300], target:250, col:METAL, tempColour:true, bar:false,
        heat:{rate:8, dT:2.4}, caption:'vibrate in fixed places'},
-      {x:0,    name:'LIQUID', nameCol:'#9ec3ff', state:'liquid', n:44, w:2.4,h:2.2,d:2.0,
+      {x:0,    name:'LIQUID', nameCol:'#9ec3ff', state:'liquid', n:40, w:2.4,h:2.4,d:2.4, r:0.24,
        tempC:15, tScale:[0,300], target:250, col:WATER, tempColour:true, bar:false,
        heat:{rate:8, dT:2.4}, caption:'slide over each other, faster'},
-      {x:7.4,  name:'GAS',    nameCol:'#9ec3ff', state:'gas',    n:26, w:2.4,h:2.2,d:2.0,
+      {x:7.4,  name:'GAS',    nameCol:'#9ec3ff', state:'gas',    n:16, w:2.4,h:2.4,d:2.4, r:0.24,
        tempC:15, tScale:[0,300], target:250, col:0xc3a8ff, tempColour:true, bar:false,
        heat:{rate:8, dT:2.4}, caption:'fly about, faster'}
     ],
@@ -832,10 +875,10 @@ const SCENES = [
     cam:{dist:23, az:0.18, el:0.28, look:[0,1.5,0]},
     metrics:['temp','rise','n','added'],
     samples:[
-      {x:-5.6, name:'SMALL BLOCK', nameCol:'#ffcf8a', state:'solid', n:40, w:2.0,h:1.8,d:1.6,
+      {x:-5.6, name:'SMALL BLOCK', nameCol:'#ffcf8a', state:'solid', n:32, w:1.8,h:1.8,d:1.8,
        tempC:20, tScale:[0,200], col:METAL, tempColour:true,
        heat:{rate:10, q:1.6, stopAfter:6}, caption:'less material', barOf:'added'},
-      {x:5.0,  name:'LARGE BLOCK', nameCol:'#9ec3ff', state:'solid', n:160, w:3.4,h:2.6,d:2.4,
+      {x:5.0,  name:'LARGE BLOCK', nameCol:'#9ec3ff', state:'solid', n:128, w:3.6,h:1.8,d:3.6,
        tempC:20, tScale:[0,200], col:METAL, tempColour:true,
        heat:{rate:10, q:1.6, stopAfter:6}, caption:'four times as much material', barOf:'added'}
     ],
@@ -852,10 +895,10 @@ const SCENES = [
     metrics:['temp','n','speed','energy'],
     transfer:true,
     samples:[
-      {x:-3.4, name:'HOT OBJECT',  nameCol:'#ff9f7a', state:'solid', n:90, w:3.2,h:2.6,d:2.4,
+      {x:-2.6, name:'HOT OBJECT',  nameCol:'#ff9f7a', state:'solid', n:108, w:2.7,h:2.7,d:2.7,
        tempC:80, tScale:[0,100], col:METAL, tempColour:true, flash:true,
        thermoSide:-1, bar:false, caption:'starts at 80 °C'},
-      {x:3.4,  name:'COLD OBJECT', nameCol:'#9ec3ff', state:'solid', n:90, w:3.2,h:2.6,d:2.4,
+      {x:2.6,  name:'COLD OBJECT', nameCol:'#9ec3ff', state:'solid', n:108, w:2.7,h:2.7,d:2.7,
        tempC:20, tScale:[0,100], col:METAL, tempColour:true, flash:true,
        thermoSide:1, bar:false, caption:'starts at 20 °C'}
     ],

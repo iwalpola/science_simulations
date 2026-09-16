@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Foams and aerosols</title>
+<style>
+:root{
+  --ink:#eef2f7; --dim:#93a2b6; --panel:rgba(10,14,21,.74); --line:rgba(147,162,182,.22);
+  --gas:#f2c46b; --liq:#63d6e8; --sol:#6fa8e0; --bg:#0a0f17;
+}
+:root[data-theme="dark"]{ --bg:#0a0f17; }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bg:#0a0f17; } }
+*{box-sizing:border-box;}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);
+  font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;overflow:hidden;}
+#stage{position:fixed;inset:0;}
+canvas{display:block;}
+#fade{position:fixed;inset:0;background:#0a0f17;pointer-events:none;opacity:1;}
+.title{position:fixed;top:22px;left:26px;max-width:min(46ch,60vw);pointer-events:none;}
+.title h1{margin:0;font-family:"Iowan Old Style","Charter","Palatino Linotype",Georgia,serif;
+  font-weight:600;font-size:23px;letter-spacing:.2px;line-height:1.25;}
+.title p{margin:6px 0 0;font-size:13px;line-height:1.5;color:var(--dim);}
+#chapter{font-family:"Iowan Old Style","Charter","Palatino Linotype",Georgia,serif;font-size:16px;color:#ffd9a0;margin-top:10px!important;}
+#caption{position:fixed;left:50%;transform:translateX(-50%);bottom:126px;width:min(720px,92vw);
+  text-align:center;pointer-events:none;
+  font-family:"Iowan Old Style","Charter","Palatino Linotype",Georgia,serif;
+  font-size:20px;line-height:1.45;text-shadow:0 2px 18px rgba(0,0,0,.95);}
+#key{position:fixed;right:24px;top:22px;background:var(--panel);backdrop-filter:blur(14px);
+  border:1px solid var(--line);border-radius:12px;padding:11px 13px;
+  font-size:12.5px;line-height:1.9;color:var(--dim);opacity:0;min-width:210px;}
+#key div{display:flex;align-items:center;gap:8px;}
+#key b{color:var(--ink);font-weight:600;}
+.dot{width:11px;height:11px;border-radius:50%;flex:none;box-shadow:inset -2px -2px 3px rgba(0,0,0,.45);}
+#scale{position:fixed;left:26px;bottom:160px;width:min(260px,42vw);pointer-events:none;
+  font-size:11.5px;line-height:1.5;color:var(--dim);opacity:0;
+  background:rgba(10,14,21,.82);border:1px solid var(--line);border-radius:10px;padding:9px 11px;}
+#scale b{color:#ffd9a0;font-weight:600;display:block;font-size:12px;margin-bottom:3px;}
+#outro{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(760px,92vw);
+  background:rgba(10,14,21,.86);backdrop-filter:blur(16px);border:1px solid var(--line);
+  border-radius:16px;padding:22px 24px;opacity:0;pointer-events:none;}
+#outro h2{margin:0 0 14px;font-family:"Iowan Old Style","Charter","Palatino Linotype",Georgia,serif;font-weight:600;font-size:24px;}
+#outro .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+#outro .cell{border:1px solid var(--line);border-radius:10px;padding:11px 13px;font-size:13.5px;line-height:1.5;color:var(--dim);}
+#outro .cell b{display:block;color:var(--ink);font-size:15px;margin-bottom:3px;}
+#outro p{margin:14px 0 0;font-size:13.5px;line-height:1.55;color:var(--dim);}
+#outro p b{color:var(--ink);}
+#bar{position:fixed;left:50%;transform:translateX(-50%);bottom:20px;width:min(760px,94vw);
+  background:var(--panel);backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:14px;
+  padding:10px 14px 12px;}
+#row{display:flex;align-items:center;gap:12px;}
+#chaps{display:flex;gap:6px;margin-bottom:9px;flex-wrap:wrap;}
+button{font:inherit;font-size:13px;color:var(--ink);background:rgba(255,255,255,.06);
+  border:1px solid var(--line);border-radius:9px;padding:7px 13px;cursor:pointer;
+  transition:background .15s ease,border-color .15s ease;}
+button:hover{background:rgba(255,255,255,.12);}
+button:focus-visible{outline:2px solid #7fb0ff;outline-offset:2px;}
+.chap{font-size:12px;padding:5px 10px;color:var(--dim);}
+.chap.on{background:rgba(127,176,255,.18);border-color:rgba(127,176,255,.5);color:#dce9ff;}
+#play{min-width:74px;}
+#scrub{flex:1;appearance:none;height:4px;border-radius:4px;cursor:pointer;
+  background:linear-gradient(90deg,#7fc4ff 0%,#7fc4ff var(--p,0%),rgba(255,255,255,.14) var(--p,0%));}
+#scrub::-webkit-slider-thumb{appearance:none;width:14px;height:14px;border-radius:50%;background:var(--ink);border:none;box-shadow:0 0 0 3px rgba(8,11,17,.6);}
+#scrub::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--ink);border:none;}
+#clock{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums;min-width:86px;text-align:right;}
+#hint{position:fixed;bottom:124px;right:24px;font-size:11.5px;color:var(--dim);opacity:.75;}
+#status{position:fixed;top:22px;right:24px;font-size:11.5px;color:var(--dim);}
+@media (max-width:760px){
+  .title h1{font-size:18px;} .title p.sub{display:none;}
+  #caption{font-size:16px;bottom:128px;}
+  #key{right:12px;top:12px;padding:8px 10px;font-size:11px;line-height:1.7;min-width:0;}
+  #hint,#scale,#clock{display:none;}
+  #outro .grid{grid-template-columns:1fr;}
+  #outro{padding:16px;} #outro .cell{padding:8px 10px;font-size:12.5px;}
+}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="fade"></div>
+<div class="title">
+  <h1>Foams and aerosols</h1>
+  <p class="sub">What is trapped inside what, all the way down to the particles.</p>
+  <p id="chapter"></p>
+</div>
+<div id="key"></div>
+<div id="status"></div>
+<div id="scale"><b id="scaleH"></b><span id="scaleT"></span></div>
+<div id="caption"></div>
+<div id="outro">
+  <h2>Two mixtures, turned inside out</h2>
+  <div class="grid">
+    <div class="cell"><b>Solid foam</b>Pockets of gas surrounded by a solid. Sponge, polystyrene, bread, pumice.</div>
+    <div class="cell"><b>Liquid foam</b>Pockets of gas surrounded by a liquid. Shaving foam, whipped cream, bubble bath.</div>
+    <div class="cell"><b>Solid aerosol</b>Tiny pieces of solid suspended in a gas. Smoke, diesel soot, dust.</div>
+    <div class="cell"><b>Liquid aerosol</b>Tiny droplets of liquid suspended in a gas. Mist, fog, sprays, breath.</div>
+  </div>
+  <p>In a <b>foam</b> the gas is the part that is trapped. In an <b>aerosol</b> the gas is all around.
+  Wherever they are, gas particles are far apart and move quickly and randomly; liquid particles touch and slide
+  past each other; solid particles stay in a fixed pattern and only vibrate.</p>
+</div>
+<div id="hint">Drag to look around</div>
+<div id="bar">
+  <div id="chaps"></div>
+  <div id="row">
+    <button id="play">Pause</button>
+    <button id="restart">Restart</button>
+    <input id="scrub" type="range" min="0" max="138" step="0.01" value="0" aria-label="Timeline">
+    <span id="clock"></span>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/*MD-START*/
+/* ---------------------------------------------------------------------------
+   THE PARTICLES — borrowed from melting-snowman.html and extended
+
+   The same machinery as the snowman's ice: Lennard-Jones particles, a
+   face-centred cubic starting lattice, velocity Verlet, neighbour lists with a
+   skin, mirror walls, Maxwell–Boltzmann starting speeds drawn off a seeded
+   stream, and a run done ONCE whose positions are written into a table so that
+   playback is a lookup and scrubbing always lands on the same frame.
+
+   What is new is that there are three kinds of particle in one box:
+
+     solid   full Lennard-Jones attraction, held cold. Cold enough that nothing
+             can shake loose, so a solid keeps its pattern and every particle
+             vibrates about its own place. That is what keeps soot together.
+     liquid  the same attraction, held warmer: still touching, but with enough
+             energy to slide past each other.
+     gas     no attraction at all (the repulsive core only, WCA), held hot and
+             spread thin: far apart, fast, straight lines until they hit
+             something.
+
+   Each group has its own thermostat (Berendsen). For a floating droplet or
+   piece of soot the thermostat acts on motion RELATIVE to that piece's centre,
+   so the gas can still knock the whole piece about — which is the drift you
+   see — without the knocks cooking it apart.
+
+   In a foam the gas pockets are held by a soft spherical wall. In real life
+   that job is done by the solid, or by surface tension in the liquid film; a
+   few hundred particles cannot make a bubble stable on their own. Said on
+   screen as part of "a model".
+--------------------------------------------------------------------------- */
+const GAS=0, LIQ=1, SOL=2;
+const MDC = { dt:0.005, stepsPerRec:8, recPerSec:30, pre:900, rc:2.2, skin:0.45, maxnb:110, tau:0.08, K:90 };
+
+function rng(seed){
+  let s = seed>>>0;
+  return ()=>{ s = (s*1664525 + 1013904223)>>>0; return s/4294967296; };
+}
+
+const WORLD_CFG = {
+  solidFoam:   {seed:4271, kind:'foam',    cond:SOL, a:1.58, nx:8,ny:7,nz:4, R:2.9,
+                pockets:[[0.28,0.31],[0.72,0.69]], T:0.10, Thot:0.10, hot:0, Tgas:1.6, gasPer:16, secs:24.5},
+  liquidFoam:  {seed:9133, kind:'foam',    cond:LIQ, a:1.71, nx:8,ny:7,nz:4, R:3.0,
+                pockets:[[0.27,0.30],[0.70,0.68]],   T:0.80, Thot:1.4, hot:500, Tgas:1.6, gasPer:16, secs:24.5},
+  solidAerosol:{seed:5519, kind:'aerosol', cond:SOL, a:1.58, L:16, nGas:150, cr:2.05,
+                clusters:[[0.34,0.38,0.42],[0.72,0.62,0.32],[0.38,0.72,0.72],[0.70,0.28,0.70]],
+                T:0.06, Thot:0.06, hot:0, Tgas:1.6, secs:24.5},
+  liquidAerosol:{seed:7741, kind:'aerosol', cond:LIQ, a:1.60, L:16, nGas:150, cr:2.05,
+                clusters:[[0.34,0.38,0.42],[0.72,0.62,0.32],[0.38,0.72,0.72],[0.70,0.28,0.70]],
+                T:0.34, Thot:0.6, hot:250, Tgas:1.6, secs:34.5}
+};
+
+function worldRun(cfg){
+  const rand = rng(cfg.seed);
+  const gauss=()=>{ const u=1-rand(); return Math.sqrt(-2*Math.log(u))*Math.cos(6.283185307179586*rand()); };
+  const basis=[[0,0,0],[0.5,0.5,0],[0.5,0,0.5],[0,0.5,0.5]];
+  const X=[],Y=[],Z=[],TY=[],CL=[],PK=[];
+  let LX,LY,LZ; const pockets=[]; const clusters=[];
+
+  if(cfg.kind==='foam'){
+    const a=cfg.a; LX=cfg.nx*a; LY=cfg.ny*a; LZ=cfg.nz*a;
+    for(const p of cfg.pockets) pockets.push([p[0]*LX, p[1]*LY, LZ/2]);
+    const cut=cfg.R+0.3;
+    for(let i=0;i<cfg.nx;i++) for(let j=0;j<cfg.ny;j++) for(let k=0;k<cfg.nz;k++) for(const b of basis){
+      const px=(i+b[0]+0.25)*a, py=(j+b[1]+0.25)*a, pz=(k+b[2]+0.25)*a;
+      let inside=false;
+      for(const c of pockets){ const dx=px-c[0],dy=py-c[1],dz=pz-c[2]; if(dx*dx+dy*dy+dz*dz<cut*cut) inside=true; }
+      if(inside) continue;
+      X.push(px);Y.push(py);Z.push(pz);TY.push(cfg.cond);CL.push(0);PK.push(-1);
+    }
+    pockets.forEach((c,pi)=>{
+      let placed=0, tries=0; const start=X.length;
+      while(placed<cfg.gasPer && tries<5000){
+        tries++;
+        const r=(cfg.R-0.9)*Math.cbrt(rand()), th=rand()*6.2832, u=rand()*2-1, s=Math.sqrt(1-u*u);
+        const px=c[0]+r*s*Math.cos(th), py=c[1]+r*s*Math.sin(th), pz=c[2]+r*u;
+        let ok=true;
+        for(let q=start;q<X.length;q++){ const dx=px-X[q],dy=py-Y[q],dz=pz-Z[q]; if(dx*dx+dy*dy+dz*dz<1.1) ok=false; }
+        if(!ok) continue;
+        X.push(px);Y.push(py);Z.push(pz);TY.push(GAS);CL.push(-1);PK.push(pi); placed++;
+      }
+    });
+  }else{
+    LX=LY=LZ=cfg.L; const a=cfg.a;
+    cfg.clusters.forEach((f,ci)=>{
+      const c=[f[0]*LX,f[1]*LY,f[2]*LZ]; clusters.push(c);
+      for(let i=-3;i<=3;i++) for(let j=-3;j<=3;j++) for(let k=-3;k<=3;k++) for(const b of basis){
+        const px=c[0]+(i+b[0])*a, py=c[1]+(j+b[1])*a, pz=c[2]+(k+b[2])*a;
+        const dx=px-c[0],dy=py-c[1],dz=pz-c[2];
+        if(dx*dx+dy*dy+dz*dz<cfg.cr*cfg.cr){ X.push(px);Y.push(py);Z.push(pz);TY.push(cfg.cond);CL.push(ci);PK.push(-1); }
+      }
+    });
+    let placed=0;
+    while(placed<cfg.nGas){
+      const px=0.6+rand()*(LX-1.2), py=0.6+rand()*(LY-1.2), pz=0.6+rand()*(LZ-1.2);
+      let ok=true;
+      for(let q=0;q<X.length;q++){ const dx=px-X[q],dy=py-Y[q],dz=pz-Z[q]; if(dx*dx+dy*dy+dz*dz<(TY[q]===GAS?1.2:2.6)){ok=false;break;} }
+      if(!ok) continue;
+      X.push(px);Y.push(py);Z.push(pz);TY.push(GAS);CL.push(-1);PK.push(-1); placed++;
+    }
+  }
+
+  const N=X.length;
+  const x=Float64Array.from(X), y=Float64Array.from(Y), z=Float64Array.from(Z);
+  const type=Uint8Array.from(TY), clus=Int16Array.from(CL), pocket=Int16Array.from(PK);
+  const vx=new Float64Array(N), vy=new Float64Array(N), vz=new Float64Array(N);
+  for(let i=0;i<N;i++){
+    const T = type[i]===GAS ? cfg.Tgas : cfg.Thot;
+    const s=Math.sqrt(T); vx[i]=gauss()*s; vy[i]=gauss()*s; vz[i]=gauss()*s;
+  }
+
+  /* thermostat groups */
+  const groups=[];
+  const gasIdx=[]; for(let i=0;i<N;i++) if(type[i]===GAS) gasIdx.push(i);
+  groups.push({idx:Int32Array.from(gasIdx), gas:true, rel:false, pin:false});
+  if(cfg.kind==='foam'){
+    const c=[]; for(let i=0;i<N;i++) if(type[i]!==GAS) c.push(i);
+    groups.push({idx:Int32Array.from(c), gas:false, rel:true, pin:true});
+  }else{
+    for(let ci=0;ci<clusters.length;ci++){
+      const c=[]; for(let i=0;i<N;i++) if(clus[i]===ci) c.push(i);
+      /* start each piece at rest as a whole */
+      let mx=0,my=0,mz=0; for(const i of c){mx+=vx[i];my+=vy[i];mz+=vz[i];}
+      mx/=c.length;my/=c.length;mz/=c.length;
+      for(const i of c){vx[i]-=mx;vy[i]-=my;vz[i]-=mz;}
+      groups.push({idx:Int32Array.from(c), gas:false, rel:true, pin:false});
+    }
+  }
+
+  const fx=new Float64Array(N), fy=new Float64Array(N), fz=new Float64Array(N);
+  const RC2=MDC.rc*MDC.rc, WCA2=Math.pow(2,1/3), RL2=(MDC.rc+MDC.skin)**2, MAXNB=MDC.maxnb;
+  const nbr=new Int32Array(N*MAXNB), nbrN=new Int32Array(N);
+  const lx=new Float64Array(N), ly=new Float64Array(N), lz=new Float64Array(N);
+
+  function rebuild(){
+    for(let i=0;i<N;i++){ nbrN[i]=0; lx[i]=x[i]; ly[i]=y[i]; lz[i]=z[i]; }
+    for(let i=0;i<N;i++) for(let j=i+1;j<N;j++){
+      const dx=x[i]-x[j], dy=y[i]-y[j], dz=z[i]-z[j];
+      if(dx*dx+dy*dy+dz*dz<RL2 && nbrN[i]<MAXNB) nbr[i*MAXNB+nbrN[i]++]=j;
+    }
+  }
+  function forces(){
+    fx.fill(0); fy.fill(0); fz.fill(0);
+    for(let i=0;i<N;i++){
+      const n=nbrN[i], base=i*MAXNB, xi=x[i], yi=y[i], zi=z[i], ci=type[i]!==GAS;
+      let ax=0,ay=0,az=0;
+      for(let k=0;k<n;k++){
+        const j=nbr[base+k];
+        const dx=xi-x[j], dy=yi-y[j], dz=zi-z[j];
+        const r2=dx*dx+dy*dy+dz*dz;
+        /* attraction only between particles of a condensed state; anything
+           involving gas feels the repulsive core and nothing else */
+        const lim = (ci && type[j]!==GAS) ? RC2 : WCA2;
+        if(r2>=lim) continue;
+        const sr2=1/Math.max(r2,0.5), sr6=sr2*sr2*sr2;
+        const fr=24*sr6*(2*sr6-1)*sr2;
+        ax+=fr*dx; ay+=fr*dy; az+=fr*dz;
+        fx[j]-=fr*dx; fy[j]-=fr*dy; fz[j]-=fr*dz;
+      }
+      fx[i]+=ax; fy[i]+=ay; fz[i]+=az;
+    }
+    if(pockets.length){
+      const R=cfg.R, K=MDC.K;
+      for(let i=0;i<N;i++){
+        if(type[i]===GAS){
+          const c=pockets[pocket[i]]; const dx=x[i]-c[0],dy=y[i]-c[1],dz=z[i]-c[2];
+          const d=Math.sqrt(dx*dx+dy*dy+dz*dz), lim=R-0.55;
+          if(d>lim){ const k=-K*(d-lim)/d; fx[i]+=k*dx; fy[i]+=k*dy; fz[i]+=k*dz; }
+        }else{
+          for(const c of pockets){
+            const dx=x[i]-c[0],dy=y[i]-c[1],dz=z[i]-c[2];
+            const d=Math.sqrt(dx*dx+dy*dy+dz*dz);
+            if(d<R){ const k=K*(R-d)/Math.max(d,1e-3); fx[i]+=k*dx; fy[i]+=k*dy; fz[i]+=k*dz; }
+          }
+        }
+      }
+    }
+  }
+  function thermostat(step){
+    const dt=MDC.dt;
+    for(const g of groups){
+      const idx=g.idx, n=idx.length; if(!n) continue;
+      const T0 = g.gas ? cfg.Tgas : (step<cfg.hot ? cfg.Thot : cfg.T);
+      let cx=0,cy=0,cz=0;
+      if(g.rel){ for(let q=0;q<n;q++){const i=idx[q]; cx+=vx[i];cy+=vy[i];cz+=vz[i];} cx/=n;cy/=n;cz/=n; }
+      let ke=0;
+      for(let q=0;q<n;q++){const i=idx[q]; const a=vx[i]-cx,b=vy[i]-cy,c=vz[i]-cz; ke+=a*a+b*b+c*c;}
+      const T=ke/(3*n)||1e-9;
+      let lam=Math.sqrt(1+(dt/MDC.tau)*(T0/T-1)); lam=Math.max(0.85,Math.min(1.15,lam));
+      const bx=g.pin?0:cx, by=g.pin?0:cy, bz=g.pin?0:cz;
+      for(let q=0;q<n;q++){const i=idx[q]; vx[i]=bx+lam*(vx[i]-cx); vy[i]=by+lam*(vy[i]-cy); vz[i]=bz+lam*(vz[i]-cz);}
+    }
+  }
+
+  rebuild(); forces();
+  const frames=Math.round(cfg.secs*MDC.recPerSec)+1;
+  const total=MDC.pre+(frames-1)*MDC.stepsPerRec;
+  const pos=new Float32Array(frames*N*3);
+  let rec=0, step=0, result=null;
+  function snap(){
+    const p=rec*N*3;
+    for(let i=0;i<N;i++){ pos[p+i*3]=x[i]; pos[p+i*3+1]=y[i]; pos[p+i*3+2]=z[i]; }
+    rec++;
+  }
+  const dt=MDC.dt, SK=MDC.skin*MDC.skin*0.25;
+  function advance(n){
+    const end=Math.min(total, step+n);
+    for(let s=step+1;s<=end;s++){
+      for(let i=0;i<N;i++){
+        vx[i]+=0.5*dt*fx[i]; vy[i]+=0.5*dt*fy[i]; vz[i]+=0.5*dt*fz[i];
+        x[i]+=dt*vx[i]; y[i]+=dt*vy[i]; z[i]+=dt*vz[i];
+        if(x[i]<0){x[i]=-x[i];vx[i]=-vx[i];} else if(x[i]>LX){x[i]=2*LX-x[i];vx[i]=-vx[i];}
+        if(y[i]<0){y[i]=-y[i];vy[i]=-vy[i];} else if(y[i]>LY){y[i]=2*LY-y[i];vy[i]=-vy[i];}
+        if(z[i]<0){z[i]=-z[i];vz[i]=-vz[i];} else if(z[i]>LZ){z[i]=2*LZ-z[i];vz[i]=-vz[i];}
+      }
+      let moved=0;
+      for(let i=0;i<N;i++){ const dx=x[i]-lx[i],dy=y[i]-ly[i],dz=z[i]-lz[i]; const d=dx*dx+dy*dy+dz*dz; if(d>moved) moved=d; }
+      if(moved>SK) rebuild();
+      forces();
+      for(let i=0;i<N;i++){ vx[i]+=0.5*dt*fx[i]; vy[i]+=0.5*dt*fy[i]; vz[i]+=0.5*dt*fz[i]; }
+      thermostat(s);
+      if(s>=MDC.pre && (s-MDC.pre)%MDC.stepsPerRec===0) snap();
+    }
+    step=end;
+    if(step>=total && !result){
+      const members=groups.slice(1).map(g=>g.idx);
+      result={N, frames:rec, pos, type, clus, pocket, LX, LY, LZ, pockets, members, R:cfg.R, kind:cfg.kind};
+    }
+    return step>=total;
+  }
+  return { advance, get done(){return step>=total;}, get progress(){return step/total;}, get result(){return result;} };
+}
+/*MD-END*/
+/* ======================= timeline ======================= */
+const CH_LEN = 32, MACRO_END = 7.8, PART_START = 8.0;
+const TOTAL = CH_LEN*3 + 42;
+const WORLD_KEYS = ['solidFoam','liquidFoam','solidAerosol','liquidAerosol'];
+
+const CHAPTERS = [
+  { name:'Solid foam', short:'Solid foam', world:'solidFoam',
+    caps:[
+      {t:0.0,  c:'A bath sponge. Squeeze it and it springs back — it is a solid.'},
+      {t:3.6,  c:'But look closely: it is full of holes, and every hole is full of air.'},
+      {t:8.6,  c:'Inside the sponge. We have sliced it open so you can see into two of the air pockets.'},
+      {t:13.0, c:'The solid particles are packed in a regular pattern. They cannot move past each other — they only vibrate on the spot.'},
+      {t:19.0, c:'In each pocket the gas particles are far apart, moving quickly and randomly until they bounce off the solid wall.'},
+      {t:25.5, c:'Pockets of gas surrounded by a solid: that is a solid foam.'}
+    ],
+    scale:['Not to scale, and a model','A real pocket holds billions of gas particles. The spheres show how particles are arranged and move, not their true size.'] },
+  { name:'Liquid foam', short:'Liquid foam', world:'liquidFoam',
+    caps:[
+      {t:0.0,  c:'Shaving foam. It is squirted out of a can as a liquid with gas mixed into it.'},
+      {t:3.6,  c:'It is a heap of tiny bubbles: pockets of gas wrapped in thin films of liquid.'},
+      {t:8.6,  c:'Sliced open again. Two gas pockets, with a thin film of liquid between them.'},
+      {t:13.0, c:'The liquid particles still touch each other, but not in a pattern. They move around, sliding past their neighbours.'},
+      {t:19.0, c:'Inside the pockets the gas particles are far apart and move quickly in random directions.'},
+      {t:25.5, c:'Pockets of gas surrounded by a liquid: a liquid foam.'}
+    ],
+    scale:['Not to scale, and a model','In real shaving foam, soap molecules in the liquid keep the bubbles from popping. Here a soft wall does that job.'] },
+  { name:'Solid aerosol', short:'Solid aerosol', world:'solidAerosol',
+    caps:[
+      {t:0.0,  c:'Burning diesel. The grey smoke is not a gas on its own.'},
+      {t:3.6,  c:'It is tiny pieces of solid soot, spread out in the exhaust gases.'},
+      {t:8.6,  c:'Now it is the other way round from a foam: the gas is all around, and the solid is in small pieces.'},
+      {t:13.0, c:'A piece of soot. Its particles stay together in a fixed pattern, vibrating on the spot.'},
+      {t:19.0, c:'Gas particles are far apart and move fast. They hit the soot from every side, so the whole piece drifts — but it holds together.'},
+      {t:25.5, c:'Tiny pieces of solid suspended in a gas: a solid aerosol.'}
+    ],
+    scale:['Not to scale, and a model','A real soot speck has millions of particles. Gas particles are drawn the same size so you can compare how they move.'] },
+  { name:'Liquid aerosol', short:'Liquid aerosol', world:'liquidAerosol',
+    caps:[
+      {t:0.0,  c:'A spray, a mist — or the tiny droplets you breathe out every time you exhale.'},
+      {t:3.6,  c:'Each one is a droplet of liquid, floating in the air.'},
+      {t:8.6,  c:'Droplets of liquid, with gas all around them.'},
+      {t:13.0, c:'Inside a droplet the particles are close together but not in a pattern. They slide past each other, so its shape keeps wobbling.'},
+      {t:19.0, c:'The gas particles around it are far apart, moving quickly and randomly.'},
+      {t:25.5, c:'Tiny droplets of liquid suspended in a gas: a liquid aerosol.'},
+      {t:32.5, c:''}
+    ],
+    scale:['Not to scale, and a model','A real droplet from your breath has billions of particles. These show the arrangement and movement.'] }
+];
+
+function chapterAt(t){ return Math.max(0, Math.min(3, Math.floor(t/CH_LEN))); }
+function localT(t){ return t - chapterAt(t)*CH_LEN; }
+
+/* ---------- renderer / scene (as in melting-snowman.html) ---------- */
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.getElementById('stage').appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.01, 2000);
+
+function lerp(a,b,t){ return a+(b-a)*t; }
+function clamp01(x){ return Math.max(0,Math.min(1,x)); }
+function smooth(x){ x=clamp01(x); return x*x*(3-2*x); }
+function ramp(t,a,b){ return smooth((t-a)/(b-a)); }
+
+function linearise(root){
+  root.traverse(o=>{
+    if(!o.material) return;
+    const list = Array.isArray(o.material) ? o.material : [o.material];
+    list.forEach(m=>{
+      if(!m || m.userData.__lin) return;
+      m.userData.__lin = true;
+      if(m.color) m.color.convertSRGBToLinear();
+      if(m.emissive) m.emissive.convertSRGBToLinear();
+    });
+  });
+}
+const lin = hex => new THREE.Color(hex).convertSRGBToLinear();
+
+const SOFT_TEX = (function(){
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(64,64,0,64,64,64);
+  g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(0.35,'rgba(255,255,255,.55)');
+  g.addColorStop(0.7,'rgba(255,255,255,.15)'); g.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.fillStyle=g; ctx.fillRect(0,0,128,128);
+  return new THREE.CanvasTexture(c);
+})();
+
+/* ---------- lights ---------- */
+const MACRO_BG = 0x1d2738, PART_BG = 0x0a0f17;
+const keyLight = new THREE.DirectionalLight(0xfff0dc, 2.2);
+keyLight.position.set(3,5,3.5); keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048,2048);
+Object.assign(keyLight.shadow.camera,{near:0.5,far:20,left:-3,right:3,top:3,bottom:-3});
+keyLight.shadow.bias=-0.0008; keyLight.shadow.normalBias=0.02;
+scene.add(keyLight);
+const macroFill = new THREE.HemisphereLight(0xb8d4f0, 0x3a3226, 0.9); scene.add(macroFill);
+
+const ICE_Y = -400;
+const partLight = new THREE.PointLight(0xdceeff, 0, 120);
+partLight.position.set(10, ICE_Y + 18, 26); scene.add(partLight);
+const partFill = new THREE.HemisphereLight(0x6f9fd0, 0x101820, 0); scene.add(partFill);
+
+/* =====================================================================
+   THE MACRO SCENES — the things you can see
+===================================================================== */
+const table = new THREE.Mesh(new THREE.PlaneGeometry(20,20),
+  new THREE.MeshStandardMaterial({color:0x3a4658, roughness:0.9}));
+table.rotation.x = -Math.PI/2; table.receiveShadow = true; scene.add(table);
+
+const macros = [];
+function R(seed){ return rng(seed); }
+
+/* 1 — a sponge: a block with its holes drawn as dark pits on every face */
+(function(){
+  const g = new THREE.Group(); macros.push(g); scene.add(g);
+  const W=1.4,H=0.55,D=0.9;
+  const block = new THREE.Mesh(new THREE.BoxGeometry(W,H,D,1,1,1),
+    new THREE.MeshStandardMaterial({color:0xe7c14e, roughness:0.97}));
+  block.position.y = H/2; block.castShadow = true; g.add(block);
+  const rand = R(311), HN = 520;
+  const holes = new THREE.InstancedMesh(new THREE.CircleGeometry(1,20),
+    new THREE.MeshStandardMaterial({color:0x7a5a14, roughness:1}), HN);
+  const faces = [ // normal, u axis, v axis, half sizes, area weight
+    {n:[0,0,1], c:[0,H/2,D/2], su:W, sv:H},
+    {n:[1,0,0], c:[W/2,H/2,0], su:D, sv:H},
+    {n:[-1,0,0],c:[-W/2,H/2,0],su:D, sv:H},
+    {n:[0,1,0], c:[0,H,0],     su:W, sv:D},
+    {n:[0,0,-1],c:[0,H/2,-D/2],su:W, sv:H}
+  ];
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
+  const zAxis = new THREE.Vector3(0,0,1);
+  for(let i=0;i<HN;i++){
+    const f = faces[Math.floor(rand()*faces.length)];
+    const nrm = new THREE.Vector3(...f.n);
+    const u = (rand()-0.5)*f.su*0.94, v = (rand()-0.5)*f.sv*0.9;
+    p.set(...f.c);
+    if(f.n[2]!==0){ p.x += u; p.y += v; }
+    else if(f.n[0]!==0){ p.z += u; p.y += v; }
+    else { p.x += u; p.z += v; }
+    p.addScaledVector(nrm, 0.0015);
+    q.setFromUnitVectors(zAxis, nrm);
+    const r = 0.012 + Math.pow(rand(),2.2)*0.05;
+    s.set(r, r*(0.7+rand()*0.5), 1);
+    m4.compose(p,q,s); holes.setMatrixAt(i,m4);
+  }
+  /* the hole the camera goes into */
+  m4.compose(new THREE.Vector3(0.12,0.28,D/2+0.0016), new THREE.Quaternion(), new THREE.Vector3(0.075,0.068,1));
+  holes.setMatrixAt(0,m4);
+  g.add(holes);
+  g.userData.cam = [
+    {t:0,   p:[2.3,1.6,2.6],   l:[0,0.28,0]},
+    {t:3.5, p:[1.2,0.9,1.7],   l:[0.05,0.28,0.2]},
+    {t:6.2, p:[0.22,0.34,0.8], l:[0.12,0.28,0.45]},
+    {t:7.8, p:[0.125,0.285,0.49], l:[0.12,0.28,0.44]}
+  ];
+})();
+
+/* 2 — shaving foam heaped in a dish, and its can */
+(function(){
+  const g = new THREE.Group(); macros.push(g); scene.add(g);
+  const dish = new THREE.Mesh(new THREE.CylinderGeometry(0.78,0.66,0.07,48),
+    new THREE.MeshStandardMaterial({color:0x5f7f96, roughness:0.35, metalness:0.1}));
+  dish.position.y = 0.035; dish.castShadow = dish.receiveShadow = true; g.add(dish);
+  const rand = R(733), BN = 900;
+  const bubbles = new THREE.InstancedMesh(new THREE.SphereGeometry(1,18,12),
+    new THREE.MeshStandardMaterial({color:0xf7f9fb, roughness:0.35, emissive:0x2a2f36}), BN);
+  const m4 = new THREE.Matrix4();
+  for(let i=0;i<BN;i++){
+    const th=rand()*Math.PI*2, u=rand(), ph=Math.acos(u);   // upper hemisphere
+    const rr = 0.58*Math.pow(rand(),0.25);
+    const x = rr*Math.sin(ph)*Math.cos(th), z = rr*Math.sin(ph)*Math.sin(th), y = 0.07 + rr*Math.cos(ph)*0.85;
+    const r = 0.02 + Math.pow(rand(),2)*0.06;
+    m4.makeScale(r,r,r); m4.setPosition(x,y,z); bubbles.setMatrixAt(i,m4);
+  }
+  bubbles.castShadow = true; g.add(bubbles);
+  const can = new THREE.Mesh(new THREE.CylinderGeometry(0.17,0.17,0.78,40),
+    new THREE.MeshStandardMaterial({color:0x2e8f8a, roughness:0.35, metalness:0.4}));
+  can.position.set(-1.05,0.39,-0.45); can.castShadow = true; g.add(can);
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.17,0.16,40),
+    new THREE.MeshStandardMaterial({color:0xeeeeee, roughness:0.3}));
+  cap.position.set(-1.05,0.86,-0.45); cap.castShadow = true; g.add(cap);
+  g.userData.cam = [
+    {t:0,   p:[2.0,1.6,2.4],   l:[-0.2,0.35,0]},
+    {t:3.5, p:[1.0,0.9,1.5],   l:[0,0.35,0.1]},
+    {t:6.2, p:[0.15,0.42,0.95],l:[0,0.35,0.4]},
+    {t:7.8, p:[0.03,0.37,0.62],l:[0,0.35,0.45]}
+  ];
+})();
+
+/* smoke and mist: a stream of points whose every position is a pure function
+   of t, so scrubbing gives the same cloud each time */
+function puffs(n, size, blending, seed){
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n*3),3));
+  geo.setAttribute('color',    new THREE.BufferAttribute(new Float32Array(n*3),3));
+  const pts = new THREE.Points(geo, new THREE.PointsMaterial({size, map:SOFT_TEX, vertexColors:true,
+    transparent:true, depthWrite:false, blending, sizeAttenuation:true}));
+  pts.frustumCulled = false;
+  const rand = R(seed), seeds=[];
+  for(let i=0;i<n;i++) seeds.push({ph:rand(), rate:0.16+rand()*0.08, a:rand()*6.2832, r:rand(), w:rand()});
+  pts.userData.seeds = seeds;
+  return pts;
+}
+
+/* 3 — the back of a diesel van and its exhaust */
+(function(){
+  const g = new THREE.Group(); macros.push(g); scene.add(g);
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.9,1.1,1.6),
+    new THREE.MeshStandardMaterial({color:0x8c2f2a, roughness:0.5, metalness:0.2}));
+  body.position.set(-1.6,0.85,0); body.castShadow = true; g.add(body);
+  const bumper = new THREE.Mesh(new THREE.BoxGeometry(0.2,0.14,1.7),
+    new THREE.MeshStandardMaterial({color:0x2a2d33, roughness:0.6}));
+  bumper.position.set(-1.1,0.36,0); bumper.castShadow=true; g.add(bumper);
+  const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.05,0.7,24,1,true),
+    new THREE.MeshStandardMaterial({color:0x777b82, roughness:0.35, metalness:0.8, side:THREE.DoubleSide}));
+  pipe.rotation.z = Math.PI/2; pipe.position.set(-1.0,0.24,0.45); pipe.castShadow = true; g.add(pipe);
+  const smoke = puffs(1400, 0.34, THREE.NormalBlending, 4401); g.add(smoke);
+  const soot = lin(0x3b3e44), bg = lin(0x55637a);
+  smoke.userData.update = (t)=>{
+    const P = smoke.geometry.attributes.position.array, C = smoke.geometry.attributes.color.array, S=smoke.userData.seeds;
+    for(let i=0;i<S.length;i++){
+      const s=S[i], a=(t*s.rate+s.ph)%1;
+      const spread = 0.04 + a*0.75;
+      const wob = Math.sin(t*0.7 + s.w*9)*0.08*a;
+      P[i*3]   = -0.64 + a*2.6;
+      P[i*3+1] = 0.24 + a*a*0.9 + Math.sin(s.a)*spread*s.r + wob;
+      P[i*3+2] = 0.45 + Math.cos(s.a)*spread*s.r;
+      const k = smooth(a*1.25);
+      C[i*3]=lerp(soot.r,bg.r,k); C[i*3+1]=lerp(soot.g,bg.g,k); C[i*3+2]=lerp(soot.b,bg.b,k);
+    }
+    smoke.geometry.attributes.position.needsUpdate = true;
+    smoke.geometry.attributes.color.needsUpdate = true;
+  };
+  g.userData.cam = [
+    {t:0,   p:[1.6,1.2,3.0],  l:[-0.6,0.45,0.2]},
+    {t:3.5, p:[1.3,0.85,2.0], l:[0.1,0.45,0.45]},
+    {t:6.2, p:[0.6,0.55,1.0], l:[0.3,0.48,0.45]},
+    {t:7.8, p:[0.36,0.5,0.55],l:[0.3,0.5,0.45]}
+  ];
+})();
+
+/* 4 — a spray can and its mist */
+(function(){
+  const g = new THREE.Group(); macros.push(g); scene.add(g);
+  const can = new THREE.Mesh(new THREE.CylinderGeometry(0.17,0.17,0.8,40),
+    new THREE.MeshStandardMaterial({color:0x3d6fb8, roughness:0.3, metalness:0.5}));
+  can.position.set(-0.9,0.4,0); can.castShadow = true; g.add(can);
+  const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.17,32,16,0,Math.PI*2,0,Math.PI/2),
+    new THREE.MeshStandardMaterial({color:0xc9ced6, roughness:0.25, metalness:0.7}));
+  shoulder.position.set(-0.9,0.8,0); shoulder.scale.y=0.45; g.add(shoulder);
+  const nozzle = new THREE.Mesh(new THREE.BoxGeometry(0.1,0.08,0.08),
+    new THREE.MeshStandardMaterial({color:0xf2f2f2, roughness:0.4}));
+  nozzle.position.set(-0.86,0.9,0); nozzle.castShadow = true; g.add(nozzle);
+  const mist = puffs(1600, 0.07, THREE.AdditiveBlending, 9021); g.add(mist);
+  const pale = lin(0xcfe6ff);
+  mist.userData.update = (t)=>{
+    const P = mist.geometry.attributes.position.array, C = mist.geometry.attributes.color.array, S=mist.userData.seeds;
+    for(let i=0;i<S.length;i++){
+      const s=S[i], a=(t*s.rate*1.6+s.ph)%1;
+      const spread = 0.01 + a*0.42;
+      P[i*3]   = -0.8 + a*1.9;
+      P[i*3+1] = 0.9 + Math.sin(s.a)*spread*s.r - a*a*0.15;
+      P[i*3+2] = Math.cos(s.a)*spread*s.r;
+      const b = 0.75*(1-smooth(a))*smooth(a*12);
+      C[i*3]=pale.r*b; C[i*3+1]=pale.g*b; C[i*3+2]=pale.b*b;
+    }
+    mist.geometry.attributes.position.needsUpdate = true;
+    mist.geometry.attributes.color.needsUpdate = true;
+  };
+  g.userData.cam = [
+    {t:0,   p:[1.2,1.3,2.6],  l:[-0.3,0.7,0]},
+    {t:3.5, p:[0.9,1.05,1.6], l:[0.1,0.85,0]},
+    {t:6.2, p:[0.5,0.92,0.7], l:[0.3,0.88,0]},
+    {t:7.8, p:[0.38,0.88,0.3],l:[0.35,0.86,0]}
+  ];
+})();
+
+/* =====================================================================
+   THE PARTICLE WORLDS
+===================================================================== */
+const COLS = [lin(0xf2c46b), lin(0x63d6e8), lin(0x6fa8e0)];
+const views = {};
+const partRoot = new THREE.Group(); partRoot.position.y = ICE_Y; scene.add(partRoot);
+const molMat = new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.32, metalness:0.02});
+const MOL_R = 0.5;
+
+const runs = {}, data = {};
+function ensureWorld(k){
+  if(data[k]) return data[k];
+  if(!runs[k]) runs[k] = worldRun(WORLD_CFG[k]);
+  while(!runs[k].done) runs[k].advance(4000);
+  return attach(k);
+}
+function attach(k){
+  const P = runs[k].result; data[k] = P;
+  const v = views[k];
+  const mesh = new THREE.InstancedMesh(new THREE.SphereGeometry(MOL_R,18,12), molMat, P.N);
+  mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  mesh.frustumCulled = false;
+  for(let i=0;i<P.N;i++) mesh.setColorAt(i, COLS[P.type[i]]);
+  mesh.instanceColor.needsUpdate = true;
+  v.inner.add(mesh); v.mesh = mesh;
+  v.inner.position.set(-P.LX/2,-P.LY/2,-P.LZ/2);
+  const cage = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(P.LX,P.LY,P.LZ)),
+    new THREE.LineBasicMaterial({color:0x3b556f, transparent:true, opacity:0.25}));
+  cage.position.set(P.LX/2,P.LY/2,P.LZ/2); v.inner.add(cage);
+  return P;
+}
+WORLD_KEYS.forEach(k=>{
+  const g = new THREE.Group(), inner = new THREE.Group();
+  g.add(inner); partRoot.add(g); g.visible = false;
+  views[k] = {group:g, inner, mesh:null};
+});
+
+/* slice the runs into frames the viewer is not using, as the snowman does */
+function sliceWorlds(ms){
+  const start = performance.now();
+  for(const k of WORLD_KEYS){
+    if(data[k]) continue;
+    if(!runs[k]) runs[k] = worldRun(WORLD_CFG[k]);
+    while(!runs[k].done && performance.now()-start < ms) runs[k].advance(40);
+    if(runs[k].done) attach(k);
+    return k;
+  }
+  return null;
+}
+
+const _c = new THREE.Color(), _im = new THREE.Matrix4(), com = new THREE.Vector3();
+function updateWorld(k, tl){
+  const P = ensureWorld(k), v = views[k];
+  const fi = Math.max(0, Math.min(P.frames-1.001, (tl-PART_START)*MDC.recPerSec));
+  const i0 = Math.floor(fi), i1 = i0+1, u = fi-i0;
+  const p0 = i0*P.N*3, p1 = i1*P.N*3, pos = P.pos;
+  const foam = P.kind==='foam', cutZ = P.LZ/2 + 0.3;
+  for(let i=0;i<P.N;i++){
+    const x = lerp(pos[p0+i*3],pos[p1+i*3],u), y = lerp(pos[p0+i*3+1],pos[p1+i*3+1],u), z = lerp(pos[p0+i*3+2],pos[p1+i*3+2],u);
+    /* the foams are sliced open: the front half of the solid or liquid is not drawn */
+    const s = (foam && P.type[i]!==GAS && z>cutZ) ? 0.0001 : 1;
+    _im.makeScale(s,s,s); _im.setPosition(x,y,z);
+    v.mesh.setMatrixAt(i,_im);
+    /* deeper into the cut = darker, so the hollow of each pocket reads as a hollow */
+    if(foam && P.type[i]!==GAS){
+      _c.copy(COLS[P.type[i]]).multiplyScalar(0.18 + 0.82*Math.pow(clamp01(z/cutZ),1.6));
+      v.mesh.setColorAt(i,_c);
+    }
+  }
+  v.mesh.instanceMatrix.needsUpdate = true;
+  if(foam) v.mesh.instanceColor.needsUpdate = true;
+  /* where the first droplet or piece of soot has got to, for the camera to follow */
+  com.set(0,0,0);
+  if(!foam){
+    const m = P.members[0];
+    for(let q=0;q<m.length;q++){
+      const i=m[q];
+      com.x += lerp(pos[p0+i*3],pos[p1+i*3],u); com.y += lerp(pos[p0+i*3+1],pos[p1+i*3+1],u); com.z += lerp(pos[p0+i*3+2],pos[p1+i*3+2],u);
+    }
+    com.divideScalar(m.length);
+    com.x -= P.LX/2; com.y -= P.LY/2; com.z -= P.LZ/2;
+  }
+  return P;
+}
+
+/* ---------- camera ----------
+   Inside the particles: p is an offset from the target, l is a point in the
+   world, and track pulls the target from l onto the piece being followed. */
+const FOAM_CAM = (pk)=>[
+  {t:8.0,  p:[0,0,40],     l:[0,0,0], track:0},
+  {t:10.5, p:[5,4,26],     l:[0,0,0], track:0},
+  {t:13.5, p:[3.5,2.5,9],  l:[pk[0]*0.3+2.5,pk[1]*0.3+2.2,0], track:0},
+  {t:17.5, p:[-2.5,1.5,8], l:[pk[0]*0.3+2.2,pk[1]*0.3+1.8,0], track:0},
+  {t:20.0, p:[1.5,1.2,10], l:[pk[0],pk[1],0], track:0},
+  {t:24.0, p:[-2,1.6,9.5], l:[pk[0],pk[1],0], track:0},
+  {t:27.5, p:[6,3,24],     l:[0,0,0], track:0},
+  {t:32.0, p:[-4,2.5,28],  l:[0,0,0], track:0}
+];
+const AERO_CAM = [
+  {t:8.0,  p:[0,2,40],   l:[0,0,0], track:0},
+  {t:11.0, p:[5,4,30],   l:[0,0,0], track:0.2},
+  {t:14.0, p:[3,1.5,9],  l:[0,0,0], track:1},
+  {t:17.5, p:[-3,2,8.5], l:[0,0,0], track:1},
+  {t:21.0, p:[2,5,13],   l:[0,0,0], track:0.8},
+  {t:25.5, p:[7,3,24],   l:[0,0,0], track:0.4},
+  {t:32.0, p:[0,3,34],   l:[0,0,0], track:0},
+  {t:36.0, p:[-9,5,30],  l:[0,0,0], track:0},
+  {t:42.0, p:[0,7,38],   l:[0,0,0], track:0}
+];
+function pocketLocal(k){
+  const c=WORLD_CFG[k], LX=c.nx*c.a, LY=c.ny*c.a;
+  return [c.pockets[0][0]*LX-LX/2, c.pockets[0][1]*LY-LY/2];
+}
+const PART_CAMS = {
+  solidFoam:   FOAM_CAM(pocketLocal('solidFoam')),
+  liquidFoam:  FOAM_CAM(pocketLocal('liquidFoam')),
+  solidAerosol:AERO_CAM, liquidAerosol:AERO_CAM
+};
+function keyAt(keys, tl){
+  let i=0; while(i<keys.length-2 && tl>=keys[i+1].t) i++;
+  const a=keys[i], b=keys[Math.min(i+1,keys.length-1)];
+  const u = b.t===a.t ? 0 : smooth((tl-a.t)/(b.t-a.t));
+  return {a,b,u};
+}
+const camPos = new THREE.Vector3(), camTgt = new THREE.Vector3();
+function sampleMacroCam(keys, tl){
+  const {a,b,u} = keyAt(keys, tl);
+  camPos.set(lerp(a.p[0],b.p[0],u), lerp(a.p[1],b.p[1],u), lerp(a.p[2],b.p[2],u));
+  camTgt.set(lerp(a.l[0],b.l[0],u), lerp(a.l[1],b.l[1],u), lerp(a.l[2],b.l[2],u));
+}
+function samplePartCam(keys, tl){
+  const {a,b,u} = keyAt(keys, tl);
+  const tr = lerp(a.track,b.track,u);
+  camTgt.set(lerp(a.l[0],b.l[0],u), lerp(a.l[1],b.l[1],u), lerp(a.l[2],b.l[2],u));
+  camTgt.lerp(com, tr);
+  camPos.set(lerp(a.p[0],b.p[0],u), lerp(a.p[1],b.p[1],u), lerp(a.p[2],b.p[2],u)).add(camTgt);
+  camPos.y += ICE_Y; camTgt.y += ICE_Y;
+}
+
+/* ---------- looking around ---------- */
+let yaw=0, pitch=0, dragging=false, lx=0, ly=0;
+const el = renderer.domElement; el.style.cursor='grab';
+el.addEventListener('pointerdown', e=>{ dragging=true; lx=e.clientX; ly=e.clientY; el.style.cursor='grabbing'; });
+addEventListener('pointermove', e=>{
+  if(!dragging) return;
+  yaw -= (e.clientX-lx)*0.005;
+  pitch = Math.max(-0.9, Math.min(0.9, pitch + (e.clientY-ly)*0.004));
+  lx=e.clientX; ly=e.clientY;
+});
+addEventListener('pointerup', ()=>{ dragging=false; el.style.cursor='grab'; });
+addEventListener('pointercancel', ()=>{ dragging=false; });
+const _sph = new THREE.Spherical(), _off = new THREE.Vector3();
+function applyCamera(){
+  _off.copy(camPos).sub(camTgt);
+  _sph.setFromVector3(_off);
+  _sph.theta += yaw;
+  _sph.phi = Math.max(0.08, Math.min(Math.PI-0.08, _sph.phi + pitch));
+  camera.position.copy(camTgt).add(_off.setFromSpherical(_sph));
+  camera.lookAt(camTgt);
+}
+
+/* =====================================================================
+   UI
+===================================================================== */
+const capEl=document.getElementById('caption'), fadeEl=document.getElementById('fade');
+const keyEl=document.getElementById('key'), scaleEl=document.getElementById('scale');
+const scaleH=document.getElementById('scaleH'), scaleT=document.getElementById('scaleT');
+const chapEl=document.getElementById('chapter'), outroEl=document.getElementById('outro');
+const playBtn=document.getElementById('play'), scrub=document.getElementById('scrub');
+const clockEl=document.getElementById('clock'), statusEl=document.getElementById('status');
+const chapsEl=document.getElementById('chaps');
+scrub.max = TOTAL;
+
+let t=0, playing=true, lastFrame=performance.now(), curCap='', curCh=-1;
+const chapBtns = CHAPTERS.map((c,i)=>{
+  const b=document.createElement('button'); b.className='chap'; b.textContent=(i+1)+'  '+c.short;
+  b.onclick=()=>{ t=i*CH_LEN; yaw=pitch=0; }; chapsEl.appendChild(b); return b;
+});
+playBtn.onclick=()=>{ playing=!playing; playBtn.textContent=playing?'Pause':'Play'; };
+document.getElementById('restart').onclick=()=>{ t=0; yaw=pitch=0; playing=true; playBtn.textContent='Pause'; };
+scrub.oninput=()=>{ t=parseFloat(scrub.value); };
+addEventListener('keydown', e=>{
+  if(e.code==='Space'){ e.preventDefault(); playBtn.click(); }
+  if(e.code==='ArrowRight') t=Math.min(TOTAL,t+2);
+  if(e.code==='ArrowLeft')  t=Math.max(0,t-2);
+});
+
+function legend(P){
+  const has=[false,false,false]; for(let i=0;i<P.N;i++) has[P.type[i]]=true;
+  const rows=[
+    ['#f2c46b','Gas','far apart, fast, random'],
+    ['#63d6e8','Liquid','touching, sliding past'],
+    ['#6fa8e0','Solid','fixed pattern, vibrating']];
+  keyEl.innerHTML = rows.filter((r,i)=>has[i]).map(r=>
+    `<div><span class="dot" style="background:${r[0]}"></span><b>${r[1]}</b> ${r[2]}</div>`).join('');
+}
+
+function fadeAmount(){
+  const c=chapterAt(t), tl=localT(t);
+  let f=0;
+  if(tl<0.8) f=Math.max(f, 1-ramp(tl,0,0.8));
+  f=Math.max(f, ramp(tl,7.0,7.8)*(1-ramp(tl,7.8,8.6)));
+  if(c<3 && tl>31.2) f=Math.max(f, ramp(tl,31.2,32));
+  return f;
+}
+
+linearise(scene);
+
+/* =====================================================================
+   LOOP
+===================================================================== */
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt=Math.min((now-lastFrame)/1000,1/24); lastFrame=now;
+  if(playing){ t+=dt; if(t>=TOTAL){ t=TOTAL; playing=false; playBtn.textContent='Play'; } }
+
+  const c=chapterAt(t), tl=localT(t), ch=CHAPTERS[c];
+  const inPart = tl >= MACRO_END;
+
+  /* build particle tables in the background while nothing needs them */
+  const building = sliceWorlds(inPart ? 4 : 10);
+  statusEl.textContent = building ? `Building particles… ${Math.round(runs[building].progress*100)}%` : '';
+  statusEl.style.opacity = inPart ? 0 : 0.8;
+
+  macros.forEach((m,i)=>{ m.visible = !inPart && i===c; });
+  table.visible = !inPart;
+  WORLD_KEYS.forEach((k,i)=>{ views[k].group.visible = inPart && i===c; });
+
+  if(inPart){
+    const P = updateWorld(ch.world, tl);
+    samplePartCam(PART_CAMS[ch.world], tl);
+  }else{
+    const m = macros[c];
+    m.children.forEach(o=>o.userData.update && o.userData.update(t));
+    sampleMacroCam(m.userData.cam, tl);
+  }
+  if(c!==curCh){
+    curCh=c; chapEl.textContent = ch.name;
+    scaleH.textContent=ch.scale[0]; scaleT.textContent=ch.scale[1];
+    chapBtns.forEach((b,i)=>b.classList.toggle('on',i===c));
+  }
+  if(inPart && keyEl.dataset.w!==ch.world){ legend(data[ch.world]); keyEl.dataset.w=ch.world; }
+  applyCamera();
+
+  scene.background = new THREE.Color(inPart?PART_BG:MACRO_BG).convertSRGBToLinear();
+  keyLight.visible = !inPart; macroFill.intensity = inPart?0:0.9;
+  partLight.intensity = inPart?2.8:0; partFill.intensity = inPart?0.6:0;
+  renderer.shadowMap.autoUpdate = !inPart;
+
+  const f=fadeAmount();
+  fadeEl.style.opacity=f.toFixed(3);
+  keyEl.style.opacity = inPart ? ((1-f)*ramp(tl,8.6,9.6)).toFixed(3) : 0;
+  scaleEl.style.opacity = inPart ? ((1-f)*ramp(tl,9,10)*(1-ramp(tl,15,16))).toFixed(3) : 0;
+  const outro = c===3 ? ramp(tl,32.5,33.5) : 0;
+  outroEl.style.opacity = outro.toFixed(3);
+
+  let cap=''; for(const k of ch.caps) if(tl>=k.t) cap=k.c;
+  if(cap!==curCap){ curCap=cap; capEl.textContent=cap; }
+  capEl.style.opacity = (1-f)*(1-outro);
+
+  scrub.value=t; scrub.style.setProperty('--p',(t/TOTAL*100)+'%');
+  clockEl.textContent = t.toFixed(1)+' / '+TOTAL.toFixed(0)+'s';
+  renderer.render(scene,camera);
+}
+requestAnimationFrame(frame);
+addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+</script>
+</body>
+</html>
