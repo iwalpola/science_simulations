@@ -367,7 +367,7 @@ function makeArrow(dir, col){
         flash, thermo, bar                                                   */
 function buildSample(cfg){
   const g = new THREE.Group();
-  g.position.set(cfg.x||0, 0, cfg.z||0);
+  g.position.set(cfg.x||0, cfg.heat ? LIFT : 0, cfg.z||0);
   scene.add(g);
 
   const w = cfg.w || 3.6, h = cfg.h || 3.0, d = cfg.d || 2.6;
@@ -410,8 +410,9 @@ function buildSample(cfg){
     plate.position.y = -0.12;
     g.add(plate);
     s.plate = plate;
-    const l = makeLabel('heater', {scale:0.32, color:hexCss(COL.energy)});
-    l.position.set(0, -0.62, d/2+0.1); g.add(l);
+    s.burner = buildBurner(s);
+    const l = makeLabel('burner', {scale:0.32, color:'#9fc4ff'});
+    l.position.set(0, BENCH_TOP - LIFT + 0.18, d/2+0.5); g.add(l);
   }
 
   if(cfg.thermo !== false) buildThermo(s);
@@ -423,11 +424,77 @@ function buildSample(cfg){
   }
   if(cfg.caption){
     const cl = makeLabel(cfg.caption, {scale:0.34, color:'#b8c4d4'});
-    cl.position.set(0, -0.95, d/2+0.15); g.add(cl);
+    cl.position.set(0, (cfg.heat ? BENCH_TOP - LIFT : 0) - 0.95, d/2+0.15); g.add(cl);
   }
 
   linearise(g);
   return s;
+}
+
+/* ------------------------------------------------------------- the burner */
+/* Blue gas flames under the plate, in the same two-cone additive style as the
+   bunsen in the reaction scenes: a dim wide outer cone, a bright narrow inner
+   one, both flickering. Blue is also what keeps them apart from the orange
+   energy dots — the flame is where the energy comes from, the dots are the
+   energy itself. */
+const LIFT = 1.15;             // how high a heated sample stands above the bench
+const BENCH_TOP = -0.1;        // the bench surface, in world units
+
+function buildBurner(s){
+  const w = s.w, d = s.d;
+  const grp = new THREE.Group(); s.group.add(grp);
+  const base = BENCH_TOP - LIFT;                 // the bench, in this sample's coordinates
+  const legMat = new THREE.MeshStandardMaterial({color:0x2a313d, roughness:0.5, metalness:0.5});
+
+  const legTop = -0.18, legH = legTop - base;    // up to the underside of the plate
+  [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(c=>{
+    const leg = new THREE.Mesh(CYL, legMat);
+    leg.scale.set(0.05, legH, 0.05);
+    leg.position.set(c[0]*w*0.38, base + legH/2, c[1]*d*0.38);
+    grp.add(leg);
+  });
+
+  const nx = Math.max(1, Math.min(3, Math.round(w*0.9/0.85)));
+  const nz = Math.max(1, Math.min(3, Math.round(d*0.9/0.85)));
+  const y0 = base + 0.13;                        // where the flames leave the nozzles
+  const H  = Math.min(0.75, legTop - 0.12 - y0); // tips just short of the plate
+  const flames = [];
+  for(let i=0;i<nx;i++) for(let k=0;k<nz;k++){
+    const x = (nx === 1 ? 0 : i/(nx-1) - 0.5)*w*0.62;
+    const z = (nz === 1 ? 0 : k/(nz-1) - 0.5)*d*0.62;
+    const nozzle = new THREE.Mesh(CYL, legMat);
+    nozzle.scale.set(0.07, 0.14, 0.07); nozzle.position.set(x, base+0.07, z); grp.add(nozzle);
+    const cone = (col, rad, hgt, op) => {
+      const m = new THREE.Mesh(CONE, new THREE.MeshBasicMaterial({
+        color:col, transparent:true, opacity:0, blending:THREE.AdditiveBlending,
+        depthWrite:false, side:THREE.DoubleSide}));
+      m.scale.set(rad, hgt, rad); m.position.set(x, y0 + hgt/2, z); grp.add(m);
+      m.userData.op = op;
+      return m;
+    };
+    flames.push({outer:cone(0x6f9cff, 0.15, H, 0.5),
+                 inner:cone(0x9fe8ff, 0.075, H*0.5, 0.75), y0, H});
+  }
+
+  const light = new THREE.PointLight(0x7fa8ff, 0, 5);
+  light.position.set(0, y0 + H*0.6, 0); grp.add(light);
+  return {grp, flames, light, lit:0};
+}
+
+function updateBurner(s, dt){
+  const b = s.burner;
+  if(!b) return;
+  b.lit += ((s.heatOn ? 1 : 0) - b.lit) * Math.min(1, dt*3.5);
+  const t = performance.now()/1000;
+  b.flames.forEach((f, i)=>{
+    const flick = 0.9 + Math.sin(t*21 + i)*0.07 + Math.sin(t*34 + i*2)*0.04;
+    [f.outer, f.inner].forEach((m, k)=>{
+      const hgt = (k ? f.H*0.5 : f.H) * flick;
+      m.material.opacity = b.lit * m.userData.op * flick;
+      m.scale.y = hgt; m.position.y = f.y0 + hgt/2;
+    });
+  });
+  b.light.intensity = b.lit * 1.6;
 }
 
 /* lay the particles out: a lattice for a solid, loose for a liquid or gas */
@@ -762,12 +829,12 @@ const DEFAULT_METRICS = ['temp','n','speed','energy'];
 const SCENES = [
   {
     part:'Heating things up',
-    cam:{dist:12, az:0.34, el:0.24, look:[0,1.7,0]},
+    cam:{dist:13, az:0.34, el:0.24, look:[0,2.4,0]},
     metrics:['temp','n','speed','energy'],
     samples:[{
       name:'METAL BLOCK', state:'solid', n:108, w:2.7, h:2.7, d:2.7,
       tempC:10, tScale:[0,400], target:330, col:METAL, tempColour:true,
-      heat:{rate:10, dT:2.6}, caption:'a block of metal on a heater'
+      heat:{rate:10, dT:2.6}, caption:'a block of metal over a burner'
     }],
     title:'Energy goes in — the particles move more',
     text:'Each orange dot is a small parcel of <b>energy</b> arriving from the heater. The particles in a solid cannot leave their places, but every dot that lands makes them <b>vibrate faster and further</b>. The thermometer climbs as they do.',
@@ -781,7 +848,7 @@ const SCENES = [
   },
   {
     part:'Heating things up',
-    cam:{dist:25, az:0.12, el:0.27, look:[0,1.5,0]},
+    cam:{dist:26, az:0.12, el:0.27, look:[0,2.2,0]},
     metrics:['temp','n','speed'],
     samples:[
       {x:-7.4, name:'SOLID',  nameCol:'#9ec3ff', state:'solid',  n:108, w:2.4,h:2.4,d:2.4,
@@ -872,7 +939,7 @@ const SCENES = [
   },
   {
     part:'Same energy in',
-    cam:{dist:23, az:0.18, el:0.28, look:[0,1.5,0]},
+    cam:{dist:24, az:0.18, el:0.28, look:[0,2.2,0]},
     metrics:['temp','rise','n','added'],
     samples:[
       {x:-5.6, name:'SMALL BLOCK', nameCol:'#ffcf8a', state:'solid', n:32, w:1.8,h:1.8,d:1.8,
@@ -1116,6 +1183,7 @@ function animate(now){
       }
     }
     updateDots(s, dt);
+    updateBurner(s, dt);
     updateParticles(s, dt);
     updateReadouts(s, barMax);
 
