@@ -549,6 +549,132 @@ function acidStory(THREE){
 }
 
 /* ===========================================================================
+   ALKALI STRENGTH — the 3D story
+
+   Same shape as the acid story, with the same claims to hold it to. The weak
+   side is different in kind: ammonia takes a hydrogen from a water molecule
+   rather than falling apart, so it also checks that the hydroxide sits on its
+   site while attached, and that every reacted ammonia really has the
+   hydrogen on its nitrogen (it is NH4+, not NH3 with an OH- wandering off).
+=========================================================================== */
+function alkaliStory(THREE){
+  section('ALKALI  alkali-strength-3d-story.html  (render path)');
+  const html = read('alkali-strength-3d-story.html');
+
+  const numbers = [];
+  const dom = makeDom(600, 400, numbers);
+  dom.querySelectorAll = () => [];
+  stubRenderer(THREE, dom, numbers);
+
+  const expose = ['animate','enterScene','SCENES','camera','renderer',
+                  'unitsA','unitsB','beakerA','beakerB','attachPoint','coreToBeaker',
+                  'freeCount','N','pHStrong','pHWeak','ONE_IN'].join(',');
+
+  const js = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+  let clock = 1000;
+  const win = {addEventListener(){}, removeEventListener(){},
+               innerWidth:1280, innerHeight:720, devicePixelRatio:1};
+  let S = null;
+  try {
+    S = new Function(
+      'THREE','document','window','performance','requestAnimationFrame','navigator',
+      js + '\nreturn {' + expose + '};'
+    )(THREE, dom, win, {now(){ clock += 16; return clock; }}, () => 0, {userAgent:'node'});
+  } catch(e){
+    chk(false, 'the scene threw while loading: ' + e.message);
+    console.log((e.stack || '').split('\n').slice(0, 4).join('\n'));
+    return;
+  }
+  chk(true, 'the scene loads');
+  chk(S.SCENES.length === 6, `expected 6 scenes, found ${S.SCENES.length}`);
+
+  const all = () => S.unitsA.concat(S.unitsB);
+  function finite(){
+    for(const u of all()){
+      for(const v of [u.pos, u.mPos, u.core.position, u.mob.position])
+        if(!isFinite(v.x) || !isFinite(v.y) || !isFinite(v.z)) return false;
+      if(u.bondW && !isFinite(u.bondW.scale.y)) return false;
+    }
+    const c = S.camera.position;
+    return isFinite(c.x) && isFinite(c.y) && isFinite(c.z);
+  }
+
+  let now = 5000;
+  function run(frames){ for(let i=0;i<frames;i++){ now += 16.7; S.animate(now); } }
+
+  section('    every scene');
+  let threw = null, threwAt = -1, badMath = -1;
+  for(let i=0;i<S.SCENES.length;i++){
+    S.enterScene(i);
+    const before = S.renderer.__renders;
+    try { run(360); }
+    catch(e){ threw = e; threwAt = i; break; }
+    if(!finite() && badMath < 0) badMath = i;
+    chk(S.renderer.__renders > before, `scene ${i} drew nothing`);
+  }
+  if(threw){
+    chk(false, `scene ${threwAt} ("${S.SCENES[threwAt].title}") threw: ${threw.message}`);
+    console.log('      ' + (threw.stack || '').split('\n').slice(1, 3).join('\n      '));
+    return;
+  }
+  chk(true, 'every scene runs for 6 s without throwing');
+  chk(badMath < 0, `scene ${badMath} went non-finite`);
+
+  section('    the particles');
+  S.enterScene(1);
+  run(300);
+  let worst = 0;
+  for(const u of all()) worst = Math.max(worst, u.mPos.distanceTo(S.attachPoint(u)));
+  chk(worst < 1e-6, `an attached hydroxide drifted ${worst.toFixed(4)} off its site`);
+  let outside = 0;
+  const THREEv = new THREE.Vector3();
+  for(const u of all()){
+    const pts = [u.pos, u.mPos];
+    if(u.ht) pts.push(S.coreToBeaker(u, u.ht.position, THREEv.clone()));
+    for(const p of pts){
+      if(Math.hypot(p.x, p.z) > 2.5 || p.y < 0 || p.y > 4.0) outside++;
+    }
+  }
+  chk(outside === 0, `${outside} atoms left the beaker`);
+  console.log(`      24 + 24 intact, hydroxides within ${worst.toExponential(1)} of their sites`);
+
+  section('    the story the particles tell');
+  S.enterScene(2);
+  run(300);
+  const strongFree = S.freeCount(S.unitsA), weakFree = S.freeCount(S.unitsB);
+  chk(strongFree === S.N, `the strong alkali should free all ${S.N} OH-, freed ${strongFree}`);
+  chk(weakFree >= 1 && weakFree <= 3, `the weak alkali should sit at roughly one free OH-, found ${weakFree}`);
+  console.log(`      strong ${strongFree}/${S.N} free, weak ${weakFree}/${S.N} free`);
+
+  /* a free hydroxide on the weak side must have left its hydrogen on the N */
+  run(120);
+  const stranded = S.unitsB.filter(u => u.state === 'free' && u.tf < 0.9).length;
+  chk(stranded === 0, `${stranded} reacted ammonia molecule(s) have not taken the hydrogen`);
+
+  const seen = new Set();
+  for(let i=0;i<30;i++){
+    run(60);
+    S.unitsB.forEach((u,k)=>{ if(u.state === 'free' || u.state === 'leaving') seen.add(k); });
+  }
+  chk(seen.size >= 3, `the weak alkali's equilibrium looks frozen: only ${seen.size} molecule(s) ever reacted`);
+  console.log(`      ${seen.size} different ammonia molecules took a turn reacting`);
+
+  S.enterScene(3);
+  run(240);
+  chk(S.beakerA.tallyShown === S.N, `strong tally read ${S.beakerA.tallyShown}, expected ${S.N}`);
+  chk(S.beakerB.tallyShown >= 1 && S.beakerB.tallyShown <= 3,
+      `weak tally read ${S.beakerB.tallyShown}, expected about 1`);
+  console.log(`      tally: ${S.beakerA.tallyShown} free OH- vs ${S.beakerB.tallyShown}`);
+
+  section('    the chemistry behind the numbers');
+  chk(Math.abs(S.pHStrong - 13.699) < 0.01, `strong-alkali pH should be 13.70, got ${S.pHStrong.toFixed(3)}`);
+  chk(Math.abs(S.pHWeak - 11.476) < 0.01, `weak-alkali pH should be 11.48, got ${S.pHWeak.toFixed(3)}`);
+  chk(S.pHWeak < S.pHStrong, 'the weak alkali must come out less alkaline at equal concentration');
+  chk(S.ONE_IN > 150 && S.ONE_IN < 185, `the stated real fraction should be about 1 in 167, got 1 in ${S.ONE_IN}`);
+  console.log(`      pH ${S.pHStrong.toFixed(2)} vs ${S.pHWeak.toFixed(2)}, truly 1 in ${S.ONE_IN} reacted`);
+}
+
+/* ===========================================================================
    ATOM, MOLECULE, COMPOUND, MIXTURE — the 3D story
 
    The tags over the boxes and the readout card are worked out from the
@@ -897,6 +1023,7 @@ function pureStory(THREE){
     melting(THREE);
     brownian(THREE);
     acidStory(THREE);
+    alkaliStory(THREE);
     particleTypesStory(THREE);
     pureStory(THREE);
     console.log('\n' + (fails ? `${fails} of ${checks} checks FAILED`
