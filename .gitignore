@@ -1,6 +1,7 @@
 # three.js, downloaded once by particles/test-render.js so it can run the
 # scenes headlessly. Not part of the site — the pages load it from the CDN.
 particles/.three-cache/
+electricity/.three-cache/
 
 # only ever a dev-time dependency, for reactionbuilder/test.js
 node_modules/

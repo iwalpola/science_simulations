@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Current, collisions and resistance — the 3D story</title>
+<style>
+  :root{
+    --ink:#eef2f7;
+    --dim:#93a2b6;
+    --panel:rgba(10,14,21,.78);
+    --line:rgba(147,162,182,.22);
+    --side:376px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;background:#080b11;color:var(--ink);overflow:hidden;
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+
+  #stage{position:fixed;top:0;right:0;bottom:0;left:var(--side);}
+  canvas{display:block;}
+
+  #side{
+    position:fixed;top:0;left:0;bottom:0;width:var(--side);
+    background:var(--panel);backdrop-filter:blur(16px);
+    border-right:1px solid var(--line);
+    padding:20px 22px 16px;
+    display:flex;flex-direction:column;gap:14px;
+    overflow-y:auto;
+  }
+  #side h1{
+    margin:0;
+    font-family:"Iowan Old Style","Charter","Palatino Linotype",Georgia,serif;
+    font-weight:600;font-size:19px;letter-spacing:.2px;line-height:1.25;
+  }
+  #side .byline{margin:4px 0 0;font-size:12px;line-height:1.5;color:var(--dim);}
+  #side a{color:var(--dim);text-decoration:none;font-size:12px;
+    border-bottom:1px solid rgba(147,162,182,.3);}
+  #side a:hover{color:var(--ink);}
+  .links{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;}
+
+  .cards{display:flex;flex-direction:column;gap:8px;}
+  .card{
+    background:rgba(255,255,255,.04);
+    border:1px solid var(--line);border-radius:11px;
+    padding:8px 12px;
+  }
+  .card .who{font-size:10px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;}
+  .card .nums{display:flex;gap:12px;flex-wrap:wrap;margin-top:5px;}
+  .card .n{font-size:10px;color:var(--dim);line-height:1.2;}
+  .card .n b{display:block;color:var(--ink);font-size:15px;font-weight:600;
+    font-variant-numeric:tabular-nums;margin-top:2px;white-space:nowrap;}
+  .card .n.hot b{color:#ffb07a;}
+  .card .n.cool b{color:#9ec3ff;}
+
+  .story{flex:1;min-height:0;}
+  .story .step{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:700;}
+  .story h2{
+    margin:3px 0 0;font-family:"Iowan Old Style","Charter",Georgia,serif;
+    font-size:17px;font-weight:600;letter-spacing:.2px;
+  }
+  .story p{margin:8px 0 0;font-size:13px;line-height:1.62;color:#cbd5e1;}
+  .story p b{color:#ffd9a0;font-weight:600;}
+  .story .look{
+    margin-top:10px;font-size:12px;line-height:1.5;color:#a9c7ee;
+    border-left:2px solid rgba(127,176,255,.45);padding-left:10px;
+  }
+  .note{
+    margin-top:10px;font-size:11px;line-height:1.5;color:#8d9bb0;
+    border-left:2px solid rgba(147,162,182,.3);padding-left:10px;
+  }
+  table.sum{width:100%;border-collapse:collapse;margin-top:10px;font-size:12px;}
+  table.sum th,table.sum td{text-align:left;padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:top;}
+  table.sum th{color:var(--dim);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;}
+  table.sum td{color:#cbd5e1;}
+  table.sum td:first-child{color:var(--ink);font-weight:600;}
+
+  .nav{
+    position:fixed;left:var(--side);right:0;bottom:20px;z-index:5;
+    margin:0 auto;width:fit-content;max-width:calc(100% - var(--side) - 32px);
+    display:flex;align-items:center;gap:8px;flex-wrap:nowrap;justify-content:center;
+    background:var(--panel);backdrop-filter:blur(16px);
+    border:1px solid var(--line);border-radius:999px;
+    padding:9px 12px;white-space:nowrap;
+  }
+  .nav button{
+    font:inherit;font-size:12.5px;font-weight:500;color:var(--dim);
+    background:rgba(255,255,255,.05);border:1px solid var(--line);
+    border-radius:999px;padding:7px 14px;cursor:pointer;
+    transition:background .15s ease,color .15s ease,opacity .15s ease;
+  }
+  .nav button:hover:not(:disabled){background:rgba(255,255,255,.12);color:var(--ink);}
+  .nav button:disabled{opacity:.32;cursor:default;}
+  .nav button.primary{background:rgba(127,176,255,.2);color:#dce9ff;border-color:rgba(127,176,255,.35);}
+  .dots{display:flex;gap:6px;padding:0 4px;}
+  .dots i{
+    width:7px;height:7px;border-radius:50%;background:rgba(147,162,182,.3);
+    cursor:pointer;transition:background .2s ease,transform .2s ease;
+  }
+  .dots i.on{background:var(--ink);transform:scale(1.25);}
+
+  #key{
+    position:fixed;top:18px;right:20px;z-index:5;
+    background:var(--panel);backdrop-filter:blur(16px);
+    border:1px solid var(--line);border-radius:12px;
+    padding:11px 14px;
+    font-size:11.5px;line-height:1.75;color:var(--dim);
+  }
+  #key div{display:flex;align-items:center;gap:8px;}
+  .dot{width:11px;height:11px;border-radius:50%;flex:none;
+    box-shadow:inset -2px -2px 3px rgba(0,0,0,.45);}
+  .ring{width:11px;height:11px;border-radius:50%;flex:none;
+    background:rgba(255,176,122,.18);border:1px solid rgba(255,176,122,.5);}
+  .sq{width:11px;height:11px;border-radius:2px;flex:none;}
+
+  /* the jolt an electron feels when it runs into an ion */
+  #jolt{
+    position:fixed;top:0;right:0;bottom:0;left:var(--side);z-index:4;
+    pointer-events:none;opacity:0;
+    box-shadow:inset 0 0 120px 30px rgba(255,138,74,.55);
+  }
+
+  .hint{
+    position:fixed;right:20px;bottom:20px;z-index:3;
+    font-size:11px;color:#5a687d;pointer-events:none;
+  }
+
+  @media (max-width:860px){
+    :root{--side:0px;}
+    #stage,#jolt{left:0;bottom:44vh;}
+    #side{
+      top:auto;left:0;right:0;bottom:0;width:auto;height:44vh;
+      border-right:none;border-top:1px solid var(--line);
+      padding:14px 16px;gap:11px;
+    }
+    #side h1{font-size:16px;}
+    #side .byline{display:none;}
+    .cards{flex-direction:row;}
+    .card{flex:1;min-width:0;}
+    .card .nums{gap:8px;}
+    .card .n b{font-size:13px;}
+    .nav{
+      left:0;right:0;bottom:44vh;
+      width:auto;max-width:none;margin:0;
+      border-radius:0;border-width:1px 0 0;
+      flex-wrap:wrap;white-space:normal;justify-content:center;
+    }
+    #key{top:14px;right:14px;padding:8px 10px;font-size:11px;line-height:1.6;}
+    .hint{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<div id="stage"></div>
+<div id="jolt"></div>
+
+<div id="side">
+  <div>
+    <h1>Current, collisions and resistance</h1>
+    <p class="byline">From a wire, down to the lattice, down to one electron</p>
+    <div class="links">
+      <a href="../index.html">← All simulations</a>
+    </div>
+  </div>
+
+  <div class="cards" id="cards"></div>
+
+  <div class="story">
+    <div class="step" id="sStep"></div>
+    <h2 id="sTitle"></h2>
+    <p id="sText"></p>
+    <div class="look" id="sLook"></div>
+    <div class="note" id="sNote"></div>
+  </div>
+</div>
+
+<!-- outside #side: its backdrop-filter would otherwise pin fixed children to the column -->
+<div class="nav">
+  <button id="back">← Back</button>
+  <button id="next" class="primary">Next →</button>
+  <button id="replay">Replay</button>
+  <div class="dots" id="dots"></div>
+</div>
+
+<div id="key"></div>
+
+<div class="hint">drag to orbit · scroll to zoom</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ===========================================================================
+   CURRENT, COLLISIONS AND RESISTANCE — the 3D story
+
+   A circuit, then the copper it is made of, then the view from one electron.
+
+   Nothing about the current is scripted. There is one model underneath every
+   scene: free electrons are hard spheres flying through a face-centred cubic
+   lattice of copper ions, with a steady push from the battery added to their
+   velocity. They travel in straight lines and change direction ONLY when they
+   run into an ion — an electron cannot steer.
+
+   Everything on the cards is measured from that: the mean free path is the
+   distance actually flown between collisions, the drift speed is the mean of
+   vx over the electrons, the current is the drift speed and the resistance is
+   its reciprocal. Nothing is typed in.
+
+   The lattice temperature is not scripted either. The battery does work on the
+   electrons; each collision hands the surplus to the lattice; the lattice
+   loses energy to the surroundings. Temperature settles where those balance.
+   With the battery off, no work is done, so nothing heats up.
+=========================================================================== */
+
+/* ============================ PHYSICS =====================================
+   No three.js below this line, up to END PHYSICS — electricity/test-wire.js
+   pulls this block out of the page and runs it under node.
+=========================================================================== */
+
+const LAT_A   = 3.6;    // lattice constant, in world units
+const R_ION   = 0.36;   // the ion core that is drawn
+const R_EL    = 0.14;   // the electron
+const K_SWEEP = 1.9;    // how much of an ion's swing counts as being in the way
+const VIB0    = 0.28;   // vibration amplitude at room temperature
+const VTH     = 3.0;    // the speed an electron leaves a collision with
+const FIELD   = 1.3;    // the push the battery gives, per second of flight
+const T_AMB   = 293;    // room temperature, in kelvin
+const T_MAX   = 1250;
+const ION_W   = 9.0;    // vibration frequency — set by the springs, not by T
+const K_HEAT  = 104;    // kelvin per unit of work the battery does
+const COOL    = 0.125;  // energy lost to the surroundings, per kelvin above ambient
+const KICK    = 0.9;    // extra swing an ion takes away from being hit
+const KICK_T  = 0.41;   // and how long it keeps it, in seconds
+
+/* An ion vibrates about a fixed site. Its amplitude grows as the square root
+   of the temperature, which is what a mass on a spring does when you give it
+   more energy. The frequency does not change. The lattice always survives:
+   even at T_MAX the swing is a fraction of the gap to the next ion. */
+const ampAt = TK => VIB0*Math.sqrt(TK/T_AMB);
+
+/* What an electron actually has to get past. The ion core is small, but over
+   the time an electron takes to cross it, the ion is somewhere in its whole
+   swing — so the obstacle is the region it sweeps, not the core. This is the
+   whole of the temperature effect, and it is drawn on screen as the haze
+   around each ion. */
+const sweptR = TK => R_ION + K_SWEEP*ampAt(TK);
+const collR  = TK => sweptR(TK) + R_EL;
+
+const FCC = [[0,0,0],[0.5,0.5,0],[0.5,0,0.5],[0,0.5,0.5]];
+
+function rng(seed){
+  let s = (seed>>>0) || 1;
+  return () => { s = (Math.imul(s,1664525) + 1013904223)>>>0; return s/4294967296; };
+}
+
+/* the spread of speeds an electron can leave a collision with */
+function rollSpeed(R){
+  const u = Math.max(1e-4, R());
+  return Math.min(1.9, Math.max(0.4, Math.sqrt(-2*Math.log(u))*0.72));
+}
+
+/* A block of fcc copper, nx by ny by nz cells, centred on the origin and
+   offset a quarter of a cell from each face — so the pattern continues if you
+   put another block beside it. The block repeats along x, which is how the
+   wire carries on past both ends of the picture. */
+function buildLattice(nx, ny, nz, seed){
+  const R = rng(seed), n = 4*nx*ny*nz;
+  const home = new Float32Array(3*n), ph = new Float32Array(3*n), fr = new Float32Array(3*n);
+  const LX = nx*LAT_A, LY = ny*LAT_A, LZ = nz*LAT_A;
+  let m = 0, my = 0, mz = 0;
+  for(let i=0;i<nx;i++) for(let j=0;j<ny;j++) for(let k=0;k<nz;k++) for(let b=0;b<4;b++){
+    home[3*m  ] = -LX/2 + (i + FCC[b][0] + 0.25)*LAT_A;
+    home[3*m+1] = -LY/2 + (j + FCC[b][1] + 0.25)*LAT_A;
+    home[3*m+2] = -LZ/2 + (k + FCC[b][2] + 0.25)*LAT_A;
+    my = Math.max(my, Math.abs(home[3*m+1]));
+    mz = Math.max(mz, Math.abs(home[3*m+2]));
+    for(let c=0;c<3;c++){ ph[3*m+c] = R()*6.283185; fr[3*m+c] = 0.75 + R()*0.6; }
+    m++;
+  }
+  return {n, nx, ny, nz, home, ph, fr, LX, LY, LZ,
+          by: my + 0.5, bz: mz + 0.5,           // the surface of the wire holds electrons in
+          pos: new Float32Array(3*n), kick: new Float32Array(n)};
+}
+
+/* where every ion is at time t */
+function ionsAt(lat, t, amp){
+  const o = lat.pos;
+  for(let m=0;m<lat.n;m++){
+    const a = amp*(1 + lat.kick[m]);
+    for(let c=0;c<3;c++){
+      const i = 3*m+c;
+      o[i] = lat.home[i] + a*Math.sin(lat.ph[i] + ION_W*lat.fr[i]*t);
+    }
+  }
+}
+
+function makeElectrons(lat, ne, seed){
+  const R = rng(seed);
+  const st = {n:ne, pos:new Float32Array(3*ne), vel:new Float32Array(3*ne),
+              path:0, coll:0, work:0, xt:0, R,
+              hit:new Int32Array(ne),            // the ion each one struck this step, or -1
+              trip:new Float32Array(ne), bumps:new Uint32Array(ne), wrapped:new Uint8Array(ne)};
+  for(let e=0;e<ne;e++){
+    st.pos[3*e  ] = (R()-0.5)*lat.LX;
+    st.pos[3*e+1] = (R()-0.5)*1.5*lat.by;
+    st.pos[3*e+2] = (R()-0.5)*1.5*lat.bz;
+    const u = 2*R()-1, th = R()*6.283185, s = Math.sqrt(1-u*u), sp = VTH*rollSpeed(R);
+    st.vel[3*e  ] = sp*s*Math.cos(th);
+    st.vel[3*e+1] = sp*s*Math.sin(th);
+    st.vel[3*e+2] = sp*u;
+  }
+  return st;
+}
+
+/* One electron, one step of length dt.
+
+   The electron flies in a straight line. The only thing that can turn it is an
+   ion, so the step is solved as a ray against the spheres rather than by
+   nudging the position and looking to see whether it ended up inside one — at
+   these speeds that would let it pass clean through an ion between frames.
+
+   It bounces off specularly, which for a sphere sends it off in a direction
+   with no memory of where it came from, and leaves with a fresh thermal speed:
+   whatever the battery had added since the last collision is handed to the
+   lattice. That surplus is the resistive heating, and it is accumulated in
+   st.work. */
+function advance(st, lat, e, dt, field, rc){
+  const rc2 = rc*rc;
+  let px = st.pos[3*e], py = st.pos[3*e+1], pz = st.pos[3*e+2];
+  let vx = st.vel[3*e] + field*dt, vy = st.vel[3*e+1], vz = st.vel[3*e+2];
+  let rem = dt, guard = 0;
+  st.hit[e] = -1;
+
+  while(rem > 1e-6 && guard++ < 4){
+    const sp2 = vx*vx + vy*vy + vz*vz, sp = Math.sqrt(sp2);
+    const reach = sp*rem + rc, reach2 = reach*reach;
+    let bs = rem, bm = -1;
+    for(let m=0;m<lat.n;m++){
+      const cx = lat.pos[3*m  ] - px; if(cx >  reach || cx < -reach) continue;
+      const cy = lat.pos[3*m+1] - py; if(cy >  reach || cy < -reach) continue;
+      const cz = lat.pos[3*m+2] - pz; if(cz >  reach || cz < -reach) continue;
+      const cc = cx*cx + cy*cy + cz*cz; if(cc > reach2) continue;
+      const b = vx*cx + vy*cy + vz*cz;
+      if(b <= 0 && cc > rc2) continue;                 // behind it, and outside it
+      const disc = b*b - sp2*(cc - rc2);
+      if(disc < 0) continue;
+      const s = (b - Math.sqrt(disc))/sp2;             // the near crossing
+      if(s >= 0 && s < bs){ bs = s; bm = m; }
+    }
+
+    if(bm < 0){
+      px += vx*rem; py += vy*rem; pz += vz*rem;
+      st.path += sp*rem; st.xt += vx*rem; st.trip[e] += vx*rem;
+      rem = 0;
+      break;
+    }
+
+    px += vx*bs; py += vy*bs; pz += vz*bs;
+    st.path += sp*bs; st.xt += vx*bs; st.trip[e] += vx*bs;
+    rem -= bs;
+
+    let nx = px - lat.pos[3*bm], ny = py - lat.pos[3*bm+1], nz = pz - lat.pos[3*bm+2];
+    const nl = Math.sqrt(nx*nx + ny*ny + nz*nz) || 1;
+    nx /= nl; ny /= nl; nz /= nl;
+    const dot = vx*nx + vy*ny + vz*nz;
+    vx -= 2*dot*nx; vy -= 2*dot*ny; vz -= 2*dot*nz;
+
+    const fresh = VTH*rollSpeed(st.R);
+    st.work += Math.max(0, sp2 - fresh*fresh);         // surplus energy, into the lattice
+    const k = fresh/Math.sqrt(vx*vx + vy*vy + vz*vz);
+    vx *= k; vy *= k; vz *= k;
+
+    px += nx*1e-3; py += ny*1e-3; pz += nz*1e-3;
+    st.coll++; st.bumps[e]++; st.hit[e] = bm;
+    lat.kick[bm] = Math.min(1.5, lat.kick[bm] + KICK);
+  }
+
+  /* the wire's surface — an electron is free inside the metal, not outside it */
+  if(py < -lat.by){ py = -lat.by; vy =  Math.abs(vy); }
+  if(py >  lat.by){ py =  lat.by; vy = -Math.abs(vy); }
+  if(pz < -lat.bz){ pz = -lat.bz; vz =  Math.abs(vz); }
+  if(pz >  lat.bz){ pz =  lat.bz; vz = -Math.abs(vz); }
+
+  /* the block repeats along x, so an electron leaving one end comes back in at
+     the other — the wire carries on past both edges of the picture */
+  st.wrapped[e] = 0;
+  if(px >=  lat.LX/2){ px -= lat.LX; st.wrapped[e] = 1; }
+  else if(px < -lat.LX/2){ px += lat.LX; st.wrapped[e] = 1; }
+
+  st.pos[3*e] = px; st.pos[3*e+1] = py; st.pos[3*e+2] = pz;
+  st.vel[3*e] = vx; st.vel[3*e+1] = vy; st.vel[3*e+2] = vz;
+}
+
+/* one tick of the whole model: ions move, electrons fly, the lattice warms */
+function tick(st, lat, sim, dt, field, TK){
+  sim.t += dt;
+  const decay = Math.exp(-dt/KICK_T);
+  for(let m=0;m<lat.n;m++) lat.kick[m] *= decay;
+  ionsAt(lat, sim.t, ampAt(TK));
+  const rc = collR(TK);
+  for(let e=0;e<st.n;e++) advance(st, lat, e, dt, field, rc);
+}
+
+/* the drift speed, averaged over a stretch of running */
+function measure(st, secs){
+  const es = st.n*secs;
+  return {drift: st.xt/es, coll: st.coll/es, mfp: st.path/Math.max(1, st.coll),
+          work: st.work/es};
+}
+
+/* Room-temperature drift, measured from this model — the 1.00 that current and
+   resistance are quoted against. test-wire.js reproduces both numbers and
+   fails if the model drifts away from them. */
+const V_REF = {slab: 1.277, tunnel: 1.256};
+
+const LATTICES = {
+  slab  : {nx:6, ny:3, nz:1, nsim:160, ndraw:36},   // a ribbon, seen from outside
+  tunnel: {nx:8, ny:3, nz:3, nsim:100, ndraw:26}    // a bore, seen from inside
+};
+
+if(typeof module !== 'undefined' && module.exports){
+  module.exports = {LAT_A, R_ION, R_EL, K_SWEEP, VIB0, VTH, FIELD, T_AMB, T_MAX,
+    ION_W, K_HEAT, COOL, ampAt, sweptR, collR, rng, rollSpeed, buildLattice,
+    ionsAt, makeElectrons, advance, tick, measure, V_REF, LATTICES};
+}
+/* ========================== END PHYSICS ================================== */
+
+const COL = {
+  ion      : 0xc8763c,   // copper, the same as everywhere else in this repo
+  ionHot   : 0xff8f4a,
+  electron : 0xffe070,   // electrons, everywhere in this repo
+  push     : 0x7fb0ff,
+  heat     : 0xff7a3c,
+  lampOn   : 0xffd98a,
+  spark    : 0xffb07a
+};
+const hexCss = n => '#'+n.toString(16).padStart(6,'0');
+const clamp = (v,a,b) => v<a?a:(v>b?b:v);
+
+/* ------------------------------------------------------------------ three */
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio||1));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.08;
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x080b11);
+scene.fog = new THREE.Fog(0x080b11, 40, 90);
+const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 400);
+
+scene.add(new THREE.HemisphereLight(0x9fb4d0, 0x0a0d13, 0.6));
+const keyL  = new THREE.DirectionalLight(0xffffff, 0.95); keyL.position.set(6,11,8); scene.add(keyL);
+const fillL = new THREE.DirectionalLight(0x9ec3ff, 0.40); fillL.position.set(-8,4,-6); scene.add(fillL);
+const rimL  = new THREE.DirectionalLight(0xffd9b0, 0.32); rimL.position.set(0,3,-10); scene.add(rimL);
+
+(function environment(){
+  const env = new THREE.Scene();
+  const box = new THREE.BoxGeometry(1,1,1);
+  env.add(new THREE.Mesh(new THREE.BoxGeometry(30,18,30),
+    new THREE.MeshBasicMaterial({color:0x1d2634, side:THREE.BackSide})));
+  const panel=(hex,gain,x,y,z,sx,sy,sz)=>{
+    const m=new THREE.Mesh(box,new THREE.MeshBasicMaterial({color:hex}));
+    m.material.color.multiplyScalar(gain);
+    m.position.set(x,y,z); m.scale.set(sx,sy,sz); env.add(m);
+  };
+  panel(0xffffff,1.1,  0, 8.4,  0, 14,0.1,14);
+  panel(0xbcd6ff,1.3,-11, 1.5,  0, 0.1,11,20);
+  panel(0xffd7b0,0.9, 11, 1.5,  2, 0.1,11,20);
+  panel(0x8fb0e0,0.5,  0, 0.0,-12, 22,11,0.1);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(env, 0.04).texture;
+  pmrem.dispose();
+})();
+
+/* two worlds: the circuit at the origin, the lattice parked far above it. The
+   camera teleports between them rather than anything being hidden. */
+const MICRO_Y = 400;
+const macro = new THREE.Group(); scene.add(macro);
+const micro = new THREE.Group(); micro.position.y = MICRO_Y; scene.add(micro);
+
+/* ------------------------------------------------------------- shared bits */
+const SPH  = new THREE.SphereGeometry(1,20,14);
+const SPH_LO = new THREE.SphereGeometry(1,14,10);
+const BOX  = new THREE.BoxGeometry(1,1,1);
+const CYL  = new THREE.CylinderGeometry(1,1,1,16);
+const CONE = new THREE.ConeGeometry(1,1,20);
+const SHARED = new Set([SPH, SPH_LO, BOX, CYL, CONE]);
+
+function linearise(root){
+  root.traverse(o=>{
+    if(!o.material) return;
+    (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{
+      if(!m || m.userData.__lin) return;
+      m.userData.__lin = true;
+      if(m.color)    m.color.convertSRGBToLinear();
+      if(m.emissive) m.emissive.convertSRGBToLinear();
+    });
+  });
+}
+
+function makeLabel(text, opt){
+  opt = opt || {};
+  const size = opt.size || 54, pad = 18;
+  const c = document.createElement('canvas'), ctx = c.getContext('2d');
+  const font = '600 '+size+'px "Iowan Old Style", Charter, Georgia, serif';
+  ctx.font = font;
+  const w = Math.ceil(ctx.measureText(text).width) + pad*2, h = size + pad*2;
+  c.width = w; c.height = h;
+  ctx.font = font; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.shadowColor = 'rgba(0,0,0,.9)'; ctx.shadowBlur = 14;
+  ctx.fillStyle = opt.color || '#eef2f7';
+  ctx.fillText(text, w/2, h/2 + size*0.04);
+  const tex = new THREE.CanvasTexture(c); tex.anisotropy = 4;
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({
+    map:tex, transparent:true, depthTest:false, depthWrite:false}));
+  spr.renderOrder = 10;
+  const scale = opt.scale || 0.62;
+  spr.scale.set(w/h*scale, scale, 1);
+  spr.userData.opt = opt;
+  return spr;
+}
+function setLabel(spr, text, opt){
+  opt = opt || spr.userData.opt || {};
+  const fresh = makeLabel(text, opt);
+  if(spr.material.map) spr.material.map.dispose();
+  spr.material.map = fresh.material.map;
+  spr.scale.copy(fresh.scale);
+  spr.userData.opt = opt;
+  fresh.material.dispose();
+}
+
+function disposeTree(root){
+  root.traverse(o=>{
+    if(o.geometry && !o.isSprite && !SHARED.has(o.geometry)) o.geometry.dispose();
+    if(o.material){
+      if(o.material.map) o.material.map.dispose();
+      o.material.dispose();
+    }
+  });
+}
+
+function makeArrow(col, len){
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({color:col, roughness:0.4,
+    emissive:new THREE.Color(col).multiplyScalar(0.35)});
+  const shaft = new THREE.Mesh(CYL, mat);
+  shaft.scale.set(0.09, len, 0.09); shaft.rotation.z = -Math.PI/2; shaft.position.x = -len*0.5;
+  const head = new THREE.Mesh(CONE, mat);
+  head.scale.set(0.26, 0.6, 0.26); head.rotation.z = -Math.PI/2; head.position.x = 0.3;
+  g.add(shaft, head);
+  return g;
+}
+
+/* ------------------------------------------------------------ the circuit */
+/* A loop of copper with a cell in the bottom run and a lamp in the top one.
+   Electrons leave the negative terminal, go the long way round and come back
+   to the positive one — which is the opposite direction to conventional
+   current, and is labelled as such on screen. */
+let circuit = null;
+
+function roundRectPoints(w, h, r, cx, cy){
+  const pts = [], seg = 7;
+  /* each corner is swept backwards, a quarter turn at a time, so the loop is
+     traced bottom run first going -x, up the left, then along the TOP run
+     going +x — which is the direction the lattice scenes drift in */
+  const corner = (ox, oy, a0) => {
+    for(let i=0;i<=seg;i++){
+      const a = a0 - (i/seg)*Math.PI/2;
+      pts.push(new THREE.Vector3(ox + r*Math.cos(a), oy + r*Math.sin(a), 0));
+    }
+  };
+  corner(cx-w/2+r, cy-h/2+r, Math.PI*1.5);      // bottom left
+  corner(cx-w/2+r, cy+h/2-r, Math.PI);          // top left
+  corner(cx+w/2-r, cy+h/2-r, Math.PI*0.5);      // top right
+  corner(cx+w/2-r, cy-h/2+r, 0);                // bottom right
+  return pts;
+}
+
+function buildCircuit(){
+  const g = new THREE.Group(); macro.add(g);
+
+  const benchMap = (function(){
+    const S = 512, c = document.createElement('canvas');
+    c.width = c.height = S;
+    const x = c.getContext('2d');
+    x.fillStyle = '#000'; x.fillRect(0,0,S,S);
+    const rg = x.createRadialGradient(S/2,S/2,0, S/2,S/2,S*0.5);
+    rg.addColorStop(0.00,'rgba(255,255,255,1)');
+    rg.addColorStop(0.16,'rgba(226,232,242,0.78)');
+    rg.addColorStop(0.32,'rgba(140,152,172,0.24)');
+    rg.addColorStop(0.44,'rgba(56,64,78,0.06)');
+    rg.addColorStop(0.50,'rgba(0,0,0,0)');
+    x.fillStyle = rg; x.fillRect(0,0,S,S);
+    const t = new THREE.CanvasTexture(c);
+    t.encoding = THREE.sRGBEncoding;
+    return t;
+  })();
+  const bench = new THREE.Mesh(
+    new THREE.CylinderGeometry(26,26,0.4,64),
+    new THREE.MeshStandardMaterial({color:0x4a515d, map:benchMap,
+      roughness:0.94, metalness:0, envMapIntensity:0.10}));
+  bench.position.y = -0.3; g.add(bench);
+
+  const W = 9.4, H = 5.8, CY = 3.7;
+  const curve = new THREE.CatmullRomCurve3(roundRectPoints(W, H, 1.1, 0, CY), true);
+  const wireMat = new THREE.MeshStandardMaterial({
+    color:COL.ion, roughness:0.32, metalness:0.85, envMapIntensity:0.9});
+  wireMat.userData.__lin = true;                          // driven every frame
+  const wire = new THREE.Mesh(new THREE.TubeGeometry(curve, 300, 0.14, 12, true), wireMat);
+  g.add(wire);
+
+  /* the cell, straddling the bottom run */
+  const cell = new THREE.Group();
+  cell.position.set(0, CY - H/2, 0); g.add(cell);
+  const body = new THREE.Mesh(BOX, new THREE.MeshStandardMaterial({
+    color:0x2b3442, roughness:0.45, metalness:0.35, envMapIntensity:0.5}));
+  body.scale.set(3.0, 1.0, 0.9); cell.add(body);
+  const band = new THREE.Mesh(BOX, new THREE.MeshStandardMaterial({
+    color:0x55627a, roughness:0.4, metalness:0.5}));
+  band.scale.set(0.16, 1.02, 0.92); band.position.x = -0.5; cell.add(band);
+  const plus  = makeLabel('+', {scale:0.6, color:'#ffd9a0'});
+  plus.position.set(-1.05, 0, 0.55); cell.add(plus);
+  const minus = makeLabel('–', {scale:0.6, color:'#9ec3ff'});
+  minus.position.set(1.05, 0, 0.55); cell.add(minus);
+  const cellLbl = makeLabel('battery', {scale:0.38, color:'#b8c4d4'});
+  cellLbl.position.set(0, -1.05, 0.4); cell.add(cellLbl);
+
+  /* the lamp, straddling the top run */
+  const lamp = new THREE.Group();
+  lamp.position.set(0, CY + H/2, 0); g.add(lamp);
+  const cap = new THREE.Mesh(CYL, new THREE.MeshStandardMaterial({
+    color:0x6e7787, roughness:0.4, metalness:0.7}));
+  cap.scale.set(0.42, 0.5, 0.42); lamp.add(cap);
+  const glassMat = new THREE.MeshStandardMaterial({
+    color:0xbfd6e8, roughness:0.05, metalness:0, transparent:true, opacity:0.16,
+    envMapIntensity:1.4, depthWrite:false});
+  const glass = new THREE.Mesh(SPH, glassMat);
+  glass.scale.setScalar(0.72); glass.position.y = 0.72; lamp.add(glass);
+  const filMat = new THREE.MeshStandardMaterial({color:0x6b5540, roughness:0.4});
+  filMat.userData.__lin = true;                           // driven every frame
+  const fil = new THREE.Mesh(CYL, filMat);
+  fil.scale.set(0.055, 0.5, 0.055); fil.position.y = 0.62; lamp.add(fil);
+  const halo = new THREE.Mesh(SPH, new THREE.MeshBasicMaterial({
+    color:COL.lampOn, transparent:true, opacity:0, blending:THREE.AdditiveBlending,
+    depthWrite:false}));
+  halo.scale.setScalar(1.5); halo.position.y = 0.7; lamp.add(halo);
+  const lampLight = new THREE.PointLight(COL.lampOn, 0, 14);
+  lampLight.position.set(0, 0.7, 0); lamp.add(lampLight);
+  const lampLbl = makeLabel('lamp', {scale:0.38, color:'#b8c4d4'});
+  lampLbl.position.set(0, 1.85, 0); lamp.add(lampLbl);
+
+  /* electrons going round — one dot is a huge number of real ones */
+  const NDOT = 54;
+  const dotMat = new THREE.MeshStandardMaterial({
+    color:COL.electron, emissive:COL.electron, roughness:0.3});
+  const dots = new THREE.InstancedMesh(SPH_LO, dotMat, NDOT);
+  dots.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  g.add(dots);
+
+  /* the bit of wire the next scene goes inside */
+  const zoomAt = curve.getPointAt(0.28);        // top run, clear of the lamp
+  const zoomBox = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(2.0, 0.9, 0.9)),
+    new THREE.LineBasicMaterial({color:0x9ec3ff, transparent:true, opacity:0.8}));
+  zoomBox.position.copy(zoomAt); g.add(zoomBox);
+  const zoomLbl = makeLabel('inside this copper →', {scale:0.34, color:'#9ec3ff'});
+  zoomLbl.position.set(zoomAt.x, zoomAt.y + 0.95, zoomAt.z); g.add(zoomLbl);
+
+  /* which way is which */
+  const eArrow = makeArrow(COL.electron, 1.3);
+  eArrow.position.set(2.9, CY + H/2 + 0.6, 0); g.add(eArrow);
+  const eLbl = makeLabel('electrons', {scale:0.34, color:hexCss(COL.electron)});
+  eLbl.position.set(2.9, CY + H/2 + 1.2, 0); g.add(eLbl);
+  const iArrow = makeArrow(0xff8f8f, 1.3);
+  iArrow.rotation.y = Math.PI;                 // the other way round
+  iArrow.position.set(2.9, CY + H/2 - 1.0, 0); g.add(iArrow);
+  const iLbl = makeLabel('conventional current', {scale:0.34, color:'#ff8f8f'});
+  iLbl.position.set(2.9, CY + H/2 - 1.6, 0); g.add(iLbl);
+
+  linearise(g);
+  return {group:g, curve, dots, NDOT, zoomBox, zoomLbl, wireMat, filMat, halo,
+          lampLight, glass, u:0};
+}
+
+const _cm = new THREE.Matrix4();
+const _cv3 = new THREE.Vector3();
+function updateCircuit(dt, cur, TK){
+  const c = circuit;
+  if(!c) return;
+  /* the dots go round at the drift speed the lattice model measured */
+  c.u = (c.u + dt*0.10*cur + 1) % 1;
+  for(let i=0;i<c.NDOT;i++){
+    let u = (c.u + i/c.NDOT) % 1;
+    c.curve.getPointAt(u, _cv3);
+    _cm.identity();
+    _cm.makeScale(0.115, 0.115, 0.115);
+    _cm.setPosition(_cv3);
+    c.dots.setMatrixAt(i, _cm);
+  }
+  c.dots.instanceMatrix.needsUpdate = true;
+
+  /* the lamp is as bright as the current through it */
+  const b = clamp(cur, 0, 1.3);
+  c.filMat.color.set(0x6b5540).lerp(new THREE.Color(COL.lampOn), b*0.9).convertSRGBToLinear();
+  c.filMat.emissive.set(COL.lampOn).convertSRGBToLinear().multiplyScalar(b*2.4);
+  c.halo.material.opacity = b*0.42;
+  c.lampLight.intensity = b*2.6;
+
+  /* and the copper itself glows if it gets hot enough */
+  const gl = clamp((TK - 650)/600, 0, 1);
+  c.wireMat.color.set(COL.ion).lerp(new THREE.Color(COL.ionHot), gl).convertSRGBToLinear();
+  c.wireMat.emissive.set(COL.heat).convertSRGBToLinear().multiplyScalar(gl*0.9);
+
+  const p = 0.55 + 0.45*Math.sin(performance.now()/380);
+  c.zoomBox.material.opacity = 0.35 + 0.45*p;
+}
+
+/* ------------------------------------------------------------ the lattice */
+let lat = null, els = null, sim = null, latKind = null;
+let ionMesh = null, hazeMesh = null, elMesh = null;
+let trail = null, trailN = 0, trailPos = null, tracked = null, sparks = [];
+let fieldArrow = null, fieldLbl = null;
+
+const TRAIL_MAX = 160;
+
+function buildLattice3D(kind){
+  const cfg = LATTICES[kind];
+  lat = buildLattice(cfg.nx, cfg.ny, cfg.nz, 7);
+  els = makeElectrons(lat, cfg.nsim, 11);
+  sim = {t:0, ndraw:cfg.ndraw, vref:V_REF[kind]};
+  latKind = kind;
+
+  const copies = 3, n = lat.n*copies;
+
+  const ionMat = new THREE.MeshStandardMaterial({
+    color:COL.ion, roughness:0.3, metalness:0.9, envMapIntensity:0.9});
+  ionMat.userData.__lin = true;                    // recoloured every frame
+  ionMat.color.convertSRGBToLinear();
+  ionMesh = new THREE.InstancedMesh(SPH_LO, ionMat, n);
+  ionMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  micro.add(ionMesh);
+
+  /* the region each ion sweeps out — what the electron actually has to miss */
+  const hazeMat = new THREE.MeshBasicMaterial({
+    color:0xff9a5a, transparent:true, opacity:0.085,
+    blending:THREE.AdditiveBlending, depthWrite:false});
+  hazeMat.userData.__lin = true;
+  hazeMat.color.convertSRGBToLinear();
+  hazeMesh = new THREE.InstancedMesh(SPH_LO, hazeMat, n);
+  hazeMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  hazeMesh.renderOrder = 2;
+  micro.add(hazeMesh);
+
+  const elMat = new THREE.MeshStandardMaterial({
+    color:COL.electron, emissive:COL.electron, roughness:0.3});
+  elMesh = new THREE.InstancedMesh(SPH_LO, elMat, cfg.ndraw*copies);
+  elMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  micro.add(elMesh);
+  linearise(elMesh);
+
+  /* the one electron the story follows: a halo, a lamp of its own, and the
+     path it has taken — straight runs with a kink at every ion */
+  tracked = new THREE.Group(); micro.add(tracked);
+  const halo = new THREE.Mesh(SPH, new THREE.MeshBasicMaterial({
+    color:COL.electron, transparent:true, opacity:0.3,
+    blending:THREE.AdditiveBlending, depthWrite:false}));
+  halo.scale.setScalar(R_EL*3.4);
+  const lamp = new THREE.PointLight(0xfff0c8, 2.3, 17);
+  tracked.add(halo, lamp);
+  linearise(tracked);
+
+  trailPos = new Float32Array((TRAIL_MAX+1)*3);      // +1 for the live head
+  const tg = new THREE.BufferGeometry();
+  tg.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
+  tg.setDrawRange(0, 0);
+  trail = new THREE.Line(tg, new THREE.LineBasicMaterial({
+    color:COL.electron, transparent:true, opacity:0.55}));
+  trail.frustumCulled = false;
+  micro.add(trail);
+  trailN = 0;
+
+  sparks = [];
+  for(let i=0;i<18;i++){
+    const s = new THREE.Mesh(SPH_LO, new THREE.MeshBasicMaterial({
+      color:COL.spark, transparent:true, opacity:0,
+      blending:THREE.AdditiveBlending, depthWrite:false}));
+    s.visible = false; micro.add(s);
+    sparks.push({mesh:s, life:0});
+  }
+}
+
+function clearLattice(){
+  [ionMesh, hazeMesh, elMesh, trail, tracked].forEach(o=>{
+    if(o){ micro.remove(o); disposeTree(o); }
+  });
+  sparks.forEach(s=>{ micro.remove(s.mesh); disposeTree(s.mesh); });
+  sparks = [];
+  if(fieldArrow){ micro.remove(fieldArrow); disposeTree(fieldArrow); fieldArrow = null; }
+  if(fieldLbl){ micro.remove(fieldLbl); disposeTree(fieldLbl); fieldLbl = null; }
+  ionMesh = hazeMesh = elMesh = trail = tracked = null;
+  lat = els = sim = null; latKind = null;
+}
+
+const _m = new THREE.Matrix4();
+function setInst(mesh, idx, x, y, z, s){
+  _m.makeScale(s, s, s);
+  _m.elements[12] = x; _m.elements[13] = y; _m.elements[14] = z;
+  mesh.setMatrixAt(idx, _m);
+}
+
+function drawLattice(TK){
+  const LX = lat.LX, amp = ampAt(TK), sw = sweptR(TK);
+  let k = 0;
+  for(let c=-1;c<=1;c++){
+    const ox = c*LX;
+    for(let m=0;m<lat.n;m++){
+      const x = lat.pos[3*m]+ox, y = lat.pos[3*m+1], z = lat.pos[3*m+2];
+      setInst(ionMesh, k, x, y, z, R_ION);
+      setInst(hazeMesh, k, x, y, z, sw);
+      k++;
+    }
+  }
+  ionMesh.instanceMatrix.needsUpdate = true;
+  hazeMesh.instanceMatrix.needsUpdate = true;
+
+  /* copper, heating up */
+  const h = clamp((TK - T_AMB)/(T_MAX - T_AMB), 0, 1);
+  const im = ionMesh.material;
+  im.color.set(COL.ion).lerp(new THREE.Color(COL.ionHot), h*0.85).convertSRGBToLinear();
+  im.emissive.set(COL.heat).convertSRGBToLinear().multiplyScalar(h*0.55);
+  hazeMesh.material.opacity = 0.07 + h*0.055;
+
+  let j = 0;
+  for(let c=-1;c<=1;c++){
+    const ox = c*LX;
+    for(let e=0;e<sim.ndraw;e++){
+      setInst(elMesh, j++, els.pos[3*e]+ox, els.pos[3*e+1], els.pos[3*e+2], R_EL);
+    }
+  }
+  elMesh.instanceMatrix.needsUpdate = true;
+  elMesh.count = j;
+
+  tracked.position.set(els.pos[0], els.pos[1], els.pos[2]);
+}
+
+function pushTrail(x, y, z){
+  if(trailN >= TRAIL_MAX){                       // drop the oldest half
+    const keep = TRAIL_MAX>>1;
+    trailPos.copyWithin(0, (TRAIL_MAX-keep)*3, TRAIL_MAX*3);
+    trailN = keep;
+  }
+  trailPos[trailN*3] = x; trailPos[trailN*3+1] = y; trailPos[trailN*3+2] = z;
+  trailN++;
+}
+function updateTrail(){
+  /* the last node follows the electron; the ones behind it were laid down at
+     collisions, so every segment drawn is a real straight run */
+  const n = trailN;
+  if(n === 0){ trail.geometry.setDrawRange(0,0); return; }
+  trailPos[n*3] = els.pos[0]; trailPos[n*3+1] = els.pos[1]; trailPos[n*3+2] = els.pos[2];
+  trail.geometry.attributes.position.needsUpdate = true;
+  trail.geometry.setDrawRange(0, Math.min(TRAIL_MAX, n+1));
+}
+
+function fireSpark(x, y, z){
+  const s = sparks.find(q=>q.life <= 0);
+  if(!s) return;
+  s.life = 1; s.mesh.visible = true;
+  s.mesh.position.set(x, y, z);
+}
+function updateSparks(dt){
+  sparks.forEach(s=>{
+    if(s.life <= 0) return;
+    s.life -= dt*2.6;
+    if(s.life <= 0){ s.life = 0; s.mesh.visible = false; return; }
+    const g = 1 - s.life;
+    s.mesh.scale.setScalar(0.22 + g*0.75);
+    s.mesh.material.opacity = s.life*0.8;
+  });
+}
+
+/* ------------------------------------------------------------------ story */
+const M = {
+  temp  : {label:'Lattice temp',  hot:true,  fmt:()=> Math.round(TK - 273) + ' °C'},
+  coll  : {label:'Collisions',    hot:true,  fmt:()=> sm.coll.toFixed(2) + ' /s'},
+  mfp   : {label:'Free run',      cool:true, fmt:()=> (sm.mfp/LAT_A).toFixed(2) + ' cells'},
+  drift : {label:'Drift speed',   cool:true, fmt:()=> sm.drift.toFixed(2)},
+  current:{label:'Current',       cool:true, fmt:()=> (sm.drift/sim.vref).toFixed(2)},
+  res   : {label:'Resistance',    hot:true,  fmt:()=> (sim.vref/Math.max(0.02, sm.drift)).toFixed(2)},
+  trip  : {label:'Rows passed',   cool:true, fmt:()=> Math.round(els.trip[0]/(LAT_A/2)) + ''},
+  bumps : {label:'Ions hit',      hot:true,  fmt:()=> String(els.bumps[0])}
+};
+
+const SCENES = [
+  {
+    part:'The circuit',
+    world:'macro',
+    cam:{dist:17, az:0.30, el:0.20, look:[0,3.6,0]},
+    cards:[{who:'THE WIRE', metrics:['current','res','temp']}],
+    title:'A wire carrying a current',
+    text:'The battery drives a current round the loop and the lamp lights. Everything on this screen is happening inside that copper.',
+    look:'the yellow dots are electrons — they leave the negative terminal, not the positive one.',
+    note:'Drift is drawn far faster than it is. Real electrons crawl round a circuit at well under a millimetre per second.'
+  },
+  {
+    part:'Inside the metal',
+    world:'micro', lattice:'slab', field:0, heat:false,
+    cam:{dist:23, az:0.26, el:0.16, look:[0,0,0]},
+    cards:[{who:'COPPER · BATTERY OFF', metrics:['drift','current','coll','temp']}],
+    title:'Copper is a lattice and a sea of electrons',
+    text:'Copper ions sit in a fixed pattern, vibrating about their places. Between them, free electrons fly about at enormous speed in every direction.',
+    look:'they are moving fast, but as many go left as right, so the drift speed averages out to zero. No net flow means no current.',
+    note:'Ion spacing is drawn much wider than it really is, so you can see between them.'
+  },
+  {
+    part:'Switching on',
+    world:'micro', lattice:'slab', field:FIELD, heat:false,
+    cam:{dist:23, az:0.26, el:0.16, look:[0,0,0]},
+    cards:[{who:'COPPER · BATTERY ON', metrics:['drift','current','coll','mfp']}],
+    title:'The battery gives every electron a push',
+    text:'The push is one way, so on top of all that random speed there is now a slow <b>drift</b> along the wire. That drift is the current.',
+    look:'one electron is lit up with its path behind it. It is straight, then it kinks — an electron cannot change direction on its own. Only an ion can turn it.',
+    note:'Drift is still far faster here than in a real wire.'
+  },
+  {
+    part:'Where the heat comes from',
+    world:'micro', lattice:'slab', field:FIELD, heat:true,
+    cam:{dist:23, az:0.24, el:0.18, look:[0,0,0]},
+    cards:[{who:'COPPER · HEATING UP', metrics:['temp','coll','mfp','current','res']}],
+    title:'Every collision heats the lattice',
+    text:'An electron picks up energy from the battery, then hands it to an ion when it hits one. The ions swing wider — hotter — but they never leave their places. Wider swings are harder to get past, so the current falls and the resistance climbs.',
+    look:'the haze round each ion is the space its vibration sweeps. Watch it grow until the gaps between the hazes close up.',
+    note:'The temperature settles where the battery\'s heating balances the energy lost to the room.'
+  },
+  {
+    part:'From where the electron is',
+    world:'micro', lattice:'tunnel', field:FIELD, heat:false, ride:true,
+    cam:{back:2.6, up:0.75, ahead:5.0},
+    cards:[{who:'THIS ELECTRON', metrics:['trip','bumps']},
+           {who:'THE LATTICE', metrics:['temp','coll','mfp']}],
+    title:'What one electron sees — cold wire',
+    text:'Riding with a single electron down a cold wire. The lanes through the lattice are open, so the runs between collisions are long.',
+    look:'it never steers. It goes dead straight until something hits it, and then it is going somewhere else entirely.'
+  },
+  {
+    part:'From where the electron is',
+    world:'micro', lattice:'tunnel', field:FIELD, heat:true, ride:true,
+    cam:{back:2.6, up:0.75, ahead:5.0},
+    cards:[{who:'THIS ELECTRON', metrics:['trip','bumps']},
+           {who:'THE LATTICE', metrics:['temp','coll','mfp','res']}],
+    title:'…and the same wire, heating up',
+    text:'Same electron, same push. As the ions swing wider the open lanes close, and it gets thrown off course again and again.',
+    look:'compare "rows passed" with the last scene. It is working just as hard and getting nowhere near as far.'
+  },
+  {
+    part:'Putting it together',
+    world:'macro',
+    cam:{dist:17, az:-0.22, el:0.22, look:[0,3.6,0]},
+    cards:[{who:'THE WIRE', metrics:['temp','current','res']}],
+    title:'That is what resistance is',
+    text:'<table class="sum">'+
+      '<tr><th></th><th>Cold wire</th><th>Hot wire</th></tr>'+
+      '<tr><td>Ion vibration</td><td>small</td><td>large</td></tr>'+
+      '<tr><td>Run between collisions</td><td>long</td><td>short</td></tr>'+
+      '<tr><td>Drift speed</td><td>higher</td><td>lower</td></tr>'+
+      '<tr><td>Current</td><td>bigger</td><td>smaller</td></tr>'+
+      '<tr><td>Resistance</td><td>lower</td><td>higher</td></tr></table>',
+    look:'the heating and the resistance are the same thing seen twice — both are electrons losing energy to the lattice.'
+  }
+];
+
+/* ------------------------------------------------------------ scene state */
+let sceneIdx = 0, cardRefs = [], cardMetrics = [];
+let TK = T_AMB, field = 0, heating = false, riding = false;
+let acc = 0;
+const sm = {drift:0, coll:0, mfp:LAT_A};   // smoothed readouts
+const joltEl = document.getElementById('jolt');
+let jolt = 0;
+
+function enterScene(i){
+  sceneIdx = i;
+  const sc = SCENES[i];
+
+  if(sc.world === 'micro'){
+    if(latKind !== sc.lattice){ clearLattice(); buildLattice3D(sc.lattice); }
+    else { els = makeElectrons(lat, LATTICES[sc.lattice].nsim, 11); trailN = 0; }
+    micro.visible = true; macro.visible = false;
+    if(!circuit) circuit = buildCircuit();
+    scene.fog.near = sc.ride ? 9 : 34;
+    scene.fog.far  = sc.ride ? 34 : 76;
+  } else {
+    if(!circuit) circuit = buildCircuit();
+    macro.visible = true; micro.visible = false;
+    scene.fog.near = 30; scene.fog.far = 70;
+  }
+
+  field   = sc.field || 0;
+  heating = !!sc.heat;
+  riding  = !!sc.ride;
+  TK      = T_AMB;
+  jolt = 0;
+  acc = 0;
+
+  if(sc.world === 'micro'){
+    els.xt = 0; els.coll = 0; els.path = 0; els.work = 0;
+    trailN = 0;
+    if(field > 0 && !fieldArrow){
+      fieldArrow = makeArrow(COL.push, 2.4);
+      fieldArrow.position.set(0, lat.by + 2.6, 0);
+      fieldArrow.scale.setScalar(1.2);
+      micro.add(fieldArrow);
+      fieldLbl = makeLabel('push from the battery', {scale:0.52, color:hexCss(COL.push)});
+      fieldLbl.position.set(0, lat.by + 3.5, 0);
+      micro.add(fieldLbl);
+      linearise(fieldArrow);
+    }
+    if(field === 0 && fieldArrow){
+      micro.remove(fieldArrow); disposeTree(fieldArrow); fieldArrow = null;
+      micro.remove(fieldLbl); disposeTree(fieldLbl); fieldLbl = null;
+    }
+    if(fieldArrow) fieldArrow.visible = !sc.ride;
+    if(fieldLbl)   fieldLbl.visible   = !sc.ride;
+    if(trail) trail.visible = field > 0;
+  }
+
+  /* the macro scene runs the slab model underneath, so its lamp and its cards
+     are driven by the same measurements as everything else */
+  if(sc.world === 'macro' && latKind !== 'slab'){
+    clearLattice(); buildLattice3D('slab');
+    micro.visible = false;
+  }
+  if(sc.world === 'macro'){
+    field = FIELD;
+    heating = (i === SCENES.length - 1);
+  }
+
+  if(!sc.ride){
+    desired.dist = sc.cam.dist; desired.az = sc.cam.az; desired.el = sc.cam.el;
+    desired.look.set(sc.cam.look[0], sc.cam.look[1] + (sc.world === 'micro' ? MICRO_Y : 0),
+                     sc.cam.look[2]);
+    dragAz = 0; dragEl = 0; zoomAdj = 0;
+  } else {
+    dragAz = 0; dragEl = 0; zoomAdj = 0;
+  }
+
+  document.getElementById('sStep').textContent = (i+1)+' / '+SCENES.length+' · '+sc.part;
+  document.getElementById('sTitle').innerHTML = sc.title;
+  document.getElementById('sText').innerHTML = sc.text;
+  const lookEl = document.getElementById('sLook');
+  lookEl.textContent = sc.look ? 'Watch for: '+sc.look : '';
+  lookEl.hidden = !sc.look;
+  const noteEl = document.getElementById('sNote');
+  noteEl.textContent = sc.note || '';
+  noteEl.hidden = !sc.note;
+
+  document.getElementById('back').disabled = (i === 0);
+  document.getElementById('next').disabled = (i === SCENES.length-1);
+  document.querySelectorAll('#dots i').forEach((d,k)=>d.classList.toggle('on', k === i));
+
+  /* the readouts are windowed differences, so the window has to start again
+     with the run — otherwise the first half second reads off two scenes */
+  win.xt = els.xt; win.coll = els.coll; win.path = els.path;
+  winT = 0;
+  sm.drift = field > 0 ? sim.vref : 0;
+  sm.coll = 0.7; sm.mfp = LAT_A;
+
+  buildCards();
+  buildKey();
+}
+
+function buildCards(){
+  const box = document.getElementById('cards');
+  box.innerHTML = '';
+  cardMetrics = [];
+  cardRefs = SCENES[sceneIdx].cards.map(c=>{
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML =
+      '<div class="who">'+c.who+'</div><div class="nums">'+
+      c.metrics.map(k=>'<div class="n'+(M[k].hot?' hot':(M[k].cool?' cool':''))+'">'+
+        M[k].label+'<b>—</b></div>').join('')+'</div>';
+    box.appendChild(card);
+    cardMetrics.push(c.metrics);
+    return Array.prototype.slice.call(card.querySelectorAll('b'));
+  });
+}
+
+function buildKey(){
+  const sc = SCENES[sceneIdx];
+  let html = '';
+  if(sc.world === 'micro'){
+    html += '<div><span class="dot" style="background:'+hexCss(COL.ion)+'"></span>copper ion (fixed)</div>';
+    html += '<div><span class="ring"></span>space its vibration sweeps</div>';
+    html += '<div><span class="dot" style="background:'+hexCss(COL.electron)+'"></span>free electron</div>';
+    if(sc.field) html += '<div><span class="sq" style="background:'+hexCss(COL.push)+'"></span>push from the battery</div>';
+  } else {
+    html += '<div><span class="dot" style="background:'+hexCss(COL.electron)+'"></span>electrons</div>';
+    html += '<div><span class="sq" style="background:'+hexCss(COL.ion)+'"></span>copper wire</div>';
+  }
+  document.getElementById('key').innerHTML = html;
+}
+
+/* ------------------------------------------------------------ camera orbit */
+const desired = {dist:18, az:0.3, el:0.2, look:new THREE.Vector3(0,3.6,0)};
+const cur     = {dist:18, az:0.3, el:0.2, look:new THREE.Vector3(0,3.6,0)};
+let dragAz = 0, dragEl = 0, zoomAdj = 0;
+let dragging = false, lastX = 0, lastY = 0;
+
+const cv = renderer.domElement;
+cv.style.touchAction = 'none';
+cv.style.cursor = 'grab';
+cv.addEventListener('pointerdown', e=>{
+  dragging = true; lastX = e.clientX; lastY = e.clientY;
+  cv.style.cursor = 'grabbing';
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove', e=>{
+  if(!dragging) return;
+  dragAz += (e.clientX - lastX) * 0.006;
+  dragEl = Math.max(-0.5, Math.min(1.05, dragEl + (e.clientY - lastY) * 0.004));
+  lastX = e.clientX; lastY = e.clientY;
+});
+['pointerup','pointercancel'].forEach(ev=>
+  cv.addEventListener(ev, ()=>{ dragging = false; cv.style.cursor = 'grab'; }));
+cv.addEventListener('wheel', e=>{
+  e.preventDefault();
+  zoomAdj = Math.max(-9, Math.min(26, zoomAdj + e.deltaY*0.008));
+}, {passive:false});
+
+/* the chase camera, for the two scenes shot from an electron */
+const fwd = new THREE.Vector3(1,0,0), want = new THREE.Vector3();
+const _up = new THREE.Vector3(0,1,0), _right = new THREE.Vector3(), _eye = new THREE.Vector3();
+
+function rideCamera(dt){
+  const sc = SCENES[sceneIdx];
+  want.set(els.vel[0], els.vel[1], els.vel[2]);
+  if(want.lengthSq() < 1e-6) want.set(1,0,0);
+  want.normalize();
+  /* smoothed, so a collision lands as a jolt rather than a single-frame snap */
+  fwd.lerp(want, Math.min(1, dt*7)).normalize();
+
+  _right.crossVectors(fwd, _up);
+  if(_right.lengthSq() < 1e-4) _right.set(0,0,1);
+  _right.normalize();
+
+  const back = Math.max(1.2, sc.cam.back + zoomAdj*0.25);
+  const ca = Math.cos(dragAz), sa = Math.sin(dragAz);
+  _eye.set(els.pos[0], els.pos[1], els.pos[2]).add(micro.position);
+  camera.position.copy(_eye)
+    .addScaledVector(fwd, -back*ca)
+    .addScaledVector(_right, back*sa)
+    .addScaledVector(_up, sc.cam.up + dragEl*2);
+  camera.lookAt(_eye.x + fwd.x*sc.cam.ahead,
+                _eye.y + fwd.y*sc.cam.ahead,
+                _eye.z + fwd.z*sc.cam.ahead);
+}
+
+function placeCamera(dt){
+  const k = Math.min(1, dt*2.6);
+  cur.dist += (desired.dist - cur.dist)*k;
+  cur.az   += (desired.az   - cur.az)*k;
+  cur.el   += (desired.el   - cur.el)*k;
+  cur.look.lerp(desired.look, k);
+  const az = cur.az + dragAz, el = cur.el + dragEl;
+  const d = Math.max(4, cur.dist + zoomAdj);
+  camera.position.set(
+    cur.look.x + d*Math.cos(el)*Math.sin(az),
+    cur.look.y + d*Math.sin(el),
+    cur.look.z + d*Math.cos(el)*Math.cos(az)
+  );
+  camera.lookAt(cur.look);
+}
+
+/* ------------------------------------------------------------------- loop */
+const SUB = 1/60;
+
+function physics(dt){
+  acc += dt;
+  let steps = 0;
+  while(acc >= SUB && steps < 3){
+    acc -= SUB; steps++;
+    tick(els, lat, sim, SUB, field, TK);
+
+    /* the tracked electron: a node on its path, a spark and a jolt per hit */
+    if(els.wrapped[0]) trailN = 0;
+    if(els.hit[0] >= 0){
+      pushTrail(els.pos[0], els.pos[1], els.pos[2]);
+      if(micro.visible){
+        fireSpark(els.pos[0], els.pos[1], els.pos[2]);
+        if(riding) jolt = 1;
+      }
+    } else if(trailN === 0){
+      pushTrail(els.pos[0], els.pos[1], els.pos[2]);
+    }
+
+    /* The battery does work on the electrons at a rate set by how fast they
+       are actually drifting; the collisions pass it to the lattice; the
+       lattice loses it to the room. Battery off means no work and no heating. */
+    if(heating){
+      const power = field*Math.max(0, sm.drift);
+      TK += (K_HEAT*power - COOL*(TK - T_AMB))*SUB;
+    } else {
+      TK += (T_AMB - TK)*Math.min(1, SUB*0.6);
+    }
+    TK = clamp(TK, T_AMB, T_MAX);
+  }
+  if(steps === 3) acc = 0;
+}
+
+/* Readouts come straight off the run, smoothed hard — a few dozen electrons is
+   a small sample and the raw numbers flicker. */
+let winT = 0, win = {xt:0, coll:0, path:0};
+function readouts(dt){
+  winT += dt;
+  if(winT >= 0.5){
+    const m = measure({n:els.n, xt:els.xt - win.xt, coll:els.coll - win.coll,
+                       path:els.path - win.path, work:0}, winT);
+    win.xt = els.xt; win.coll = els.coll; win.path = els.path;
+    winT = 0;
+    /* blended in from the settled value the scene started at, rather than
+       jumping to the first window — the electrons are made pointing every
+       which way, so the drift takes a mean free time to build up and the
+       first couple of windows read low */
+    const k = 0.12;
+    sm.drift += (m.drift - sm.drift)*k;
+    sm.coll  += (m.coll  - sm.coll )*k;
+    if(m.coll > 0) sm.mfp += (m.mfp - sm.mfp)*k;
+  }
+}
+
+let lastT = performance.now();
+function animate(now){
+  requestAnimationFrame(animate);
+  const dt = Math.max(0, Math.min(0.05, (now - lastT)/1000));
+  lastT = now;
+  const sc = SCENES[sceneIdx];
+
+  if(lat){
+    physics(dt);
+    readouts(dt);
+  }
+
+  if(sc.world === 'micro'){
+    drawLattice(TK);
+    updateTrail();
+    updateSparks(dt);
+    if(fieldArrow){
+      const p = 0.8 + 0.2*Math.sin(performance.now()/300);
+      fieldArrow.scale.setScalar(1.2*p);
+    }
+    if(riding) rideCamera(dt); else placeCamera(dt);
+  } else {
+    updateCircuit(dt, sm.drift/sim.vref, TK);
+    placeCamera(dt);
+  }
+
+  jolt = Math.max(0, jolt - dt*3.4);
+  joltEl.style.opacity = riding ? (jolt*0.75).toFixed(3) : '0';
+
+  cardRefs.forEach((refs, ci)=>{
+    cardMetrics[ci].forEach((k, mi)=>{
+      const v = M[k].fmt();
+      if(refs[mi].textContent !== v) refs[mi].textContent = v;
+    });
+  });
+
+  renderer.render(scene, camera);
+}
+
+/* ------------------------------------------------------------------ wiring */
+const dotsEl = document.getElementById('dots');
+SCENES.forEach((s,i)=>{
+  const d = document.createElement('i');
+  d.title = s.title;
+  d.addEventListener('click', ()=>enterScene(i));
+  dotsEl.appendChild(d);
+});
+document.getElementById('next').addEventListener('click', ()=>{
+  if(sceneIdx < SCENES.length-1) enterScene(sceneIdx+1);
+});
+document.getElementById('back').addEventListener('click', ()=>{
+  if(sceneIdx > 0) enterScene(sceneIdx-1);
+});
+document.getElementById('replay').addEventListener('click', ()=>enterScene(sceneIdx));
+window.addEventListener('keydown', e=>{
+  if(e.key === 'ArrowRight' && sceneIdx < SCENES.length-1) enterScene(sceneIdx+1);
+  if(e.key === 'ArrowLeft'  && sceneIdx > 0) enterScene(sceneIdx-1);
+});
+
+function resize(){
+  const w = stage.clientWidth || window.innerWidth;
+  const h = stage.clientHeight || window.innerHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w/h;
+  camera.fov = (w/h < 1.1) ? 64 : 46;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+resize();
+
+enterScene(0);
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

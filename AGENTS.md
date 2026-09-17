@@ -11,6 +11,7 @@ index.html                  the catalogue everything is listed in
 reactionbuilder/            drag-and-drop reaction builder (+ test.js)
 3dreactionscenes/           15 three.js scenes, one per GCSE reaction type
 particles/                  particle-theory scenes (Brownian motion, melting)
+electricity/                conduction and resistance (+ test-wire.js)
 tools/                      one-off colour-migration scripts (animcolour.mjs, colourfix.mjs)
 ```
 
@@ -23,6 +24,7 @@ cd 3dreactionscenes && node test-scenes.js      # ~14,500 checks
 cd particles        && node test-particles.js   # ~3,200 checks
 cd particles        && node test-render.js      # runs the scenes headlessly
 cd reactionbuilder  && node test.js             # needs: npm install jsdom
+cd electricity      && node test-wire.js        # model + render path
 ```
 
 They read the HTML as text, pull out the species tables, captions, camera
