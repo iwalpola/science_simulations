@@ -1413,7 +1413,8 @@ function scene14(){
         `${k}: ${anWin} was discharged, so it cannot also be left behind — got "${left}"`);
 
     chk(S.equation().includes('→'), `${k}: no overall equation`);
-    checkTimeline(S, 20, {macro:0, micro1:7.0, micro2:32.0});
+    /* 21 since the current round the outside got a caption of its own */
+    checkTimeline(S, 21, {macro:0, micro1:7.0, micro2:32.0});
   }
   console.log(`    ${rows.length} solutions:`);
   rows.forEach(r => console.log('      ' + r));

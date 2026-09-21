@@ -551,7 +551,8 @@ const RENDER_ORDER = {
   tubeLiq:  2,   // the liquid standing inside each collecting tube
   tubeWall: 3,   // the tube itself
   liquid:   4,   // the bulk of the solution, and its surface
-  beaker:   5    // the outermost wall
+  beaker:   5,   // the outermost wall
+  electrode: 6   // micro 2's see-through graphite (see buildMicro2)
 };
 
 const glassMat = new THREE.MeshStandardMaterial({
@@ -801,21 +802,45 @@ const CATH_X = -7.4, AN_X = 7.4, FACE = 1.5;
 function buildMicro2(){
   clearGroup(micro2);
 
-  /* the electrodes */
+  /* The electrodes. Graphite is not see-through, and these are — because the
+     most important half of an electron's journey happens inside them. It
+     leaves an ion at the anode face, climbs UP through the graphite, goes
+     round the outside, and comes back DOWN through the graphite at the far end
+     to the ion waiting there. Drawn solid, a pupil sees an electron vanish
+     into a black slab and another appear out of one, which is the bit they are
+     most likely to get wrong.
+     depthWrite is off and the slab is drawn late, so an electron inside it is
+     painted first and then tinted by the graphite it is travelling through.
+     Depth TESTING is untouched, so the slab still cannot paint over an ion
+     that is in front of it. */
   [[CATH_X],[AN_X]].forEach(([x])=>{
-    const slab = new THREE.Mesh(new THREE.BoxGeometry(1.5, 9.5, 3.0), graphite.clone());
-    slab.position.set(x,0,0); micro2.add(slab);
+    const slabMat = graphite.clone();
+    slabMat.transparent = true; slabMat.opacity = 0.55; slabMat.depthWrite = false;
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(1.5, 9.5, 3.0), slabMat);
+    slab.position.set(x,0,0);
+    slab.renderOrder = RENDER_ORDER.electrode;
+    micro2.add(slab);
   });
 
   /* the external circuit */
   const wireMat = new THREE.MeshStandardMaterial({color:0x8b94a2, roughness:0.5, metalness:0.6});
   const WIRE = [V(AN_X,4.9,0), V(AN_X,7.6,0), V(0,9.0,0), V(CATH_X,7.6,0), V(CATH_X,4.9,0)];
   for(let i=0;i<WIRE.length-1;i++) micro2.add(tubeSeg(WIRE[i],WIRE[i+1],0.075,wireMat));
+
+  /* ROUTE is what an ELECTRON follows, which is longer than the wire at both
+     ends: it starts at the anode face where an ion hands it over, climbs the
+     graphite to the terminal, crosses to the other electrode and comes back
+     down to the face where an ion is waiting. The two extra points at each end
+     are what makes the circuit read as a circuit instead of two unrelated
+     events at opposite sides of the screen. */
+  const ROUTE = [V(AN_X-0.70, 0.30, 0.30), V(AN_X, 1.70, 0.10)]
+    .concat(WIRE)
+    .concat([V(CATH_X, 1.70, 0.10), V(CATH_X+0.70, 1.10, 0.30)]);
   const segLen = [];
   let total = 0;
-  for(let i=0;i<WIRE.length-1;i++){ const l = WIRE[i].distanceTo(WIRE[i+1]); segLen.push(l); total += l; }
+  for(let i=0;i<ROUTE.length-1;i++){ const l = ROUTE[i].distanceTo(ROUTE[i+1]); segLen.push(l); total += l; }
   const wireEs = [];
-  for(let i=0;i<7;i++){ const e = electron(); electronFade(e,0); micro2.add(e); wireEs.push({e, off:i/7}); }
+  for(let i=0;i<12;i++){ const e = electron(); electronFade(e,0); micro2.add(e); wireEs.push({e, off:i/12}); }
 
   /* the migrating crowd — all four kinds, going whichever way their charge says */
   const rand = rng(20240924);
@@ -885,20 +910,20 @@ function buildMicro2(){
   };
   Object.values(lbl).forEach(l=>micro2.add(l));
 
-  M2 = {WIRE,segLen,total,wireEs,crowd,cCat,cH,cE,hhBond,deposit,
+  M2 = {ROUTE,segLen,total,wireEs,crowd,cCat,cH,cE,hhBond,deposit,
         aAn,xxBond,ohO,ohH,ohB,ooBond,wB,aE,lbl};
 }
 
 const _wp = new THREE.Vector3();
 function alongWire(u){
-  const {WIRE,segLen,total} = M2;
+  const {ROUTE,segLen,total} = M2;
   let d = clamp01(u)*total;
   for(let i=0;i<segLen.length;i++){
     if(d <= segLen[i] || i === segLen.length-1)
-      return _wp.lerpVectors(WIRE[i], WIRE[i+1], clamp01(d/segLen[i]));
+      return _wp.lerpVectors(ROUTE[i], ROUTE[i+1], clamp01(d/segLen[i]));
     d -= segLen[i];
   }
-  return _wp.copy(WIRE[0]);
+  return _wp.copy(ROUTE[0]);
 }
 
 const _pa=new THREE.Vector3(), _pb=new THREE.Vector3();
@@ -922,11 +947,11 @@ function updateMicro2(t){
   /* ================= the cathode contest ================= */
   const arrive1 = ramp(t, 34.6, 39.4);
   const decided1= ramp(t, 40.0, 41.6);
-  const reject1 = ramp(t, 41.4, 46.0);
+  const reject1 = ramp(t, 41.4, 44.8);
   const took1   = ramp(t, 42.2, 44.4);
-  const pair1   = ramp(t, 43.6, 46.0);
-  const rise1   = Math.max(0, t - 46.6);
-  const settle1 = ramp(t, 44.6, 47.6);
+  const pair1   = ramp(t, 42.8, 44.6);
+  const rise1   = Math.max(0, t - 44.8);
+  const settle1 = ramp(t, 43.0, 45.0);
 
   /* the metal ion */
   _pa.set(lerp(5.0, CATH_X + FACE, arrive1), lerp(2.6, 1.35, arrive1), 0.5);
@@ -958,21 +983,24 @@ function updateMicro2(t){
     h.scale.setScalar(METAL_WINS ? EL.H.r : lerp(EL.H.r, H_ATOM_R, took1));
     hPos.push(_pb.clone());
   });
-  const hhOn = !METAL_WINS ? ramp(t, 45.0, 46.4) : 0;
+  const hhOn = !METAL_WINS ? ramp(t, 43.4, 44.6) : 0;
   hhBond.material.opacity = hhOn;
   hhBond.visible = hhOn > 0.01;
   if(hhBond.visible) placeBond(hhBond, hPos[0], hPos[1], 0.05);
 
-  /* two electrons out of the cathode, into whichever won */
+  /* The two electrons this ion is about to take. They come down through the
+     graphite and out of the face, rather than appearing beside it — the point
+     being that they arrived along the wire from the other electrode. */
   cE.forEach((e,k)=>{
-    _v1.set(CATH_X + 0.78, 1.1 + (k? -0.6 : 0.6), 0.2);
+    _v1.set(CATH_X, 3.4 - k*0.5, 0.10);
+    _v1.lerp(V(CATH_X + 0.78, 1.1 + (k? -0.6 : 0.6), 0.2), ramp(t, 41.0+k*0.3, 42.4+k*0.3));
     const target = METAL_WINS ? cCat.position : hPos[k];
-    _v1.lerp(target, ramp(t, 41.8+k*0.3, 43.8+k*0.3));
+    _v1.lerp(target, ramp(t, 42.4+k*0.3, 43.8+k*0.3));
     e.position.copy(_v1);
-    electronFade(e, ramp(t, 41.2+k*0.3, 42.0+k*0.3) * (1 - ramp(t, 43.6+k*0.3, 44.4+k*0.3)));
+    electronFade(e, ramp(t, 40.6+k*0.3, 41.4+k*0.3) * (1 - ramp(t, 43.6+k*0.3, 44.4+k*0.3)));
   });
   deposit.forEach((d,i)=>{
-    const on = METAL_WINS ? ramp(t, 47.0 + i*0.5, 48.2 + i*0.5) : 0;
+    const on = METAL_WINS ? ramp(t, 43.2 + i*0.28, 44.1 + i*0.28) : 0;
     d.material.opacity = on*0.95;
     d.visible = on > 0.02;
   });
@@ -1066,17 +1094,25 @@ function updateMicro2(t){
     if(k >= nE){ electronFade(e, 0); return; }
     const src = HALIDE_WINS ? anPos[k] : ohO[k].position;
     _v1.copy(src).add(V(0.5, 0.3, 0.25));
-    _v1.lerp(V(AN_X - 0.78, 0.4 + (k-1.5)*0.6, 0.2), ramp(t, 51.6+k*0.3, 53.8+k*0.3));
+    _v1.lerp(V(AN_X - 0.78, 0.4 + (k-1.5)*0.6, 0.2), ramp(t, 51.6+k*0.3, 53.4+k*0.3));
+    /* into the graphite and away up it, which is where they go next */
+    _v1.lerp(V(AN_X, 3.6 + (k-1.5)*0.45, 0.10), ramp(t, 53.4+k*0.3, 55.4+k*0.3));
     e.position.copy(_v1);
-    electronFade(e, ramp(t, 51.0+k*0.3, 51.8+k*0.3) * (1 - ramp(t, 53.6+k*0.3, 54.4+k*0.3)));
+    electronFade(e, ramp(t, 51.0+k*0.3, 51.8+k*0.3) * (1 - ramp(t, 55.0+k*0.3, 55.8+k*0.3)));
   });
 
-  /* the current round the outside */
-  const flowing = ramp(t, 41.0, 42.6);
-  wireEs.forEach((w,i)=>{
-    const u = ((t - 41.0)*0.13 + w.off) % 1;
+  /* The current, running from the moment we arrive in the cell rather than
+     from the middle of the cathode contest — a pupil should see the circuit
+     working before being asked which ion uses it. Each electron fades in as it
+     leaves the anode face and out as it reaches the cathode face, so none of
+     them is ever seen crossing the solution: that is the one leg an electron
+     does not travel, and the ions are what carry the charge there. */
+  const flowing = ramp(t, 33.0, 35.0);
+  wireEs.forEach(w=>{
+    const u = ((t - 33.0)*0.10 + w.off) % 1;
     w.e.position.copy(alongWire(u));
-    electronFade(w.e, flowing*0.95);
+    const ends = Math.min(smooth(u/0.05), smooth((1-u)/0.05));
+    electronFade(w.e, flowing*0.95*ends);
   });
 
   /* ================= labels ================= */
@@ -1139,6 +1175,7 @@ function buildCaptions(){
     {t:27.0, c: thirdSeen},
     {t:29.8, c:'So how does each electrode choose? Down into the solution.'},
     {t:32.0, c:'Every ion is being pulled — positives to the left, negatives to the right.'},
+    {t:33.6, c:'And round the outside, a current: electrons leaving the positive electrode, travelling the wire, arriving at the negative one.'},
     {t:35.4, c:`At the negative electrode, two candidates arrive: ${CT.ion} and H⁺.`},
     {t:39.6, c: METAL_WINS
       ? `And ${CT.name} is LESS reactive than hydrogen — so ${CT.name} is the one discharged.`
@@ -1194,6 +1231,7 @@ const CAM = {
     {t:35.4, p:[-4.4,1.2,11.0],l:[-5.4,0.9,0]},
     {t:39.6, p:[-5.0,1.0,8.6], l:[-5.8,0.6,0]},
     {t:42.4, p:[-5.0,0.8,7.8], l:[-5.9,0.3,0]},
+    {t:44.6, p:[-4.7,1.2,8.4], l:[-5.7,0.5,0]},
     {t:45.6, p:[4.6,1.0,11.0], l:[5.4,0.4,0]},
     {t:49.8, p:[5.0,0.8,8.6],  l:[5.8,0.2,0]},
     {t:52.8, p:[4.8,0.8,8.0],  l:[5.6,0.2,0]},
@@ -1250,9 +1288,18 @@ function updateMacro(t){
     liqMat.opacity = 0.40;
   }
 
-  /* and a copper coating on the cathode, where copper is what is deposited */
-  plate.material.opacity = METAL_WINS ? used*0.96 : 0;
+  /* And a copper coating on the cathode, where copper is what is deposited.
+     This used to follow `used`, the same slow ramp as the solution losing its
+     colour, so at 19.4s — the one moment the camera is on the cathode, with a
+     caption saying it is turning copper-coloured — the coating stood at an
+     opacity of 0.05 and there was nothing to see. The coating APPEARS quickly
+     once the current is on and then thickens; it is the blue draining out of
+     the solution that is slow. */
+  const coat = METAL_WINS ? ramp(t, ON_AT+0.4, 21.6) : 0;
+  plate.material.opacity = coat*0.96;
+  plate.scale.set(lerp(0.72,1.15,used), 1, lerp(0.72,1.15,used));
   plate.material.color.setHex(CT.col);
+  plate.material.color.convertSRGBToLinear();   // rewritten each frame, so convert here
 
   updateBubbles(t);
 }
