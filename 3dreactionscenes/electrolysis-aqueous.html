@@ -207,9 +207,11 @@
    into solution — which is the part that makes the rule memorable, and the
    part a static diagram cannot show.
 
-   The four solutions on offer exercise both rules in all their combinations:
-   brine (H₂ and Cl₂), copper sulfate (Cu and O₂), potassium iodide (H₂ and I₂)
-   and sodium sulfate — where neither ion from the salt is discharged at all and
+   The six solutions on offer exercise both rules in all their combinations:
+   brine (H₂ and Cl₂), potassium iodide (H₂ and I₂) and potassium bromide
+   (H₂ and Br₂), copper sulfate (Cu and O₂), copper chloride (Cu and Cl₂) —
+   where both ions from the salt ARE discharged, so all that is left is water —
+   and sodium sulfate, where neither ion from the salt is discharged at all and
    all you are really doing is splitting the water.
 
    Acts:
@@ -255,6 +257,16 @@ const SOLUTIONS = {
     leftName:'potassium hydroxide', leftFormula:'KOH',
     overall:'2KI + 2H₂O → 2KOH + H₂ + I₂'
   },
+  KBr: {
+    formula:'KBr', name:'potassium bromide', common:null, conc:'concentrated',
+    cat:{sym:'K', name:'potassium', ion:'K⁺', col:0xcbb8d4, r:0.74, lblCol:'#e0d0e8',
+         ionR:0.56, beatsH:false},
+    an:{label:'Br⁻', name:'bromide', halide:true, sym:'Br', mol:'Br₂', molName:'bromine',
+        col:0xa8412a, lblCol:'#e09080', r:0.72, ionR:0.88},
+    sol:null, solWord:'colourless',
+    leftName:'potassium hydroxide', leftFormula:'KOH',
+    overall:'2KBr + 2H₂O → 2KOH + H₂ + Br₂'
+  },
   CuSO4: {
     formula:'CuSO₄', name:'copper(II) sulfate', common:null, conc:'dilute',
     cat:{sym:'Cu', name:'copper', ion:'Cu²⁺', col:0xc8763c, r:0.66, lblCol:'#f0b07a',
@@ -264,6 +276,16 @@ const SOLUTIONS = {
     sol:[0.17,0.47,0.85], solWord:'blue',
     leftName:'sulfuric acid', leftFormula:'H₂SO₄',
     overall:'2CuSO₄ + 2H₂O → 2Cu + O₂ + 2H₂SO₄'
+  },
+  CuCl2: {
+    formula:'CuCl₂', name:'copper(II) chloride', common:null, conc:'concentrated',
+    cat:{sym:'Cu', name:'copper', ion:'Cu²⁺', col:0xc8763c, r:0.66, lblCol:'#f0b07a',
+         ionR:0.54, beatsH:true},
+    an:{label:'Cl⁻', name:'chloride', halide:true, sym:'Cl', mol:'Cl₂', molName:'chlorine',
+        col:0x4fbf72, lblCol:'#8fe0a8', r:0.62, ionR:0.78},
+    sol:[0.17,0.47,0.85], solWord:'blue',
+    leftName:'just water again', leftFormula:'H₂O',
+    overall:'CuCl₂ → Cu + Cl₂'
   },
   Na2SO4: {
     formula:'Na₂SO₄', name:'sodium sulfate', common:null, conc:'dilute',
@@ -509,27 +531,52 @@ const bench = new THREE.Mesh(
 );
 bench.position.y=-0.175; macro.add(bench);
 
+/* Transparent surfaces are the one thing WebGL cannot sort for you. Three.js
+   orders them back-to-front by the distance to each object's ORIGIN, which is
+   useless here: the beaker, its liquid and the two tubes all sit on the same
+   axis at z = 0, so their origins are all about the same distance away and the
+   order comes out arbitrary — and, worse, stable enough to look deliberate.
+   Whichever shell won the toss wrote depth and stamped the tubes out of the
+   picture wherever they lay behind the liquid.
+
+   So the glass and the liquid stop writing depth (nothing inside a beaker
+   should be hidden by the beaker), and every transparent piece of the cell
+   gets an explicit RENDER_ORDER, innermost first. Painting from the inside out
+   means each outer shell tints what is already on screen, which is what
+   looking through glass into a liquid actually does. Opaque things — the
+   electrodes, the bench — still draw first and still occlude properly, because
+   depth TESTING is untouched. */
+const RENDER_ORDER = {
+  bubble:   1,   // gas in the liquid, and the copper on the cathode
+  tubeLiq:  2,   // the liquid standing inside each collecting tube
+  tubeWall: 3,   // the tube itself
+  liquid:   4,   // the bulk of the solution, and its surface
+  beaker:   5    // the outermost wall
+};
+
 const glassMat = new THREE.MeshStandardMaterial({
   color:0xbfd6e8, roughness:0.07, metalness:0.0,
-  transparent:true, opacity:0.17, side:THREE.DoubleSide
+  transparent:true, opacity:0.17, side:THREE.DoubleSide, depthWrite:false
 });
 const steel = new THREE.MeshStandardMaterial({color:0xb9c3cf, metalness:0.9, roughness:0.26});
 const graphite = new THREE.MeshStandardMaterial({color:0x32363d, roughness:0.75, metalness:0.25});
 
 const BK_R = 1.45, LIQ_TOP = 1.95;
 const beakerWall = new THREE.Mesh(new THREE.CylinderGeometry(BK_R,BK_R,2.35,48,1,true), glassMat);
-beakerWall.position.y = 1.175; macro.add(beakerWall);
+beakerWall.position.y = 1.175; beakerWall.renderOrder = RENDER_ORDER.beaker; macro.add(beakerWall);
 const beakerBase = new THREE.Mesh(new THREE.CylinderGeometry(BK_R,BK_R,0.07,48), glassMat);
-beakerBase.position.y = 0.035; macro.add(beakerBase);
+beakerBase.position.y = 0.035; beakerBase.renderOrder = RENDER_ORDER.beaker; macro.add(beakerBase);
 const liqMat = new THREE.MeshStandardMaterial({
-  color:0xdfe9f5, roughness:0.12, metalness:0.0, transparent:true, opacity:0.4
+  color:0xdfe9f5, roughness:0.12, metalness:0.0, transparent:true, opacity:0.4,
+  depthWrite:false
 });
 const liquid = new THREE.Mesh(new THREE.CylinderGeometry(BK_R-0.03,BK_R-0.03,LIQ_TOP,48), liqMat);
-liquid.position.y = LIQ_TOP/2; macro.add(liquid);
+liquid.position.y = LIQ_TOP/2; liquid.renderOrder = RENDER_ORDER.liquid; macro.add(liquid);
 const surface = new THREE.Mesh(new THREE.CircleGeometry(BK_R-0.03,48),
   new THREE.MeshStandardMaterial({color:0xeaf3ff, roughness:0.05, metalness:0.2,
-    transparent:true, opacity:0.4}));
-surface.rotation.x = -Math.PI/2; surface.position.y = LIQ_TOP; macro.add(surface);
+    transparent:true, opacity:0.4, depthWrite:false}));
+surface.rotation.x = -Math.PI/2; surface.position.y = LIQ_TOP;
+surface.renderOrder = RENDER_ORDER.liquid; macro.add(surface);
 
 /* the two electrodes and the collecting tubes over them */
 const EL_X = 0.62, EL_BOT = 0.22, EL_TOP = 3.25;
@@ -546,20 +593,22 @@ function buildElectrodes(){
 const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.095,0.095,1.35,18),
   new THREE.MeshStandardMaterial({color:0xc8763c, roughness:0.42, metalness:0.7,
     transparent:true, opacity:0}));
-plate.position.set(-EL_X, 1.0, 0); macro.add(plate);
+plate.position.set(-EL_X, 1.0, 0); plate.renderOrder = RENDER_ORDER.bubble; macro.add(plate);
 
 const tubes = [];
 [-EL_X, EL_X].forEach((x,i)=>{
   const g = new THREE.Group(); g.position.set(x,0,0); macro.add(g);
   const wall = new THREE.Mesh(
     new THREE.CylinderGeometry(TUBE_R,TUBE_R,TUBE_TOP-TUBE_BOT,30,1,true), glassMat);
-  wall.position.y = TUBE_BOT + (TUBE_TOP-TUBE_BOT)/2; g.add(wall);
+  wall.position.y = TUBE_BOT + (TUBE_TOP-TUBE_BOT)/2;
+  wall.renderOrder = RENDER_ORDER.tubeWall; g.add(wall);
   const cap = new THREE.Mesh(
     new THREE.SphereGeometry(TUBE_R,26,16,0,Math.PI*2,0,Math.PI/2), glassMat);
-  cap.position.y = TUBE_TOP; g.add(cap);
+  cap.position.y = TUBE_TOP; cap.renderOrder = RENDER_ORDER.tubeWall; g.add(cap);
   /* the liquid inside it, whose level falls as gas pushes it down */
   const inner = new THREE.Mesh(
     new THREE.CylinderGeometry(TUBE_R-0.025,TUBE_R-0.025,1,30), liqMat);
+  inner.renderOrder = RENDER_ORDER.tubeLiq;
   g.add(inner);
   tubes.push({g, inner, x});
 });
@@ -599,6 +648,7 @@ function buildBubbles(){
     for(let i=0;i<n;i++){
       const m = new THREE.Mesh(SPH_LO, new THREE.MeshStandardMaterial({
         color:0xeaf4ff, roughness:0.05, metalness:0.1, transparent:true, opacity:0.5}));
+      m.renderOrder = RENDER_ORDER.bubble;
       const b = {m, x, birth: ON_AT+0.5 + rand()*13.0,
                  ox:(rand()-0.5)*0.16, oz:(rand()-0.5)*0.16,
                  y0: EL_BOT + 0.25 + rand()*0.5,

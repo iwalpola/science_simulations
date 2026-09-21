@@ -1415,11 +1415,15 @@ function scene14(){
     chk(S.equation().includes('→'), `${k}: no overall equation`);
     checkTimeline(S, 20, {macro:0, micro1:7.0, micro2:32.0});
   }
-  console.log('    4 solutions:');
+  console.log(`    ${rows.length} solutions:`);
   rows.forEach(r => console.log('      ' + r));
-  /* the menu must exercise both rules both ways, or it teaches only half of it */
-  chk(metalWins === 1, `exactly one solution should deposit its metal, got ${metalWins}`);
-  chk(halideWins === 2, `two solutions should give a halogen, got ${halideWins}`);
+  /* the menu must exercise both rules both ways, or it teaches only half of it.
+     How MANY solutions land on each side is a matter of taste — that every side
+     is landed on at all is not. */
+  chk(metalWins >= 1, 'at least one solution should deposit its metal');
+  chk(metalWins < rows.length, 'at least one solution should give hydrogen at the cathode');
+  chk(halideWins >= 1, 'at least one solution should give a halogen');
+  chk(halideWins < rows.length, 'at least one solution should give oxygen at the anode');
   console.log('      both rules are exercised in both directions');
 
   /* sodium sulfate is the special case: neither salt ion is discharged */
