@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Avogadro Constant Help</title>
+<style>
+:root{
+  --bg:#f6f4ef; --card:#ffffff; --ink:#1f2430; --muted:#5d6675; --line:#e2ddd2;
+  --shop:#c85a17; --shop-soft:#fdeee3; --chem:#2861d4; --chem-soft:#e6eefc;
+  --tag:#fff4c2; --tagline:#e3c65a; --good:#1c8a4c; --good-soft:#e3f5ea;
+  --bad:#b83a3a; --bad-soft:#fbe7e7; --warn-soft:#fff6dc; --stage:#fbfaf7; --metal:#7b8391;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121418; --card:#1b1f26; --ink:#e7eaf0; --muted:#9ba4b3; --line:#2c323c;
+    --shop:#f08a45; --shop-soft:#3a2818; --chem:#7ea6f7; --chem-soft:#1a2740;
+    --tag:#4a3f14; --tagline:#8a7424; --good:#4cc47f; --good-soft:#15301f;
+    --bad:#f07a7a; --bad-soft:#3a1a1a; --warn-soft:#352c12; --stage:#161a20; --metal:#8f98a8;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121418; --card:#1b1f26; --ink:#e7eaf0; --muted:#9ba4b3; --line:#2c323c;
+  --shop:#f08a45; --shop-soft:#3a2818; --chem:#7ea6f7; --chem-soft:#1a2740;
+  --tag:#4a3f14; --tagline:#8a7424; --good:#4cc47f; --good-soft:#15301f;
+  --bad:#f07a7a; --bad-soft:#3a1a1a; --warn-soft:#352c12; --stage:#161a20; --metal:#8f98a8;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;font-size:17px;line-height:1.55}
+main{max-width:900px;margin:0 auto;padding:0 16px 80px}
+h1{font-size:clamp(26px,5vw,38px);line-height:1.15;margin:28px 0 6px}
+h2{font-size:24px;margin:44px 0 10px}
+h3{font-size:19px;margin:22px 0 6px}
+.lede{color:var(--muted);margin:0 0 18px}
+sup,sub{line-height:0}
+.shop-c{color:var(--shop);font-weight:600}.chem-c{color:var(--chem);font-weight:600}
+
+nav.jump{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);
+  display:flex;gap:6px;flex-wrap:wrap;padding:8px 0;margin:0 0 10px}
+nav.jump a{font-size:14px;text-decoration:none;color:var(--ink);border:1px solid var(--line);
+  background:var(--card);border-radius:99px;padding:3px 11px}
+nav.jump a:hover{border-color:var(--chem)}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 18px;margin:16px 0}
+.tip{background:var(--warn-soft);border:1px solid var(--tagline);border-radius:12px;padding:12px 16px;margin:14px 0}
+.tip p{margin:6px 0}
+kbd{font-family:inherit;font-size:.85em;border:1px solid var(--muted);border-bottom-width:2px;border-radius:5px;padding:0 5px;background:var(--card)}
+
+table.map{width:100%;border-collapse:collapse;margin:10px 0;font-size:16px}
+table.map th,table.map td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+table.map th:first-child{color:var(--shop)} table.map th:last-child{color:var(--chem)}
+
+.moves{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin:12px 0}
+.move-card{border-radius:12px;padding:14px 16px;border:2px solid var(--line);background:var(--card)}
+.move-card .big{font-size:30px;font-weight:700;line-height:1}
+.move-card.div{border-color:#8a6ad6}.move-card.mul{border-color:#1c9a8c}
+.move-card p{margin:6px 0}
+
+.nuclide{display:inline-flex;flex-direction:column;font-size:.62em;line-height:1.05;vertical-align:-.35em;text-align:right;margin-right:1px}
+
+/* question cards */
+article.q{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin:22px 0}
+article.q>header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.qnum{font-weight:800;font-size:20px;background:var(--ink);color:var(--bg);border-radius:8px;padding:1px 10px}
+.badge{font-size:13px;font-weight:700;border-radius:99px;padding:2px 10px;color:#fff}
+.badge.div{background:#7a58cc}.badge.mul{background:#16877b}.badge.add{background:#a0671c}.badge.cmp{background:#51607a}
+.orig{border-left:4px solid var(--chem);background:var(--chem-soft);padding:8px 12px;border-radius:0 8px 8px 0;margin:8px 0}
+.story{border-left:4px solid var(--shop);background:var(--shop-soft);padding:8px 12px;border-radius:0 8px 8px 0;margin:8px 0}
+
+/* scene */
+.scene{margin:12px 0}
+.scene-bar{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.mode{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.mode button{border:0;background:var(--card);color:var(--muted);padding:6px 12px;font:inherit;font-size:14px;cursor:pointer}
+.mode button.on[data-mode="shop"]{background:var(--shop);color:#fff}
+.mode button.on[data-mode="chem"]{background:var(--chem);color:#fff}
+button.play{font:inherit;font-size:15px;font-weight:600;border:0;border-radius:10px;padding:7px 16px;cursor:pointer;
+  background:var(--shop);color:#fff}
+.scene.chem button.play{background:var(--chem)}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--chem);outline-offset:2px}
+.scene-row{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start}
+.stage{position:relative;overflow:hidden;flex:1 1 300px;min-width:0;height:300px;background:var(--stage);
+  border:1px solid var(--line);border-radius:12px;border-top:4px solid var(--shop)}
+.scene.chem .stage{border-top-color:var(--chem)}
+
+.obj{position:absolute;left:0;top:0;transition:transform .7s cubic-bezier(.45,.05,.25,1),opacity .5s}
+.bigtag{background:var(--tag);border:1px solid var(--tagline);border-radius:9px;padding:4px 12px;font-weight:600;
+  font-size:15px;text-align:center;max-width:calc(100% - 20px);width:max-content;z-index:3}
+.counter{font-size:14px;color:var(--muted);white-space:nowrap;text-align:center;z-index:3}
+.counter b{color:var(--ink)}
+.caption{font-size:14px;font-weight:600;text-align:center;width:max-content;max-width:calc(100% - 16px);z-index:3}
+.heading{font-weight:700;font-size:16px}
+.pulse{animation:flash 1s ease-out}
+@keyframes flash{0%{box-shadow:0 0 0 8px rgba(255,190,40,.7)}100%{box-shadow:0 0 0 0 rgba(255,190,40,0)}}
+
+.item{line-height:1;z-index:2}
+.item .tag{position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:2px;font-size:11px;line-height:1.3;
+  background:var(--tag);border:1px solid var(--tagline);border-radius:4px;padding:0 4px;white-space:nowrap;opacity:0;transition:opacity .3s}
+.item.tagged .tag,.lens.tagged .tag{opacity:1}
+.box{border:2px solid #b07a3a;background:rgba(214,166,106,.22);border-radius:6px}
+.box.faded{opacity:.25}
+.box .blabel{position:absolute;top:100%;left:50%;transform:translateX(-50%);font-size:12px;color:var(--muted);white-space:nowrap;margin-top:2px}
+.ball{display:inline-block;width:.9em;height:.9em;border-radius:50%}
+.ball.golf{background:radial-gradient(circle at 35% 30%,#fff,#e2e2e2 60%,#b5b5b5);box-shadow:inset 0 0 0 1px #999}
+.ball.tt{background:radial-gradient(circle at 35% 30%,#ffe2bd,#ff8a1f 75%)}
+.ball.cricket{background:radial-gradient(circle at 35% 30%,#ef7474,#9c1b1b 75%);box-shadow:inset 0 0 0 1px #6d1010}
+.sack{display:grid;place-items:center;text-align:center;padding:10px 4px 4px;font-size:11px;font-weight:700;line-height:1.2;
+  color:#3b2a10;background:linear-gradient(#d4b27a,#a8834a);border-radius:22% 22% 42% 42%/14% 14% 30% 30%;
+  box-shadow:inset 0 -10px 14px rgba(0,0,0,.18)}
+.sack::before{content:"";position:absolute;top:-5px;left:30%;right:30%;height:9px;border-radius:5px;background:#8a6630}
+.scene.chem .sack,.sack.molesack{color:#fff;background:linear-gradient(#86aaf2,#3f6cc9)}
+.scene.chem .sack::before,.sack.molesack::before{background:#2c4f99}
+.sack small{font-weight:500;font-size:10px}
+.dot{width:8px;height:5px;border-radius:50%;background:#f1e7cc;border:1px solid #b9a270;z-index:2}
+.dot.adot{width:8px;height:8px;background:var(--chem);border:0}
+.dot.emo{width:auto;height:auto;border:0;background:none;font-size:13px}
+.grain{display:inline-block;width:.9em;height:.5em;border-radius:50%;background:#f1e7cc;border:2px solid #b9a270}
+.atom{display:inline-grid;place-items:center;width:1em;height:1em;border-radius:50%;color:#fff;font-weight:700;font-size:1em;
+  background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.55) 0 8%,var(--c) 60%)}
+.atom span{font-size:.38em}
+.lens{display:grid;place-items:center;border-radius:50%;border:5px solid var(--metal);background:var(--card);z-index:4;line-height:1}
+.lens::after{content:"";position:absolute;width:10px;height:36%;background:var(--metal);border-radius:5px;right:-6%;bottom:-24%;transform:rotate(-45deg)}
+.lens .tag{position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:12px;font-size:13px;font-weight:600;
+  background:var(--tag);border:1px solid var(--tagline);border-radius:6px;padding:1px 7px;white-space:nowrap;opacity:0;transition:opacity .4s}
+.basket{width:150px;height:62px;background:repeating-linear-gradient(45deg,#c58b45 0 6px,#a8702f 6px 12px);
+  clip-path:polygon(0 0,100% 0,88% 100%,12% 100%)}
+.ring{border:1.5px dashed var(--muted);border-radius:50%;opacity:.7}
+.nuc{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;color:#fff;font-size:12px;font-weight:700}
+.nuc.p{background:radial-gradient(circle at 35% 30%,#f39a9a,#d23b3b 70%)}
+.nuc.n{background:radial-gradient(circle at 35% 30%,#c9ced8,#7d8594 70%)}
+.nuc.e{width:11px;height:11px;font-size:8px;background:#2f7de1}
+.glabel{font-size:11px;color:var(--muted);white-space:nowrap;text-align:center}
+.receipt{flex:0 1 250px;min-width:230px;font-family:ui-monospace,Consolas,"Courier New",monospace;font-size:13px;line-height:1.5;
+  background:#fffef6;color:#222;border:1px dashed #b9b19a;border-radius:4px;padding:10px 12px;min-height:120px}
+.receipt .rhead{text-align:center;font-weight:700;border-bottom:1px dashed #b9b19a;padding-bottom:4px;margin-bottom:4px}
+.receipt .line{animation:fadein .4s}
+.receipt .total{border-top:1px dashed #b9b19a;margin-top:4px;padding-top:4px;font-weight:700}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+.beam{position:absolute;left:0;top:0;height:8px;border-radius:4px;background:var(--metal);transition:transform .9s cubic-bezier(.3,.1,.2,1);z-index:2}
+.pan{position:absolute;left:0;top:0;width:110px;height:78px;transition:transform .9s cubic-bezier(.3,.1,.2,1);z-index:2}
+.stage.fast .beam,.stage.fast .pan{transition-duration:.06s;transition-timing-function:linear}
+.pan .string{position:absolute;left:50%;top:0;width:2px;height:50px;background:var(--metal);transform:translateX(-50%)}
+.pan .plate{position:absolute;left:0;right:0;top:50px;height:8px;border-radius:0 0 55px 55px/0 0 8px 8px;background:var(--metal)}
+.pan .load{position:absolute;left:0;right:0;bottom:28px;display:flex;justify-content:center;align-items:flex-end;font-size:32px;line-height:1}
+.pan .plabel{position:absolute;top:62px;left:50%;transform:translateX(-50%);font-size:12px;white-space:nowrap;color:var(--muted)}
+.pivot{width:0;height:0;border-left:24px solid transparent;border-right:24px solid transparent;border-bottom:100px solid var(--metal);opacity:.8}
+.bp{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:50%;color:#fff;font-size:16px;font-weight:700}
+.bp.p{background:radial-gradient(circle at 35% 30%,#f39a9a,#d23b3b 70%)}
+.bp.n{background:radial-gradient(circle at 35% 30%,#c9ced8,#7d8594 70%)}
+.drop{animation:drop .5s cubic-bezier(.5,0,.8,.6)}
+@keyframes drop{from{transform:translateY(-70px);opacity:0}to{transform:none;opacity:1}}
+.pile{display:block;width:6px;height:3px;border-radius:50% 50% 0 0/100% 100% 0 0}
+.pile.e{background:radial-gradient(circle,#2f7de1 0 2px,transparent 2.5px) 0 0/6px 6px,#bcd4f7}
+.pile.s{background:radial-gradient(circle,#e0409a 0 2px,transparent 2.5px) 0 0/7px 7px,radial-gradient(circle,#f7b733 0 2px,transparent 2.5px) 3px 3px/7px 7px,#fbe3ef}
+
+/* checker & steps */
+.check{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:14px 0 6px;padding:12px 14px;border-radius:12px;background:var(--chem-soft)}
+.check label{font-weight:600}
+.check input{font:inherit;width:190px;max-width:100%;padding:5px 9px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+.check button,.steps-bar button{font:inherit;font-size:15px;border:1px solid var(--chem);color:var(--chem);background:var(--card);border-radius:9px;padding:5px 13px;cursor:pointer}
+.check .fb{flex-basis:100%;font-size:15px}
+.fb.ok{color:var(--good)}.fb.no{color:var(--bad)}
+.steps{margin:10px 0 4px}
+.steps-bar{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}
+.sgrid{display:grid;grid-template-columns:2.2em 1fr 1fr;border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:16px}
+.sgrid>div{padding:8px 10px;border-top:1px solid var(--line)}
+.sgrid .h{font-weight:700;border-top:0}
+.sgrid .h.s{background:var(--shop-soft);color:var(--shop)}.sgrid .h.c{background:var(--chem-soft);color:var(--chem)}
+.sgrid .n{font-weight:700;color:var(--muted);text-align:center}
+.sgrid .hide{display:none}
+@media (max-width:560px){
+  .sgrid{grid-template-columns:1.6em 1fr 1fr;font-size:14px}
+  .sgrid>div{padding:6px 6px}
+  article.q{padding:14px 12px}
+}
+.note{font-size:15px;color:var(--muted);margin:8px 0}
+.summary li{margin:6px 0}
+footer{color:var(--muted);font-size:14px;margin-top:40px}
+@media (prefers-reduced-motion: reduce){
+  .obj,.beam,.pan{transition-duration:.15s}
+  .pulse,.drop,.receipt .line{animation:none}
+}
+</style>
+</head>
+<body>
+<main>
+<h1>The Avogadro constant, explained with shopping</h1>
+<p class="lede">Help for Chemsheets GCSE 1091. Work through it from the top. Each question has a <span class="shop-c">🛒 shop version</span> first, then the <span class="chem-c">🧪 worksheet version</span>. The maths is the same both times.</p>
+
+<nav class="jump" aria-label="Jump to">
+  <a href="#idea">Big idea</a><a href="#tips">Calculator</a><a href="#q1">Q1</a><a href="#q2">Q2</a><a href="#q3">Q3</a><a href="#q4">Q4</a><a href="#pattern">Pattern</a>
+</nav>
+
+<section id="idea">
+<h2>The big idea: a mole is just a pack size</h2>
+<p>In a shop, eggs come in boxes of 12. We call 12 things <b>a dozen</b>.</p>
+<p>Chemists count atoms in packs too. But atoms are so tiny that the pack has to be <b>enormous</b>: 602,200,000,000,000,000,000,000 atoms. That pack is called <b>a mole</b>. The number in it, 6.022 × 10<sup>23</sup>, is the <b>Avogadro constant</b>.</p>
+<div class="scene" data-scene="intro" data-notoggle></div>
+<p class="note">If you counted one atom every second, it would take you about 19,000,000,000,000,000 years to count one mole. That's over a million times the age of the Universe.</p>
+
+<h3>Translate shop → chemistry</h3>
+<table class="map">
+  <tr><th>🛒 In the shop</th><th>🧪 On the worksheet</th></tr>
+  <tr><td>one item (one egg)</td><td>one atom</td></tr>
+  <tr><td><b>price</b> of one item</td><td><b>mass</b> of one atom</td></tr>
+  <tr><td>a pack of 12 (a dozen)</td><td>a mole: a pack of 6.022 × 10<sup>23</sup></td></tr>
+  <tr><td>how many packs you buy</td><td>how many moles</td></tr>
+  <tr><td>price of the whole lot</td><td>mass of the whole lot</td></tr>
+</table>
+
+<h3>There are only two moves</h3>
+<div class="moves">
+  <div class="move-card div"><div class="big">÷</div>
+    <p><b>You know the whole lot and want ONE.</b></p>
+    <p>A box of 12 costs £6.00, so one costs £6.00 ÷ 12.</p></div>
+  <div class="move-card mul"><div class="big">×</div>
+    <p><b>You know ONE and want the whole lot.</b></p>
+    <p>One can costs 65p, so 24 cans cost 24 × 65p.</p></div>
+</div>
+<div class="tip"><p><b>Step 0, every time: count the items.</b></p>
+<p>number of items = number of packs × pack size</p>
+<p>number of atoms = number of moles × 6.022 × 10<sup>23</sup></p></div>
+</section>
+
+<section id="tips">
+<h2>Before you start: two calculator tips</h2>
+<div class="tip">
+<p><b>Typing 6.022 × 10<sup>23</sup>.</b> Use the <kbd>×10<sup>x</sup></kbd> button (on some calculators it's <kbd>EXP</kbd> or <kbd>EE</kbd>): type <kbd>6.022</kbd> <kbd>×10<sup>x</sup></kbd> <kbd>23</kbd>.</p>
+<p>⚠️ <b>Dividing by it:</b> if you type <code>12 ÷ 6.022 × 10^23</code>, the calculator works out (12 ÷ 6.022) and then multiplies by 10<sup>23</sup>. That's completely wrong. Use the <kbd>×10<sup>x</sup></kbd> button, or brackets: <code>12 ÷ (6.022 × 10^23)</code>.</p>
+</div>
+<div class="tip">
+<p><b>Significant figures (s.f.).</b> Start counting at the first digit that isn't zero.</p>
+<p>45.93 to 3 s.f. → <b>45.9</b> &nbsp;·&nbsp; 0.000545 has 3 s.f. &nbsp;·&nbsp; 1.9927 × 10<sup>−23</sup> to 3 s.f. → <b>1.99 × 10<sup>−23</sup></b> (the ×10 part doesn't change).</p>
+<p>To type an answer into the boxes on this page, write <code>1.99e-23</code> or <code>1.99x10^-23</code>.</p>
+</div>
+</section>
+
+<section id="q1">
+<h2>Question 1: know the whole lot, find ONE <span class="badge div">÷ share out</span></h2>
+
+<article class="q" id="q1a">
+  <header><span class="qnum">1a</span><span class="badge div">÷</span></header>
+  <p class="story"><b>🛒 Shop:</b> A box of 12 cupcakes costs £6.00. How much is one cupcake?</p>
+  <div class="scene" data-scene="q1a"></div>
+  <p class="orig"><b>🧪 Worksheet:</b> One dozen golf balls have a mass of 551.16 g. Calculate the mass of one golf ball (3 s.f.).</p>
+  <div class="check" data-id="q1a"></div>
+  <div class="steps" data-id="q1a"></div>
+</article>
+
+<article class="q" id="q1b">
+  <header><span class="qnum">1b</span><span class="badge div">÷</span></header>
+  <p class="story"><b>🛒 Shop:</b> 3 boxes of eggs (12 in each box) cost £5.40 altogether. How much is one egg?</p>
+  <div class="scene" data-scene="q1b"></div>
+  <p class="orig"><b>🧪 Worksheet:</b> Three dozen table tennis balls have a mass of 97.20 g. Calculate the mass of one table tennis ball (3 s.f.).</p>
+  <div class="check" data-id="q1b"></div>
+  <div class="steps" data-id="q1b"></div>
+  <p class="note">Watch out: don't just divide by 3. Three is the number of <i>boxes</i>. You need to share between all 36 <i>items</i>.</p>
+</article>
+
+<article class="q" id="q1c">
+  <header><span class="qnum">1c</span><span class="badge div">÷</span></header>
+  <p>Now the pack gets <b>huge</b>. Think of a bag of rice: lots of grains, so each grain costs almost nothing.</p>
+  <p class="story"><b>🛒 Shop:</b> A bag of rice holds 50,000 grains and costs £1.20. How much does one grain cost?</p>
+  <div class="scene" data-scene="q1c"></div>
+  <p class="orig"><b>🧪 Worksheet:</b> One mole of <span class="nuclide"><sup>12</sup><sub>&nbsp;</sub></span>C atoms has a mass of 12.000 g. Calculate the mass of one <span class="nuclide"><sup>12</sup><sub>&nbsp;</sub></span>C atom (3 s.f.).</p>
+  <div class="check" data-id="q1c"></div>
+  <div class="steps" data-id="q1c"></div>
+  <p class="note">A huge pack means a tiny amount for each item. Your answer should be a very small number, with a big negative power of ten.</p>
+</article>
+
+<article class="q" id="q1d">
+  <header><span class="qnum">1d</span><span class="badge div">÷</span></header>
+  <p class="story"><b>🛒 Shop:</b> 5 bags of rice (50,000 grains in each) cost £6.00 altogether. How much does one grain cost?</p>
+  <div class="scene" data-scene="q1d"></div>
+  <p class="orig"><b>🧪 Worksheet:</b> 5.0 moles of <span class="nuclide"><sup>197</sup><sub>&nbsp;</sub></span>Au atoms have a mass of 984.8 g. Calculate the mass of one <span class="nuclide"><sup>197</sup><sub>&nbsp;</sub></span>Au atom (3 s.f.).</p>
+  <div class="check" data-id="q1d"></div>
+  <div class="steps" data-id="q1d"></div>
+  <p class="note">Another way that also works: find the price of one bag first (£6.00 ÷ 5), then share that between the grains. In chemistry: 984.8 ÷ 5.0 = 196.96 g for one mole, then ÷ 6.022 × 10<sup>23</sup>.</p>
+</article>
+</section>
+
+<section id="q2">
+<h2>Question 2: know ONE, find the whole lot <span class="badge mul">× multiply</span></h2>
+<p>Now it's the other way round. You know the price of one item and want the price of many, so you <b>multiply</b>.</p>
+
+<article class="q" id="q2a">
+  <header><span class="qnum">2a</span><span class="badge mul">×</span></header>
+  <p class="story"><b>🛒 Shop:</b> One can of cola costs 65p. How much do two dozen cans cost?</p>
+  <div class="scene" data-scene="q2a"></div>
+  <p class="orig"><b>🧪 Worksheet:</b> One cricket ball has a mass of 162.0 g. Calculate the mass of two dozen cricket balls (4 s.f.).</p>
+  <div class="check" data-id="q2a"></div>
+  <div class="steps" data-id="q2a"></div>
+</article>
+
+<article class="q" id="q2b">
+  <header><span class="qnum">2b</span><span class="badge mul">×</span></header>
+  <p class="story"><b>🛒 Shop:</b> One grain of rice costs £0.000024. How much do 3 bags cost (50,000 grains in each)?</p>
+  <div class="scene" data-scene="q2b"></div>
+  <p class="orig"><b>🧪 Worksheet:</b> One <span class="nuclide"><sup>63</sup><sub>&nbsp;</sub></span>Cu atom has a mass of 1.045 × 10<sup>−22</sup> g. Calculate the mass of 3.0 moles of <span class="nuclide"><sup>63</sup><sub>&nbsp;</sub></span>Cu atoms (4 s.f.).</p>
+  <div class="check" data-id="q2b"></div>
+  <div class="steps" data-id="q2b"></div>
+</article>
+
+<article class="q" id="q2c">
+  <header><span class="qnum">2c</span><span class="badge mul">×</span></header>
+  <p>You don't have to buy whole packs. Moles don't have to be whole numbers either.</p>
+  <p class="story"><b>🛒 Shop:</b> One grain of rice costs £0.000024. You buy a small scoop that is 0.025 of a bag. How much does the scoop cost?</p>
+  <div class="scene" data-scene="q2c"></div>
+  <p class="orig"><b>🧪 Worksheet:</b> One <span class="nuclide"><sup>109</sup><sub>&nbsp;</sub></span>Ag atom has a mass of 1.808 × 10<sup>−22</sup> g. Calculate the mass of 0.02500 moles of <span class="nuclide"><sup>109</sup><sub>&nbsp;</sub></span>Ag atoms (4 s.f.).</p>
+  <div class="check" data-id="q2c"></div>
+  <div class="steps" data-id="q2c"></div>
+</article>
+</section>
+
+<section id="q3">
+<h2>Question 3: a shopping basket <span class="badge add">+ add up the bill</span></h2>
+<p>An atom is like a basket with three kinds of item in it. Here are the "prices", which are really the masses from the worksheet table:</p>
+<table class="map">
+  <tr><th>🛒 Basket item</th><th>🧪 Particle and mass</th></tr>
+  <tr><td>🥪 sandwich: £1.673</td><td>proton: 1.673 × 10<sup>−24</sup> g</td></tr>
+  <tr><td>🧃 drink: £1.675</td><td>neutron: 1.675 × 10<sup>−24</sup> g</td></tr>
+  <tr><td>🍬 sweet: £0.000911 (almost free!)</td><td>electron: 9.110 × 10<sup>−28</sup> g</td></tr>
+</table>
+<p class="note">These are silly prices. I copied the digits straight from the table so you can see it really is the same sum.</p>
+
+<article class="q" id="q3a">
+  <header><span class="qnum">3a</span></header>
+  <p class="orig"><b>🧪 Worksheet:</b> How many protons, neutrons and electrons are in an atom of <span class="nuclide"><sup>7</sup><sub>3</sub></span>Li?</p>
+  <p>Think of the symbol as an order slip: <span style="font-size:1.6em"><span class="nuclide"><sup>7</sup><sub>3</sub></span>Li</span></p>
+  <ul>
+    <li><b>Bottom number (3)</b> is the atomic number. It tells you the <b>protons</b> (🥪 sandwiches).</li>
+    <li><b>Top number (7)</b> is the mass number. It counts the <b>heavy things</b>, protons + neutrons (🥪 + 🧃). The sweets are too light to count.</li>
+    <li>Meal deal rule: <b>one sweet with every sandwich</b>. An atom has no overall charge, so electrons = protons.</li>
+  </ul>
+  <div class="steps" data-id="q3a"></div>
+</article>
+
+<article class="q" id="q3b">
+  <header><span class="qnum">3b</span><span class="badge add">+</span></header>
+  <p class="story"><b>🛒 Shop:</b> Put 3 sandwiches, 4 drinks and 3 sweets in a basket. What is the bill?</p>
+  <div class="scene" data-scene="q3b" data-receipt></div>
+  <p class="orig"><b>🧪 Worksheet:</b> Calculate the mass of one atom of <span class="nuclide"><sup>7</sup><sub>3</sub></span>Li using your answer to (a) (4 s.f.).</p>
+  <div class="check" data-id="q3b"></div>
+  <div class="steps" data-id="q3b"></div>
+  <p class="note">The electrons barely change the answer, just like the sweets barely change the bill.</p>
+</article>
+
+<article class="q" id="q3c">
+  <header><span class="qnum">3c</span><span class="badge mul">×</span></header>
+  <p class="story"><b>🛒 Shop:</b> One basket costs £11.72. A school orders a crate of 30 identical baskets. What is the total?</p>
+  <div class="scene" data-scene="q3c"></div>
+  <p class="orig"><b>🧪 Worksheet:</b> Calculate the mass of one mole of <span class="nuclide"><sup>7</sup><sub>3</sub></span>Li atoms using your answer to (b) and the Avogadro constant (4 s.f.).</p>
+  <div class="check" data-id="q3c"></div>
+  <div class="steps" data-id="q3c"></div>
+  <p class="note">Your answer is almost exactly 7, the mass number. That's not a coincidence. See <a href="#pattern">the pattern</a> at the end.</p>
+</article>
+</section>
+
+<section id="q4">
+<h2>Question 4: compare prices <span class="badge cmp">÷ relative</span></h2>
+<p><b>"Relative to a proton"</b> means <i>"how many protons is it worth?"</i> In the shop you'd ask <i>"how many sandwiches is it worth?"</i> You divide by the price of a sandwich.</p>
+<p>The units cancel (£ ÷ £, or g ÷ g), so <b>relative masses have no units</b>.</p>
+
+<article class="q" id="q4n">
+  <header><span class="qnum">4</span><span class="badge cmp">neutron</span></header>
+  <p class="story"><b>🛒 Shop:</b> A sandwich costs £1.673 and a drink costs £1.675. How many sandwiches is a drink worth?</p>
+  <div class="scene" data-scene="q4n"></div>
+  <p class="orig"><b>🧪 Worksheet:</b> Find the mass of a neutron relative to the mass of one proton (3 s.f.).</p>
+  <div class="check" data-id="q4n"></div>
+  <div class="steps" data-id="q4n"></div>
+</article>
+
+<article class="q" id="q4e">
+  <header><span class="qnum">4</span><span class="badge cmp">electron</span></header>
+  <p class="story"><b>🛒 Shop:</b> A sweet costs £0.000911. How many sandwiches is a sweet worth? (And how many sweets would it take to pay for one sandwich?)</p>
+  <div class="scene" data-scene="q4e"></div>
+  <p class="orig"><b>🧪 Worksheet:</b> Find the mass of an electron relative to the mass of one proton (3 s.f.).</p>
+  <div class="check" data-id="q4e"></div>
+  <div class="steps" data-id="q4e"></div>
+</article>
+</section>
+
+<section id="pattern">
+<h2>Spot the pattern: why such a weird pack size?</h2>
+<p>Look at the mass of <b>one mole</b> of each atom from your answers:</p>
+<table class="map">
+  <tr><th>Atom (mass number)</th><th>Mass of 1 mole</th></tr>
+  <tr><td><span class="nuclide"><sup>12</sup><sub>&nbsp;</sub></span>C (12)</td><td>12.000 g (Q1c)</td></tr>
+  <tr><td><span class="nuclide"><sup>7</sup><sub>&nbsp;</sub></span>Li (7)</td><td>7.058 g (Q3c)</td></tr>
+  <tr><td><span class="nuclide"><sup>63</sup><sub>&nbsp;</sub></span>Cu (63)</td><td>188.8 ÷ 3.0 = 62.9 g (Q2b)</td></tr>
+  <tr><td><span class="nuclide"><sup>109</sup><sub>&nbsp;</sub></span>Ag (109)</td><td>2.722 ÷ 0.02500 = 108.9 g (Q2c)</td></tr>
+  <tr><td><span class="nuclide"><sup>197</sup><sub>&nbsp;</sub></span>Au (197)</td><td>984.8 ÷ 5.0 = 196.96 g (Q1d)</td></tr>
+</table>
+<p>The pack size 6.022 × 10<sup>23</sup> was <b>chosen on purpose</b>, so that one mole of atoms has a mass in grams about equal to its mass number. It's like a shop picking a pack size so that the price of the pack in pounds matches the number printed on each item. That turns tiny, awkward numbers into friendly ones.</p>
+
+<div class="card summary">
+<h3 style="margin-top:0">Cheat sheet</h3>
+<ul>
+  <li><b>Count the items first:</b> atoms = moles × 6.022 × 10<sup>23</sup> (just like items = packs × pack size).</li>
+  <li><b>Whole lot → one:</b> divide. Mass of one atom = total mass ÷ number of atoms.</li>
+  <li><b>One → whole lot:</b> multiply. Total mass = mass of one atom × number of atoms.</li>
+  <li><b>Mass of one atom:</b> add up (number × mass) for protons, neutrons and electrons, like adding up a bill.</li>
+  <li><b>Relative mass:</b> divide by the mass of a proton. No units.</li>
+  <li>Use the <kbd>×10<sup>x</sup></kbd> button, and give the number of s.f. the question asks for.</li>
+</ul>
+</div>
+</section>
+
+<footer>Help page for Chemsheets GCSE 1091 (Avogadro constant). Worksheet © www.CHEMSHEETS.co.uk.</footer>
+</main>
+
+<script>
+'use strict';
+const ABORT = Symbol('abort');
+const SLOW = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0.25 : 1;
+
+function el(tag, cls, html){ const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+function place(e, x, y, s = 1){ e.style.transform = `translate(${x}px,${y}px) translate(-50%,-50%) scale(${s})`; }
+function pulse(e){ e.classList.remove('pulse'); void e.offsetWidth; e.classList.add('pulse'); }
+const X = n => `×10<sup>${n < 0 ? '−' + (-n) : n}</sup>`;
+function sci(v, sf = 4){
+  if (v === 0) return '0';
+  let e = Math.floor(Math.log10(Math.abs(v)));
+  let s = (v / Math.pow(10, e)).toFixed(sf - 1);
+  if (Math.abs(parseFloat(s)) >= 10){ e++; s = (v / Math.pow(10, e)).toFixed(sf - 1); }
+  return `${s} ${X(e)}`;
+}
+const commas = v => Math.round(v).toLocaleString('en-GB');
+
+function makeCtx(stage, card){
+  const ctx = { stage, card, W: stage.clientWidth || 600, dead: false };
+  ctx.wait = async ms => { await new Promise(r => setTimeout(r, ms * SLOW)); if (ctx.dead) throw ABORT; };
+  ctx.frame = async () => { await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); if (ctx.dead) throw ABORT; };
+  ctx.add = (cls, html, x, y, s) => { const e = el('div', 'obj ' + cls, html); place(e, x, y, s); stage.appendChild(e); return e; };
+  return ctx;
+}
+
+async function countUp(ctx, node, to, fmt, ms){
+  const log = to > 1e6, t0 = performance.now(), dur = ms * SLOW;
+  for (;;){
+    const t = Math.min(1, (performance.now() - t0) / dur), e = 1 - Math.pow(1 - t, 3);
+    const v = log ? Math.pow(10, e * Math.log10(to)) : e * to;
+    node.innerHTML = fmt(t >= 1 ? to : v);
+    if (t >= 1) return;
+    await ctx.wait(40);
+  }
+}
+
+/* ---------- intro: a dozen vs a mole ---------- */
+function introScene(ctx){
+  const { W, stage } = ctx, H = 280; stage.style.height = H + 'px';
+  const lx = W * 0.27, rx = W * 0.73;
+  ctx.add('heading', 'A dozen', lx, 22); ctx.add('heading', 'A mole', rx, 22);
+  const bw = Math.min(150, W * 0.38), bh = 96, by = 118;
+  const box = ctx.add('box', '', lx, by); box.style.width = bw + 'px'; box.style.height = bh + 'px';
+  const sw = Math.min(130, W * 0.34), sh = 110, sy = 122;
+  const sack = ctx.add('sack molesack', '1 mole', rx, sy); sack.style.width = sw + 'px'; sack.style.height = sh + 'px';
+  const fs = Math.min(24, (bw - 16) / 4 * 0.8);
+  const eggs = [];
+  for (let i = 0; i < 12; i++){
+    const e = ctx.add('item', '🥚', lx, -30); e.style.fontSize = fs + 'px'; eggs.push(e);
+  }
+  const lc = ctx.add('counter', '', lx, 196), rc = ctx.add('counter', '', rx, 196);
+  const end = ctx.add('caption', '', W / 2, H - 40);
+  return async () => {
+    await ctx.wait(300);
+    for (let i = 0; i < 12; i++){
+      const r = Math.floor(i / 4), q = i % 4;
+      place(eggs[i], lx - (bw - 16) / 2 + (bw - 16) / 4 * (q + .5), by - bh / 2 + 8 + (bh - 16) / 3 * (r + .5));
+      lc.innerHTML = `<b>${i + 1}</b> egg${i ? 's' : ''}`;
+      await ctx.wait(160);
+    }
+    lc.innerHTML = '<b>12</b> = a dozen'; pulse(lc);
+    await ctx.wait(700);
+    const pour = (async () => {
+      for (let k = 0; k < 10; k++){
+        const ds = [];
+        for (let j = 0; j < 4; j++){ ds.push(ctx.add('dot adot', '', rx + (Math.random() - .5) * sw * .6, -10)); }
+        await ctx.frame();
+        ds.forEach(d => { place(d, rx + (Math.random() - .5) * sw * .5, sy - sh / 2 + 14 + Math.random() * 10); d.style.opacity = 0; });
+        await ctx.wait(220);
+      }
+    })();
+    await Promise.all([pour, countUp(ctx, rc, 6.022e23, v => (v < 1e6 ? `<b>${commas(v)}</b>` : `<b>${sci(v, 3)}</b>`) + ' atoms', 2600)]);
+    rc.innerHTML = `<b>6.022 ${X(23)}</b> = a mole`; pulse(rc);
+    await ctx.wait(600);
+    end.innerHTML = 'One mole = 602,200,000,000,000,000,000,000 atoms';
+  };
+}
+
+/* ---------- packs of 12: split (÷) or combine (×) ---------- */
+function packScene(ctx, c){
+  const { W, stage } = ctx, N = c.packs * 12, gapB = 14;
+  const bw = Math.min(170, (W - 24 - (c.packs - 1) * gapB) / c.packs), bh = 86, boxY = 106;
+  const cols = W >= 560 ? 12 : (N > 12 ? 9 : 6), rows = Math.ceil(N / cols);
+  const cell = Math.min(52, (W - 24) / cols);
+  const gridY = 190 + cell / 2, rowH = cell + 18;
+  const H = gridY + (rows - 1) * rowH + cell / 2 + 60;
+  stage.style.height = H + 'px';
+  const top = ctx.add('bigtag', c.top0, W / 2, 28);
+  const x0 = W / 2 - (c.packs * bw + (c.packs - 1) * gapB) / 2 + bw / 2;
+  const boxes = [];
+  for (let b = 0; b < c.packs; b++){
+    const box = ctx.add('box', `<span class="blabel">${c.boxLabel}</span>`, x0 + b * (bw + gapB), boxY);
+    box.style.width = bw + 'px'; box.style.height = bh + 'px'; boxes.push(box);
+  }
+  const sx = (bw - 12) / 4, sy = (bh - 12) / 3;
+  const slot = i => { const b = Math.floor(i / 12), k = i % 12;
+    return [x0 + b * (bw + gapB) - (bw - 12) / 2 + sx * (k % 4 + .5), boxY - (bh - 12) / 2 + sy * (Math.floor(k / 4) + .5)]; };
+  const gpos = i => [W / 2 - cols * cell / 2 + cell * (i % cols + .5), gridY + Math.floor(i / cols) * rowH];
+  const sIn = Math.min(1, Math.min(sx, sy) / (cell * 0.75));
+  const items = [];
+  for (let i = 0; i < N; i++){
+    const [x, y] = c.dir === 'split' ? slot(i) : gpos(i);
+    const it = ctx.add('item', c.item + `<span class="tag">${c.tag}</span>`, x, y, c.dir === 'split' ? sIn : 1);
+    it.style.fontSize = cell * 0.62 + 'px';
+    if (c.dir === 'combine') it.classList.add('tagged');
+    items.push(it);
+  }
+  const counter = ctx.add('counter', '', W / 2, H - 22);
+  return async () => {
+    await ctx.wait(300);
+    if (c.dir === 'split'){
+      for (let i = 0; i < N; i++){ place(items[i], ...gpos(i), 1); counter.innerHTML = c.count(i + 1); await ctx.wait(N > 20 ? 55 : 110); }
+      await ctx.wait(700);
+      boxes.forEach(b => b.classList.add('faded'));
+      top.innerHTML = c.top1; pulse(top);
+      await ctx.wait(700);
+      for (const it of items){ it.classList.add('tagged'); await ctx.wait(30); }
+    } else {
+      for (let i = 0; i < N; i++){
+        items[i].classList.remove('tagged'); place(items[i], ...slot(i), sIn);
+        top.innerHTML = c.total(i + 1); await ctx.wait(N > 20 ? 110 : 160);
+      }
+      await ctx.wait(600);
+      top.innerHTML = c.top1; pulse(top);
+    }
+    await ctx.wait(400);
+    counter.innerHTML = c.end;
+  };
+}
+
+/* ---------- big bags (rice / moles) ---------- */
+function bagScene(ctx, c){
+  const { W, stage } = ctx, H = 360; stage.style.height = H + 'px';
+  const nS = Math.max(1, Math.ceil(c.bags));
+  const sw = Math.min(100, (W - 24 - (nS - 1) * 10) / nS), sh = Math.min(96, sw * 1.05), sY = 112;
+  const lensR = W < 480 ? 44 : 56, lensX = W - lensR - 20, lensY = 240;
+  const pileL = 20, pileR = lensX - lensR - 24, pileX = (pileL + pileR) / 2;
+  const top = ctx.add('bigtag', c.top0, W / 2, 30);
+  const x0 = W / 2 - (nS * sw + (nS - 1) * 10) / 2 + sw / 2;
+  const sacks = [];
+  for (let i = 0; i < nS; i++){
+    const s = ctx.add('sack', sw < 80 ? c.bagShort : c.bagLabel, x0 + i * (sw + 10), sY);
+    s.style.width = sw + 'px'; s.style.height = sh + 'px';
+    if (c.dir === 'combine') s.style.opacity = 0;
+    sacks.push(s);
+  }
+  const counter = ctx.add('counter', c.count0 || '', pileX, 196);
+  const lens = ctx.add('lens', `<div>${c.lensHtml}</div><span class="tag">${c.lensTag}</span>`, lensX, lensY, c.dir === 'combine' ? 1 : 0.01);
+  lens.style.width = lens.style.height = 2 * lensR + 'px';
+  lens.style.fontSize = lensR * 0.95 + 'px';
+  if (c.dir === 'combine') lens.classList.add('tagged');
+  const end = ctx.add('caption', '', W / 2, H - 14);
+  async function pour(){
+    const per = c.fraction ? 3 : Math.max(5, Math.round(36 / nS));
+    for (let k = 0; k < per; k++){
+      const ds = [];
+      for (let i = 0; i < nS; i++){
+        const d = ctx.add('dot ' + c.dotCls, c.dotHtml || '', x0 + i * (sw + 10), sY - sh / 2 + 8);
+        ds.push(d);
+      }
+      await ctx.frame();
+      ds.forEach(d => {
+        const u = Math.random() * 2 - 1, half = (pileR - pileL) / 2 * 0.8;
+        place(d, pileX + u * half, 282 - (1 - Math.abs(u)) * 34 * Math.random());
+      });
+      await ctx.wait(c.fraction ? 400 : 70);
+    }
+  }
+  return async () => {
+    await ctx.wait(300);
+    if (c.dir === 'combine'){ for (const s of sacks){ s.style.opacity = 1; await ctx.wait(250); } }
+    await Promise.all([pour(), countUp(ctx, counter, c.countTo, c.countFmt, 2200)]);
+    counter.innerHTML = c.countText; pulse(counter);
+    await ctx.wait(900);
+    if (c.dir === 'split'){
+      place(lens, lensX, lensY, 1); await ctx.wait(800);
+      lens.classList.add('tagged');
+    }
+    top.innerHTML = c.top1; pulse(top);
+    await ctx.wait(600);
+    end.innerHTML = c.end;
+  };
+}
+
+/* ---------- basket / building an atom ---------- */
+function basketScene(ctx, c){
+  const { W, stage, card } = ctx, H = 270; stage.style.height = H + 'px';
+  const receipt = card.querySelector('.receipt');
+  receipt.innerHTML = `<div class="rhead">${c.rhead}</div>`;
+  const N = c.groups.reduce((a, g) => a + g.n, 0);
+  const cell = Math.min(40, (W - 20) / (N + 1.4)), gap = cell * 0.7;
+  const rowW = N * cell + (c.groups.length - 1) * gap;
+  const cx = W / 2, cy = c.atom ? 172 : 196;
+  let basket = null;
+  if (c.atom){
+    for (const r of [46, 76]){ const g = ctx.add('ring', '', cx, cy); g.style.width = g.style.height = 2 * r + 'px'; }
+  } else {
+    basket = ctx.add('basket', '', cx, cy + 16);
+  }
+  const items = [];
+  let x = W / 2 - rowW / 2 + cell / 2;
+  c.groups.forEach((g, gi) => {
+    const gx0 = x;
+    for (let i = 0; i < g.n; i++){
+      const it = ctx.add('item', g.html, x, 36); it.style.fontSize = cell * 0.72 + 'px';
+      items.push({ el: it, g: gi, kind: g.kind }); x += cell;
+    }
+    ctx.add('glabel', g.label, (gx0 + x - cell) / 2, 36 + cell * 0.5 + 12);
+    x += gap;
+  });
+  const nucOff = [[0, 0], [14, 0], [-14, 0], [7, 12], [-7, 12], [7, -12], [-7, -12]];
+  const pSlots = [1, 4, 6], nSlots = [0, 2, 3, 5];
+  const eSlots = [[46, 200], [46, 20], [76, -60]];
+  const used = { p: 0, n: 0, e: 0 };
+  let bi = 0;
+  function target(o){
+    if (c.atom){
+      if (o.kind === 'e'){ const [r, a] = eSlots[used.e++]; const t = a * Math.PI / 180; return [cx + r * Math.cos(t), cy + r * Math.sin(t)]; }
+      const k = o.kind === 'p' ? pSlots[used.p++] : nSlots[used.n++];
+      return [cx + nucOff[k][0], cy + nucOff[k][1]];
+    }
+    const i = bi++, r = i % 2, q = Math.floor(i / 2);
+    return [cx - 52 + 26 * q, cy - 16 + r * 12];
+  }
+  const label = ctx.add('caption', '', W / 2, H - 14);
+  const addLine = (html, cls = '') => { receipt.appendChild(el('div', 'line ' + cls, html)); };
+  return async () => {
+    await ctx.wait(300);
+    for (let gi = 0; gi < c.groups.length; gi++){
+      for (const o of items.filter(o => o.g === gi)){ place(o.el, ...target(o)); await ctx.wait(280); }
+      await ctx.wait(400);
+      addLine(c.groups[gi].line);
+    }
+    await ctx.wait(600);
+    addLine(c.total, 'total');
+    label.innerHTML = c.end;
+  };
+}
+
+/* ---------- balance: relative mass ---------- */
+function balanceScene(ctx, c){
+  const { W, stage } = ctx, H = 300; stage.style.height = H + 'px';
+  const cx = W / 2, cy = 120, L = Math.min(360, W - 120);
+  const top = ctx.add('bigtag', c.top0, W / 2, 26);
+  ctx.add('pivot', '', cx, cy + 52);
+  const beam = el('div', 'beam'); beam.style.width = L + 'px'; stage.appendChild(beam);
+  const mkPan = (html, lab) => { const p = el('div', 'pan', `<i class="string"></i><i class="plate"></i><div class="load">${html}</div><span class="plabel">${lab}</span>`); stage.appendChild(p); return p; };
+  const lp = mkPan(c.left, c.lLabel), rp = mkPan('', c.rLabel);
+  const rload = rp.querySelector('.load');
+  const counter = ctx.add('counter', '', W / 2, H - 46);
+  const end = ctx.add('caption', '', W / 2, H - 18);
+  function tilt(deg){
+    const r = deg * Math.PI / 180, dx = L / 2 * Math.cos(r), dy = L / 2 * Math.sin(r);
+    beam.style.transform = `translate(${cx}px,${cy}px) translate(-50%,-50%) rotate(${deg}deg)`;
+    lp.style.transform = `translate(${cx - dx}px,${cy - dy}px) translate(-50%,0)`;
+    rp.style.transform = `translate(${cx + dx}px,${cy + dy}px) translate(-50%,0)`;
+  }
+  tilt(-12);
+  return async () => {
+    await ctx.wait(400);
+    if (c.many){
+      rload.innerHTML = `<span class="pile ${c.pileCls}"></span>`;
+      const pile = rload.firstChild;
+      stage.classList.add('fast');
+      const t0 = performance.now(), dur = 3800 * SLOW;
+      for (;;){
+        const t = Math.min(1, (performance.now() - t0) / dur), n = Math.round(t * c.many);
+        tilt(-12 * (1 - n / c.many));
+        const s = 6 + 60 * Math.sqrt(n / c.many);
+        pile.style.width = s + 'px'; pile.style.height = s * 0.5 + 'px';
+        counter.innerHTML = c.countFmt(n);
+        if (t >= 1) break;
+        await ctx.wait(40);
+      }
+      stage.classList.remove('fast');
+    } else {
+      rload.innerHTML = c.right; rload.firstElementChild.classList.add('drop');
+      await ctx.wait(500);
+      tilt(12 * (c.ratio - 1) / Math.max(c.ratio, 1));
+      await ctx.wait(900);
+      counter.innerHTML = c.countText || '';
+    }
+    await ctx.wait(700);
+    top.innerHTML = c.top1; pulse(top);
+    await ctx.wait(500);
+    end.innerHTML = c.end;
+  };
+}
+
+/* ---------- mounting a scene with its shop / worksheet toggle ---------- */
+function mountScene(host, def){
+  const toggle = !host.hasAttribute('data-notoggle');
+  host.innerHTML = `<div class="scene-bar">${toggle ? '<div class="mode" role="group" aria-label="Version"><button type="button" data-mode="shop" class="on">🛒 Shop</button><button type="button" data-mode="chem">🧪 Worksheet</button></div>' : '<span></span>'}<button type="button" class="play">▶ Play</button></div>
+    <div class="scene-row"><div class="stage"></div>${host.hasAttribute('data-receipt') ? '<div class="receipt"></div>' : ''}</div>`;
+  const stage = host.querySelector('.stage'), btn = host.querySelector('.play');
+  const modeBtns = host.querySelectorAll('.mode button');
+  let mode = 'shop', ctx = null, played = false;
+  function build(){
+    if (ctx) ctx.dead = true;
+    stage.innerHTML = ''; stage.classList.remove('fast');
+    ctx = makeCtx(stage, host);
+    ctx.play = def.fn(ctx, def[mode]);
+    btn.textContent = '▶ Play'; played = false;
+  }
+  btn.addEventListener('click', async () => {
+    if (played) build();
+    played = true; btn.textContent = '↺ Replay';
+    const c = ctx;
+    try { await c.play(); } catch (e){ if (e !== ABORT) throw e; }
+  });
+  modeBtns.forEach(b => b.addEventListener('click', () => {
+    mode = b.dataset.mode;
+    modeBtns.forEach(x => x.classList.toggle('on', x === b));
+    host.classList.toggle('chem', mode === 'chem');
+    build();
+  }));
+  build();
+  let lastW = stage.clientWidth;
+  if ('ResizeObserver' in window) new ResizeObserver(() => {
+    if (Math.abs(stage.clientWidth - lastW) > 30){ lastW = stage.clientWidth; build(); }
+  }).observe(stage);
+}
+
+/* ---------- answer checker ---------- */
+const SUP = { '⁰':'0','¹':'1','²':'2','³':'3','⁴':'4','⁵':'5','⁶':'6','⁷':'7','⁸':'8','⁹':'9','⁻':'-' };
+function parseAnswer(raw){
+  let s = raw.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁻]/g, ch => SUP[ch]).replace(/[−–]/g, '-').replace(/\s+/g, '').replace(/,/g, '');
+  s = s.replace(/^£/, '').replace(/(grams?|g)$/i, '');
+  const m = s.match(/^([+-]?(?:\d+\.?\d*|\.\d+))(?:(?:[x×*]10\^?\(?([+-]?\d+)\)?)|(?:e([+-]?\d+)))?$/i);
+  if (!m) return null;
+  const exp = m[2] ?? m[3];
+  return { v: parseFloat(m[1]) * (exp != null ? Math.pow(10, +exp) : 1), mant: m[1] };
+}
+function sigFigs(mant){
+  let d = mant.replace(/^[+-]/, '');
+  const dot = d.includes('.');
+  d = d.replace('.', '').replace(/^0+/, '');
+  if (!dot) d = d.replace(/0+$/, '');
+  return d.length;
+}
+function mountCheck(host, c){
+  host.innerHTML = `<label for="in-${host.dataset.id}">Have a go first. Your answer:</label>
+    <input id="in-${host.dataset.id}" type="text" autocomplete="off" spellcheck="false" placeholder="${c.eg || 'e.g. 1.23e-4'}">
+    <span>${c.unit || ''}</span><button type="button">Check</button><div class="fb" aria-live="polite"></div>`;
+  const input = host.querySelector('input'), fb = host.querySelector('.fb');
+  const run = () => {
+    fb.className = 'fb';
+    const p = parseAnswer(input.value);
+    if (!input.value.trim()){ fb.textContent = 'Type your answer in the box first.'; return; }
+    if (!p || !(p.v > 0)){ fb.innerHTML = 'I couldn\'t read that number. Try writing it like <code>45.9</code> or <code>1.99x10^-23</code>.'; return; }
+    const close = (a, b) => Math.abs(a / b - 1) < 0.004;
+    if (close(p.v, c.ans)){
+      const n = sigFigs(p.mant);
+      if (n === c.sf){ fb.classList.add('ok'); fb.innerHTML = '✅ Spot on! Open the steps below to check your working.'; }
+      else { fb.classList.add('ok'); fb.innerHTML = `✅ Right value! But the question wants <b>${c.sf}</b> significant figures, and you gave ${n}.`; }
+      return;
+    }
+    for (const [v, msg] of (c.traps || [])){ if (close(p.v, v)){ fb.classList.add('no'); fb.innerHTML = '🤔 ' + msg; return; } }
+    const lr = Math.log10(p.v / c.ans), k = Math.round(lr);
+    if (k !== 0 && Math.abs(lr - k) < 0.002){
+      fb.classList.add('no');
+      fb.innerHTML = `So close! Your digits are right but the power of ten is out by ${Math.abs(k)}. Check the <a href="#tips">calculator tip</a> about the <kbd>×10<sup>x</sup></kbd> button.`;
+      return;
+    }
+    fb.classList.add('no'); fb.innerHTML = 'Not quite. Watch the animation again, then try the steps below one at a time.';
+  };
+  host.querySelector('button').addEventListener('click', run);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') run(); });
+}
+
+/* ---------- step-by-step worked answers ---------- */
+function mountSteps(host, rows){
+  let html = '<div class="sgrid"><div class="h"></div><div class="h s">🛒 Shop</div><div class="h c">🧪 Worksheet</div>';
+  rows.forEach((r, i) => { html += `<div class="n hide" data-r="${i}">${i + 1}</div><div class="hide" data-r="${i}">${r[0]}</div><div class="hide" data-r="${i}">${r[1]}</div>`; });
+  html += '</div>';
+  host.innerHTML = `<div class="steps-bar"><button type="button" class="next">Show next step</button><button type="button" class="all">Show all steps</button></div>` + html;
+  let shown = 0;
+  const next = host.querySelector('.next'), all = host.querySelector('.all');
+  const show = upto => {
+    shown = upto;
+    host.querySelectorAll('[data-r]').forEach(d => d.classList.toggle('hide', +d.dataset.r >= shown));
+    if (shown >= rows.length){ next.textContent = 'Hide steps'; all.hidden = true; }
+    else { next.textContent = 'Show next step'; all.hidden = false; }
+  };
+  next.addEventListener('click', () => show(shown >= rows.length ? 0 : shown + 1));
+  all.addEventListener('click', () => show(rows.length));
+}
+</script>
+
+<script>
+'use strict';
+const S = (m, e) => `${m} ${X(e)}`;
+const plural = (i, w) => `<b>${i}</b> ${w}${i === 1 ? '' : 's'}`;
+const atom = (sym, col) => `<span class="atom" style="--c:${col}"><span>${sym}</span></span>`;
+const grainFmt = v => `<b>${commas(v)}</b> grains`;
+const atomFmt = v => (v < 1e6 ? `<b>${commas(v)}</b>` : `<b>${sci(v, 3)}</b>`) + ' atoms';
+const MOLE = '1 mole<br><small>6.022×10<sup>23</sup> atoms</small>';
+
+const SCENES = {
+  intro: { fn: introScene, shop: {} },
+
+  q1a: { fn: packScene,
+    shop: { dir: 'split', packs: 1, item: '🧁', tag: '50p', boxLabel: 'box of 12',
+      top0: 'Box of 12 cupcakes: <b>£6.00</b>', top1: '£6.00 ÷ 12 = <b>£0.50</b> each',
+      count: i => plural(i, 'cupcake'), end: 'Price of ONE = price of the box ÷ how many are in it' },
+    chem: { dir: 'split', packs: 1, item: '<span class="ball golf"></span>', tag: '45.9 g', boxLabel: '1 dozen',
+      top0: '1 dozen golf balls: <b>551.16 g</b>', top1: '551.16 g ÷ 12 = 45.93 g → <b>45.9 g</b> each',
+      count: i => plural(i, 'golf ball'), end: 'Mass of ONE = total mass ÷ how many there are' } },
+
+  q1b: { fn: packScene,
+    shop: { dir: 'split', packs: 3, item: '🥚', tag: '15p', boxLabel: 'box of 12',
+      top0: '3 boxes of eggs: <b>£5.40</b>', top1: '£5.40 ÷ 36 = <b>£0.15</b> each',
+      count: i => plural(i, 'egg'), end: 'Count ALL the eggs (3 × 12 = 36), then share the price' },
+    chem: { dir: 'split', packs: 3, item: '<span class="ball tt"></span>', tag: '2.70 g', boxLabel: '1 dozen',
+      top0: '3 dozen table tennis balls: <b>97.20 g</b>', top1: '97.20 g ÷ 36 = <b>2.70 g</b> each',
+      count: i => plural(i, 'ball'), end: 'Count ALL the balls (3 × 12 = 36), then share the mass' } },
+
+  q1c: { fn: bagScene,
+    shop: { dir: 'split', bags: 1, bagLabel: '50,000<br>grains', bagShort: '50,000', dotCls: '',
+      top0: '1 bag of rice: <b>£1.20</b>', countTo: 50000, countFmt: grainFmt, countText: '<b>50,000</b> grains in the bag',
+      lensHtml: '<span class="grain"></span>', lensTag: '£0.000024',
+      top1: '£1.20 ÷ 50,000 = <b>£0.000024</b> per grain', end: 'Huge pack → tiny price for each one' },
+    chem: { dir: 'split', bags: 1, bagLabel: MOLE, bagShort: '1 mole', dotCls: 'adot',
+      top0: '1 mole of carbon-12: <b>12.000 g</b>', countTo: 6.022e23, countFmt: atomFmt, countText: `<b>${S('6.022', 23)}</b> atoms in 1 mole`,
+      lensHtml: atom('C', '#4b4f58'), lensTag: S('1.99', -23) + ' g',
+      top1: `12.000 g ÷ ${S('6.022', 23)} = <b>${S('1.99', -23)} g</b>`, end: 'Huge pack → tiny mass for each atom' } },
+
+  q1d: { fn: bagScene,
+    shop: { dir: 'split', bags: 5, bagLabel: '50,000<br>grains', bagShort: '50,000', dotCls: '',
+      top0: '5 bags of rice: <b>£6.00</b>', countTo: 250000, countFmt: grainFmt, countText: '5 × 50,000 = <b>250,000</b> grains',
+      lensHtml: '<span class="grain"></span>', lensTag: '£0.000024',
+      top1: '£6.00 ÷ 250,000 = <b>£0.000024</b> per grain', end: 'Count ALL the grains first, then share the price' },
+    chem: { dir: 'split', bags: 5, bagLabel: MOLE, bagShort: '1 mole', dotCls: 'adot',
+      top0: '5.0 moles of gold-197: <b>984.8 g</b>', countTo: 3.011e24, countFmt: atomFmt, countText: `5.0 × ${S('6.022', 23)} = <b>${S('3.011', 24)}</b> atoms`,
+      lensHtml: atom('Au', '#c9a227'), lensTag: S('3.27', -22) + ' g',
+      top1: `984.8 g ÷ ${S('3.011', 24)} = <b>${S('3.27', -22)} g</b>`, end: 'Count ALL the atoms first, then share the mass' } },
+
+  q2a: { fn: packScene,
+    shop: { dir: 'combine', packs: 2, item: '🥫', tag: '65p', boxLabel: 'box of 12',
+      top0: 'Total: £0.00', total: i => `Total: <b>£${(i * 0.65).toFixed(2)}</b> (${i} cans)`,
+      top1: '24 × 65p = <b>£15.60</b>', end: 'Price of the lot = price of ONE × how many' },
+    chem: { dir: 'combine', packs: 2, item: '<span class="ball cricket"></span>', tag: '162.0 g', boxLabel: '1 dozen',
+      top0: 'Total: 0.0 g', total: i => `Total: <b>${(i * 162).toFixed(1)} g</b> (${i} balls)`,
+      top1: '24 × 162.0 g = <b>3888 g</b>', end: 'Mass of the lot = mass of ONE × how many' } },
+
+  q2b: { fn: bagScene,
+    shop: { dir: 'combine', bags: 3, bagLabel: '50,000<br>grains', bagShort: '50,000', dotCls: '',
+      top0: 'One grain: <b>£0.000024</b>. Buy 3 bags.', count0: '', countTo: 150000, countFmt: grainFmt, countText: '3 × 50,000 = <b>150,000</b> grains',
+      lensHtml: '<span class="grain"></span>', lensTag: '£0.000024 each',
+      top1: '150,000 × £0.000024 = <b>£3.60</b>', end: 'Count the grains, then × the price of one' },
+    chem: { dir: 'combine', bags: 3, bagLabel: MOLE, bagShort: '1 mole', dotCls: 'adot',
+      top0: `One Cu atom: <b>${S('1.045', -22)} g</b>. Take 3.0 moles.`, countTo: 1.8066e24, countFmt: atomFmt, countText: `3.0 × ${S('6.022', 23)} = <b>${S('1.807', 24)}</b> atoms`,
+      lensHtml: atom('Cu', '#c46a35'), lensTag: S('1.045', -22) + ' g each',
+      top1: `${S('1.8066', 24)} × ${S('1.045', -22)} g = <b>188.8 g</b>`, end: 'Count the atoms, then × the mass of one' } },
+
+  q2c: { fn: bagScene,
+    shop: { dir: 'combine', bags: 0.025, fraction: true, bagLabel: '0.025 of<br>a bag', bagShort: '0.025 bag', dotCls: '',
+      top0: 'One grain: <b>£0.000024</b>. Buy 0.025 of a bag.', countTo: 1250, countFmt: grainFmt, countText: '0.025 × 50,000 = <b>1,250</b> grains',
+      lensHtml: '<span class="grain"></span>', lensTag: '£0.000024 each',
+      top1: '1,250 × £0.000024 = <b>£0.03</b>', end: 'Part of a pack works exactly the same way' },
+    chem: { dir: 'combine', bags: 0.025, fraction: true, bagLabel: '0.02500<br>mol', bagShort: '0.025 mol', dotCls: 'adot',
+      top0: `One Ag atom: <b>${S('1.808', -22)} g</b>. Take 0.02500 moles.`, countTo: 1.5055e22, countFmt: atomFmt, countText: `0.02500 × ${S('6.022', 23)} = <b>${S('1.506', 22)}</b> atoms`,
+      lensHtml: atom('Ag', '#8f99a6'), lensTag: S('1.808', -22) + ' g each',
+      top1: `${S('1.5055', 22)} × ${S('1.808', -22)} g = <b>2.722 g</b>`, end: 'Part of a mole works exactly the same way' } },
+
+  q3b: { fn: basketScene,
+    shop: { atom: false, rhead: 'RECEIPT (in £)',
+      groups: [
+        { n: 3, kind: 'p', html: '🥪', label: '£1.673 each', line: '3 × 1.673 = 5.019' },
+        { n: 4, kind: 'n', html: '🧃', label: '£1.675 each', line: '4 × 1.675 = 6.700' },
+        { n: 3, kind: 'e', html: '🍬', label: '£0.000911', line: '3 × 0.000911 = 0.002733' } ],
+      total: 'TOTAL £11.72', end: 'Bill = add up (how many × price) for each item' },
+    chem: { atom: true, rhead: `MASS (all ${X(-24)} g)`,
+      groups: [
+        { n: 3, kind: 'p', html: '<span class="nuc p">+</span>', label: S('1.673', -24) + ' g', line: '3 p × 1.673 = 5.019' },
+        { n: 4, kind: 'n', html: '<span class="nuc n"></span>', label: S('1.675', -24) + ' g', line: '4 n × 1.675 = 6.700' },
+        { n: 3, kind: 'e', html: '<span class="nuc e">−</span>', label: S('9.110', -28) + ' g', line: '3 e × 0.000911 = 0.002733' } ],
+      total: `TOTAL 11.72 ${X(-24)} g<br>= ${S('1.172', -23)} g`, end: 'You just built a lithium-7 atom!' } },
+
+  q3c: { fn: bagScene,
+    shop: { dir: 'combine', bags: 1, bagLabel: 'crate of<br>30 baskets', bagShort: '30 baskets', dotCls: 'emo', dotHtml: '🧺',
+      top0: 'One basket: <b>£11.72</b>', countTo: 30, countFmt: v => plural(Math.round(v), 'basket'), countText: '<b>30</b> baskets in the crate',
+      lensHtml: '🧺', lensTag: '£11.72 each',
+      top1: '30 × £11.72 = <b>£351.60</b>', end: 'Price of the lot = price of ONE × how many' },
+    chem: { dir: 'combine', bags: 1, bagLabel: MOLE, bagShort: '1 mole', dotCls: 'adot',
+      top0: `One Li atom: <b>${S('1.172', -23)} g</b>. Take 1 mole.`, countTo: 6.022e23, countFmt: atomFmt, countText: `<b>${S('6.022', 23)}</b> atoms in 1 mole`,
+      lensHtml: atom('Li', '#a64fc4'), lensTag: S('1.172', -23) + ' g each',
+      top1: `${S('6.022', 23)} × ${S('1.172', -23)} g = <b>7.058 g</b>`, end: 'That\'s about 7, the mass number!' } },
+
+  q4n: { fn: balanceScene,
+    shop: { left: '🥪', lLabel: '£1.673', right: '<span>🧃</span>', rLabel: '£1.675', ratio: 1.675 / 1.673,
+      top0: 'Is a drink worth more than a sandwich?', countText: 'The scale hardly moves. They cost almost the same.',
+      top1: '£1.675 ÷ £1.673 = <b>1.00</b> sandwiches', end: 'Divide by the thing you compare with. The £ cancel out.' },
+    chem: { left: '<span class="bp p">p</span>', lLabel: S('1.673', -24) + ' g', right: '<span class="bp n">n</span>', rLabel: S('1.675', -24) + ' g', ratio: 1.675 / 1.673,
+      top0: 'Neutron compared with proton', countText: 'The scale hardly moves. Almost exactly the same mass.',
+      top1: `${S('1.675', -24)} ÷ ${S('1.673', -24)} = <b>1.00</b>`, end: 'Relative mass has no units: g ÷ g cancel' } },
+
+  q4e: { fn: balanceScene,
+    shop: { left: '🥪', lLabel: '£1.673', rLabel: 'sweets, £0.000911 each', many: 1836, pileCls: 's',
+      top0: 'How many sweets cost the same as ONE sandwich?', countFmt: n => `<b>${commas(n)}</b> sweets`,
+      top1: '£0.000911 ÷ £1.673 = <b>0.000545</b> sandwiches per sweet', end: 'It takes about 1836 sweets to match one sandwich' },
+    chem: { left: '<span class="bp p">p</span>', lLabel: '1 proton', rLabel: 'electrons', many: 1836, pileCls: 'e',
+      top0: 'How many electrons weigh the same as ONE proton?', countFmt: n => `<b>${commas(n)}</b> electrons`,
+      top1: `${S('9.110', -28)} ÷ ${S('1.673', -24)} = <b>${S('5.45', -4)}</b>`, end: 'About 1836 electrons weigh the same as one proton' } },
+};
+
+const CHECKS = {
+  q1a: { ans: 45.93, sf: 3, unit: 'g', eg: 'e.g. 12.3',
+    traps: [[6613.92, 'You multiplied. You want ONE golf ball, so share the mass out: divide.']] },
+  q1b: { ans: 2.70, sf: 3, unit: 'g', eg: 'e.g. 12.3',
+    traps: [[32.4, 'That\'s the mass of one dozen (you divided by 3). Share between all 36 balls.'], [8.1, 'That\'s 97.20 ÷ 12. There are THREE dozen, so 36 balls.']] },
+  q1c: { ans: 12 / 6.022e23, sf: 3, unit: 'g', eg: 'e.g. 1.23e-4',
+    traps: [[12 * 6.022e23, 'You multiplied. You want ONE atom, so divide by 6.022 × 10²³.']] },
+  q1d: { ans: 984.8 / 3.011e24, sf: 3, unit: 'g', eg: 'e.g. 1.23e-4',
+    traps: [[196.96, 'That\'s the mass of ONE MOLE of gold. Now share it between 6.022 × 10²³ atoms.'], [984.8 / 6.022e23, 'You shared the mass of 5 moles between the atoms in only 1 mole. Count all the atoms: 5.0 × 6.022 × 10²³.']] },
+  q2a: { ans: 3888, sf: 4, unit: 'g', eg: 'e.g. 1234',
+    traps: [[1944, 'That\'s one dozen. Two dozen is 24 balls.'], [6.75, 'You divided. You know ONE and want the lot, so multiply.']] },
+  q2b: { ans: 1.045e-22 * 3 * 6.022e23, sf: 4, unit: 'g', eg: 'e.g. 12.34',
+    traps: [[3.135e-22, 'That\'s the mass of 3 atoms, not 3 moles. Count the atoms: 3.0 × 6.022 × 10²³.'], [1.045e-22 * 6.022e23, 'That\'s one mole. You need 3.0 moles.']] },
+  q2c: { ans: 1.808e-22 * 0.025 * 6.022e23, sf: 4, unit: 'g', eg: 'e.g. 1.234',
+    traps: [[1.808e-22 * 0.025, 'That\'s 0.025 atoms! Count the atoms first: 0.02500 × 6.022 × 10²³.'], [1.808e-22 * 6.022e23, 'That\'s one whole mole. You only have 0.02500 moles.']] },
+  q3b: { ans: 1.1721733e-23, sf: 4, unit: 'g', eg: 'e.g. 1.234e-5',
+    traps: [[1.673e-24 + 1.675e-24 + 9.11e-28, 'That\'s one of each. Lithium-7 has 3 protons, 4 neutrons and 3 electrons.']] },
+  q3c: { ans: 7.058, sf: 4, unit: 'g', eg: 'e.g. 1.234',
+    traps: [[1.1721733e-23 / 6.022e23, 'You divided. You know ONE atom and want a mole of them, so multiply.']] },
+  q4n: { ans: 1.675 / 1.673, sf: 3, unit: '(no units)', eg: 'e.g. 1.23' },
+  q4e: { ans: 9.11e-28 / 1.673e-24, sf: 3, unit: '(no units)', eg: 'e.g. 1.23e-4',
+    traps: [[1.673e-24 / 9.11e-28, 'That\'s proton ÷ electron: how many electrons match one proton. The question wants electron ÷ proton.']] },
+};
+
+const STEPS = {
+  q1a: [
+    ['How many cupcakes in the box? <b>12</b>', 'How many golf balls in a dozen? <b>12</b>'],
+    ['Share the price out:<br>£6.00 ÷ 12', 'Share the mass out:<br>551.16 g ÷ 12'],
+    ['= <b>£0.50</b> for one cupcake', '= 45.93 g → <b>45.9 g</b> (3 s.f.)'] ],
+  q1b: [
+    ['Count the eggs:<br>3 × 12 = <b>36</b>', 'Count the balls:<br>3 dozen = 3 × 12 = <b>36</b>'],
+    ['£5.40 ÷ 36', '97.20 g ÷ 36'],
+    ['= <b>£0.15</b> (15p) for one egg', '= <b>2.70 g</b> (keep the 0: it\'s the 3rd significant figure)'] ],
+  q1c: [
+    ['How many grains in the bag? <b>50,000</b>', `How many atoms in 1 mole? <b>${S('6.022', 23)}</b>`],
+    ['£1.20 ÷ 50,000', `12.000 g ÷ ${S('6.022', 23)}`],
+    ['= <b>£0.000024</b> per grain', `= ${S('1.9927', -23)} g → <b>${S('1.99', -23)} g</b>`] ],
+  q1d: [
+    ['Count the grains:<br>5 × 50,000 = <b>250,000</b>', `Count the atoms:<br>5.0 × ${S('6.022', 23)} = <b>${S('3.011', 24)}</b>`],
+    ['£6.00 ÷ 250,000', `984.8 g ÷ ${S('3.011', 24)}`],
+    ['= <b>£0.000024</b> per grain', `= ${S('3.2707', -22)} g → <b>${S('3.27', -22)} g</b>`] ],
+  q2a: [
+    ['How many cans? 2 dozen = 2 × 12 = <b>24</b>', 'How many balls? 2 dozen = <b>24</b>'],
+    ['24 × £0.65', '24 × 162.0 g'],
+    ['= <b>£15.60</b>', '= <b>3888 g</b> (already 4 s.f.)'] ],
+  q2b: [
+    ['Count the grains:<br>3 × 50,000 = <b>150,000</b>', `Count the atoms:<br>3.0 × ${S('6.022', 23)} = <b>${S('1.8066', 24)}</b>`],
+    ['150,000 × £0.000024', `${S('1.8066', 24)} × ${S('1.045', -22)} g`],
+    ['= <b>£3.60</b>', '= 188.79 g → <b>188.8 g</b>'] ],
+  q2c: [
+    ['Count the grains:<br>0.025 × 50,000 = <b>1,250</b>', `Count the atoms:<br>0.02500 × ${S('6.022', 23)} = <b>${S('1.5055', 22)}</b>`],
+    ['1,250 × £0.000024', `${S('1.5055', 22)} × ${S('1.808', -22)} g`],
+    ['= <b>£0.03</b>', '= 2.7219 g → <b>2.722 g</b>'] ],
+  q3a: [
+    ['Bottom number: how many sandwiches → <b>3</b>', 'Bottom number (atomic number) = protons → <b>3</b>'],
+    ['Top number = sandwiches + drinks, so drinks = 7 − 3 = <b>4</b>', 'Top number (mass number) = protons + neutrons, so neutrons = 7 − 3 = <b>4</b>'],
+    ['One sweet with every sandwich → <b>3</b> sweets', 'No overall charge, so electrons = protons → <b>3</b>'] ],
+  q3b: [
+    ['3 sandwiches: 3 × £1.673 = £5.019', `3 protons: 3 × ${S('1.673', -24)} = ${S('5.019', -24)} g`],
+    ['4 drinks: 4 × £1.675 = £6.700', `4 neutrons: 4 × ${S('1.675', -24)} = ${S('6.700', -24)} g`],
+    ['3 sweets: 3 × £0.000911 = £0.002733', `3 electrons: 3 × ${S('9.110', -28)} = ${S('2.733', -27)} g`],
+    ['Add up the bill: <b>£11.72</b>', `Add them up: ${S('1.1722', -23)} g → <b>${S('1.172', -23)} g</b>`] ],
+  q3c: [
+    ['How many baskets? <b>30</b>', `How many atoms in 1 mole? <b>${S('6.022', 23)}</b>`],
+    ['30 × £11.72', `${S('6.022', 23)} × ${S('1.172', -23)} g`],
+    ['= <b>£351.60</b>', '= <b>7.058 g</b> (you get 7.059 g if you kept all the digits from (b). Both are fine.)'] ],
+  q4n: [
+    ['Compare with a sandwich:<br>£1.675 ÷ £1.673', `Compare with a proton:<br>${S('1.675', -24)} ÷ ${S('1.673', -24)}`],
+    ['= 1.0012 → a drink is worth <b>1.00</b> sandwiches', '= 1.0012 → <b>1.00</b> (no units, and the ×10<sup>−24</sup> cancels too)'] ],
+  q4e: [
+    ['£0.000911 ÷ £1.673', `${S('9.110', -28)} ÷ ${S('1.673', -24)}`],
+    ['= 0.000545 → a sweet is worth <b>0.000545</b> sandwiches', `= ${S('5.445', -4)} → <b>${S('5.45', -4)}</b> (no units)`],
+    ['Flip it: 1 ÷ 0.000545 ≈ 1836 sweets per sandwich', 'So about 1836 electrons weigh the same as 1 proton'] ],
+};
+
+document.querySelectorAll('.scene[data-scene]').forEach(h => mountScene(h, SCENES[h.dataset.scene]));
+document.querySelectorAll('.check[data-id]').forEach(h => mountCheck(h, CHECKS[h.dataset.id]));
+document.querySelectorAll('.steps[data-id]').forEach(h => mountSteps(h, STEPS[h.dataset.id]));
+</script>
+</body>
+</html>
