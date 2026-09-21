@@ -166,8 +166,8 @@
 <div id="bar">
   <button id="play">Pause</button>
   <button id="restart">Restart</button>
-  <input id="scrub" type="range" min="0" max="64" step="0.01" value="0" aria-label="Timeline">
-  <span id="clock">0.0 / 64.0s</span>
+  <input id="scrub" type="range" min="0" max="70" step="0.01" value="0" aria-label="Timeline">
+  <span id="clock">0.0 / 70.0s</span>
   <button id="gear" title="Change the compound" aria-label="Change the compound">⚙</button>
 </div>
 
@@ -247,6 +247,12 @@ const equation = () => `${SA.formula} → ${MT.sym} + ${HX.mol}`;
 const atCathode = () => `${MT.ion} + 2e⁻ → ${MT.sym}`;
 const atAnode   = () => `2${HX.ion} → ${HX.mol} + 2e⁻`;
 
+/* The cell (micro 2) draws every ion at half size: at the working distance
+   of the two close-ups, full-size spheres crowd each other and the labels.
+   Bond length and radius carry the same factor.  Micro 1's lattice keeps
+   full size — its 2.1 site spacing is authored for it. */
+const M2S = 0.5;
+
 const MICRO1_Y =  400;   // the lattice
 const MICRO2_Y = -400;   // the cell
 
@@ -316,12 +322,12 @@ function electron(){
     color:0xfff6d0, emissive:E_COL, roughness:0.3, metalness:0,
     transparent:true, opacity:1
   }));
-  core.scale.setScalar(0.16);
+  core.scale.setScalar(0.16*M2S);
   const halo = new THREE.Mesh(SPH_LO, new THREE.MeshBasicMaterial({
     color:E_COL, transparent:true, opacity:0.20,
     blending:THREE.AdditiveBlending, depthWrite:false
   }));
-  halo.scale.setScalar(0.38);
+  halo.scale.setScalar(0.38*M2S);
   g.add(core, halo);
   g.userData.core = core; g.userData.halo = halo;
   return g;
@@ -692,8 +698,9 @@ function buildMicro2(){
   for(let i=0;i<24;i++){
     const isCation = (i % 3) === 0;
     const s = isCation
-      ? atom(MT.col, MT.ionR, {rough:0.3, metal:0.5, lo:true})
-      : atom(HX.col, HX.ionR*0.9, {rough:0.3, metal:0.12, lo:true});
+      ? atom(MT.col, MT.ionR*M2S, {rough:0.3, metal:0.5, lo:true})
+      : atom(HX.col, HX.ionR*0.9*M2S, {rough:0.3, metal:0.12, lo:true});
+    s.material.transparent = true;
     const x0 = (rand()-0.5)*9.0;
     const y0 = (rand()-0.5)*6.4;
     const z0 = (rand()-0.5)*2.2;
@@ -705,28 +712,32 @@ function buildMicro2(){
     s.userData = {isCation, start:V(x0,y0,z0), targetX,
                   t0, t1: t0 + dist/1.35 + 1.0,
                   ph:rand()*6.283, sp:0.6+rand()*0.8,
-                  yEnd:y0 + (rand()-0.5)*1.2};
+                  yEnd:y0 + (rand()-0.5)*1.2,
+                  /* where it drifts back to once the close-ups are over */
+                  bulk:V(x0*0.75, y0, z0)};
     micro2.add(s); crowd.push(s);
   }
 
   /* the cast that actually discharges */
-  const heroCat = atom(MT.col, MT.ionR, {rough:0.3, metal:0.5});
+  const heroCat = atom(MT.col, MT.ionR*M2S, {rough:0.3, metal:0.5});
   const heroMetalE = [electron(), electron()];
   heroMetalE.forEach(e=>{ electronFade(e,0); micro2.add(e); });
   micro2.add(heroCat);
 
-  const heroAn = [atom(HX.col, HX.ionR, {rough:0.3, metal:0.12}),
-                  atom(HX.col, HX.ionR, {rough:0.3, metal:0.12})];
+  const heroAn = [atom(HX.col, HX.ionR*M2S, {rough:0.3, metal:0.12}),
+                  atom(HX.col, HX.ionR*M2S, {rough:0.3, metal:0.12})];
   const heroAnE = [electron(), electron()];
   heroAn.forEach(a=>micro2.add(a));
   heroAnE.forEach(e=>{ electronFade(e,0); micro2.add(e); });
-  const xxBond = bond(0xa9b6c6, 0.12); xxBond.material.opacity = 0; micro2.add(xxBond);
+  const xxBond = bond(0xa9b6c6, 0.12*M2S); xxBond.material.opacity = 0; micro2.add(xxBond);
 
   /* the metal piling up on the cathode */
   const deposit = [];
   for(let i=0;i<6;i++){
-    const d = atom(MT.col, MT.r*0.8, {rough:0.3, metal:0.8, lo:true, op:0.001});
-    d.position.set(CATH_X + 0.95 + (i%2)*0.5, -3.2 + Math.floor(i/2)*0.75, (i%3-1)*0.7);
+    const d = atom(MT.col, MT.r*0.8*M2S, {rough:0.3, metal:0.8, lo:true, op:0.001});
+    d.position.set(CATH_X + 0.75 + (0.35 + (i%2)*0.5)*M2S,
+                   -3.2 + Math.floor(i/2)*0.75*M2S, (i%3-1)*0.7*M2S);
+    d.userData.y0 = d.position.y;
     micro2.add(d); deposit.push(d);
   }
 
@@ -765,7 +776,15 @@ const _pa=new THREE.Vector3(), _pb=new THREE.Vector3();
 function updateMicro2(t){
   const {wireEs,crowd,heroCat,heroMetalE,heroAn,heroAnE,xxBond,deposit,lbl} = M2;
 
-  /* --- the crowd, driven by the field --- */
+  /* --- the crowd, driven by the field ---
+     It is there for the wide shot, to show the migration.  The moment the
+     camera goes in on an electrode it clears away, so that the discharge is
+     read on one cation and two anions and nothing else; it drifts back out
+     into the melt and fades in again when the camera pulls back. */
+  const crowdOut  = 1 - ramp(t, 46.0, 47.4);
+  const crowdBack = ramp(t, 64.0, 65.4);
+  const disperse  = ramp(t, 63.4, 65.0);
+  const crowdA    = Math.max(crowdOut, crowdBack);
   crowd.forEach((s,i)=>{
     const d = s.userData;
     const u = smooth((t - d.t0)/(d.t1 - d.t0));
@@ -774,30 +793,35 @@ function updateMicro2(t){
       lerp(d.start.y, d.yEnd, u),
       d.start.z
     );
+    if(disperse > 0) _pa.x = lerp(_pa.x, d.bulk.x, disperse);
     /* thermal wander, which never overcomes the drift */
     _pa.x += Math.sin(t*0.9*d.sp + d.ph)*0.30*(1-u*0.7);
     _pa.y += Math.cos(t*0.8*d.sp + d.ph*1.3)*0.34;
     _pa.z += Math.sin(t*0.7*d.sp + d.ph*0.7)*0.28;
     s.position.copy(_pa);
+    s.visible = crowdA > 0.02;
+    if(s.visible) s.material.opacity = crowdA;
   });
 
   /* --- the cation that gets discharged --- */
   const catIn   = ramp(t, 38.0, 46.6);
-  const took    = ramp(t, 47.4, 49.4);
-  const settled = ramp(t, 49.6, 52.4);
+  /* the discharge itself, given room: the electrons come across, the ion grows
+     into an atom, and only then does it settle onto the electrode */
+  const took    = ramp(t, 47.8, 50.4);
+  const settled = ramp(t, 51.0, 53.6);
   _pa.set(lerp(5.6, CATH_X + FACE, catIn), lerp(2.2, 0.9, catIn), 0.4);
   _pa.y += Math.cos(t*0.8)*0.22*(1-took);
   if(settled > 0) _pa.lerp(V(CATH_X + 0.95, -1.9, 0.3), settled);
   heroCat.position.copy(_pa);
   /* an ion becomes an atom: it gets BIGGER, because it gets electrons back */
-  heroCat.scale.setScalar(lerp(MT.ionR, MT.r, took));
+  heroCat.scale.setScalar(lerp(MT.ionR, MT.r, took) * M2S);
   heroCat.material.metalness = lerp(0.5, 0.85, took);
 
   /* --- the two anions that get discharged --- */
-  const anIn  = ramp(t, 38.6, 49.6);
-  const gave  = [ramp(t, 50.6, 52.6), ramp(t, 51.0, 53.0)];
-  const paired= ramp(t, 53.6, 56.2);
-  const rise  = Math.max(0, t - 56.6);
+  const anIn  = ramp(t, 38.6, 55.0);
+  const gave  = [ramp(t, 56.6, 58.6), ramp(t, 57.0, 59.0)];
+  const paired= ramp(t, 59.6, 62.2);
+  const rise  = Math.max(0, t - 62.6);
   const anPos = [];
   heroAn.forEach((a,k)=>{
     _pb.set(lerp(-5.2 - k*0.8, AN_X - FACE, anIn),
@@ -806,82 +830,87 @@ function updateMicro2(t){
     if(paired > 0){
       const c = V(AN_X - FACE - 0.5, 0.2, 0.2);
       c.y += rise*0.95; c.x -= rise*0.35;
-      _pb.lerp(_v1.copy(c).add(V(0, k? -0.62 : 0.62, 0)), paired);
+      _pb.lerp(_v1.copy(c).add(V(0, (k? -0.62 : 0.62)*M2S, 0)), paired);
     }
     a.position.copy(_pb);
     /* losing an electron makes it smaller — back to an atom */
-    a.scale.setScalar(lerp(HX.ionR, HX.r, gave[k]));
+    a.scale.setScalar(lerp(HX.ionR, HX.r, gave[k]) * M2S);
     anPos.push(_pb.clone());
   });
-  const bondOn = ramp(t, 55.0, 56.6);
+  const bondOn = ramp(t, 61.0, 62.6);
   xxBond.material.opacity = bondOn;
   xxBond.visible = bondOn > 0.01;
-  if(xxBond.visible) placeBond(xxBond, anPos[0], anPos[1], 0.1);
+  if(xxBond.visible) placeBond(xxBond, anPos[0], anPos[1], 0.1*M2S);
 
   /* --- the electrons.  Two into the cation at the cathode, one out of each
          anion at the anode, and a steady stream round the wire. --- */
   heroMetalE.forEach((e,k)=>{
     /* they arrive out of the cathode itself */
     _v1.set(CATH_X + 0.78, 0.9 + (k? -0.5 : 0.5), 0.2);
-    _v1.lerp(heroCat.position, ramp(t, 46.8 + k*0.3, 48.8 + k*0.3));
+    _v1.lerp(heroCat.position, ramp(t, 47.0 + k*0.3, 49.4 + k*0.3));
     e.position.copy(_v1);
-    electronFade(e, ramp(t, 46.0+k*0.3, 46.9+k*0.3) * (1 - ramp(t, 48.6+k*0.3, 49.4+k*0.3)));
+    electronFade(e, ramp(t, 46.2+k*0.3, 47.1+k*0.3) * (1 - ramp(t, 49.2+k*0.3, 50.0+k*0.3)));
   });
   heroAnE.forEach((e,k)=>{
     /* and leave into the anode */
     _v1.copy(anPos[k]).add(V(0.5, 0.32, 0.25));
-    _v1.lerp(V(AN_X - 0.78, 0.3 + (k? -0.5 : 0.5), 0.2), ramp(t, 50.8+k*0.4, 53.0+k*0.4));
+    _v1.lerp(V(AN_X - 0.78, 0.3 + (k? -0.5 : 0.5), 0.2), ramp(t, 56.8+k*0.4, 59.0+k*0.4));
     e.position.copy(_v1);
-    electronFade(e, ramp(t, 50.2+k*0.4, 51.0+k*0.4) * (1 - ramp(t, 52.8+k*0.4, 53.6+k*0.4)));
+    electronFade(e, ramp(t, 56.2+k*0.4, 57.0+k*0.4) * (1 - ramp(t, 58.8+k*0.4, 59.6+k*0.4)));
   });
   /* the circuit current: anode → wire → cathode, continuously */
-  const flowing = ramp(t, 56.6, 58.2);
+  const flowing = ramp(t, 62.6, 64.2);
   wireEs.forEach((w,i)=>{
-    const u = ((t - 56.6)*0.13 + w.off) % 1;
+    const u = ((t - 62.6)*0.13 + w.off) % 1;
     w.e.position.copy(alongWire(u));
     electronFade(w.e, flowing*0.95);
   });
 
   /* --- the metal building up on the cathode --- */
   deposit.forEach((d,i)=>{
-    const on = ramp(t, 52.0 + i*0.55, 53.4 + i*0.55);
+    const on = ramp(t, 53.0 + i*0.35, 54.4 + i*0.35);
     d.material.opacity = on*0.95;
     d.visible = on > 0.02;
-    d.position.y += Math.sin(t*1.1+i)*0.004;
+    d.position.y = d.userData.y0 + Math.sin(t*1.1+i)*0.02;
   });
 
   /* --- labels --- */
   const L = lbl;
-  L.cath.material.opacity = ramp(t,34.6,35.6)*(1-ramp(t,61.0,62.0));
+  L.cath.material.opacity = ramp(t,34.6,35.6)*(1-ramp(t,67.0,68.0));
   L.cath.position.set(CATH_X + 0.2, 5.2, 0);
-  L.anod.material.opacity = ramp(t,34.6,35.6)*(1-ramp(t,61.0,62.0));
+  L.anod.material.opacity = ramp(t,34.6,35.6)*(1-ramp(t,67.0,68.0));
   L.anod.position.set(AN_X - 0.2, 5.2, 0);
-  L.cat.material.opacity = ramp(t,37.6,38.6)*(1-took);
-  L.cat.position.copy(heroCat.position).add(_v1.set(0, MT.r+0.85, 0));
-  L.metal.material.opacity = took*(1-ramp(t,58.0,59.0));
-  L.metal.position.copy(heroCat.position).add(_v1.set(0, MT.r+0.85, 0));
+  /* the ion's name and the atom's name sit at the same point, so they are
+     never up together: one is gone before the other arrives */
+  L.cat.material.opacity = ramp(t,37.6,38.6)*(1-ramp(t,47.8,48.8));
+  L.cat.position.copy(heroCat.position).add(_v1.set(0, MT.r*M2S+0.7, 0));
+  L.metal.material.opacity = ramp(t,50.2,51.2)*(1-ramp(t,55.8,56.8));
+  L.metal.position.copy(heroCat.position).add(_v1.set(0, MT.r*M2S+0.7, 0));
   L.an.material.opacity = ramp(t,40.6,41.6)*(1-gave[0]);
-  L.an.position.copy(anPos[0]).add(_v1.set(0, HX.ionR+0.8, 0));
-  L.mol.material.opacity = ramp(t,56.2,57.2)*(1-ramp(t,60.4,61.4));
+  L.an.position.copy(anPos[0]).add(_v1.set(0, HX.ionR*M2S+0.7, 0));
+  L.mol.material.opacity = ramp(t,62.2,63.2)*(1-ramp(t,66.4,67.4));
   L.mol.position.copy(anPos[0]).add(_v1.set(0.9, 0.6, 0));
   L.ions.material.opacity = ramp(t,44.6,45.6)*(1-ramp(t,48.0,48.8));
   L.ions.position.set(0, -4.6, 0);
-  L.wire.material.opacity = ramp(t,57.6,58.6)*(1-ramp(t,62.4,63.4));
+  L.wire.material.opacity = ramp(t,63.6,64.6)*(1-ramp(t,68.4,69.4));
   L.wire.position.set(0, 9.6, 0);
 }
 
 /* =====================================================================
    TIMELINE
 ===================================================================== */
-const TOTAL = 64;
+const TOTAL = 70;
 let SEGS = [];
 
 function buildCaptions(){
   SEGS = [
     {t:0,    c:`${cap1(SA.name)} — a ${SA.solidWord} solid — in a crucible, with two carbon electrodes in it.`},
     {t:3.5,  c:'The power is already on. And nothing whatever is happening: the lamp is dark.'},
-    {t:7.0,  c:`Inside the solid. ${MT.ion} ions and ${HX.ion} ions, in a lattice.`},
-    {t:10.4, c:'They can vibrate, but they cannot go anywhere. And a current needs charge that moves.'},
+    /* micro 1 names both ions on a label of its own and says “locked in a
+       lattice — they can only vibrate” across the bottom, so the caption drops
+       the naming and keeps only what no label carries */
+    {t:7.0,  c:''},
+    {t:10.4, c:'And a current needs charge that moves.'},
     {t:13.4, c:`So melt it — ${SA.mp} for this one.`},
     {t:16.0, c:'Molten. The lattice is gone and the ions are free.'},
     {t:19.6, c:'And the lamp comes on. Charge is moving, so a current is flowing.'},
@@ -893,12 +922,14 @@ function buildCaptions(){
     {t:41.0, c:`${HX.ion} is negative, so it goes the other way, to the positive one.`},
     {t:44.6, c:'Nothing is bumping into anything by luck here. Opposite charges, and they are dragged.'},
     {t:47.4, c:`At the negative electrode, ${MT.ion} takes two electrons — and is a ${MT.name} atom.`},
-    {t:50.6, c:`At the positive one, two ${HX.ion} each give one electron up.`},
-    {t:54.0, c:`Which leaves two ${HX.name} atoms, and they pair off.`},
-    {t:56.6, c:`${HX.mol} — a gas, so away it goes.`},
-    {t:58.6, c:'And the electrons? Never through the liquid. Round the outside, along the wire.'},
-    {t:60.8, c:`${atCathode()}     ·     ${atAnode()}`},
-    {t:62.6, c: equation()}
+    /* the cathode gets a second beat of its own: the atom joining the metal */
+    {t:51.2, c:`No longer an ion, and no longer going anywhere. It settles onto the electrode, and the ${MT.name} builds up.`},
+    {t:56.6, c:`At the positive one, two ${HX.ion} each give one electron up.`},
+    {t:60.0, c:`Which leaves two ${HX.name} atoms, and they pair off.`},
+    {t:62.6, c:`${HX.mol} — a gas, so away it goes.`},
+    {t:64.6, c:'And the electrons? Never through the liquid. Round the outside, along the wire.'},
+    {t:66.8, c:`${atCathode()}     ·     ${atAnode()}`},
+    {t:68.6, c: equation()}
   ];
 }
 
@@ -936,12 +967,16 @@ const CAM = {
     {t:41.0, p:[-1.6,1.0,15.0],l:[0,0.2,0]},
     {t:44.6, p:[0,1.6,17.6],   l:[0,0.2,0]},
     {t:47.4, p:[-5.0,1.0,8.4], l:[-5.6,0.7,0]},
-    {t:50.6, p:[5.2,0.6,8.4],  l:[5.8,0.2,0]},
-    {t:54.0, p:[4.8,0.8,7.6],  l:[5.4,0.3,0]},
-    {t:56.6, p:[4.6,1.4,8.8],  l:[5.2,1.2,0]},
-    {t:58.6, p:[0,5.0,17.0],   l:[0,5.2,0]},
-    {t:60.8, p:[0,2.0,19.0],   l:[0,1.0,0]},
-    {t:64.0, p:[0,1.6,21.0],   l:[0,0.4,0]}
+    /* holds on the cathode for the whole discharge, then eases down to watch
+       the metal collect, before crossing to the anode */
+    {t:51.0, p:[-5.0,0.9,7.9], l:[-5.7,0.4,0]},
+    {t:54.2, p:[-4.9,0.7,8.8], l:[-5.6,-0.4,0]},
+    {t:56.6, p:[5.2,0.6,8.4],  l:[5.8,0.2,0]},
+    {t:60.0, p:[4.8,0.8,7.6],  l:[5.4,0.3,0]},
+    {t:62.6, p:[4.6,1.4,8.8],  l:[5.2,1.2,0]},
+    {t:64.6, p:[0,5.0,17.0],   l:[0,5.2,0]},
+    {t:66.8, p:[0,2.0,19.0],   l:[0,1.0,0]},
+    {t:70.0, p:[0,1.6,21.0],   l:[0,0.4,0]}
   ]
 };
 

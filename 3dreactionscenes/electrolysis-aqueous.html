@@ -47,20 +47,25 @@
   #poles .pos{right:26px;color:#ffb08a;text-align:right;}
   #poles b{display:block;font-size:26px;letter-spacing:0;margin-bottom:2px;}
 
-  /* the two rules, shown while the contests happen */
+  /* the two rules, shown while the contests happen — each pinned to the side
+     of the screen where its own electrode is, so the middle stays clear */
   #rules{
-    position:fixed;left:50%;transform:translateX(-50%);bottom:158px;
-    width:min(690px,92vw);pointer-events:none;opacity:0;transition:opacity .4s ease;
-    display:flex;gap:10px;justify-content:center;
+    position:fixed;inset:0;pointer-events:none;opacity:0;transition:opacity .4s ease;
   }
   #rules div{
-    flex:1;max-width:300px;padding:7px 11px;border-radius:9px;
+    position:absolute;top:calc(50% + 44px);
+    width:clamp(186px,20vw,252px);
+    padding:8px 11px;border-radius:9px;
     background:rgba(10,14,21,.8);border:1px solid var(--line);
     font-size:11.5px;line-height:1.45;color:var(--dim);
+    opacity:.5;transition:border-color .3s ease,color .3s ease,opacity .3s ease;
   }
-  #rules .on{border-color:rgba(255,200,140,.6);color:var(--ink);}
+  #ruleCat{left:26px;}
+  #ruleAn{right:26px;}
+  #rules .on{border-color:rgba(255,200,140,.6);color:var(--ink);opacity:1;}
   #rules b{display:block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;
     color:#64748b;margin-bottom:3px;}
+  #rules .on b{color:#8b9bb0;}
 
   #bar{
     position:fixed;left:50%;transform:translateX(-50%);bottom:20px;
@@ -184,8 +189,8 @@
 <div id="bar">
   <button id="play">Pause</button>
   <button id="restart">Restart</button>
-  <input id="scrub" type="range" min="0" max="64" step="0.01" value="0" aria-label="Timeline">
-  <span id="clock">0.0 / 64.0s</span>
+  <input id="scrub" type="range" min="0" max="78" step="0.01" value="0" aria-label="Timeline">
+  <span id="clock">0.0 / 78.0s</span>
   <button id="gear" title="Change the solution" aria-label="Change the solution">⚙</button>
 </div>
 
@@ -232,6 +237,11 @@ const EL = {               // the same palette as every other scene here
   C:  {name:'carbon',   col:0x4d5560, r:0.58}
 };
 const O_ATOM_R = 0.42, H_ATOM_R = 0.42;
+/* the cell scene (micro 2) draws every ion at half size: at the working
+   distance of the two close-ups, full-size spheres crowd each other and the
+   labels.  Bond lengths and radii carry the same factor, so the sulfate and
+   hydroxide groups stay in proportion. */
+const M2S = 0.5;
 const E_COL = 0xffe070;
 
 /* `beatsH` means the metal is LESS reactive than hydrogen, so the metal is the
@@ -393,12 +403,12 @@ function electron(){
     color:0xfff6d0, emissive:E_COL, roughness:0.3, metalness:0,
     transparent:true, opacity:1
   }));
-  core.scale.setScalar(0.15);
+  core.scale.setScalar(0.15*M2S);
   const halo = new THREE.Mesh(SPH_LO, new THREE.MeshBasicMaterial({
     color:E_COL, transparent:true, opacity:0.20,
     blending:THREE.AdditiveBlending, depthWrite:false
   }));
-  halo.scale.setScalar(0.36);
+  halo.scale.setScalar(0.36*M2S);
   g.add(core, halo);
   g.userData.core = core; g.userData.halo = halo;
   return g;
@@ -796,7 +806,9 @@ const micro2 = new THREE.Group(); micro2.position.y=MICRO2_Y; scene.add(micro2);
 let M2 = {};
 
 const V = (x,y,z)=>new THREE.Vector3(x,y,z);
-const CATH_X = -7.4, AN_X = 7.4, FACE = 1.5;
+/* FACE: how close an ion comes to the electrode.  Pulled in with the ions'
+   own size, so that arriving at the electrode still reads as arriving. */
+const CATH_X = -7.4, AN_X = 7.4, FACE = 1.2;
 
 function buildMicro2(){
   clearGroup(micro2);
@@ -824,50 +836,65 @@ function buildMicro2(){
     const kind = i % 4;                 // cation, anion, H⁺, OH⁻
     const positive = (kind === 0 || kind === 2);
     let s;
-    if(kind === 0){ s = new THREE.Group(); s.add(atom(CT.col, CT.ionR, {rough:0.3, metal:0.5, lo:true})); }
-    else if(kind === 1){ s = makeAnion(0.85); }
-    else if(kind === 2){ s = new THREE.Group(); s.add(atom(EL.H.col, EL.H.r, {rough:0.3, lo:true})); }
-    else { s = makeHydroxide(0.85); }
+    if(kind === 0){ s = new THREE.Group(); s.add(atom(CT.col, CT.ionR*M2S, {rough:0.3, metal:0.5, lo:true})); }
+    else if(kind === 1){ s = makeAnion(0.85*M2S); }
+    else if(kind === 2){ s = new THREE.Group(); s.add(atom(EL.H.col, EL.H.r*M2S, {rough:0.3, lo:true})); }
+    else { s = makeHydroxide(0.85*M2S); }
     const x0 = (rand()-0.5)*9.5, y0 = (rand()-0.5)*7.0, z0 = (rand()-0.5)*2.4;
     const targetX = positive ? CATH_X + FACE : AN_X - FACE;
-    const t0 = 35.0 + rand()*3.5;
-    s.userData = {positive, start:V(x0,y0,z0), targetX, t0,
+    const t0 = 32.4 + rand()*2.0;
+    /* one material list per ion, so the crowd can be faded out on its own */
+    const mats = [];
+    s.traverse(o=>{ if(o.material){ o.material.transparent = true; mats.push(o.material); } });
+    s.userData = {positive, kind, mats, start:V(x0,y0,z0), targetX, t0,
                   t1: t0 + Math.abs(targetX-x0)/1.4 + 1.0,
-                  ph:rand()*6.283, sp:0.6+rand()*0.8, yEnd:y0+(rand()-0.5)*1.4};
+                  ph:rand()*6.283, sp:0.6+rand()*0.8, yEnd:y0+(rand()-0.5)*1.4,
+                  /* where it drifts back to if it is one of the ions left in solution */
+                  bulk:V(x0*0.75, y0, z0),
+                  survives: kind===0 ? !METAL_WINS : kind===1 ? !HALIDE_WINS
+                          : kind===2 ?  METAL_WINS : HALIDE_WINS};
     micro2.add(s); crowd.push(s);
   }
 
   /* ---- the cathode contest: a metal ion and two H⁺ both arrive ---- */
-  const cCat = atom(CT.col, CT.ionR, {rough:0.3, metal:0.5});
-  const cH   = [atom(EL.H.col, EL.H.r, {rough:0.3}), atom(EL.H.col, EL.H.r, {rough:0.3})];
+  const cCat = atom(CT.col, CT.ionR*M2S, {rough:0.3, metal:0.5});
+  const cH   = [atom(EL.H.col, EL.H.r*M2S, {rough:0.3}), atom(EL.H.col, EL.H.r*M2S, {rough:0.3})];
   const cE   = [electron(), electron()];
   cE.forEach(e=>{ electronFade(e,0); micro2.add(e); });
-  const hhBond = bond(0xd89a90, 0.09); hhBond.material.opacity = 0;
+  const hhBond = bond(0xd89a90, 0.09*M2S); hhBond.material.opacity = 0;
   micro2.add(cCat, cH[0], cH[1], hhBond);
   const deposit = [];
   for(let i=0;i<5;i++){
-    const d = atom(CT.col, CT.r*0.8, {rough:0.35, metal:0.8, lo:true, op:0.001});
-    d.position.set(CATH_X + 0.95 + (i%2)*0.45, -2.4 + Math.floor(i/2)*0.8, (i%3-1)*0.7);
+    const d = atom(CT.col, CT.r*0.8*M2S, {rough:0.35, metal:0.8, lo:true, op:0.001});
+    d.position.set(CATH_X + 0.75 + (0.35 + (i%2)*0.45)*M2S,
+                   -2.4 + Math.floor(i/2)*0.8*M2S, (i%3-1)*0.7*M2S);
     micro2.add(d); deposit.push(d);
   }
 
   /* ---- the anode contest: the salt's anion, and OH⁻ ---- */
-  const aAn = [makeAnion(1.0), makeAnion(1.0)];
+  const aAn = [makeAnion(M2S), makeAnion(M2S)];
   aAn.forEach(a=>micro2.add(a));
-  const xxBond = bond(0xa9b6c6, 0.12); xxBond.material.opacity = 0; micro2.add(xxBond);
+  const xxBond = bond(0xa9b6c6, 0.12*M2S); xxBond.material.opacity = 0; micro2.add(xxBond);
   /* four hydroxides, for the oxygen route: 4OH⁻ → O₂ + 2H₂O + 4e⁻ */
   const ohO = [], ohH = [], ohB = [];
   for(let i=0;i<4;i++){
-    ohO.push(atom(EL.O.col, O_ATOM_R, {rough:0.3}));
-    ohH.push(atom(EL.H.col, EL.H.r, {rough:0.3}));
-    const b = bond(0xa9b6c6, 0.09); ohB.push(b);
+    ohO.push(atom(EL.O.col, O_ATOM_R*M2S, {rough:0.3}));
+    ohH.push(atom(EL.H.col, EL.H.r*M2S, {rough:0.3}));
+    const b = bond(0xa9b6c6, 0.09*M2S); ohB.push(b);
     micro2.add(ohO[i], ohH[i], b);
   }
-  const ooBond = bond(0xa9b6c6, 0.11); ooBond.material.opacity = 0; micro2.add(ooBond);
-  const wB = [bond(0xa9b6c6,0.09), bond(0xa9b6c6,0.09)];
+  const ooBond = bond(0xa9b6c6, 0.11*M2S); ooBond.material.opacity = 0; micro2.add(ooBond);
+  const wB = [bond(0xa9b6c6,0.09*M2S), bond(0xa9b6c6,0.09*M2S)];
   wB.forEach(b=>{ b.material.opacity = 0; micro2.add(b); });
   const aE = [];
   for(let i=0;i<4;i++){ const e = electron(); electronFade(e,0); micro2.add(e); aE.push(e); }
+
+  /* the anode's contestants wait on the far side of the cell, which puts them
+     right in the middle of the cathode close-up — so they are faded in only
+     as the camera turns to them */
+  const anMats = [];
+  aAn.forEach(a=>a.traverse(o=>{ if(o.material){ o.material.transparent = true; anMats.push(o.material); } }));
+  for(let i=0;i<4;i++) [ohO[i],ohH[i]].forEach(m=>{ m.material.transparent = true; anMats.push(m.material); });
 
   const lbl = {
     cat:   label(CT.ion, CT.lblCol, 46),
@@ -886,7 +913,7 @@ function buildMicro2(){
   Object.values(lbl).forEach(l=>micro2.add(l));
 
   M2 = {WIRE,segLen,total,wireEs,crowd,cCat,cH,cE,hhBond,deposit,
-        aAn,xxBond,ohO,ohH,ohB,ooBond,wB,aE,lbl};
+        aAn,xxBond,ohO,ohH,ohB,ooBond,wB,aE,anMats,lbl};
 }
 
 const _wp = new THREE.Vector3();
@@ -905,28 +932,45 @@ const _pa=new THREE.Vector3(), _pb=new THREE.Vector3();
 
 function updateMicro2(t){
   const {wireEs,crowd,cCat,cH,cE,hhBond,deposit,
-         aAn,xxBond,ohO,ohH,ohB,ooBond,wB,aE,lbl} = M2;
+         aAn,xxBond,ohO,ohH,ohB,ooBond,wB,aE,anMats,lbl} = M2;
 
-  /* --- the crowd, pulled by the field --- */
+  /* --- the crowd, pulled by the field ---
+     It is only there to show the migration in the wide shot. The moment the
+     camera goes in on an electrode it clears away, so that the contest is
+     read on one ion of each kind and nothing else; when the camera pulls back
+     out at the end, only the ions LEFT IN SOLUTION drift back into view. */
+  const crowdOut  = 1 - ramp(t, 35.6, 37.6);
+  const crowdBack = ramp(t, 72.2, 73.4);
+  const disperse  = ramp(t, 71.6, 73.2);
   crowd.forEach(s=>{
     const d = s.userData;
     const u = smooth((t - d.t0)/(d.t1 - d.t0));
     _pa.set(lerp(d.start.x, d.targetX, u), lerp(d.start.y, d.yEnd, u), d.start.z);
+    if(d.survives && disperse > 0) _pa.x = lerp(_pa.x, d.bulk.x, disperse);
     _pa.x += Math.sin(t*0.9*d.sp + d.ph)*0.30*(1-u*0.7);
     _pa.y += Math.cos(t*0.8*d.sp + d.ph*1.3)*0.34;
     _pa.z += Math.sin(t*0.7*d.sp + d.ph*0.7)*0.28;
     s.position.copy(_pa);
     if(s.type === 'Group') s.rotation.y = t*0.3*d.sp;
+
+    const a = Math.max(crowdOut, d.survives ? crowdBack : 0);
+    s.visible = a > 0.02;
+    if(s.visible) d.mats.forEach(m=>{ m.opacity = a; });
   });
 
-  /* ================= the cathode contest ================= */
+  /* ================= the cathode contest =================
+     Two beats, never at the same time: FIRST the loser is turned away and its
+     label goes with it, THEN the winner takes its electrons.  The labels used
+     to share the screen, and the two halves of the rule were unreadable. */
   const arrive1 = ramp(t, 34.6, 39.4);
   const decided1= ramp(t, 40.0, 41.6);
-  const reject1 = ramp(t, 41.4, 46.0);
-  const took1   = ramp(t, 42.2, 44.4);
-  const pair1   = ramp(t, 43.6, 46.0);
-  const rise1   = Math.max(0, t - 46.6);
-  const settle1 = ramp(t, 44.6, 47.6);
+  /* beat one — turned away */
+  const reject1 = ramp(t, 41.2, 45.6);
+  /* beat two — discharged */
+  const took1   = ramp(t, 47.4, 49.6);
+  const pair1   = ramp(t, 48.8, 51.2);
+  const settle1 = ramp(t, 49.8, 52.8);
+  const rise1   = Math.max(0, t - 51.8);
 
   /* the metal ion */
   _pa.set(lerp(5.0, CATH_X + FACE, arrive1), lerp(2.6, 1.35, arrive1), 0.5);
@@ -938,7 +982,7 @@ function updateMicro2(t){
     if(reject1 > 0) _pa.lerp(V(2.0, 3.4, 1.0), reject1);
   }
   cCat.position.copy(_pa);
-  cCat.scale.setScalar(METAL_WINS ? lerp(CT.ionR, CT.r, took1) : CT.ionR);
+  cCat.scale.setScalar((METAL_WINS ? lerp(CT.ionR, CT.r, took1) : CT.ionR) * M2S);
   cCat.material.metalness = METAL_WINS ? lerp(0.5, 0.85, took1) : 0.5;
 
   /* the two H⁺ */
@@ -952,38 +996,44 @@ function updateMicro2(t){
     } else {
       const c = V(CATH_X + FACE - 0.4, 0.0, 0.4);
       c.y += rise1*0.95; c.x += rise1*0.3;
-      _pb.lerp(_v1.copy(c).add(V(0, k? -0.37 : 0.37, 0)), pair1);
+      _pb.lerp(_v1.copy(c).add(V(0, (k? -0.37 : 0.37)*M2S, 0)), pair1);
     }
     h.position.copy(_pb);
-    h.scale.setScalar(METAL_WINS ? EL.H.r : lerp(EL.H.r, H_ATOM_R, took1));
+    h.scale.setScalar((METAL_WINS ? EL.H.r : lerp(EL.H.r, H_ATOM_R, took1)) * M2S);
     hPos.push(_pb.clone());
   });
-  const hhOn = !METAL_WINS ? ramp(t, 45.0, 46.4) : 0;
+  const hhOn = !METAL_WINS ? ramp(t, 50.2, 51.6) : 0;
   hhBond.material.opacity = hhOn;
   hhBond.visible = hhOn > 0.01;
-  if(hhBond.visible) placeBond(hhBond, hPos[0], hPos[1], 0.05);
+  if(hhBond.visible) placeBond(hhBond, hPos[0], hPos[1], 0.05*M2S);
 
   /* two electrons out of the cathode, into whichever won */
   cE.forEach((e,k)=>{
     _v1.set(CATH_X + 0.78, 1.1 + (k? -0.6 : 0.6), 0.2);
     const target = METAL_WINS ? cCat.position : hPos[k];
-    _v1.lerp(target, ramp(t, 41.8+k*0.3, 43.8+k*0.3));
+    _v1.lerp(target, ramp(t, 47.0+k*0.3, 49.0+k*0.3));
     e.position.copy(_v1);
-    electronFade(e, ramp(t, 41.2+k*0.3, 42.0+k*0.3) * (1 - ramp(t, 43.6+k*0.3, 44.4+k*0.3)));
+    electronFade(e, ramp(t, 46.4+k*0.3, 47.2+k*0.3) * (1 - ramp(t, 48.8+k*0.3, 49.6+k*0.3)));
   });
   deposit.forEach((d,i)=>{
-    const on = METAL_WINS ? ramp(t, 47.0 + i*0.5, 48.2 + i*0.5) : 0;
+    const on = METAL_WINS ? ramp(t, 51.6 + i*0.4, 52.6 + i*0.4) : 0;
     d.material.opacity = on*0.95;
     d.visible = on > 0.02;
   });
 
-  /* ================= the anode contest ================= */
-  const arrive2 = ramp(t, 44.6, 49.2);
-  const decided2= ramp(t, 49.6, 51.0);
-  const reject2 = ramp(t, 50.8, 55.4);
-  const gave2   = ramp(t, 51.4, 53.6);
-  const pair2   = ramp(t, 53.0, 55.6);
-  const rise2   = Math.max(0, t - 56.0);
+  /* ================= the anode contest — the same two beats ============= */
+  const arrive2 = ramp(t, 53.4, 58.2);
+  const decided2= ramp(t, 58.6, 60.0);
+  /* beat one — turned away */
+  const reject2 = ramp(t, 59.8, 64.2);
+  /* beat two — discharged */
+  const gave2   = ramp(t, 65.4, 67.6);
+  const pair2   = ramp(t, 67.0, 69.6);
+  const rise2   = Math.max(0, t - 70.0);
+
+  /* they only exist on screen from the moment the camera swings over */
+  const anodeIn = ramp(t, 53.4, 54.8);
+  anMats.forEach(m=>{ m.opacity = anodeIn; });
 
   /* the salt's anion — two of them, for the halide route */
   const anPos = [];
@@ -994,67 +1044,78 @@ function updateMicro2(t){
     if(HALIDE_WINS){
       const c = V(AN_X - FACE - 0.5, 0.1, 0.2);
       c.y += rise2*0.95; c.x -= rise2*0.3;
-      _pb.lerp(_v1.copy(c).add(V(0, k? -0.66 : 0.66, 0)), pair2);
+      _pb.lerp(_v1.copy(c).add(V(0, (k? -0.66 : 0.66)*M2S, 0)), pair2);
     } else {
       if(reject2 > 0) _pb.lerp(V(-2.4 - k*0.9, k? -3.4 : 3.4, 1.1), reject2);
     }
     a.position.copy(_pb);
+    a.visible = anodeIn > 0.02;
     a.rotation.y = t*0.3 + k;
-    a.scale.setScalar(HALIDE_WINS ? lerp(1, AN.r/AN.ionR, gave2) : 1);
+    a.scale.setScalar(HALIDE_WINS ? lerp(1, AN.r/AN.ionR, gave2) : 1);   // group already built at M2S
     anPos.push(_pb.clone());
   });
-  const xxOn = HALIDE_WINS ? ramp(t, 54.4, 56.0) : 0;
+  const xxOn = HALIDE_WINS ? ramp(t, 68.4, 70.0) : 0;
   xxBond.material.opacity = xxOn;
   xxBond.visible = xxOn > 0.01;
-  if(xxBond.visible) placeBond(xxBond, anPos[0], anPos[1], 0.1);
+  if(xxBond.visible) placeBond(xxBond, anPos[0], anPos[1], 0.1*M2S);
 
   /* the four hydroxides.  If they win: two of them give up their hydrogens and
      pair as O₂, and the other two each take one of those hydrogens, making
      two waters.  4OH⁻ → O₂ + 2H₂O, with nothing left over. */
-  const ohVisible = !HALIDE_WINS;
+  const ohWins = !HALIDE_WINS;
+  /* both candidates are always on screen, or the caption's "the same contest"
+     has only one contestant in it.  If the halide wins, two hydroxides still
+     come up to the anode and are turned away, exactly as the two H⁺ are at
+     the cathode when the metal wins. */
+  const ohShown = ohWins ? 4 : 2;
   for(let i=0;i<4;i++){
     const o = ohO[i], h = ohH[i];
-    o.visible = h.visible = ohVisible;
-    ohB[i].visible = ohVisible;
-    if(!ohVisible) continue;
-    const lane = (i - 1.5) * 1.5;
+    const shown = i < ohShown && anodeIn > 0.02;
+    o.visible = h.visible = shown;
+    ohB[i].visible = shown;
+    if(!shown) continue;
+    const lane = ohWins ? (i - 1.5) * 1.5 : (i ? -2.35 : 2.35);
     _pa.set(lerp(-5.0 - i*0.5, AN_X - FACE, arrive2), lerp(lane*2.0, lane, arrive2), (i%2?0.4:-0.4));
     _pa.y += Math.sin(t*0.8 + i*1.7)*0.18*(1-decided2);
+    if(!ohWins){
+      /* turned away — back out into the solution */
+      if(reject2 > 0) _pa.lerp(V(-2.6 - i*0.8, i ? -3.4 : 3.4, 1.2), reject2);
+    }
     /* i<2 give their hydrogen away and become the O₂; i>=2 keep theirs and
        collect a second one to become water */
-    if(i < 2 && pair2 > 0){
+    if(ohWins && i < 2 && pair2 > 0){
       const c = V(AN_X - FACE - 0.6, 0.2, 0.25);
       c.y += rise2*0.95; c.x -= rise2*0.3;
-      _pa.lerp(_v1.copy(c).add(V(0, i? -0.58 : 0.58, 0)), pair2);
-    } else if(i >= 2 && pair2 > 0){
+      _pa.lerp(_v1.copy(c).add(V(0, (i? -0.58 : 0.58)*M2S, 0)), pair2);
+    } else if(ohWins && i >= 2 && pair2 > 0){
       _pa.lerp(V(AN_X - FACE - 1.2, (i===2? 2.6 : -2.6), 0.5), pair2*0.85);
     }
     o.position.copy(_pa);
     /* the hydrogen: stays put for i>=2; for i<2 it crosses to its partner */
-    _pb.copy(_pa).add(V(0.58, 0.44, 0));
-    if(i < 2 && pair2 > 0){
+    _pb.copy(_pa).add(V(0.58*M2S, 0.44*M2S, 0));
+    if(ohWins && i < 2 && pair2 > 0){
       const hostO = ohO[i + 2];
-      _v1.copy(hostO.position).add(V(-0.58, 0.44, 0));
+      _v1.copy(hostO.position).add(V(-0.58*M2S, 0.44*M2S, 0));
       _pb.lerp(_v1, pair2);
     }
     h.position.copy(_pb);
     /* its own O–H bond survives only if it keeps its hydrogen */
-    const keep = (i >= 2) ? 1 : (1 - pair2);
+    const keep = ((!ohWins || i >= 2) ? 1 : (1 - pair2)) * anodeIn;
     ohB[i].material.opacity = keep;
     ohB[i].visible = keep > 0.02;
-    if(ohB[i].visible) placeBond(ohB[i], _pa, _pb, 0.05);
+    if(ohB[i].visible) placeBond(ohB[i], _pa, _pb, 0.05*M2S);
   }
-  if(ohVisible){
-    const ooOn = ramp(t, 54.6, 56.0);
+  if(ohWins){
+    const ooOn = ramp(t, 68.6, 70.0);
     ooBond.material.opacity = ooOn;
     ooBond.visible = ooOn > 0.01;
-    if(ooBond.visible) placeBond(ooBond, ohO[0].position, ohO[1].position, 0.06);
+    if(ooBond.visible) placeBond(ooBond, ohO[0].position, ohO[1].position, 0.06*M2S);
     /* the two new O–H bonds, on the waters */
     [0,1].forEach(k=>{
-      const on = ramp(t, 54.2, 55.8);
+      const on = ramp(t, 68.2, 69.8);
       wB[k].material.opacity = on;
       wB[k].visible = on > 0.01;
-      if(wB[k].visible) placeBond(wB[k], ohO[k+2].position, ohH[k].position, 0.05);
+      if(wB[k].visible) placeBond(wB[k], ohO[k+2].position, ohH[k].position, 0.05*M2S);
     });
   } else {
     ooBond.visible = false; wB.forEach(b=>b.visible = false);
@@ -1066,15 +1127,15 @@ function updateMicro2(t){
     if(k >= nE){ electronFade(e, 0); return; }
     const src = HALIDE_WINS ? anPos[k] : ohO[k].position;
     _v1.copy(src).add(V(0.5, 0.3, 0.25));
-    _v1.lerp(V(AN_X - 0.78, 0.4 + (k-1.5)*0.6, 0.2), ramp(t, 51.6+k*0.3, 53.8+k*0.3));
+    _v1.lerp(V(AN_X - 0.78, 0.4 + (k-1.5)*0.6, 0.2), ramp(t, 65.4+k*0.3, 67.6+k*0.3));
     e.position.copy(_v1);
-    electronFade(e, ramp(t, 51.0+k*0.3, 51.8+k*0.3) * (1 - ramp(t, 53.6+k*0.3, 54.4+k*0.3)));
+    electronFade(e, ramp(t, 64.8+k*0.3, 65.6+k*0.3) * (1 - ramp(t, 67.4+k*0.3, 68.2+k*0.3)));
   });
 
   /* the current round the outside */
-  const flowing = ramp(t, 41.0, 42.6);
+  const flowing = ramp(t, 46.0, 47.6);
   wireEs.forEach((w,i)=>{
-    const u = ((t - 41.0)*0.13 + w.off) % 1;
+    const u = ((t - 46.0)*0.13 + w.off) % 1;
     w.e.position.copy(alongWire(u));
     electronFade(w.e, flowing*0.95);
   });
@@ -1082,37 +1143,38 @@ function updateMicro2(t){
   /* ================= labels ================= */
   const L = lbl;
   L.cat.material.opacity = ramp(t,35.4,36.4)*(1-(METAL_WINS?took1:reject1));
-  L.cat.position.copy(cCat.position).add(_v1.set(0, CT.ionR+0.85, 0));
+  L.cat.position.copy(cCat.position).add(_v1.set(0, CT.ionR*M2S+0.7, 0));
   L.hp.material.opacity = ramp(t,35.8,36.8)*(1-(METAL_WINS?reject1:took1));
   L.hp.position.copy(hPos[0]).add(_v1.set(0, 0.8, 0));
-  L.win1.material.opacity = decided1*(1-ramp(t,47.0,48.0));
-  L.win1.position.copy(METAL_WINS ? cCat.position : hPos[0]).add(_v1.set(-1.7,-0.1,0));
-  L.lose1.material.opacity = decided1*(1-ramp(t,46.6,47.6));
+  /* "turned away" belongs to beat one and is gone before "discharged" arrives */
+  L.lose1.material.opacity = ramp(t,40.6,41.6)*(1-ramp(t,45.0,46.0));
   L.lose1.position.copy(METAL_WINS ? hPos[1] : cCat.position).add(_v1.set(1.9,-0.55,0));
-  L.prod1.material.opacity = ramp(t,47.2,48.2)*(1-ramp(t,52.0,53.0));
+  L.win1.material.opacity = ramp(t,46.6,47.6)*(1-ramp(t,52.4,53.4));
+  L.win1.position.copy(METAL_WINS ? cCat.position : hPos[0]).add(_v1.set(-1.7,-0.1,0));
+  L.prod1.material.opacity = ramp(t,52.6,53.6)*(1-ramp(t,54.2,55.2));
   L.prod1.position.copy(METAL_WINS ? cCat.position : hPos[0]).add(_v1.set(0.3,1.1,0));
 
-  L.an.material.opacity = ramp(t,45.6,46.6)*(1-(HALIDE_WINS?gave2:reject2));
-  L.an.position.copy(anPos[0]).add(_v1.set(0, AN.ionR+0.85, 0));
-  L.oh.material.opacity = ramp(t,46.0,47.0)*(1-(HALIDE_WINS?reject2:gave2));
-  L.oh.position.copy(ohVisible ? ohO[0].position : anPos[1]).add(_v1.set(-1.0,0.9,0));
-  L.win2.material.opacity = decided2*(1-ramp(t,56.6,57.6));
-  L.win2.position.copy(HALIDE_WINS ? anPos[0] : ohO[0].position).add(_v1.set(1.8,-0.1,0));
-  L.lose2.material.opacity = decided2*(1-ramp(t,56.2,57.2));
-  L.lose2.position.copy(HALIDE_WINS ? (ohVisible?ohO[0].position:anPos[1]) : anPos[1])
+  L.an.material.opacity = ramp(t,54.6,55.6)*(1-(HALIDE_WINS?gave2:reject2));
+  L.an.position.copy(anPos[0]).add(_v1.set(0, AN.ionR*M2S+0.7, 0));
+  L.oh.material.opacity = ramp(t,55.0,56.0)*(1-(HALIDE_WINS?reject2:gave2));
+  L.oh.position.copy(ohO[0].position).add(_v1.set(-1.0,0.9,0));
+  L.lose2.material.opacity = ramp(t,59.2,60.2)*(1-ramp(t,63.6,64.6));
+  L.lose2.position.copy(HALIDE_WINS ? ohO[0].position : anPos[1])
     .add(_v1.set(-2.0,-0.55,0));
-  L.prod2.material.opacity = ramp(t,56.4,57.4)*(1-ramp(t,61.0,62.0));
+  L.win2.material.opacity = ramp(t,64.8,65.8)*(1-ramp(t,70.4,71.4));
+  L.win2.position.copy(HALIDE_WINS ? anPos[0] : ohO[0].position).add(_v1.set(1.8,-0.1,0));
+  L.prod2.material.opacity = ramp(t,70.4,71.4)*(1-ramp(t,75.0,76.0));
   L.prod2.position.copy(HALIDE_WINS ? anPos[0] : ohO[0].position).add(_v1.set(0.3,1.2,0));
-  L.water.material.opacity = (!HALIDE_WINS) ? ramp(t,56.0,57.0)*(1-ramp(t,61.0,62.0)) : 0;
-  L.water.position.copy(ohVisible ? ohO[2].position : V(0,0,0)).add(_v1.set(0.9,0.9,0));
-  L.left.material.opacity = ramp(t,58.0,59.0)*(1-ramp(t,63.2,64.0));
+  L.water.material.opacity = (!HALIDE_WINS) ? ramp(t,70.0,71.0)*(1-ramp(t,75.0,76.0)) : 0;
+  L.water.position.copy(ohWins ? ohO[2].position : V(0,0,0)).add(_v1.set(0.9,0.9,0));
+  L.left.material.opacity = ramp(t,72.0,73.0)*(1-ramp(t,77.2,78.0));
   L.left.position.set(0, -5.0, 0);
 }
 
 /* =====================================================================
    TIMELINE
 ===================================================================== */
-const TOTAL = 64;
+const TOTAL = 78;
 let SEGS = [];
 
 function buildCaptions(){
@@ -1130,9 +1192,11 @@ function buildCaptions(){
   SEGS = [
     {t:0,    c:`A cell of ${SO.conc} ${SO.name} solution${SO.common?` — ${SO.common}`:''}, with a tube over each electrode.`},
     {t:3.5,  c:'Before switching on: what is actually dissolved in there?'},
-    {t:7.0,  c:`${CT.ion} and ${AN.label}, from the ${SO.formula}.`},
-    {t:10.4, c:'And H⁺ and OH⁻, from the water. Water is always very slightly split.'},
-    {t:13.2, c:'Four kinds of ion. Two of them will be discharged, and two will not.'},
+    /* 7.0–16.0 runs without a caption: micro 1 already names each ion on a
+       label under it, says where each pair comes from, and carries the
+       "four kinds of ion" line across the top.  A subtitle repeating all
+       that was just a second copy of the same words. */
+    {t:7.0,  c:''},
     {t:16.0, c:'Switch on.'},
     {t:19.4, c: cathSeen},
     {t:23.2, c: anSeen},
@@ -1143,21 +1207,29 @@ function buildCaptions(){
     {t:39.6, c: METAL_WINS
       ? `And ${CT.name} is LESS reactive than hydrogen — so ${CT.name} is the one discharged.`
       : `But ${CT.name} is MORE reactive than hydrogen — so it is turned away, and hydrogen goes instead.`},
-    {t:42.4, c: METAL_WINS
-      ? `Two electrons, and it is a ${CT.name} atom — which sticks to the electrode.`
-      : 'Two H⁺, two electrons, and they pair up and leave as H₂.'},
-    {t:45.6, c:`At the positive electrode, the same contest: ${AN.label} and OH⁻.`},
-    {t:49.8, c: HALIDE_WINS
+    /* beat one: the loser leaves, and nothing else happens while it does */
+    {t:42.2, c: METAL_WINS
+      ? 'So the H⁺ are turned away. They stay in the solution.'
+      : `So ${CT.ion} is turned away. It stays in the solution.`},
+    /* beat two: only now, the electrons */
+    {t:46.4, c: METAL_WINS
+      ? `Now the one that stayed. Two electrons, and it is a ${CT.name} atom — which sticks to the electrode.`
+      : 'Now the two that stayed. Two electrons, and they pair up and leave as H₂.'},
+    {t:54.4, c:`At the positive electrode, the same contest: ${AN.label} and OH⁻.`},
+    {t:58.8, c: HALIDE_WINS
       ? `This is a halide, and a concentrated halide wins — so ${AN.molName} it is.`
       : `No halide here, so OH⁻ is discharged — and that gives oxygen.`},
-    {t:52.8, c: HALIDE_WINS
-      ? `Each gives up one electron, and the two atoms pair off as ${AN.mol}.`
-      : 'Four of them, four electrons — two oxygens pair as O₂, and the rest becomes water.'},
-    {t:56.6, c: `${anProduct()}, off into the tube.`},
-    {t:58.8, c: METAL_WINS
+    {t:61.2, c: HALIDE_WINS
+      ? 'So the OH⁻ are turned away. They stay in the solution.'
+      : `So ${AN.label} is turned away. It stays in solution.`},
+    {t:64.8, c: HALIDE_WINS
+      ? `Now the two that stayed. Each gives up one electron, and they pair off as ${AN.mol}.`
+      : 'Now the four that stayed. Four electrons — two oxygens pair as O₂, and the rest becomes water.'},
+    {t:70.6, c: `${anProduct()}, off into the tube.`},
+    {t:72.8, c: METAL_WINS
       ? `And left in solution: ${leftovers()} — which makes it ${SO.leftName}.`
       : `And left in solution: ${leftovers()} — which is ${SO.leftName}.`},
-    {t:61.2, c: `${atCathode()}   ·   ${atAnode()}   ·   ${equation()}`}
+    {t:75.2, c: `${atCathode()}   ·   ${atAnode()}   ·   ${equation()}`}
   ];
 }
 
@@ -1193,14 +1265,19 @@ const CAM = {
     {t:32.0, p:[0,1.2,20.0],   l:[0,0,0]},
     {t:35.4, p:[-4.4,1.2,11.0],l:[-5.4,0.9,0]},
     {t:39.6, p:[-5.0,1.0,8.6], l:[-5.8,0.6,0]},
-    {t:42.4, p:[-5.0,0.8,7.8], l:[-5.9,0.3,0]},
-    {t:45.6, p:[4.6,1.0,11.0], l:[5.4,0.4,0]},
-    {t:49.8, p:[5.0,0.8,8.6],  l:[5.8,0.2,0]},
-    {t:52.8, p:[4.8,0.8,8.0],  l:[5.6,0.2,0]},
-    {t:56.6, p:[4.6,1.6,9.4],  l:[5.4,1.2,0]},
-    {t:58.8, p:[0,1.4,18.0],   l:[0,-0.6,0]},
-    {t:61.2, p:[0,2.2,20.0],   l:[0,0.4,0]},
-    {t:64.0, p:[0,1.8,22.0],   l:[0,0,0]}
+    /* eases back to watch the loser go, then in again for the electrons */
+    {t:42.2, p:[-4.4,1.4,11.2],l:[-5.2,1.0,0]},
+    {t:46.4, p:[-5.0,0.9,8.2], l:[-5.9,0.4,0]},
+    {t:49.8, p:[-5.0,0.8,7.8], l:[-5.9,0.3,0]},
+    {t:52.4, p:[-5.0,0.8,7.6], l:[-5.9,0.2,0]},   /* holds for the discharge */
+    {t:54.4, p:[4.6,1.0,11.0], l:[5.4,0.4,0]},
+    {t:58.8, p:[5.0,0.8,8.6],  l:[5.8,0.2,0]},
+    {t:61.2, p:[4.4,1.4,11.2], l:[5.2,1.0,0]},
+    {t:64.8, p:[4.8,0.8,8.0],  l:[5.6,0.2,0]},
+    {t:70.6, p:[4.6,1.6,9.4],  l:[5.4,1.2,0]},
+    {t:72.8, p:[0,1.4,18.0],   l:[0,-0.6,0]},
+    {t:75.2, p:[0,2.2,20.0],   l:[0,0.4,0]},
+    {t:78.0, p:[0,1.8,22.0],   l:[0,0,0]}
   ]
 };
 
@@ -1434,11 +1511,11 @@ function frame(now){
   const inCell = worldAt(t)==='micro2';
   polesEl.style.opacity = (inCell ? (1-f)*0.95 : 0).toFixed(3);
   /* the rules card comes up while each contest is being decided */
-  const showRules = inCell ? Math.max(ramp(t,38.8,39.8)*(1-ramp(t,44.4,45.4)),
-                                      ramp(t,49.0,50.0)*(1-ramp(t,55.8,56.8))) : 0;
+  const showRules = inCell ? Math.max(ramp(t,38.8,39.8)*(1-ramp(t,52.6,53.6)),
+                                      ramp(t,57.8,58.8)*(1-ramp(t,70.6,71.6))) : 0;
   rulesEl.style.opacity = (showRules*(1-f)).toFixed(3);
-  ruleCat.classList.toggle('on', t >= 38.8 && t < 45.4);
-  ruleAn.classList.toggle('on', t >= 49.0 && t < 56.8);
+  ruleCat.classList.toggle('on', t >= 38.8 && t < 53.6);
+  ruleAn.classList.toggle('on', t >= 57.8 && t < 71.6);
   scrub.value = t;
   scrub.style.setProperty('--p', (t/TOTAL*100)+'%');
   clock.textContent = t.toFixed(1)+' / '+TOTAL.toFixed(1)+'s';
