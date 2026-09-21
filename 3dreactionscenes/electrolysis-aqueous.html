@@ -207,9 +207,11 @@
    into solution — which is the part that makes the rule memorable, and the
    part a static diagram cannot show.
 
-   The four solutions on offer exercise both rules in all their combinations:
-   brine (H₂ and Cl₂), copper sulfate (Cu and O₂), potassium iodide (H₂ and I₂)
-   and sodium sulfate — where neither ion from the salt is discharged at all and
+   The six solutions on offer exercise both rules in all their combinations:
+   brine (H₂ and Cl₂), potassium iodide (H₂ and I₂) and potassium bromide
+   (H₂ and Br₂), copper sulfate (Cu and O₂), copper chloride (Cu and Cl₂) —
+   where both ions from the salt ARE discharged, so all that is left is water —
+   and sodium sulfate, where neither ion from the salt is discharged at all and
    all you are really doing is splitting the water.
 
    Acts:
@@ -255,6 +257,16 @@ const SOLUTIONS = {
     leftName:'potassium hydroxide', leftFormula:'KOH',
     overall:'2KI + 2H₂O → 2KOH + H₂ + I₂'
   },
+  KBr: {
+    formula:'KBr', name:'potassium bromide', common:null, conc:'concentrated',
+    cat:{sym:'K', name:'potassium', ion:'K⁺', col:0xcbb8d4, r:0.74, lblCol:'#e0d0e8',
+         ionR:0.56, beatsH:false},
+    an:{label:'Br⁻', name:'bromide', halide:true, sym:'Br', mol:'Br₂', molName:'bromine',
+        col:0x9c3b1e, lblCol:'#d98a66', r:0.72, ionR:0.88},
+    sol:null, solWord:'colourless',
+    leftName:'potassium hydroxide', leftFormula:'KOH',
+    overall:'2KBr + 2H₂O → 2KOH + H₂ + Br₂'
+  },
   CuSO4: {
     formula:'CuSO₄', name:'copper(II) sulfate', common:null, conc:'dilute',
     cat:{sym:'Cu', name:'copper', ion:'Cu²⁺', col:0xc8763c, r:0.66, lblCol:'#f0b07a',
@@ -264,6 +276,16 @@ const SOLUTIONS = {
     sol:[0.17,0.47,0.85], solWord:'blue',
     leftName:'sulfuric acid', leftFormula:'H₂SO₄',
     overall:'2CuSO₄ + 2H₂O → 2Cu + O₂ + 2H₂SO₄'
+  },
+  CuCl2: {
+    formula:'CuCl₂', name:'copper(II) chloride', common:null, conc:'concentrated',
+    cat:{sym:'Cu', name:'copper', ion:'Cu²⁺', col:0xc8763c, r:0.66, lblCol:'#f0b07a',
+         ionR:0.54, beatsH:true},
+    an:{label:'Cl⁻', name:'chloride', halide:true, sym:'Cl', mol:'Cl₂', molName:'chlorine',
+        col:0x4fbf72, lblCol:'#8fe0a8', r:0.62, ionR:0.78},
+    sol:[0.20,0.62,0.45], solWord:'green',
+    leftName:'just water again', leftFormula:'H₂O',
+    overall:'CuCl₂ → Cu + Cl₂'
   },
   Na2SO4: {
     formula:'Na₂SO₄', name:'sodium sulfate', common:null, conc:'dilute',
