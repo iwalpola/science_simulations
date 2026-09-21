@@ -72,6 +72,7 @@
   #tourCard b { color:#e4f4e6; }
   #tourCard .w { color:#63c8f0; font-weight:bold; }
   #tourCard .i { color:#f2c141; font-weight:bold; }
+  #tourCard .c { color:#a27cf0; font-weight:bold; }
   #tourCard table { width:100%; border-collapse:collapse; font-size:11px; margin-top:4px; }
   #tourCard th, #tourCard td { border-top:1px solid #24402c; padding:4px 3px; text-align:left; vertical-align:top; }
   #tourCard th { color:#e4f4e6; }
@@ -90,7 +91,7 @@
 </style>
 </head>
 <body>
-<div id="info"><b>ROOT HAIR CELL</b><br>hair projection / cytoplasm + mitochondria / permanent vacuole</div>
+<div id="info"><b>ROOT HAIR CELL</b><br>hair projection / cytoplasm + mitochondria / permanent vacuole<br>carrier proteins pump mineral ions in</div>
 <div id="hud">drag to orbit · scroll to zoom · &#9664; &#9654; to step adaptations</div>
 
 <button id="viewToggle">show whole cell</button>
@@ -156,6 +157,8 @@ const P = {
   ionSpeed:         0.095,
   ionSize:          0.080,
   ionFlash:         1,      // 0/1 — flash where an ion is actively pumped in
+  carrierCount:     14,     // carrier proteins set into the hair membrane
+  carrierSize:      0.15,   // how big each carrier protein is
   soilCount:        70,     // soil water outside the hair, for context
   soilSpread:       1.9,
   soilDrift:        0.12
@@ -205,6 +208,8 @@ const CONTROLS = [
   ['ionSpeed',        'ion speed',           0.00, 0.80, 0.005],
   ['ionSize',         'ion size',            0.01, 0.25, 0.005],
   ['ionFlash',        'pump flash (0/1)',    0,    1,    1   ],
+  ['carrierCount',    'carrier proteins',    0,    40,   1   ],
+  ['carrierSize',     'carrier size',        0.06, 0.40, 0.01],
   ['soilCount',       'soil water',          0,    300,  5   ],
   ['soilSpread',      'soil spread',         0.5,  5.0,  0.05],
   ['soilDrift',       'soil drift',          0.00, 0.80, 0.01],
@@ -262,6 +267,7 @@ const cytoMat     = Organelles.cytoplasmMaterial({ opacity:0.22, side:THREE.Doub
 const vacuoleMat  = Organelles.vacuoleMaterial();
 const waterMat    = new THREE.MeshPhongMaterial({ color:0x63c8f0, shininess:40, specular:0x99e8ff, emissive:0x0d3a4c, emissiveIntensity:0.55 });
 const ionMat      = new THREE.MeshPhongMaterial({ color:0xf2c141, shininess:40, specular:0xffe9a0, emissive:0x4a3505, emissiveIntensity:0.60 });
+const carrierMat  = new THREE.MeshPhongMaterial({ color:0xa27cf0, shininess:12, specular:0x2f2450, emissive:0xa27cf0, emissiveIntensity:0.22, transparent:true, opacity:1 });
 const soilMat     = new THREE.MeshPhongMaterial({ color:0x4e6f5c, shininess:8,  specular:0x223328, transparent:true, opacity:0.42, depthWrite:false });
 
 /* small deterministic RNG so a rebuild puts the organelles back
@@ -270,6 +276,11 @@ function rng(seed) {
   let s = seed >>> 0;
   return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
 }
+
+// how far a carrier protein's lobes tilt when its channel is fully open one way
+const CARRIER_OPEN = 0.42;
+// carriers dim with the ions when the tour is talking about water
+let carrierOpacity = 1;
 
 // stage boundaries along each particle's journey (fractions of s, 0 -> 1):
 // arrive at the membrane, get pumped (ions), be inside the lumen, reach the hair base
@@ -361,10 +372,13 @@ class RootHairCell {
 
     this._buildBody();
     this._buildHair();
+    this._buildCarriers();
     this._buildParticles();
   }
 
   dispose() {
+    // every carrier gets its own material so it can flash on its own
+    if (this.carriers) this.carriers.forEach(c => c.mat.dispose());
     this.group.traverse(o => { if (o.geometry) o.geometry.dispose(); });
     scene.remove(this.group);
   }
@@ -515,6 +529,91 @@ class RootHairCell {
     this.group.add(cap);
   }
 
+  /* ---------------- carrier proteins ----------------
+     The ions were crossing an invisible membrane, so pupils could not see what
+     was doing the pumping. Each carrier is a ring of four tiny purple subunits
+     set into the hair membrane with a channel down the middle. The subunits
+     tilt: the channel faces the soil while an ion waits outside, then swings
+     over to face the lumen as that ion is pumped through. Every ion is handed
+     to a carrier when it is built, so ions only ever cross at a carrier. */
+  _buildCarriers() {
+    this.carriers = [];
+    const n = Math.round(P.carrierCount);
+    if (n < 1) return;
+
+    const r = rng(4711);
+    const S = P.carrierSize;
+    const geo = new THREE.BoxGeometry(1, 1, 1);
+    const X = new THREE.Vector3(1, 0, 0), Y = new THREE.Vector3(), Z = new THREE.Vector3();
+    const basis = new THREE.Matrix4();
+
+    for (let i = 0; i < n; i++) {
+      // spread along the hair, and around it on the golden angle so no two line up
+      const u = THREE.MathUtils.clamp(0.14 + (i + 0.5) / n * 0.74 + (r() * 2 - 1) * 0.015, 0.04, 0.96);
+      const ang = i * 2.399963 + r() * 0.5;
+      const c0 = this.hairPoint(u);
+
+      // local +Y points out through the membrane, local +X runs along the hair
+      Y.set(0, Math.sin(ang), Math.cos(ang));
+      Z.crossVectors(X, Y);
+      basis.makeBasis(X, Y, Z);
+      const grp = new THREE.Group();
+      grp.quaternion.setFromRotationMatrix(basis);
+      const rad = this.hairInner(u);
+      grp.position.set(c0.x, c0.y + Y.y * rad, c0.z + Y.z * rad);
+      this.group.add(grp);
+
+      // four narrow subunits round a central channel, each reaching across the membrane
+      const mat = carrierMat.clone();
+      const lobe = (dx, dz) => {
+        const m = new THREE.Mesh(geo, mat);
+        m.scale.set(S * 0.40, S * 1.15, S * 0.40);
+        m.position.set(dx * S * 0.58, 0, dz * S * 0.58);
+        grp.add(m);
+        return m;
+      };
+      this.carriers.push({ u, ang, grp, mat, o: -1, flash: 0, ions: [],
+                           lobes: [lobe(1, 0), lobe(-1, 0), lobe(0, 1), lobe(0, -1)] });
+    }
+  }
+
+  /* o = -1: the channel opens outward, to the soil; o = +1: it opens inward,
+     into the lumen. Leaning every subunit the same way closes one mouth as it
+     opens the other, so an ion can only ever be on one side at a time. */
+  _updateCarriers(dt) {
+    if (!this.carriers.length) return;
+    // the ion snaps through in a moment, so the carrier holds its inward-facing
+    // shape for a beat afterwards and then swings back — otherwise the flip is
+    // over before anyone watching has seen it
+    const R = ROUTE.ion, span = Math.max(R.inside - R.pump, 1e-4), HOLD = 0.03, RESET = 0.05;
+    const ease = k => k * k * (3 - 2 * k);
+
+    for (const c of this.carriers) {
+      // the busiest ion at this carrier decides which way it faces
+      let target = -1, best = 0;
+      for (const p of c.ions) {
+        const after = p.s - R.inside;
+        let o = null, pri = 0;
+        if (p.s >= R.arrive && p.s < R.pump)      { o = -1; pri = 1; }                                   // holding it outside
+        else if (p.s >= R.pump && p.s < R.inside) { o = -1 + 2 * ease((p.s - R.pump) / span); pri = 3; }  // flipping it through
+        else if (after >= 0 && after < HOLD)          { o = 1; pri = 3; }                                 // open to the lumen
+        else if (after >= 0 && after < HOLD + RESET)  { o = 1 - 2 * ease((after - HOLD) / RESET); pri = 2; }  // turning back
+        if (o !== null && pri > best) { best = pri; target = o; }
+      }
+      // all four subunits lean the same way, so one mouth shuts as the other opens
+      c.o += (target - c.o) * Math.min(1, dt * 9);
+      const a = c.o * CARRIER_OPEN;
+      c.lobes[0].rotation.z =  a;
+      c.lobes[1].rotation.z = -a;
+      c.lobes[2].rotation.x = -a;
+      c.lobes[3].rotation.x =  a;
+
+      c.flash = Math.max(0, c.flash - dt * 2.2);
+      c.mat.emissiveIntensity = 0.22 + c.flash * 1.4;
+      c.mat.opacity = carrierOpacity;
+    }
+  }
+
   /* ---------------- uptake particles ---------------- */
   _buildParticles() {
     const r = rng(991);
@@ -528,13 +627,17 @@ class RootHairCell {
       for (let i = 0; i < count; i++) {
         const m = new THREE.Mesh(geo, mat);
         this.group.add(m);
-        list.push({
+        // ions queue at a carrier protein; water crosses anywhere it likes
+        const car = kind === 'ion' && this.carriers.length
+          ? this.carriers[i % this.carriers.length] : null;
+        const p = {
           mesh: m,
           kind,
           size,
+          carrier: car,
           s:      r(),                       // progress 0 -> 1 along the route
-          entry:  0.12 + r() * 0.80,         // where on the hair it crosses the membrane
-          ang:    r() * Math.PI * 2,         // direction it arrives from, around the hair
+          entry:  car ? car.u : 0.12 + r() * 0.80,   // where on the hair it crosses the membrane
+          ang:    car ? car.ang + (r() * 2 - 1) * 0.06 : r() * Math.PI * 2,   // direction it arrives from
           rad:    r() * 0.8,                 // radial offset inside the lumen
           far:    0.6 + r() * 0.9,           // how far out in the soil it starts
           rate:   speed * (0.7 + r() * 0.6),
@@ -542,7 +645,9 @@ class RootHairCell {
             (r() * 2 - 1) * P.bodyLength * 0.30,
             (r() * 2 - 1) * P.bodyHeight * 0.30,
             (r() * 2 - 1) * P.bodyDepth  * 0.30)
-        });
+        };
+        list.push(p);
+        if (car) car.ions.push(p);
       }
       return list;
     };
@@ -638,11 +743,14 @@ class RootHairCell {
         // grow in out in the soil and shrink away inside the cell, so the loop doesn't pop
         p.mesh.scale.setScalar(Math.min(1, p.s / 0.03, (1 - p.s) / 0.03));
 
-        if (p.kind === 'ion' && P.ionFlash > 0.5 && prev < ROUTE.ion.pump && p.s >= ROUTE.ion.pump) {
-          this._spawnFlash(tmp);
+        if (p.kind === 'ion' && prev < ROUTE.ion.pump && p.s >= ROUTE.ion.pump) {
+          if (p.carrier) p.carrier.flash = 1;             // the carrier lights up as it pumps
+          if (P.ionFlash > 0.5) this._spawnFlash(tmp);
         }
       }
     }
+
+    this._updateCarriers(dt);
 
     for (const f of this.flashes) {
       if (!f.mesh.visible) continue;
@@ -982,7 +1090,7 @@ TOUR_STEPS = [
   },
   {
     title: 'Mineral ions: active transport',
-    text: 'The cell already holds <b>more mineral ions</b> than the soil, so ions have to be moved <b>against their concentration gradient</b>.<br><br>Each <span class="i">ion</span> passes the wall, <b>waits at the membrane</b> for a <b>carrier protein</b>, then is pumped in using energy from respiration. <b>Each flash is one ion being pumped.</b>',
+    text: 'The cell already holds <b>more mineral ions</b> than the soil, so ions have to be moved <b>against their concentration gradient</b>.<br><br>Each <span class="i">ion</span> passes the wall, then <b>waits outside a <span class="c">carrier protein</span></b> &mdash; one of the small purple shapes set into the membrane. The carrier is open to the soil; once it has the ion it <b>swings shut and opens inside</b>, pumping the ion in using energy from respiration. <b>Each flash is one ion being pumped.</b>',
     focus: 'ions', speed: 0.45, dist: 4.0, theta: 0.10, phi: 1.35,
     target: () => hairWorld(0.6),
     anchor: () => trackParticle(cell.ions, ROUTE.ion.arrive - 0.01, ROUTE.ion.inside)
@@ -1014,7 +1122,7 @@ TOUR_STEPS = [
       '<tr><td>What moves</td><td>water</td><td>mineral ions</td></tr>' +
       '<tr><td>Direction</td><td>dilute &rarr; concentrated solution</td><td>against the concentration gradient</td></tr>' +
       '<tr><td>Energy</td><td>none (passive)</td><td>needed, from respiration</td></tr>' +
-      '<tr><td>Crosses via</td><td>partially permeable membrane</td><td>carrier proteins in the membrane</td></tr>' +
+      '<tr><td>Crosses via</td><td>partially permeable membrane</td><td><span class="c">carrier proteins</span> in the membrane</td></tr>' +
       '</table>',
     focus: 'both', speed: 1, dist: 12, theta: 0.12, phi: 1.30,
     target: () => hairWorld(0.45),
@@ -1058,6 +1166,7 @@ function setFocus(mode) {
   };
   dim(waterMat, mode !== 'ions');
   dim(ionMat, mode !== 'water');
+  carrierOpacity = mode === 'water' ? 0.12 : 1;
 }
 
 function tourShow(i) {
