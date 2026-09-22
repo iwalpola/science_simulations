@@ -24,6 +24,7 @@ Open `index.html` for the searchable catalogue, or go straight to one:
 | **[Ultrasonic NDT Explorer](ultrasonicv2.html)** | Slide a probe across a steel beam and watch the oscilloscope respond to hidden cracks. Pulse Trace mode gives a slow-motion view of the pulse travelling through the material. |
 | **[Bat Echolocation](pulse_echo.html)** | Pulse-echo timing, from the bat's end of it. |
 | **[Melting](particles/melting-snowman.html)** | A snowman melts. Where the energy comes from (mostly the air, not the sunshine — snow throws most of the light back), then inside the ice to watch molecules break out of their pattern, with a heating curve that holds dead flat at 0 °C through the whole melt. Change the weather to change how long it takes. |
+| **[Endothermic & Exothermic: Physical Change](energy/energy-physical-change.html)** | Heat a beaker of ice over a flame, or pack it in ice to cool it down, and watch orange thermal energy blocks travel in or out. Two thermometers, a zoomed-in particle view, and a heating curve calculated from the real specific heat capacities — so the plateaux land at 0 °C and 100 °C on their own, and the boiling one really is 6.8 times the melting one. |
 
 ### Chemistry
 
@@ -31,6 +32,7 @@ Open `index.html` for the searchable catalogue, or go straight to one:
 |---|---|
 | **[3D Reaction Scenes](3dreactionscenes/index.html)** | Fifteen scenes, one per GCSE reaction type — acid + metal, electrolysis, displacement, the blast furnace, thermal decomposition and the rest. Swap the species from a menu and the equation, captions and cast all follow. |
 | **[Reaction Builder](reactionbuilder/reaction-builder.html)** | Search a species, drop it on the reactant side, then model the products to see how atoms rearrange. |
+| **[Endothermic & Exothermic: Reactions](energy/energy-chemical-change.html)** | Start at the bench — one reaction warms the thermometer, one cools it — then zoom in to the bonds. Energy blocks travel *into* bonds as they stretch and snap, and *out* again as new ones form; add the two totals up on a reaction profile. Three reactions to swap between, every figure out of the bond-energy table. |
 | **[Brownian Motion](particles/brownian-motion.html)** | Follow pollen from a flower onto a drop of water, look down the microscope, and watch it jitter. Turn the water molecules visible to see what has been pushing it. Grain size and temperature are both adjustable. |
 
 There is also `homework/` (lesson slides) and `tools/` (one-off colour-migration
@@ -83,6 +85,7 @@ a scene — it records the traps that have already cost time. The short version:
 cd 3dreactionscenes && node test-scenes.js      # ~14,500 checks
 cd particles        && node test-particles.js   # ~3,200 checks
 cd particles        && node test-render.js      # runs the scenes headlessly
+cd energy           && node test-energy-scenes.js  # ~530 checks, incl. headless render
 cd reactionbuilder  && node test.js             # needs: npm install jsdom
 ```
 

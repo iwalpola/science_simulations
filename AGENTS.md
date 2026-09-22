@@ -11,6 +11,7 @@ index.html                  the catalogue everything is listed in
 reactionbuilder/            drag-and-drop reaction builder (+ test.js)
 3dreactionscenes/           15 three.js scenes, one per GCSE reaction type
 particles/                  particle-theory scenes (Brownian motion, melting)
+energy/                     energy stores and transfers (+ test-energy-scenes.js)
 electricity/                conduction and resistance (+ test-wire.js)
 tools/                      one-off colour-migration scripts (animcolour.mjs, colourfix.mjs)
 ```
@@ -23,6 +24,7 @@ tools/                      one-off colour-migration scripts (animcolour.mjs, co
 cd 3dreactionscenes && node test-scenes.js      # ~14,500 checks
 cd particles        && node test-particles.js   # ~3,200 checks
 cd particles        && node test-render.js      # runs the scenes headlessly
+cd energy           && node test-energy-scenes.js  # ~530 checks, incl. headless render
 cd reactionbuilder  && node test.js             # needs: npm install jsdom
 cd electricity      && node test-wire.js        # model + render path
 ```
@@ -62,6 +64,57 @@ every check in it and still be pointing the camera at the floor. There is no
 screenshot harness in this repo and none should be added: the user checks the
 visual result themselves. Do not spawn a browser to render or screenshot a
 scene as part of your own workflow.
+
+---
+
+## The `energy/` folder is 2D canvas, not three.js
+
+`energy-resources.html` is a three.js story like the rest of the repo, but
+`energy-physical-change.html` and `energy-chemical-change.html` are plain 2D
+canvas. That is deliberate: a flame, an ice cube, a thermometer column, a
+dashed bond and a reaction profile are all cheaper and more legible drawn flat,
+and none of them gains anything from a camera. Do not port them to three.js.
+
+Everything above about colour management, environment maps and `linearise()`
+applies only to the three.js scenes and can be ignored here.
+
+What they do share with the rest of the repo, and must keep:
+
+- **The energy block.** An orange rounded square with a `T` on it, a rim at
+  `shade(colour, 0.5)` and a gloss down the top half — the same block as
+  `energy-resources.html`, `T` = `#e5531a` and `C` = `#1ed31e`. It is the
+  vocabulary pupils have already met; do not restyle it in one scene only.
+- **The element palette.** `EL` in `energy-chemical-change.html` carries the
+  same colours and radii as the `EL` table in every `3dreactionscenes/` scene,
+  and `test-energy-scenes.js` asserts it. Hydrogen is `#d8402f`, oxygen
+  `#2f47b8`, carbon `#4d5560`, nitrogen `#8f6fd8`, chlorine `#4fbf72`.
+- **Everything is a pure function of `t`.** Block streams sit at arc length
+  `(t*speed + k*spacing) mod L` along a polyline; the fire's tongues are sums
+  of sines; gas particles reflect off the box with triangle waves. Nothing
+  accumulates between frames, so replay is exact. **Do not introduce per-frame
+  integration**, and do not reach for `Math.random()` inside a draw call — use
+  `hash(index)` so a given block always does the same thing.
+- **The numbers are derived, not typed.** The heating curve's slopes are
+  `1/c` and its plateaux are the latent heats, all out of `WATER`; the
+  reaction profile's three heights and the exothermic/endothermic verdict all
+  come out of the bond-energy lists. `test-energy-scenes.js` pulls those tables
+  out of the page and runs them, so a caption cannot quote a figure the picture
+  is not using. If you add a number to a caption, derive it.
+
+- **The teaching is on the canvas, not beside it.** These two deliberately have
+  no prose panel — they are meant to be read off a projector from the back of a
+  room, so every point a pupil needs is a banner, a pill or a labelled arrow
+  drawn in the scene. There is a slim bar along the bottom carrying the chapter
+  title, Back/Next, replay and at most one per-chapter control. If you find
+  yourself wanting a paragraph, find a way to draw it instead; if you genuinely
+  cannot, that is worth raising rather than reinstating the panel.
+
+The one trap specific to these two: the stage is a fixed 1000 × 620 space
+scaled into whatever the bar and the key leave free, so **lay things out in
+stage coordinates and never in pixels**. `resize()` is the only place that
+knows about `innerWidth`, and it *measures* the bar and the legend with
+`offsetHeight` rather than assuming a height — change their padding and the
+stage still fits.
 
 ---
 

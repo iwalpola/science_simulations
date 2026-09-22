@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Endothermic and exothermic reactions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--cyan:#19a3dc;--deep:#0a5f8f;--orange:#ef8a22;--ink:#17324d;--paper:#ffffff;--wash:#eaf6fc;--hot:#e5531a;--cold:#2f7fb8;--green:#1a8a3f}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;font-family:Nunito,system-ui,sans-serif;color:var(--ink);background:#dceef7}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+
+#key{display:flex;align-items:center;gap:15px;flex-wrap:wrap;font-size:13px;font-weight:700;color:#3d6480}
+.kitem{display:flex;align-items:center;gap:6px;white-space:nowrap}
+
+.blk{display:inline-grid;place-items:center;width:23px;height:23px;border-radius:5px;font:800 13px Nunito,sans-serif;border:2px solid rgba(0,0,0,.4);box-shadow:inset 0 3px 0 rgba(255,255,255,.55);vertical-align:middle;flex:none}
+.blk.T{background:#e5531a;color:#fff}
+.blk.C{background:#1ed31e;color:#063306}
+.bondline{display:inline-block;width:23px;height:0;border-top:4px solid #8f9ba6;flex:none}
+
+#bar{position:fixed;left:12px;right:12px;bottom:12px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  background:rgba(255,255,255,.95);border-radius:16px;padding:9px 16px;box-shadow:0 8px 26px rgba(10,60,100,.22)}
+#label{display:flex;flex-direction:column;min-width:0}
+#kicker{font-size:11.5px;font-weight:800;color:#5d7f93;letter-spacing:.5px;text-transform:uppercase}
+#title{font:600 21px/1.15 Fredoka,sans-serif;color:var(--deep);white-space:nowrap}
+#ctrl{display:flex;gap:6px;flex-wrap:wrap}
+#navwrap{display:flex;align-items:center;gap:10px;margin-left:auto}
+#replay{width:34px;height:34px;border-radius:50%;border:2px solid #9cc3d8;background:transparent;color:var(--deep);font-size:17px;cursor:pointer;flex:none}
+#replay:hover{background:var(--wash)}
+.btn{font:700 13.5px Nunito,sans-serif;border:none;border-radius:999px;padding:7px 13px;background:var(--orange);color:#fff;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--deep);border:2px solid #9cc3d8}
+.btn.on{background:var(--deep)}
+button.navb{font:700 15px Nunito,sans-serif;border:none;border-radius:999px;padding:8px 16px;cursor:pointer}
+#prev{background:var(--wash);color:var(--deep)}
+#next{background:var(--orange);color:#fff}
+button:disabled{opacity:.35;cursor:default}
+#dots{display:flex;gap:5px}
+#dots button{width:11px;height:11px;border-radius:50%;border:none;background:#c6dce8;padding:0;cursor:pointer}
+#dots button.on{background:var(--cyan);transform:scale(1.3)}
+button:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
+
+@media (max-width:860px){
+  #key{gap:9px;font-size:11px}
+  #key .blk{width:17px;height:17px;font-size:10px}
+  #bar{left:6px;right:6px;bottom:6px;padding:7px 10px;gap:10px}
+  #title{font-size:17px;white-space:normal}
+  #navwrap{gap:7px}
+  button.navb{padding:7px 12px;font-size:14px}
+}
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="Animation of endothermic and exothermic reactions: a reaction in a beaker with a thermometer, bonds breaking and forming, and a reaction profile."></canvas>
+
+<div id="bar">
+  <div id="label"><span id="kicker"></span><span id="title"></span></div>
+  <div id="key" aria-label="Key">
+    <span class="kitem"><span class="blk T">T</span>Thermal energy</span>
+    <span class="kitem"><span class="blk C">C</span>Chemical store</span>
+    <span class="kitem"><span class="bondline"></span>A chemical bond</span>
+    <span class="kitem">1 block = 100 kJ per mole</span>
+  </div>
+  <div id="ctrl"></div>
+  <div id="navwrap">
+    <button id="replay" title="Replay this animation" aria-label="Replay this animation">&#8635;</button>
+    <button class="navb" id="prev">Back</button>
+    <div id="dots"></div>
+    <button class="navb" id="next">Next</button>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+const $=s=>document.querySelector(s);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const ease=t=>{t=clamp(t,0,1);return t*t*(3-2*t);};
+const TAU=Math.PI*2;
+const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function hash(n){n=(n^61)^(n>>>16);n=(n+(n<<3))>>>0;n^=n>>>4;n=(n*0x27d4eb2d)>>>0;n^=n>>>15;return(n>>>0)/4294967296;}
+
+/* ===================================================================
+   THE CHEMISTRY
+   Mean bond energies in kJ per mole, from the data book. Every number
+   this simulation shows -- the totals, the overall energy change, the
+   heights on the reaction profile, even whether a reaction is called
+   exothermic -- is worked out from this one table, so a caption cannot
+   disagree with the picture.
+   =================================================================== */
+const EL={
+  H: {name:'hydrogen', col:'#d8402f', r:0.34},
+  O: {name:'oxygen',   col:'#2f47b8', r:0.50},
+  C: {name:'carbon',   col:'#4d5560', r:0.58},
+  N: {name:'nitrogen', col:'#8f6fd8', r:0.55},
+  Cl:{name:'chlorine', col:'#4fbf72', r:0.62}
+};
+const BLOCK_kJ=100;                 /* one orange block on screen */
+
+/* Species geometry, in units of one atom radius. */
+const SP={
+  H2: {f:'H₂', atoms:[['H',-0.85,0],['H',0.85,0]], bonds:[[0,1,1,'H–H']]},
+  Cl2:{f:'Cl₂',atoms:[['Cl',-1.15,0],['Cl',1.15,0]],bonds:[[0,1,1,'Cl–Cl']]},
+  HCl:{f:'HCl',    atoms:[['H',-1.0,0],['Cl',0.85,0]],  bonds:[[0,1,1,'H–Cl']]},
+  N2: {f:'N₂', atoms:[['N',-1.0,0],['N',1.0,0]],    bonds:[[0,1,3,'N≡N']]},
+  O2: {f:'O₂', atoms:[['O',-0.95,0],['O',0.95,0]],  bonds:[[0,1,2,'O=O']]},
+  NO: {f:'NO',     atoms:[['N',-1.0,0],['O',0.95,0]],   bonds:[[0,1,2,'N=O']]},
+  CH4:{f:'CH₄',atoms:[['C',0,0],['H',-1.25,-1.1],['H',1.25,-1.1],['H',-1.25,1.1],['H',1.25,1.1]],
+       bonds:[[0,1,1,'C–H'],[0,2,1,'C–H'],[0,3,1,'C–H'],[0,4,1,'C–H']]},
+  CO2:{f:'CO₂',atoms:[['C',0,0],['O',-1.5,0],['O',1.5,0]], bonds:[[0,1,2,'C=O'],[0,2,2,'C=O']]},
+  H2O:{f:'H₂O',atoms:[['O',0,0],['H',-0.95,-0.78],['H',0.95,-0.78]], bonds:[[0,1,1,'O–H'],[0,2,1,'O–H']]}
+};
+
+/* A reaction lists the bonds broken and the bonds made. The species
+   lists and the bond lists come from the same place, so the animation
+   is showing the very bonds the arithmetic is counting. */
+const RX={
+  hcl:{
+    label:'H₂ + Cl₂',
+    name:'Hydrogen and chlorine',
+    eq:'H₂ + Cl₂ → 2HCl',
+    note:'This is how hydrogen chloride — and so hydrochloric acid — is made industrially.',
+    r:[['H2',1],['Cl2',1]], p:[['HCl',2]],
+    brk:[['H–H',436,1],['Cl–Cl',242,1]],
+    mak:[['H–Cl',431,2]]
+  },
+  ch4:{
+    label:'CH₄ + 2O₂',
+    name:'Burning methane',
+    eq:'CH₄ + 2O₂ → CO₂ + 2H₂O',
+    note:'A gas hob. Eight bonds broken, six made — and it still gives out energy, because the bonds it makes are the strong ones.',
+    r:[['CH4',1],['O2',2]], p:[['CO2',1],['H2O',2]],
+    brk:[['C–H',413,4],['O=O',498,2]],
+    mak:[['C=O',805,2],['O–H',464,4]]
+  },
+  no:{
+    label:'N₂ + O₂',
+    name:'Nitrogen and oxygen',
+    eq:'N₂ + O₂ → 2NO',
+    note:'Happens in a hot car engine and in a lightning strike. It only goes where it is very hot, because energy has to be put in and kept in.',
+    r:[['N2',1],['O2',1]], p:[['NO',2]],
+    brk:[['N≡N',945,1],['O=O',498,1]],
+    mak:[['N=O',631,2]]
+  }
+};
+function tally(list){return list.reduce((a,b)=>a+b[1]*b[2],0);}
+function sums(rx){
+  const bin=tally(rx.brk),bout=tally(rx.mak);
+  return {bin,bout,net:bin-bout,exo:bin-bout<0};
+}
+Object.keys(RX).forEach(k=>{RX[k].sum=sums(RX[k]);});
+
+/* The bench demonstrations. */
+const BENCH={
+  exo:{
+    what:'magnesium + hydrochloric acid',
+    eq:'Mg + 2HCl → MgCl₂ + H₂',
+    t0:20,t1:45,sol:'#dfeaf4',fizz:1.0,ribbon:true,
+    kind:'exo'
+  },
+  endo:{
+    what:'citric acid + sodium hydrogencarbonate',
+    eq:'C₆H₈O₇ + 3NaHCO₃ → Na₃C₆H₅O₇ + 3H₂O + 3CO₂',
+    t0:20,t1:11,sol:'#e7f1e6',fizz:1.3,powder:true,
+    kind:'endo'
+  }
+};
+
+/* ===================================================================
+   DRAWING HELPERS
+   =================================================================== */
+/* A widescreen stage: a projector is nearer 2.3:1 than 1.6:1. */
+const SW=1400,SH=650;
+const canvas=$('#c'),ctx=canvas.getContext('2d');
+let dpr=1,stage={x:0,y:0,s:1};
+
+function rr(x,y,w,h,r){
+  r=Math.min(r,Math.abs(w)/2,Math.abs(h)/2);
+  ctx.beginPath();ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();
+}
+function shade(hex,k){
+  const n=parseInt(hex.slice(1),16);
+  return 'rgb('+Math.round((n>>16)*k)+','+Math.round((n>>8&255)*k)+','+Math.round((n&255)*k)+')';
+}
+function tint(hex,k){
+  const n=parseInt(hex.slice(1),16);
+  const m=(v)=>Math.round(v+(255-v)*k);
+  return 'rgb('+m(n>>16)+','+m(n>>8&255)+','+m(n&255)+')';
+}
+function txt(s,x,y,o){
+  o=o||{};
+  ctx.font=(o.font||'700 15px Nunito, sans-serif');
+  ctx.textAlign=o.align||'left';ctx.textBaseline=o.base||'alphabetic';
+  if(o.halo){ctx.lineWidth=o.halo;ctx.strokeStyle=o.haloCol||'rgba(255,255,255,.92)';ctx.strokeText(s,x,y);}
+  ctx.fillStyle=o.col||'#17324d';ctx.fillText(s,x,y);
+}
+function pill(s,x,y,o){
+  o=o||{};
+  const f=o.font||'700 15px Nunito, sans-serif';
+  ctx.font=f;
+  const w=ctx.measureText(s).width+2*(o.pad||11),h=o.h||27;
+  const x0=o.align==='center'?x-w/2:(o.align==='right'?x-w:x);
+  rr(x0,y-h/2,w,h,h/2);
+  ctx.fillStyle=o.bg||'rgba(255,255,255,.95)';ctx.fill();
+  ctx.lineWidth=2.5;ctx.strokeStyle=o.bd||'#19a3dc';ctx.stroke();
+  txt(s,x0+w/2,y+1,{font:f,align:'center',base:'middle',col:o.col||'#15314b'});
+  return {x:x0,y:y-h/2,w,h};
+}
+
+const BLOCKS={T:{c:'#e5531a',f:'#ffffff'},C:{c:'#1ed31e',f:'#063306'}};
+function blk(type,x,y,s,alpha,rot,clipFrac){
+  const B=BLOCKS[type];
+  ctx.save();ctx.globalAlpha=clamp(alpha===undefined?1:alpha,0,1);
+  ctx.translate(x,y);if(rot)ctx.rotate(rot);
+  if(clipFrac!==undefined&&clipFrac<1){
+    /* a part block, so a total of 6.8 blocks looks like 6.8 blocks */
+    ctx.beginPath();ctx.rect(-s/2,s/2-s*clamp(clipFrac,0,1),s,s*clamp(clipFrac,0,1));ctx.clip();
+  }
+  rr(-s/2,-s/2,s,s,s*0.19);ctx.fillStyle=shade(B.c,0.5);ctx.fill();
+  const i=s*0.86;
+  rr(-i/2,-i/2,i,i,i*0.15);ctx.fillStyle=B.c;ctx.fill();
+  const g=ctx.createLinearGradient(0,-i/2,0,i*0.05);
+  g.addColorStop(0,'rgba(255,255,255,.6)');g.addColorStop(1,'rgba(255,255,255,0)');
+  rr(-i/2,-i/2,i,i*0.5,i*0.15);ctx.fillStyle=g;ctx.fill();
+  if(clipFrac===undefined||clipFrac>0.45)
+    txt(type,0,s*0.045,{font:'800 '+(s*0.58).toFixed(1)+'px Nunito, sans-serif',align:'center',base:'middle',col:B.f});
+  ctx.restore();
+}
+
+/* Blocks sliding along a polyline, as a pure function of t. */
+function polyline(pts){
+  const seg=[];let L=0;
+  for(let i=1;i<pts.length;i++){
+    const d=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);
+    seg.push({a:pts[i-1],b:pts[i],d,s0:L});L+=d;
+  }
+  return {seg,L};
+}
+function alongPoly(p,s){
+  s=clamp(s,0,p.L);
+  for(let i=0;i<p.seg.length;i++){
+    const g=p.seg[i];
+    if(s<=g.s0+g.d||i===p.seg.length-1){
+      const u=g.d>0?(s-g.s0)/g.d:0;
+      return [lerp(g.a[0],g.b[0],u),lerp(g.a[1],g.b[1],u)];
+    }
+  }
+}
+function stream(type,pts,t,o){
+  o=o||{};
+  const p=polyline(pts),sp=o.spacing||56,v=o.speed||110,size=o.size||20;
+  if(p.L<1)return;
+  const n=Math.max(1,Math.round(p.L/sp));
+  const head=t*v*(o.reverse?-1:1)+(o.phase||0);
+  for(let k=0;k<n;k++){
+    let s=(head+k*sp)%p.L;if(s<0)s+=p.L;
+    const u=s/p.L,q=alongPoly(p,s);
+    let a=clamp(u/0.14,0,1)*clamp((1-u)/0.14,0,1);
+    blk(type,q[0],q[1],size,a*(o.alpha||1),Math.sin(t*1.7+k*1.3)*0.3);
+  }
+}
+
+/* ===================================================================
+   MOLECULES
+   A species is drawn from its own geometry. `stretch` pulls the bonds
+   long and thin, `split` sends the atoms away from the centre once the
+   bonds have gone, and `bond` fades the bonds in or out.
+   =================================================================== */
+function atomBall(sym,x,y,r,o){
+  o=o||{};
+  const c=EL[sym].col;
+  ctx.save();ctx.globalAlpha=o.alpha===undefined?1:o.alpha;
+  if(o.glow>0.01){
+    const g=ctx.createRadialGradient(x,y,r*0.6,x,y,r*2.1);
+    g.addColorStop(0,'rgba(255,190,90,'+(0.55*o.glow).toFixed(3)+')');
+    g.addColorStop(1,'rgba(255,190,90,0)');
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r*2.1,0,TAU);ctx.fill();
+  }
+  const g=ctx.createRadialGradient(x-r*0.34,y-r*0.38,r*0.08,x,y,r);
+  g.addColorStop(0,tint(c,0.55));g.addColorStop(0.55,c);g.addColorStop(1,shade(c,0.72));
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.fill();
+  ctx.lineWidth=Math.max(1.4,r*0.09);ctx.strokeStyle=shade(c,0.55);ctx.stroke();
+  if(r>10)txt(sym,x,y+1,{align:'center',base:'middle',font:'800 '+(r*0.82).toFixed(0)+'px Nunito, sans-serif',
+    col:(sym==='H'||sym==='O'||sym==='C'||sym==='N')?'#ffffff':'#0d2e18'});
+  ctx.restore();
+}
+function drawBond(ax,ay,bx,by,order,o){
+  o=o||{};
+  const strain=clamp(o.strain||0,0,1);
+  const a=clamp(o.alpha===undefined?1:o.alpha,0,1);
+  if(a<=0.01)return;
+  const dx=bx-ax,dy=by-ay,L=Math.hypot(dx,dy)||1;
+  const nx=-dy/L,ny=dx/L;
+  const w=(o.w||9)*(1-0.55*strain);
+  const gap=w*1.35;
+  ctx.save();ctx.globalAlpha=a;
+  ctx.lineCap='round';
+  for(let k=0;k<order;k++){
+    const off=(k-(order-1)/2)*gap;
+    ctx.lineWidth=w;
+    ctx.strokeStyle=strain>0.05
+      ? 'rgb('+Math.round(lerp(143,229,strain))+','+Math.round(lerp(155,83,strain))+','+Math.round(lerp(166,26,strain))+')'
+      : '#8f9ba6';
+    ctx.beginPath();
+    if(strain>0.25){                     /* a strained bond goes zigzag */
+      const n=6;
+      for(let i=0;i<=n;i++){
+        const u=i/n;
+        const wob=Math.sin(u*Math.PI*3+(o.t||0)*9)*strain*w*0.9*Math.sin(u*Math.PI);
+        const x=lerp(ax,bx,u)+nx*(off+wob),y=lerp(ay,by,u)+ny*(off+wob);
+        if(i)ctx.lineTo(x,y);else ctx.moveTo(x,y);
+      }
+    } else {
+      ctx.moveTo(ax+nx*off,ay+ny*off);ctx.lineTo(bx+nx*off,by+ny*off);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawSpecies(key,cx,cy,scale,t,o){
+  o=o||{};
+  const s=SP[key];
+  const stretch=clamp(o.stretch||0,0,1),split=clamp(o.split||0,0,1);
+  const rot=o.rot||0,ca=Math.cos(rot),sa=Math.sin(rot);
+  /* the geometric centre the atoms fly away from */
+  let mx=0,my=0;
+  s.atoms.forEach(a=>{mx+=a[1];my+=a[2];});
+  mx/=s.atoms.length;my/=s.atoms.length;
+  const pos=s.atoms.map((a,i)=>{
+    const grow=1+stretch*0.42;
+    let px=(a[1]-mx)*grow,py=(a[2]-my)*grow;
+    if(split>0.001){
+      const L=Math.hypot(px,py)||1;
+      /* far enough to read as "no bonds left", close enough that three
+         molecules' worth of atoms do not overrun the ledger */
+      const fly=ease(split)*2.2;
+      const spin=split*1.6*(hash(i*7+key.length)-0.5);
+      px+=(px/L)*fly+Math.cos(spin+i)*split*0.5;
+      py+=(py/L)*fly+Math.sin(spin+i)*split*0.5;
+    }
+    const jx=Math.sin(t*(2.1+i*0.4)+i*1.7)*0.06*(1+3*split);
+    const jy=Math.cos(t*(1.8+i*0.35)+i*2.3)*0.06*(1+3*split);
+    px+=jx;py+=jy;
+    return [cx+(px*ca-py*sa)*scale,cy+(px*sa+py*ca)*scale];
+  });
+  const bondAlpha=o.bond===undefined?(1-clamp(split*3.2,0,1)):o.bond;
+  s.bonds.forEach(b=>{
+    drawBond(pos[b[0]][0],pos[b[0]][1],pos[b[1]][0],pos[b[1]][1],b[2],
+      {strain:stretch,alpha:bondAlpha,w:scale*0.30,t});
+  });
+  s.atoms.forEach((a,i)=>atomBall(a[0],pos[i][0],pos[i][1],EL[a[0]].r*scale*0.95,{glow:o.glow||0}));
+  return {pos,bonds:s.bonds};
+}
+/* Where each bond's midpoint is, so a block can be aimed at it. */
+function bondMids(g){
+  return g.bonds.map(b=>[(g.pos[b[0]][0]+g.pos[b[1]][0])/2,(g.pos[b[0]][1]+g.pos[b[1]][1])/2,b[3]]);
+}
+function layout(list,x0,x1,y){
+  /* spread the molecules of one side across a strip */
+  const items=[];
+  list.forEach(e=>{for(let k=0;k<e[1];k++)items.push(e[0]);});
+  const n=items.length;
+  return items.map((k,i)=>({key:k,x:lerp(x0,x1,n===1?0.5:i/(n-1)),y}));
+}
+/* Methane needs four molecules on a side where hydrogen needs two, so the
+   drawing scale has to come from the cast size rather than being fixed. */
+function castScale(list,big){
+  let n=0;list.forEach(e=>{n+=e[1];});
+  return big*(n<=2?1:(n===3?0.82:0.68));
+}
+
+/* ===================================================================
+   THE BENCH
+   =================================================================== */
+const BB={x:430,w:230,top:224,bot:478,wall:8};
+
+function surroundingsFrame(t,dir){
+  ctx.save();
+  ctx.setLineDash([11,8]);ctx.lineDashOffset=-t*18*dir;
+  ctx.lineWidth=3;ctx.strokeStyle=dir>0?'#8fb6d6':'#efae6b';
+  rr(34,92,SW-68,SH-152,22);ctx.stroke();
+  ctx.setLineDash([]);
+  txt('the surroundings',58,126,{font:'800 19px Nunito, sans-serif',col:dir>0?'#4d789b':'#a8560a',halo:5});
+  ctx.restore();
+}
+function beaker(b,prog,t){
+  const ix=BB.x+BB.wall,iw=BB.w-2*BB.wall,ibot=BB.bot-BB.wall;
+  const lvl=ibot-168;
+  ctx.save();
+  rr(ix,BB.top+BB.wall,iw,ibot-BB.top-BB.wall,4);ctx.clip();
+  const g=ctx.createLinearGradient(0,lvl,0,ibot);
+  g.addColorStop(0,b.sol);g.addColorStop(1,shade(b.sol,0.86));
+  ctx.beginPath();ctx.moveTo(ix,ibot);ctx.lineTo(ix,lvl);
+  for(let x=0;x<=iw;x+=6)ctx.lineTo(ix+x,lvl+Math.sin(x*0.06+t*2.2)*2.2);
+  ctx.lineTo(ix+iw,ibot);ctx.closePath();
+  ctx.globalAlpha=0.92;ctx.fillStyle=g;ctx.fill();ctx.globalAlpha=1;
+  /* the solid reactant */
+  if(b.ribbon){
+    ctx.save();
+    ctx.translate(ix+iw*0.34,ibot-9);ctx.rotate(-0.12);
+    ctx.fillStyle='#c3cbd6';rr(-30,-4,60*Math.max(0.15,1-prog*0.8),8,3);ctx.fill();
+    ctx.restore();
+  }
+  if(b.powder){
+    ctx.fillStyle='rgba(252,252,252,.95)';
+    for(let i=0;i<22;i++){
+      const px=ix+12+hash(i)*(iw-24),py=ibot-4-hash(i+50)*7;
+      ctx.beginPath();ctx.arc(px,py,1.4+hash(i+9)*2.4*Math.max(0.2,1-prog),0,TAU);ctx.fill();
+    }
+  }
+  /* fizzing */
+  const nb=Math.round(34*b.fizz*Math.sin(clamp(prog,0,1)*Math.PI*0.92+0.14));
+  for(let i=0;i<Math.max(0,nb);i++){
+    const ph=(t*(0.55+hash(i)*0.75)+hash(i+30))%1;
+    const bx=ix+8+hash(i+70)*(iw-16);
+    const by=ibot-4-ph*(ibot-lvl-4);
+    ctx.globalAlpha=0.8*(1-ph*0.3);
+    ctx.fillStyle='rgba(255,255,255,.95)';
+    ctx.beginPath();ctx.arc(bx+Math.sin(ph*9+i)*3.5,by,1.5+hash(i+11)*3.4,0,TAU);ctx.fill();
+  }
+  ctx.globalAlpha=1;
+  /* froth on top */
+  for(let i=0;i<20;i++){
+    const fx=ix+6+hash(i+300)*(iw-12);
+    ctx.globalAlpha=0.55*b.fizz*Math.sin(clamp(prog,0,1)*Math.PI*0.92+0.14);
+    ctx.fillStyle='#ffffff';
+    ctx.beginPath();ctx.arc(fx,lvl-2+Math.sin(t*3+i)*2,2+hash(i+400)*4,0,TAU);ctx.fill();
+  }
+  ctx.globalAlpha=1;
+  ctx.restore();
+  /* glass */
+  ctx.save();
+  ctx.lineWidth=BB.wall;ctx.strokeStyle='rgba(158,200,222,.95)';
+  ctx.beginPath();
+  ctx.moveTo(BB.x+BB.wall/2,BB.top);
+  ctx.lineTo(BB.x+BB.wall/2,BB.bot-BB.wall/2);
+  ctx.lineTo(BB.x+BB.w-BB.wall/2,BB.bot-BB.wall/2);
+  ctx.lineTo(BB.x+BB.w-BB.wall/2,BB.top);
+  ctx.stroke();
+  const gg=ctx.createLinearGradient(BB.x,0,BB.x+BB.w,0);
+  gg.addColorStop(0,'rgba(255,255,255,.5)');gg.addColorStop(0.2,'rgba(255,255,255,.1)');
+  gg.addColorStop(0.82,'rgba(255,255,255,.08)');gg.addColorStop(1,'rgba(255,255,255,.45)');
+  ctx.fillStyle=gg;ctx.fillRect(BB.x,BB.top,BB.w,BB.bot-BB.top);
+  ctx.lineWidth=5;ctx.strokeStyle='rgba(180,214,232,.95)';
+  ctx.beginPath();ctx.moveTo(BB.x-6,BB.top);ctx.lineTo(BB.x+BB.w+6,BB.top);ctx.stroke();
+  ctx.restore();
+  return {lvl,ix,iw,ibot};
+}
+/* A thermometer dipped into the beaker, tilted. */
+function thermoDip(temp,tmin,tmax,t){
+  const bx=BB.x+BB.w*0.72,by=BB.bot-46;
+  const ang=-0.2;
+  const L=256,w=18;
+  ctx.save();
+  ctx.translate(bx,by);ctx.rotate(ang);
+  rr(-w/2,-L,w,L,w/2);
+  ctx.fillStyle='rgba(255,255,255,.94)';ctx.fill();
+  ctx.lineWidth=2.4;ctx.strokeStyle='#8aa7bb';ctx.stroke();
+  ctx.beginPath();ctx.arc(0,0,14,0,TAU);
+  ctx.fillStyle='rgba(255,255,255,.94)';ctx.fill();ctx.stroke();
+  const y=v=>-18-(L-40)*clamp((v-tmin)/(tmax-tmin),0,1);
+  ctx.lineWidth=1.6;ctx.strokeStyle='#9db8c9';
+  for(let v=Math.ceil(tmin/10)*10;v<=tmax;v+=10){
+    ctx.beginPath();ctx.moveTo(w/2,y(v));ctx.lineTo(w/2+(v%20===0?9:5),y(v));ctx.stroke();
+  }
+  const hotness=clamp((temp-5)/55,0,1);
+  const col='rgb('+Math.round(lerp(58,229,hotness))+','+Math.round(lerp(140,83,hotness))+','+Math.round(lerp(205,26,hotness))+')';
+  ctx.beginPath();ctx.arc(0,0,10,0,TAU);ctx.fillStyle=col;ctx.fill();
+  const cy=y(temp);
+  rr(-4,cy,8,-cy,4);ctx.fillStyle=col;ctx.fill();
+  ctx.restore();
+  pill(temp.toFixed(0)+'°C',bx+L*Math.sin(-ang)+8,by-L*Math.cos(ang)-22,
+    {align:'center',bd:col,font:'800 18px Nunito, sans-serif',h:31});
+  return {col};
+}
+/* A stack of blocks standing for an energy store. Two of these sit either
+   side of the beaker -- the chemical store of the chemicals on the left, the
+   thermal store of the surroundings on the right -- and what one loses the
+   other gains. That is the point the prose panel used to have to make. */
+function store(type,x,frac,t,label,caption,colour){
+  const base=498,s=34,n=8;
+  ctx.save();
+  txt(caption[0],x,base+34,{align:'center',font:'700 16px Nunito, sans-serif',col:colour,halo:4});
+  txt(caption[1],x,base+54,{align:'center',font:'400 14px Nunito, sans-serif',col:'#4b6780',halo:4});
+  const shown=n*clamp(frac,0,1);
+  for(let i=0;i<n;i++){
+    const f=clamp(shown-i,0,1);
+    if(f<=0.01){
+      ctx.globalAlpha=0.2;ctx.setLineDash([3,3]);ctx.lineWidth=1.6;ctx.strokeStyle=colour;
+      rr(x-s/2,base-(i+1)*(s+4),s,s,6);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
+    } else blk(type,x,base-(i+0.5)*(s+4),s,1,0,f);
+  }
+  if(label)pill(label,x,base-n*(s+4)-24,{align:'center',bd:colour,font:'800 16px Nunito, sans-serif',h:30});
+  ctx.restore();
+  return {x,base,s,n};
+}
+
+function benchView(t,b,dur){
+  const prog=clamp(t/dur,0,1);
+  const dir=b.kind==='exo'?-1:1;         /* -1 energy out, +1 energy in */
+  const rise=(1-Math.exp(-3.4*prog))/(1-Math.exp(-3.4));
+  const temp=lerp(b.t0,b.t1,rise);
+  const dT=temp-b.t0;
+
+  const exo=b.kind==='exo',mid=SW/2,cx=BB.x+BB.w/2;
+  surroundingsFrame(t,dir);
+  beaker(b,prog,t);
+  thermoDip(temp,0,60,t);
+  /* The same energy, counted twice: whatever the chemicals lose from their
+     chemical store, the surroundings gain in their thermal store. */
+  const chem=store('C',214,exo?1-0.55*rise:0.4+0.5*rise,t,exo?'falling':'rising',
+    ['chemical store','of the chemicals'],'#1a8a3f');
+  const surr=store('T',944,exo?0.25+0.55*rise:1-0.5*rise,t,exo?'rising':'falling',
+    ['thermal store','of the surroundings'],'#c25a10');
+
+  /* blocks crossing between the two, through the reaction in the middle */
+  const left=[[chem.x+40,392],[BB.x-40,370],[BB.x-6,362]];
+  const right=[[BB.x+BB.w+6,362],[surr.x-46,374],[surr.x-28,396]];
+  stream('C',exo?left:left.slice().reverse(),t,{speed:62,spacing:50,size:23});
+  stream('T',exo?right:right.slice().reverse(),t,{speed:78,spacing:52,size:25});
+  /* and a little of it straight up out of the top, as it really goes */
+  const up=[[cx,BB.top-6],[cx+14,BB.top-76],[cx+28,BB.top-142]];
+  stream('T',exo?up:up.slice().reverse(),t,{speed:74,spacing:54,size:22,phase:21});
+
+  if(dir<0){
+    pill('energy OUT to the surroundings — EXOTHERMIC',mid,SH-46,
+      {align:'center',bd:'#e5531a',bg:'#fff3e8',font:'800 23px Nunito, sans-serif',h:44,col:'#a8500b'});
+    txt('the surroundings get WARMER',mid,SH-12,{align:'center',font:'700 17px Nunito, sans-serif',col:'#a8560a',halo:4});
+  } else {
+    pill('energy IN from the surroundings — ENDOTHERMIC',mid,SH-46,
+      {align:'center',bd:'#2f7fb8',bg:'#ecf5fc',font:'800 23px Nunito, sans-serif',h:44,col:'#1d5f8c'});
+    txt('the surroundings get COLDER',mid,SH-12,{align:'center',font:'700 17px Nunito, sans-serif',col:'#1d5f8c',halo:4});
+  }
+  /* the temperature change, which is the only thing you actually measure */
+  const tc=dT>=0?'#c25a10':'#1d5f8c';
+  pill((dT>=0?'+':'−')+Math.abs(dT).toFixed(1)+' °C',1196,240,
+    {align:'center',bd:tc,font:'800 38px Nunito, sans-serif',h:62,col:tc});
+  txt('change in temperature',1196,296,{align:'center',font:'700 16px Nunito, sans-serif',col:'#4b6780',halo:4});
+  txt('started at '+b.t0+' °C',1196,320,{align:'center',font:'400 15px Nunito, sans-serif',col:'#5d7f93',halo:4});
+
+  pill(b.what,mid,146,{align:'center',bd:'#19a3dc',font:'800 21px Nunito, sans-serif',h:38});
+  txt(b.eq,mid,184,{align:'center',font:'700 17px Nunito, sans-serif',col:'#0a5f8f',halo:4});
+}
+
+/* ===================================================================
+   BOND BREAKING AND BOND MAKING
+   =================================================================== */
+const LED={x:944,y:104,w:420};
+function ledger(title,rows,total,colour,t,filled){
+  const rowH=36,h=62+rows.length*rowH+50;
+  ctx.save();
+  rr(LED.x,LED.y,LED.w,h,14);
+  ctx.fillStyle='rgba(255,255,255,.93)';ctx.fill();
+  ctx.lineWidth=3;ctx.strokeStyle=colour;ctx.stroke();
+  txt(title,LED.x+LED.w/2,LED.y+32,{align:'center',font:'700 18.5px Nunito, sans-serif',col:colour});
+  txt('bond',LED.x+20,LED.y+56,{font:'700 14px Nunito, sans-serif',col:'#5d7f93'});
+  txt('kJ/mol',LED.x+LED.w-20,LED.y+56,{align:'right',font:'700 14px Nunito, sans-serif',col:'#5d7f93'});
+  rows.forEach((r,i)=>{
+    const y=LED.y+66+i*rowH+rowH*0.62;
+    const on=i/rows.length<filled+0.001;
+    ctx.globalAlpha=on?1:0.32;
+    txt(r[2]+' × '+r[0],LED.x+20,y,{font:'700 18px Nunito, sans-serif',col:'#17324d'});
+    txt((r[1]*r[2])+'',LED.x+LED.w-20,y,{align:'right',font:'700 18px Nunito, sans-serif',col:colour});
+    ctx.globalAlpha=1;
+  });
+  const ty=LED.y+66+rows.length*rowH+32;
+  ctx.lineWidth=2;ctx.strokeStyle='#cfe0ea';
+  ctx.beginPath();ctx.moveTo(LED.x+18,ty-22);ctx.lineTo(LED.x+LED.w-18,ty-22);ctx.stroke();
+  txt('total',LED.x+20,ty,{font:'800 19px Nunito, sans-serif',col:'#17324d'});
+  txt(Math.round(total*filled)+' / '+total,LED.x+LED.w-20,ty,
+    {align:'right',font:'800 21px Nunito, sans-serif',col:colour});
+  ctx.restore();
+  /* the same total, as blocks */
+  const per=total/BLOCK_kJ,x0=LED.x+20,y0=LED.y+h+38,s=29;
+  txt('1 block = '+BLOCK_kJ+' kJ/mol',LED.x+LED.w/2,y0-24,
+    {align:'center',font:'700 14px Nunito, sans-serif',col:'#4b6780'});
+  const cols=12;
+  for(let i=0;i<Math.ceil(per);i++){
+    const f=clamp(per*filled-i,0,1);
+    const bx=x0+(i%cols)*(s+3)+s/2,by=y0+Math.floor(i/cols)*(s+3)+s/2;
+    if(f<=0.01){
+      ctx.globalAlpha=0.22;ctx.setLineDash([3,3]);ctx.lineWidth=1.5;ctx.strokeStyle=colour;
+      rr(bx-s/2,by-s/2,s,s,5);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
+    } else blk('T',bx,by,s,1,0,f);
+  }
+  return {h};
+}
+
+/* Chapter: breaking. The molecules are pulled apart, and the blocks all
+   travel INTO the bonds. Nothing comes out. */
+function breakView(t,rx,dur){
+  const q=(t%dur)/dur;
+  /* 0.00-0.18 settle, 0.18-0.62 stretch, 0.62 snap, 0.62-1.0 drift apart */
+  const stretch=ease(clamp((q-0.18)/0.44,0,1));
+  const split=ease(clamp((q-0.62)/0.32,0,1));
+  const sc=castScale(rx.r,68);
+  const mols=layout(rx.r,236,760,SH*0.48);
+  const mids=[];
+  mols.forEach((m,i)=>{
+    const g=drawSpecies(m.key,m.x,m.y+Math.sin(t*0.8+i*2)*6,sc,t,
+      {stretch,split,rot:Math.sin(t*0.3+i)*0.22,glow:stretch*0.8});
+    bondMids(g).forEach(z=>mids.push(z));
+    txt(SP[m.key].f,m.x,m.y+146,{align:'center',font:'800 25px Nunito, sans-serif',col:'#0a5f8f',halo:5});
+  });
+  /* blocks arriving at the bonds */
+  if(mids.length){
+    const K=6,period=0.7;
+    for(let k=0;k<K;k++){
+      const w=t/period+k/K,cyc=Math.floor(w),ph=w-cyc;
+      const z=mids[Math.floor(hash(cyc*17+k*5)*mids.length)%mids.length];
+      const from=[lerp(160,820,hash(cyc*3+k)),SH-40];
+      const e=ease(ph);
+      blk('T',lerp(from[0],z[0],e),lerp(from[1],z[1],e)-Math.sin(ph*Math.PI)*46,
+        23,clamp((1-ph)/0.16,0,1)*clamp(ph/0.08,0,1),ph*3);
+    }
+  }
+  /* the snap */
+  if(q>0.6&&q<0.76){
+    const f=(q-0.6)/0.16;
+    ctx.save();ctx.globalAlpha=(1-f)*0.9;
+    mids.forEach(z=>{
+      ctx.strokeStyle='#ffb04a';ctx.lineWidth=4;
+      for(let a=0;a<5;a++){
+        const an=a*TAU/5+f*1.4;
+        ctx.beginPath();
+        ctx.moveTo(z[0]+Math.cos(an)*14*f,z[1]+Math.sin(an)*14*f);
+        ctx.lineTo(z[0]+Math.cos(an)*(14+26*f),z[1]+Math.sin(an)*(14+26*f));
+        ctx.stroke();
+      }
+    });
+    ctx.restore();
+  }
+  pill('BREAKING bonds needs energy IN — endothermic',498,SH-104,
+    {align:'center',bd:'#e5531a',bg:'#fff3e8',font:'800 23px Nunito, sans-serif',h:44,col:'#a8500b'});
+  txt(split>0.4?'separate atoms — every bond gone':'the bonds stretch, then snap',
+    498,SH-64,{align:'center',font:'700 17px Nunito, sans-serif',col:'#4b6780',halo:4});
+  ledger('Bonds BROKEN — energy in',rx.brk,rx.sum.bin,'#c25a10',t,clamp(q/0.62,0,1));
+  pill(rx.eq,498,62,{align:'center',bd:'#19a3dc',font:'800 26px Nunito, sans-serif',h:44});
+  txt('step 1 of 2: pull the reactants apart',498,110,
+    {align:'center',font:'700 16px Nunito, sans-serif',col:'#4b6780',halo:4});
+}
+
+/* Chapter: making. Free atoms come together into the products, and the
+   blocks all travel OUT. */
+function makeView(t,rx,dur){
+  const q=(t%dur)/dur;
+  const split=1-ease(clamp((q-0.08)/0.42,0,1));
+  const settle=ease(clamp((q-0.5)/0.3,0,1));
+  const sc=castScale(rx.p,68);
+  const mols=layout(rx.p,236,760,SH*0.48);
+  const mids=[];
+  mols.forEach((m,i)=>{
+    const g=drawSpecies(m.key,m.x,m.y+Math.sin(t*0.8+i*2)*6,sc,t,
+      {split,bond:ease(clamp((q-0.44)/0.14,0,1)),rot:Math.sin(t*0.3+i)*0.22,
+       glow:settle*(1-settle)*3.4});
+    bondMids(g).forEach(z=>mids.push(z));
+    if(split<0.25)txt(SP[m.key].f,m.x,m.y+146,{align:'center',font:'800 25px Nunito, sans-serif',col:'#1a8a3f',halo:5});
+  });
+  /* blocks leaving the new bonds */
+  if(mids.length&&q>0.42){
+    const K=7,period=0.5;
+    for(let k=0;k<K;k++){
+      const w=(t)/period+k/K,cyc=Math.floor(w),ph=w-cyc;
+      const z=mids[Math.floor(hash(cyc*23+k*3)*mids.length)%mids.length];
+      const an=hash(cyc*11+k*7)*TAU;
+      const e=ease(ph),d=230*e;
+      blk('T',z[0]+Math.cos(an)*d,z[1]+Math.sin(an)*d*0.62-e*40,
+        23,clamp((1-ph)/0.3,0,1),ph*3);
+    }
+  }
+  pill('MAKING bonds gives energy OUT — exothermic',498,SH-104,
+    {align:'center',bd:'#1a8a3f',bg:'#f0fbf3',font:'800 23px Nunito, sans-serif',h:44,col:'#166b33'});
+  txt(split>0.5?'the separate atoms come together…':'…bonds snap into place, and energy is released',
+    498,SH-64,{align:'center',font:'700 17px Nunito, sans-serif',col:'#4b6780',halo:4});
+  ledger('Bonds MADE — energy out',rx.mak,rx.sum.bout,'#1a8a3f',t,clamp((q-0.4)/0.4,0,1));
+  pill(rx.eq,498,62,{align:'center',bd:'#19a3dc',font:'800 26px Nunito, sans-serif',h:44});
+  txt('step 2 of 2: build the products',498,110,
+    {align:'center',font:'700 16px Nunito, sans-serif',col:'#4b6780',halo:4});
+}
+
+/* ===================================================================
+   THE REACTION PROFILE
+   Reactants -> separated atoms -> products. Going up is the energy
+   needed to break every bond; coming down is the energy released
+   making the new ones. The difference is the overall energy change,
+   and all three heights are read straight off the bond energy table.
+   =================================================================== */
+function profileView(t,rx,dur){
+  const S=rx.sum;
+  const M={l:152,r:96,t:128,b:120};
+  const x0=M.l,x1=SW-M.r,y0=M.t,y1=SH-M.b;
+  /* energies relative to the reactants, in kJ/mol. The top of the hump
+     is where every bond is broken. */
+  const top=S.bin, prod=S.bin-S.bout;
+  const hi=Math.max(0,top),lo=Math.min(0,prod);
+  const span=(hi-lo)||1;
+  const Y=v=>y1-(v-lo)/span*(y1-y0);
+  const xR=x0+100,xT=(x0+x1)/2,xP=x1-100;
+
+  ctx.save();
+  /* axis */
+  ctx.lineWidth=2.4;ctx.strokeStyle='#8fb0c4';
+  ctx.beginPath();ctx.moveTo(x0,y0-18);ctx.lineTo(x0,y1+14);ctx.lineTo(x1,y1+14);ctx.stroke();
+  ctx.save();
+  ctx.translate(x0-74,(y0+y1)/2);ctx.rotate(-Math.PI/2);
+  txt('energy / kJ per mole',0,0,{align:'center',font:'700 17px Nunito, sans-serif',col:'#3d6480'});
+  ctx.restore();
+  txt('progress of reaction',(x0+x1)/2,y1+50,{align:'center',font:'700 17px Nunito, sans-serif',col:'#3d6480'});
+
+  /* the two levels */
+  [[0,xR,'reactants',rx.r],[prod,xP,'products',rx.p]].forEach(L=>{
+    ctx.setLineDash([7,5]);ctx.lineWidth=2;ctx.strokeStyle='#b9cfdc';
+    ctx.beginPath();ctx.moveTo(x0,Y(L[0]));ctx.lineTo(x1,Y(L[0]));ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.lineWidth=7;ctx.strokeStyle='#17324d';ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(L[1]-90,Y(L[0]));ctx.lineTo(L[1]+90,Y(L[0]));ctx.stroke();
+  });
+  /* the hump */
+  ctx.lineWidth=5;ctx.strokeStyle='#17324d';
+  ctx.beginPath();
+  ctx.moveTo(xR+90,Y(0));
+  ctx.bezierCurveTo(xR+200,Y(0),xT-160,Y(top),xT,Y(top));
+  ctx.bezierCurveTo(xT+160,Y(top),xP-200,Y(prod),xP-90,Y(prod));
+  ctx.stroke();
+  ctx.lineWidth=7;ctx.strokeStyle='#17324d';
+  ctx.beginPath();ctx.moveTo(xT-84,Y(top));ctx.lineTo(xT+84,Y(top));ctx.stroke();
+
+  /* the two arrows, and the net one */
+  function arrow(x,ya,yb,col,label,side){
+    ctx.lineWidth=4;ctx.strokeStyle=col;
+    ctx.beginPath();ctx.moveTo(x,ya);ctx.lineTo(x,yb);ctx.stroke();
+    const d=Math.sign(yb-ya)||1;
+    ctx.fillStyle=col;
+    ctx.beginPath();ctx.moveTo(x,yb);ctx.lineTo(x-8,yb-d*15);ctx.lineTo(x+8,yb-d*15);ctx.closePath();ctx.fill();
+    pill(label,side==='left'?x-16:x+16,(ya+yb)/2,
+      {align:side==='left'?'right':'left',bd:col,col,font:'800 18px Nunito, sans-serif',h:34});
+  }
+  const netCol=S.exo?'#e5531a':'#2f7fb8';
+  /* Short labels only. The words that explain them sit in the key below and
+     in the panel; anything longer runs off the right-hand edge for CH4. */
+  arrow(xR+146,Y(0),Y(top),'#c25a10','+'+S.bin+' in','right');
+  arrow(xP-146,Y(top),Y(prod),'#1a8a3f','−'+S.bout+' out','left');
+  arrow(xP+16,Y(0),Y(prod),netCol,(S.exo?'−':'+')+Math.abs(S.net),'left');
+  txt('↑ in, to break every bond    ↓ out, making the new bonds    → the difference is the overall change',
+    (x0+x1)/2,y0-36,{align:'center',font:'700 16px Nunito, sans-serif',col:'#4b6780',halo:4});
+
+  /* blocks climbing the hill, then pouring off it */
+  const K=9;
+  for(let k=0;k<K;k++){
+    const w=t/1.9+k/K,cyc=Math.floor(w),ph=w-cyc;
+    if(ph<0.5){
+      const u=ph/0.5;
+      blk('T',xR+146,lerp(Y(0),Y(top),ease(u)),25,
+        clamp(u/0.12,0,1)*clamp((1-u)/0.12,0,1),u*3);
+    } else {
+      const u=(ph-0.5)/0.5;
+      blk('T',xP-146+Math.sin(u*2.2)*24,lerp(Y(top),Y(prod),ease(u)),25,
+        clamp(u/0.12,0,1)*clamp((1-u)/0.12,0,1),-u*3);
+    }
+  }
+  /* the molecules on each level */
+  const rm=layout(rx.r,xR-76,xR+76,Y(0)-64);
+  rm.forEach((m,i)=>drawSpecies(m.key,m.x,m.y,25,t,{rot:Math.sin(t*0.4+i)*0.3}));
+  const pm=layout(rx.p,xP-76,xP+76,Y(prod)-64);
+  pm.forEach((m,i)=>drawSpecies(m.key,m.x,m.y,25,t,{rot:Math.sin(t*0.5+i)*0.3}));
+  const am=layout(rx.r,xT-86,xT+86,Y(top)-64);
+  am.forEach((m,i)=>drawSpecies(m.key,m.x,m.y,25,t,{split:1,bond:0,rot:Math.sin(t*0.4+i)*0.3}));
+  txt('reactants',xR,Y(0)+36,{align:'center',font:'800 18px Nunito, sans-serif',col:'#17324d',halo:5});
+  txt('products',xP,Y(prod)+36,{align:'center',font:'800 18px Nunito, sans-serif',col:'#17324d',halo:5});
+  txt('every bond broken',xT,Y(top)-96,{align:'center',font:'800 17px Nunito, sans-serif',col:'#a8560a',halo:5});
+  txt('separate atoms',xT,Y(top)-74,{align:'center',font:'400 15px Nunito, sans-serif',col:'#4b6780',halo:5});
+
+  pill(rx.eq,(x0+x1)/2,52,{align:'center',bd:'#19a3dc',font:'800 28px Nunito, sans-serif',h:48});
+  const verdict=S.exo
+    ?'products end up LOWER — EXOTHERMIC'
+    :'products end up HIGHER — ENDOTHERMIC';
+  pill(verdict,(x0+x1)/2,SH-32,
+    {align:'center',bd:netCol,bg:S.exo?'#fff3e8':'#ecf5fc',col:S.exo?'#a8500b':'#1d5f8c',
+     font:'800 24px Nunito, sans-serif',h:46});
+  ctx.restore();
+}
+
+/* A still comparison for the summary. */
+function summaryView(t){
+  [['Exothermic',0.27,-1,'#c25a10','more energy OUT making bonds','products LOWER than reactants','the surroundings get WARMER'],
+   ['Endothermic',0.73,1,'#1d5f8c','more energy IN breaking bonds','products HIGHER than reactants','the surroundings get COLDER']]
+  .forEach(g=>{
+    const cx=SW*g[1],dir=g[2];
+    txt(g[0],cx,78,{align:'center',font:'600 44px Fredoka, sans-serif',col:g[3]});
+    /* a small profile */
+    const w=224,yA=232,yB=dir<0?330:142;
+    ctx.save();
+    ctx.lineWidth=8;ctx.strokeStyle='#17324d';ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(cx-w,yA);ctx.lineTo(cx-w+86,yA);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx+w-86,yB);ctx.lineTo(cx+w,yB);ctx.stroke();
+    ctx.lineWidth=5;
+    ctx.beginPath();
+    ctx.moveTo(cx-w+86,yA);
+    ctx.bezierCurveTo(cx-58,yA-96,cx-14,yB-96,cx+w-86,yB);
+    ctx.stroke();
+    ctx.restore();
+    txt('reactants',cx-w+42,yA+28,{align:'center',font:'700 15px Nunito, sans-serif',col:'#4b6780',halo:4});
+    txt('products',cx+w-42,yB+(dir<0?28:-18),{align:'center',font:'700 15px Nunito, sans-serif',col:'#4b6780',halo:4});
+    stream('T',dir<0?[[cx,396],[cx,494]]:[[cx,504],[cx,406]],t,{speed:68,spacing:54,size:30});
+    txt(dir<0?'energy OUT':'energy IN',cx,542,
+      {align:'center',font:'800 28px Nunito, sans-serif',col:g[3],halo:5});
+    [g[4],g[5],g[6]].forEach((s,i)=>
+      txt(s,cx,574+i*24,{align:'center',font:'700 16px Nunito, sans-serif',col:'#4b6780',halo:4}));
+  });
+  txt('Every reaction does both. Which total is bigger decides the answer.',SW/2,SH-14,
+    {align:'center',font:'700 19px Nunito, sans-serif',col:'#17324d',halo:5});
+}
+
+/* ===================================================================
+   CHAPTERS
+   The teaching is on the canvas now -- the banners, the bond ledgers and
+   the profile -- so a chapter is only a view and how long it plays for.
+   =================================================================== */
+let rxKey='hcl';
+const CH=[
+ {kick:'Exothermic',title:'The thermometer goes up',view:'bench',bench:BENCH.exo,dur:14},
+ {kick:'Endothermic',title:'The thermometer goes down',view:'bench',bench:BENCH.endo,dur:14},
+ {kick:'Why',title:'Breaking bonds takes energy in',view:'break',dur:7.5,rx:true},
+ {kick:'Why',title:'Making bonds gives energy out',view:'make',dur:7.5,rx:true},
+ {kick:'Adding up',title:'Which total is bigger?',view:'profile',dur:9,rx:true},
+ {kick:'Summary',title:'Which way do the blocks go?',view:'summary',dur:1}
+];
+
+/* ===================================================================
+   NAVIGATION
+   =================================================================== */
+let cur=0,localT=0;
+const dots=$('#dots');
+CH.forEach((c,i)=>{
+  const b=document.createElement('button');
+  b.setAttribute('aria-label','Go to '+c.title);b.onclick=()=>show(i);dots.appendChild(b);
+});
+function show(n){
+  cur=clamp(n,0,CH.length-1);
+  const c=CH[cur];
+  $('#kicker').textContent=c.kick;$('#title').textContent=c.title;
+  [...dots.children].forEach((d,i)=>d.classList.toggle('on',i===cur));
+  $('#prev').disabled=cur===0;
+  $('#next').textContent=cur===CH.length-1?'Start again':'Next';
+  $('#replay').style.display=c.view==='summary'?'none':'';
+  localT=0;
+  /* the one per-chapter control left: which reaction to pull apart */
+  $('#ctrl').innerHTML=c.rx
+    ?'<span class="rxsel">'+Object.keys(RX).map(k=>
+        '<button class="btn'+(k===rxKey?' on':' ghost')+'" data-rx="'+k+'">'
+        +RX[k].label+'</button>').join('')+'</span>'
+    :'';
+  if(c.rx)document.querySelectorAll('.rxsel .btn').forEach(b=>{
+    b.onclick=()=>{rxKey=b.dataset.rx;show(cur);};
+  });
+  resize();
+}
+$('#prev').onclick=()=>show(cur-1);
+$('#next').onclick=()=>show(cur===CH.length-1?0:cur+1);
+$('#replay').onclick=()=>{localT=0;};
+addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight')show(Math.min(cur+1,CH.length-1));
+  if(e.key==='ArrowLeft')show(cur-1);
+});
+
+/* ===================================================================
+   LAYOUT AND LOOP
+   The panel is gone and the key now sits in the bar, so the scene has
+   everything above the bar. The bar is measured rather than assumed, so
+   changing its padding or letting it wrap cannot crop the stage.
+   =================================================================== */
+function furniture(sel,fallback){const e=$(sel);return (e&&e.offsetHeight)||fallback;}
+function resize(){
+  dpr=Math.min(devicePixelRatio||1,2);
+  const w=innerWidth,h=innerHeight;
+  canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);
+  canvas.style.width=w+'px';canvas.style.height=h+'px';
+  const barH=Math.min(furniture('#bar',66),h*0.4)+18;
+  const ax=10,ay=10,aw=w-20,ah=Math.max(140,h-20-barH);
+  const s=Math.min(aw/SW,ah/SH);
+  stage={s,x:ax+(aw-SW*s)/2,y:ay+(ah-SH*s)/2};
+}
+addEventListener('resize',resize);
+
+
+function scene(t){
+  const c=CH[cur],rx=RX[rxKey];
+  if(c.view==='bench')benchView(t,c.bench,c.dur);
+  else if(c.view==='break')breakView(t,rx,c.dur);
+  else if(c.view==='make')makeView(t,rx,c.dur);
+  else if(c.view==='profile')profileView(t,rx,c.dur);
+  else summaryView(t);
+}
+
+let last=performance.now();
+function frame(now){
+  const dt=Math.min((now-last)/1000,0.05);last=now;
+  localT+=reduceMotion?dt*0.35:dt;
+  const c=CH[cur];
+  if(c.view==='bench'&&localT>c.dur+2.4)localT=0;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const g=ctx.createLinearGradient(0,0,0,innerHeight);
+  g.addColorStop(0,'#e3f1f9');g.addColorStop(1,'#cfe3ef');
+  ctx.fillStyle=g;ctx.fillRect(0,0,innerWidth,innerHeight);
+  ctx.save();
+  ctx.translate(stage.x,stage.y);ctx.scale(stage.s,stage.s);
+  ctx.beginPath();ctx.rect(-4,-4,SW+8,SH+8);ctx.clip();
+  scene(localT);
+  ctx.restore();
+  requestAnimationFrame(frame);
+}
+resize();show(0);requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
