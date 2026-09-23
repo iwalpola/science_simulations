@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chemsheets Help Pages</title>
+<style>
+:root{
+  --bg:#f6f4ef; --card:#ffffff; --ink:#1f2430; --muted:#5d6675; --line:#e2ddd2;
+  --chem:#2861d4; --chem-soft:#e6eefc; --stage:#fbfaf7;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121418; --card:#1b1f26; --ink:#e7eaf0; --muted:#9ba4b3; --line:#2c323c;
+    --chem:#7ea6f7; --chem-soft:#1a2740; --stage:#161a20;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121418; --card:#1b1f26; --ink:#e7eaf0; --muted:#9ba4b3; --line:#2c323c;
+  --chem:#7ea6f7; --chem-soft:#1a2740; --stage:#161a20;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;font-size:17px;line-height:1.55}
+main{max-width:860px;margin:0 auto;padding:0 16px 70px}
+h1{font-size:clamp(26px,5vw,36px);margin:30px 0 6px;line-height:1.15}
+.lede{color:var(--muted);margin:0 0 22px}
+sup,sub{line-height:0}
+.grid{display:grid;gap:14px}
+a.item{display:block;text-decoration:none;color:inherit;background:var(--card);
+  border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+a.item:hover{border-color:var(--chem)}
+a.item:focus-visible{outline:3px solid var(--chem);outline-offset:2px}
+.code{display:inline-block;font-size:13px;font-weight:700;letter-spacing:.04em;
+  background:var(--chem-soft);color:var(--chem);border-radius:99px;padding:1px 10px;margin-bottom:5px}
+.t{font-size:21px;font-weight:700;margin:2px 0 4px}
+.d{color:var(--muted);font-size:16px;margin:0}
+.order{background:var(--stage);border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin:24px 0 0}
+.order p{margin:6px 0}
+footer{color:var(--muted);font-size:14px;margin-top:34px}
+</style>
+</head>
+<body>
+<main>
+<h1>Chemsheets help pages</h1>
+<p class="lede">Walk-through pages for the Chemsheets GCSE calculation worksheets. Each one explains the method, then works through that sheet's own questions — with the answers hidden until you press a button, so there is something left to think about.</p>
+
+<div class="grid">
+  <a class="item" href="relative_formula_mass.html">
+    <span class="code">GCSE 1411</span>
+    <div class="t">Relative formula mass</div>
+    <p class="d">How to read the periodic table — which of the two numbers is the mass — how to tell a balancing number from part of a formula, and how to lay out an M<sub>r</sub> so you don't lose track. Includes a box where you can type any formula and see the working.</p>
+  </a>
+
+  <a class="item" href="percentage_by_mass.html">
+    <span class="code">GCSE 1413</span>
+    <div class="t">Percentage by mass</div>
+    <p class="d">The compound's mass drawn as a bar split into one slice per element, so you can see the answer before you calculate it. Covers brackets, hydrates, and writing a formula from a name.</p>
+  </a>
+
+  <a class="item" href="moles.html">
+    <span class="code">GCSE 1092</span>
+    <div class="t">Moles</div>
+    <p class="d">M<sub>r</sub> first, then a ratio you cross-multiply. The same two rows answer "find the moles", "find the mass" and "find the M<sub>r</sub>", so there is no formula to pick between. Includes unit conversions and significant figures.</p>
+  </a>
+
+  <a class="item" href="avogadros_constant.html">
+    <span class="code">GCSE 1091</span>
+    <div class="t">The Avogadro constant</div>
+    <p class="d">A mole is a pack size. Every question is shown twice — once as shopping, once as the worksheet — with an animation of each, because the arithmetic is identical both times.</p>
+  </a>
+</div>
+
+<div class="order">
+<p><b>A sensible order.</b> Relative formula mass comes first: percentage by mass and moles both begin by working one out, and neither will make sense without it.</p>
+<p>Percentage by mass and moles can be done in either order. The Avogadro constant page explains <i>why</i> a mole is the size it is — useful alongside the moles page, but not needed to do the calculations.</p>
+</div>
+
+<footer>Worksheets © www.CHEMSHEETS.co.uk. These are help pages, not the worksheets themselves. <a href="../index.html" style="color:var(--chem)">← all simulations</a></footer>
+</main>
+</body>
+</html>

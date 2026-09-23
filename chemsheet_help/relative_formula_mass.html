@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relative Formula Mass Help</title>
+<style>
+:root{
+  --bg:#f6f4ef; --card:#ffffff; --ink:#1f2430; --muted:#5d6675; --line:#e2ddd2;
+  --shop:#c85a17; --shop-soft:#fdeee3; --chem:#2861d4; --chem-soft:#e6eefc;
+  --tag:#fff4c2; --tagline:#e3c65a; --good:#1c8a4c; --good-soft:#e3f5ea;
+  --bad:#b83a3a; --bad-soft:#fbe7e7; --warn-soft:#fff6dc; --stage:#fbfaf7; --metal:#7b8391;
+  --pt:#eef1f6; --pt-line:#cfd6e2;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121418; --card:#1b1f26; --ink:#e7eaf0; --muted:#9ba4b3; --line:#2c323c;
+    --shop:#f08a45; --shop-soft:#3a2818; --chem:#7ea6f7; --chem-soft:#1a2740;
+    --tag:#4a3f14; --tagline:#8a7424; --good:#4cc47f; --good-soft:#15301f;
+    --bad:#f07a7a; --bad-soft:#3a1a1a; --warn-soft:#352c12; --stage:#161a20; --metal:#8f98a8;
+    --pt:#232932; --pt-line:#39414e;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121418; --card:#1b1f26; --ink:#e7eaf0; --muted:#9ba4b3; --line:#2c323c;
+  --shop:#f08a45; --shop-soft:#3a2818; --chem:#7ea6f7; --chem-soft:#1a2740;
+  --tag:#4a3f14; --tagline:#8a7424; --good:#4cc47f; --good-soft:#15301f;
+  --bad:#f07a7a; --bad-soft:#3a1a1a; --warn-soft:#352c12; --stage:#161a20; --metal:#8f98a8;
+  --pt:#232932; --pt-line:#39414e;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;font-size:17px;line-height:1.55}
+main{max-width:960px;margin:0 auto;padding:0 16px 80px}
+h1{font-size:clamp(26px,5vw,38px);line-height:1.15;margin:28px 0 6px}
+h2{font-size:24px;margin:44px 0 10px}
+h3{font-size:19px;margin:22px 0 6px}
+.lede{color:var(--muted);margin:0 0 18px}
+sup,sub{line-height:0}
+code{font-family:ui-monospace,Consolas,"Courier New",monospace;font-size:.92em;background:var(--stage);border:1px solid var(--line);border-radius:5px;padding:0 4px}
+
+nav.jump{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);
+  display:flex;gap:6px;flex-wrap:wrap;padding:8px 0;margin:0 0 10px}
+nav.jump a{font-size:14px;text-decoration:none;color:var(--ink);border:1px solid var(--line);
+  background:var(--card);border-radius:99px;padding:3px 11px}
+nav.jump a:hover{border-color:var(--chem)}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin:16px 0}
+.tip{background:var(--warn-soft);border:1px solid var(--tagline);border-radius:12px;padding:12px 16px;margin:14px 0}
+.tip p{margin:6px 0}
+.note{font-size:15px;color:var(--muted);margin:8px 0}
+kbd{font-family:inherit;font-size:.85em;border:1px solid var(--muted);border-bottom-width:2px;border-radius:5px;padding:0 5px;background:var(--card)}
+button{font:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--chem);outline-offset:2px}
+.f{white-space:nowrap}
+
+/* ---- periodic table ---- */
+.ptwrap{overflow-x:auto;padding-bottom:6px}
+.ptable{display:grid;grid-template-columns:repeat(18,minmax(30px,1fr));gap:2px;min-width:640px;margin:8px 0}
+.ptable .cell{display:grid;place-content:center;gap:0;padding:3px 1px;border:1px solid var(--pt-line);background:var(--pt);
+  border-radius:4px;text-align:center;line-height:1.05;color:var(--ink)}
+.ptable .cell .ar{font-size:clamp(7px,.95vw,11px);color:var(--muted)}
+.ptable .cell .sym{font-size:clamp(10px,1.5vw,16px);font-weight:700}
+.ptable .cell .z{font-size:clamp(6px,.85vw,10px);color:var(--muted)}
+.ptable .cell:hover{border-color:var(--chem)}
+.ptable .cell.on{background:var(--chem);border-color:var(--chem);color:#fff}
+.ptable .cell.on .ar,.ptable .cell.on .z{color:#dce7ff}
+.ptable .cell.lit{background:var(--tag);border-color:var(--tagline);color:#3b2a10}
+.ptable .gap{font-size:10px;color:var(--muted);display:grid;place-content:center}
+.ptrow{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin:10px 0}
+.bigcell{flex:0 0 auto;width:132px;border:3px solid var(--chem);border-radius:10px;text-align:center;padding:8px 4px;background:var(--card)}
+.bigcell .ar{font-size:30px;font-weight:800;color:var(--chem);line-height:1.1}
+.bigcell .sym{font-size:38px;font-weight:800;line-height:1.05}
+.bigcell .z{font-size:18px;color:var(--muted)}
+.bigcell .nm{font-size:13px;color:var(--muted);margin-top:2px}
+.ptexp{flex:1 1 260px;min-width:0}
+.ptexp p{margin:4px 0}
+.arrow{color:var(--chem);font-weight:700}
+
+/* ---- Mr working table ---- */
+table.mr{width:100%;border-collapse:collapse;margin:10px 0;font-size:16px;background:var(--card)}
+table.mr th,table.mr td{padding:7px 9px;border:1px solid var(--line);text-align:left}
+table.mr th{background:var(--chem-soft);color:var(--chem);font-size:14px}
+table.mr tr.tot td{background:var(--good-soft);font-weight:700}
+table.mr .sy{font-weight:700}
+table.mr tr.hide{display:none}
+
+/* ---- generic tables ---- */
+table.map{width:100%;border-collapse:collapse;margin:10px 0;font-size:16px}
+table.map th,table.map td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+table.map th{color:var(--chem)}
+
+/* ---- worksheet question blocks ---- */
+article.q{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin:22px 0}
+article.q>header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.qnum{font-weight:800;font-size:19px;background:var(--ink);color:var(--bg);border-radius:8px;padding:1px 10px}
+.eq{font-size:22px;font-weight:600;margin:6px 0 12px}
+.wsgrid{width:100%;border-collapse:collapse;font-size:16px;margin:8px 0}
+.wsgrid th,.wsgrid td{border:1px solid var(--line);padding:8px 10px;text-align:center}
+.wsgrid th{background:var(--stage);font-weight:600}
+.wsgrid td.lab{background:var(--stage);text-align:left;font-size:14px;color:var(--muted);white-space:nowrap}
+.wsgrid td.blank{color:var(--muted)}
+.wsgrid td.shown{background:var(--good-soft);font-weight:700}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.bar button{border:1px solid var(--chem);color:var(--chem);background:var(--card);border-radius:9px;padding:5px 13px;font-size:15px}
+.bar button.on{background:var(--chem);color:#fff}
+.reveal{margin:10px 0}
+.reveal>.inner{border-left:4px solid var(--good);background:var(--good-soft);border-radius:0 10px 10px 0;padding:10px 14px;margin-top:8px}
+.reveal>.inner[hidden]{display:none}
+
+/* ---- checker ---- */
+.check{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:14px 0 6px;padding:12px 14px;border-radius:12px;background:var(--chem-soft)}
+.check label{font-weight:600}
+.check input{font:inherit;width:170px;max-width:100%;padding:5px 9px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+.check button{border:1px solid var(--chem);color:var(--chem);background:var(--card);border-radius:9px;padding:5px 13px}
+.check .fb{flex-basis:100%;font-size:15px}
+.fb.ok{color:var(--good)}.fb.no{color:var(--bad)}
+
+/* ---- formula explorer ---- */
+.tool{background:var(--stage);border:1px solid var(--line);border-radius:12px;padding:14px;margin:14px 0}
+.tool .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tool input{font:inherit;font-size:19px;width:200px;padding:5px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+.tool .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.tool .chips button{font-size:14px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:99px;padding:2px 10px}
+.tool .chips button:hover{border-color:var(--chem)}
+.err{color:var(--bad);font-size:15px}
+footer{color:var(--muted);font-size:14px;margin-top:40px}
+@media (max-width:560px){
+  article.q{padding:14px 12px}
+  .wsgrid{font-size:14px}
+  .wsgrid th,.wsgrid td{padding:6px 5px}
+  table.mr{font-size:14px}
+}
+</style>
+</head>
+<body>
+<main>
+<h1>Relative formula mass, <span style="white-space:nowrap">step by step</span></h1>
+<p class="lede">Help for Chemsheets GCSE 1411. Start with the periodic table at the top — nearly every mistake on this sheet is really a mistake about <i>which number to read</i> or <i>which atoms to count</i>. Then work down. Every answer is hidden until you press a button, so have a go first.</p>
+
+<nav class="jump" aria-label="Jump to">
+  <a href="#table">1. The periodic table</a><a href="#formula">2. Reading a formula</a><a href="#mr">3. Working out M<sub>r</sub></a><a href="#tool">Try any formula</a><a href="#qa">Q a–c</a><a href="#qd">Q d–f</a><a href="#cheat">Cheat sheet</a>
+</nav>
+
+<section id="table">
+<h2>1. The periodic table: two numbers, and only one of them is mass</h2>
+<p>Every box on the periodic table carries the same two numbers. Click any element below and look at what changes.</p>
+
+<div class="ptwrap"><div class="ptable" id="pt"></div></div>
+<div class="ptrow">
+  <div class="bigcell" id="bigcell"></div>
+  <div class="ptexp" id="ptexp"></div>
+</div>
+
+<div class="tip">
+<p><b>The one rule to remember:</b> the <b>bigger</b> number is the relative atomic mass, <b>A<sub>r</sub></b>. That is the one you use in every calculation on this sheet.</p>
+<p>The smaller number is the atomic number — how many protons. You need it for electronic structure, <b>not</b> for mass.</p>
+<p>Two elements where getting this wrong really shows: potassium is A<sub>r</sub> <b>39</b> (atomic number 19), and copper is A<sub>r</sub> <b>63.5</b> (atomic number 29). If you write 19 or 29, you have read the wrong number.</p>
+</div>
+
+<h3>What "relative" means</h3>
+<p>A<sub>r</sub> has no units. It is a comparison: a carbon-12 atom is called exactly 12, and every other atom is measured against it. So A<sub>r</sub> = 24 for magnesium means <i>a magnesium atom is twice as heavy as a carbon atom</i>. That is all.</p>
+<p class="note">A few values aren't whole numbers — chlorine is 35.5, copper 63.5. That is because a real sample is a mixture of isotopes, and the number on the table is the average. Use 35.5 exactly as it is written; do not round it to 35 or 36.</p>
+</section>
+
+<section id="formula">
+<h2>2. Reading a formula: counting the atoms</h2>
+<p>Before you can add up any masses, you have to know how many of each atom there are. Three rules cover everything at GCSE.</p>
+
+<table class="map">
+  <tr><th>What you see</th><th>What it means</th></tr>
+  <tr><td><span class="f">H<sub>2</sub>O</span></td><td>The small number applies <b>only to the symbol in front of it</b>. 2 hydrogen, 1 oxygen. No number written means 1.</td></tr>
+  <tr><td><span class="f">Ca(NO<sub>3</sub>)<sub>2</sub></span></td><td>The number outside the bracket multiplies <b>everything inside</b>. 1 calcium, 2 nitrogen, 6 oxygen (2 × 3).</td></tr>
+  <tr><td><span class="f">2Al<sub>2</sub>O<sub>3</sub></span></td><td>A <b>big number in front</b> is how many of that whole thing there are in the equation. It is <b>not part of the formula</b>. The formula is still Al<sub>2</sub>O<sub>3</sub>.</td></tr>
+</table>
+
+<div class="tip">
+<p><b>This is the trap the whole sheet is built around.</b> In <span class="f">4Al + 3O<sub>2</sub> → 2Al<sub>2</sub>O<sub>3</sub></span>, the formula of aluminium is <b>Al</b>, not Al<sub>4</sub>. The formula of oxygen is <b>O<sub>2</sub></b>, not O<sub>6</sub>. The 4 and the 3 are balancing numbers, and they never go into an M<sub>r</sub>.</p>
+<p>Say it like a recipe: "<b>4 lots of</b> Al react with <b>3 lots of</b> O<sub>2</sub> to make <b>2 lots of</b> Al<sub>2</sub>O<sub>3</sub>." The thing after "lots of" is the formula.</p>
+</div>
+
+<h3>Elements that go around in pairs</h3>
+<p>Seven elements are written as pairs when they are on their own. You will meet them constantly:</p>
+<p style="font-size:19px"><span class="f">H<sub>2</sub></span> &nbsp; <span class="f">N<sub>2</sub></span> &nbsp; <span class="f">O<sub>2</sub></span> &nbsp; <span class="f">F<sub>2</sub></span> &nbsp; <span class="f">Cl<sub>2</sub></span> &nbsp; <span class="f">Br<sub>2</sub></span> &nbsp; <span class="f">I<sub>2</sub></span></p>
+<p class="note">Everything else — the metals, carbon, sulfur at GCSE — is written as a single symbol: Al, Na, Zn, Fe, Ti, C.</p>
+</section>
+
+<section id="mr">
+<h2>3. Working out M<sub>r</sub>: four columns, every time</h2>
+<p>Relative <b>formula</b> mass (M<sub>r</sub>) is just all the A<sub>r</sub> values in a formula added together. Set it out the same way every single time and you will not lose track:</p>
+
+<div class="card">
+  <p><b>Worked example: M<sub>r</sub> of Ca(NO<sub>3</sub>)<sub>2</sub></b></p>
+  <div class="mrstep" data-formula="Ca(NO3)2"></div>
+</div>
+
+<div class="tip">
+<p><b>Add, never multiply.</b> M<sub>r</sub> of H<sub>2</sub>O is 1 + 1 + 16 = 18. It is not 1 × 16.</p>
+<p><b>Multiply <i>inside</i> a row, add <i>down</i> the last column.</b> That is the only arithmetic in the whole topic.</p>
+<p><b>M<sub>r</sub> has no units.</b> Don't write grams. (Grams appear the moment you go on to moles — but not here.)</p>
+</div>
+</section>
+
+<section id="tool">
+<h2>Try any formula you like</h2>
+<p>Type a formula and it will lay out the working. Good for checking your own answers, and for the ones further down.</p>
+<div class="tool">
+  <div class="row">
+    <label for="fin"><b>Formula:</b></label>
+    <input id="fin" type="text" value="Ca(NO3)2" autocomplete="off" spellcheck="false">
+    <span class="note" style="margin:0">Type brackets normally: <code>Ca(OH)2</code>. For hydrates use a dot: <code>CuSO4.5H2O</code></span>
+  </div>
+  <div class="chips" id="chips"></div>
+  <div id="fout"></div>
+</div>
+</section>
+
+<section id="qa">
+<h2>Questions a–c: give the formula of each substance</h2>
+<p>These have no arithmetic at all. The whole task is to look at the equation and separate the <b>balancing number</b> from the <b>formula</b>.</p>
+
+<article class="q" id="qa-a">
+  <header><span class="qnum">a</span></header>
+  <p class="eq"><span class="f">4Al + 3O<sub>2</sub> → 2Al<sub>2</sub>O<sub>3</sub></span></p>
+  <div class="ws" data-q="a"></div>
+</article>
+
+<article class="q" id="qa-b">
+  <header><span class="qnum">b</span></header>
+  <p class="eq"><span class="f">ZnF<sub>2</sub> + 2Na → 2NaF + Zn</span></p>
+  <div class="ws" data-q="b"></div>
+  <p class="note">Sodium is a metal, so it is just <b>Na</b> — the 2 in front is a balancing number. And zinc on the right is <b>Zn</b> for the same reason.</p>
+</article>
+
+<article class="q" id="qa-c">
+  <header><span class="qnum">c</span></header>
+  <p class="eq"><span class="f">Fe<sub>2</sub>O<sub>3</sub> + 3C → 2Fe + 3CO</span></p>
+  <div class="ws" data-q="c"></div>
+  <p class="note">Carbon monoxide is <b>CO</b>: one carbon, one oxygen. The 3 in front says there are three of them. Notice that CO and C are different substances — the balancing number never changes what something <i>is</i>.</p>
+</article>
+</section>
+
+<section id="qd">
+<h2>Questions d–f: formula <i>and</i> M<sub>r</sub></h2>
+<p>Same first step as above, then feed each formula through the four-column table. Press <b>Show the M<sub>r</sub> working</b> if you want to see every line.</p>
+
+<article class="q" id="qd-d">
+  <header><span class="qnum">d</span></header>
+  <p class="eq"><span class="f">2Mg + O<sub>2</sub> → 2MgO</span></p>
+  <div class="ws" data-q="d"></div>
+  <p class="note">Magnesium's M<sub>r</sub> is just its A<sub>r</sub>, because the formula is a single atom. That is fine and it is not a trick.</p>
+</article>
+
+<article class="q" id="qd-e">
+  <header><span class="qnum">e</span></header>
+  <p class="eq"><span class="f">2Fe + 3Cl<sub>2</sub> → 2FeCl<sub>3</sub></span></p>
+  <div class="ws" data-q="e"></div>
+  <p class="note">Chlorine is 35.5, so chlorine gas Cl<sub>2</sub> is 71 and FeCl<sub>3</sub> is 56 + 106.5. Decimals are meant to be there — don't round them away part-way through.</p>
+</article>
+
+<article class="q" id="qd-f">
+  <header><span class="qnum">f</span></header>
+  <p class="eq"><span class="f">TiCl<sub>4</sub> + 4Na → Ti + 4NaCl</span></p>
+  <div class="ws" data-q="f"></div>
+  <p class="note">Two chlorine compounds in one equation, with different numbers of chlorines. TiCl<sub>4</sub> has 4 × 35.5 = 142 of chlorine; NaCl has only one.</p>
+</article>
+
+<h3>Check yourself</h3>
+<p>Type an M<sub>r</sub> from this section into the box and it will tell you if it is right.</p>
+<div class="check" data-id="ticl4"></div>
+<div class="check" data-id="fecl3"></div>
+</section>
+
+<section id="cheat">
+<div class="card">
+<h3 style="margin-top:0">Cheat sheet</h3>
+<ul>
+  <li><b>Read the bigger number.</b> A<sub>r</sub> is the big one; the atomic number is the small one.</li>
+  <li><b>A big number in front is a balancing number.</b> Cross it out before you write the formula. 2Al<sub>2</sub>O<sub>3</sub> → the formula is Al<sub>2</sub>O<sub>3</sub>.</li>
+  <li><b>A small number applies to the symbol just before it.</b> A number outside a bracket multiplies everything inside.</li>
+  <li><b>M<sub>r</sub> = add up every A<sub>r</sub> in the formula.</b> Multiply across each row, add down the column.</li>
+  <li><b>H<sub>2</sub>, N<sub>2</sub>, O<sub>2</sub>, F<sub>2</sub>, Cl<sub>2</sub>, Br<sub>2</sub>, I<sub>2</sub></b> go around in pairs. Metals and carbon do not.</li>
+  <li><b>No units on M<sub>r</sub>.</b></li>
+</ul>
+</div>
+</section>
+
+<footer>Help page for Chemsheets GCSE 1411 (Relative formula mass 2). Worksheet © www.CHEMSHEETS.co.uk. A<sub>r</sub> values are the GCSE periodic table values.</footer>
+</main>
+
+<script>
+'use strict';
+
+/* ================= periodic table data: sym name Z Ar col row ================= */
+const PT_RAW = `
+H Hydrogen 1 1 1 1
+He Helium 2 4 18 1
+Li Lithium 3 7 1 2
+Be Beryllium 4 9 2 2
+B Boron 5 11 13 2
+C Carbon 6 12 14 2
+N Nitrogen 7 14 15 2
+O Oxygen 8 16 16 2
+F Fluorine 9 19 17 2
+Ne Neon 10 20 18 2
+Na Sodium 11 23 1 3
+Mg Magnesium 12 24 2 3
+Al Aluminium 13 27 13 3
+Si Silicon 14 28 14 3
+P Phosphorus 15 31 15 3
+S Sulfur 16 32 16 3
+Cl Chlorine 17 35.5 17 3
+Ar Argon 18 40 18 3
+K Potassium 19 39 1 4
+Ca Calcium 20 40 2 4
+Sc Scandium 21 45 3 4
+Ti Titanium 22 48 4 4
+V Vanadium 23 51 5 4
+Cr Chromium 24 52 6 4
+Mn Manganese 25 55 7 4
+Fe Iron 26 56 8 4
+Co Cobalt 27 59 9 4
+Ni Nickel 28 59 10 4
+Cu Copper 29 63.5 11 4
+Zn Zinc 30 65 12 4
+Ga Gallium 31 70 13 4
+Ge Germanium 32 73 14 4
+As Arsenic 33 75 15 4
+Se Selenium 34 79 16 4
+Br Bromine 35 80 17 4
+Kr Krypton 36 84 18 4
+Rb Rubidium 37 85 1 5
+Sr Strontium 38 88 2 5
+Y Yttrium 39 89 3 5
+Zr Zirconium 40 91 4 5
+Nb Niobium 41 93 5 5
+Mo Molybdenum 42 96 6 5
+Tc Technetium 43 98 7 5
+Ru Ruthenium 44 101 8 5
+Rh Rhodium 45 103 9 5
+Pd Palladium 46 106 10 5
+Ag Silver 47 108 11 5
+Cd Cadmium 48 112 12 5
+In Indium 49 115 13 5
+Sn Tin 50 119 14 5
+Sb Antimony 51 122 15 5
+Te Tellurium 52 128 16 5
+I Iodine 53 127 17 5
+Xe Xenon 54 131 18 5
+Cs Caesium 55 133 1 6
+Ba Barium 56 137 2 6
+La Lanthanum 57 139 3 6
+Hf Hafnium 72 178.5 4 6
+Ta Tantalum 73 181 5 6
+W Tungsten 74 184 6 6
+Re Rhenium 75 186 7 6
+Os Osmium 76 190 8 6
+Ir Iridium 77 192 9 6
+Pt Platinum 78 195 10 6
+Au Gold 79 197 11 6
+Hg Mercury 80 201 12 6
+Tl Thallium 81 204 13 6
+Pb Lead 82 207 14 6
+Bi Bismuth 83 209 15 6
+Po Polonium 84 209 16 6
+At Astatine 85 210 17 6
+Rn Radon 86 222 18 6
+Fr Francium 87 223 1 7
+Ra Radium 88 226 2 7
+Ac Actinium 89 227 3 7
+`;
+const ELS = PT_RAW.trim().split('\n').map(l => {
+  const [sym, name, z, ar, col, row] = l.trim().split(/\s+/);
+  return { sym, name, z: +z, ar: +ar, col: +col, row: +row };
+});
+const AR = {}, NAME = {};
+ELS.forEach(e => { AR[e.sym] = e.ar; NAME[e.sym] = e.name.toLowerCase(); });
+
+/* ================= formula parsing ================= */
+function parseBody(s){
+  const out = new Map(), stack = [out];
+  let i = 0;
+  while (i < s.length){
+    const c = s[i];
+    if (c === '('){ stack.push(new Map()); i++; continue; }
+    if (c === ')'){
+      if (stack.length < 2) throw new Error('a ) with no matching (');
+      const grp = stack.pop(); i++;
+      let d = ''; while (/\d/.test(s[i] || '')) d += s[i++];
+      const k = d ? +d : 1, top = stack[stack.length - 1];
+      grp.forEach((n, sym) => top.set(sym, (top.get(sym) || 0) + n * k));
+      continue;
+    }
+    const m = s.slice(i).match(/^([A-Z][a-z]?)(\d*)/);
+    if (!m) throw new Error('I can\'t read "' + s[i] + '"');
+    if (!(m[1] in AR)) throw new Error('"' + m[1] + '" isn\'t on the periodic table');
+    i += m[0].length;
+    const top = stack[stack.length - 1];
+    top.set(m[1], (top.get(m[1]) || 0) + (m[2] ? +m[2] : 1));
+  }
+  if (stack.length !== 1) throw new Error('a ( with no matching )');
+  return out;
+}
+/* returns a Map of symbol -> how many atoms, for one formula (hydrates allowed) */
+function parseFormula(f){
+  const tally = new Map();
+  f.replace(/\s+/g, '').split('.').forEach(part => {
+    const m = part.match(/^(\d+)/);
+    const pre = m ? +m[1] : 1, body = m ? part.slice(m[1].length) : part;
+    if (!body) throw new Error('nothing after the dot');
+    parseBody(body).forEach((n, sym) => tally.set(sym, (tally.get(sym) || 0) + n * pre));
+  });
+  if (!tally.size) throw new Error('empty formula');
+  return tally;
+}
+const mrOf = f => [...parseFormula(f)].reduce((s, [sym, n]) => s + AR[sym] * n, 0);
+/* tidy number: 18 not 18.0, 35.5 stays 35.5 */
+const num = v => (Math.round(v * 1000) / 1000).toString();
+/* formula -> HTML with subscripts. A digit after a letter or ) is a subscript. */
+const fmt = f => f.replace(/\s+/g, '').split('.')
+  .map(p => p.replace(/([A-Za-z\)])(\d+)/g, '$1<sub>$2</sub>'))
+  .join('·');
+const eqf = s => s.replace(/([A-Za-z\)])(\d+)/g, '$1<sub>$2</sub>');
+
+/* ================= the four-column Mr table ================= */
+function mrTable(f, opts){
+  opts = opts || {};
+  const rows = [...parseFormula(f)];
+  let sum = 0, h = '<table class="mr"><tr><th>Element</th><th>How many atoms</th><th>A<sub>r</sub> from the table</th><th>Mass so far</th></tr>';
+  rows.forEach(([sym, n], i) => {
+    const a = AR[sym], m = a * n; sum += m;
+    h += `<tr${opts.stepped ? ' class="hide" data-r="' + i + '"' : ''}>` +
+      `<td><span class="sy">${sym}</span> <span class="note" style="margin:0">${NAME[sym]}</span></td>` +
+      `<td>${n}</td><td>${num(a)}</td><td>${n} × ${num(a)} = <b>${num(m)}</b></td></tr>`;
+  });
+  h += `<tr class="tot${opts.stepped ? ' hide" data-r="' + rows.length : ''}"><td colspan="3">Add them up: M<sub>r</sub> of <span class="f">${fmt(f)}</span></td><td><b>${num(sum)}</b></td></tr></table>`;
+  return h;
+}
+/* stepped version with a Next button, for the tutorial */
+document.querySelectorAll('.mrstep[data-formula]').forEach(host => {
+  const f = host.dataset.formula, rows = [...parseFormula(f)];
+  host.innerHTML = `<p style="font-size:20px">First count the atoms in <span class="f">${fmt(f)}</span>: ` +
+    rows.map(([s, n]) => `<b>${n}</b> ${s}`).join(', ') + '. The 2 outside the bracket doubled both the N and the O<sub>3</sub>.</p>' +
+    '<div class="bar"><button type="button" class="next">Show next line</button><button type="button" class="all">Show it all</button></div>' +
+    mrTable(f, { stepped: true });
+  const total = rows.length + 1, next = host.querySelector('.next'), all = host.querySelector('.all');
+  let shown = 0;
+  const show = k => {
+    shown = k;
+    host.querySelectorAll('tr[data-r]').forEach(tr => tr.classList.toggle('hide', +tr.dataset.r >= shown));
+    if (shown >= total){ next.textContent = 'Start again'; all.hidden = true; }
+    else { next.textContent = 'Show next line'; all.hidden = false; }
+  };
+  next.addEventListener('click', () => show(shown >= total ? 0 : shown + 1));
+  all.addEventListener('click', () => show(total));
+});
+
+/* ================= the formula explorer ================= */
+(function(){
+  const inp = document.getElementById('fin'), out = document.getElementById('fout'), chips = document.getElementById('chips');
+  if (!inp) return;
+  ['H2O', 'O2', 'Al2O3', 'MgO', 'FeCl3', 'TiCl4', 'NaCl', 'Ca(OH)2', 'Ca(NO3)2', 'Na2CO3', 'CuSO4.5H2O'].forEach(f => {
+    const b = document.createElement('button'); b.type = 'button'; b.innerHTML = fmt(f);
+    b.addEventListener('click', () => { inp.value = f; draw(); });
+    chips.appendChild(b);
+  });
+  function draw(){
+    try { out.innerHTML = mrTable(inp.value); }
+    catch (e){ out.innerHTML = `<p class="err">Hmm — ${e.message}. Check your capital letters: it is <code>Cl</code> for chlorine, but <code>CL</code> and <code>cl</code> won't work.</p>`; }
+  }
+  inp.addEventListener('input', draw);
+  draw();
+})();
+
+/* ================= the periodic table widget ================= */
+(function(){
+  const pt = document.getElementById('pt'), big = document.getElementById('bigcell'), exp = document.getElementById('ptexp');
+  if (!pt) return;
+  const cells = {};
+  ELS.forEach(e => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'cell';
+    b.style.gridColumn = e.col; b.style.gridRow = e.row;
+    b.innerHTML = `<span class="ar">${num(e.ar)}</span><span class="sym">${e.sym}</span><span class="z">${e.z}</span>`;
+    b.addEventListener('click', () => select(e.sym));
+    pt.appendChild(b); cells[e.sym] = b;
+  });
+  const gap = document.createElement('div');
+  gap.className = 'gap'; gap.style.gridColumn = '4 / span 15'; gap.style.gridRow = '7';
+  gap.textContent = 'the lanthanides and actinides live here — you do not need them at GCSE';
+  pt.appendChild(gap);
+
+  let cur = null;
+  function select(sym){
+    const e = ELS.find(x => x.sym === sym);
+    if (cur) cells[cur].classList.remove('on');
+    cur = sym; cells[sym].classList.add('on');
+    big.innerHTML = `<div class="ar">${num(e.ar)}</div><div class="sym">${e.sym}</div><div class="z">${e.z}</div><div class="nm">${e.name}</div>`;
+    const atoms = Math.round(e.ar / 12 * 10) / 10;
+    exp.innerHTML =
+      `<p><span class="arrow">↑ top, bigger</span> &nbsp;<b>A<sub>r</sub> = ${num(e.ar)}</b> — the relative atomic mass. <b>This is the one you use.</b></p>` +
+      `<p><span class="arrow">↓ bottom, smaller</span> &nbsp;<b>${e.z}</b> — the atomic number: ${e.z} proton${e.z === 1 ? '' : 's'}. Never used for mass.</p>` +
+      `<p class="note">So one ${e.name.toLowerCase()} atom is ${atoms === 1 ? 'exactly as heavy as' : atoms + ' times as heavy as'} a carbon atom. M<sub>r</sub> of ${e.sym} on its own = <b>${num(e.ar)}</b>.</p>`;
+  }
+  select('Cu');
+})();
+
+/* ================= the worksheet question tables ================= */
+const WS = {
+  a: { mr: false, cells: [['aluminium', 'Al'], ['oxygen', 'O2'], ['aluminium oxide', 'Al2O3']],
+       hint: 'The 4, 3 and 2 in the equation are balancing numbers. None of them go into a formula.' },
+  b: { mr: false, cells: [['zinc fluoride', 'ZnF2'], ['sodium', 'Na'], ['sodium fluoride', 'NaF'], ['zinc', 'Zn']],
+       hint: 'Both metals are single symbols. Only the ZnF<sub>2</sub> and NaF carry small numbers.' },
+  c: { mr: false, cells: [['iron oxide', 'Fe2O3'], ['carbon', 'C'], ['iron', 'Fe'], ['carbon monoxide', 'CO']],
+       hint: 'Carbon is a single symbol — it is not C<sub>3</sub>. Carbon monoxide is CO, one of each.' },
+  d: { mr: true, cells: [['magnesium', 'Mg'], ['oxygen', 'O2'], ['magnesium oxide', 'MgO']] },
+  e: { mr: true, cells: [['iron', 'Fe'], ['chlorine', 'Cl2'], ['iron chloride', 'FeCl3']] },
+  f: { mr: true, cells: [['titanium chloride', 'TiCl4'], ['sodium', 'Na'], ['titanium', 'Ti'], ['sodium chloride', 'NaCl']] }
+};
+
+document.querySelectorAll('.ws[data-q]').forEach(host => {
+  const q = WS[host.dataset.q];
+  const n = q.cells.length;
+  let h = '<table class="wsgrid"><tr><td class="lab">name</td>' +
+    q.cells.map(c => `<th>${c[0]}</th>`).join('') + '</tr>' +
+    '<tr><td class="lab">formula</td>' +
+    q.cells.map((c, i) => `<td class="blank" data-f="${i}">·······</td>`).join('') + '</tr>';
+  if (q.mr) h += '<tr><td class="lab">formula mass (M<sub>r</sub>)</td>' +
+    q.cells.map((c, i) => `<td class="blank" data-m="${i}">·······</td>`).join('') + '</tr>';
+  h += '</table>';
+
+  h += '<div class="bar"><button type="button" class="rev">Show the answers</button>' +
+    (q.mr ? '<button type="button" class="work">Show the M<sub>r</sub> working</button>' : '') + '</div>';
+  if (q.mr) h += '<div class="workings" hidden></div>';
+  if (q.hint) h += `<p class="note">${q.hint}</p>`;
+  host.innerHTML = h;
+
+  const rev = host.querySelector('.rev');
+  let on = false;
+  rev.addEventListener('click', () => {
+    on = !on;
+    host.querySelectorAll('[data-f]').forEach((td, i) => {
+      td.innerHTML = on ? `<span class="f">${fmt(q.cells[i][1])}</span>` : '·······';
+      td.classList.toggle('shown', on); td.classList.toggle('blank', !on);
+    });
+    host.querySelectorAll('[data-m]').forEach((td, i) => {
+      td.innerHTML = on ? '<b>' + num(mrOf(q.cells[i][1])) + '</b>' : '·······';
+      td.classList.toggle('shown', on); td.classList.toggle('blank', !on);
+    });
+    rev.textContent = on ? 'Hide the answers' : 'Show the answers';
+  });
+
+  const work = host.querySelector('.work');
+  if (work){
+    const box = host.querySelector('.workings');
+    box.innerHTML = q.cells.map(c =>
+      `<h4 style="margin:14px 0 2px">${c[0]} — <span class="f">${fmt(c[1])}</span></h4>` + mrTable(c[1])).join('');
+    work.addEventListener('click', () => {
+      box.hidden = !box.hidden;
+      work.innerHTML = box.hidden ? 'Show the M<sub>r</sub> working' : 'Hide the M<sub>r</sub> working';
+    });
+  }
+});
+
+/* ================= answer checker ================= */
+const SUP = { '⁰':'0','¹':'1','²':'2','³':'3','⁴':'4','⁵':'5','⁶':'6','⁷':'7','⁸':'8','⁹':'9','⁻':'-' };
+function parseAnswer(raw){
+  let s = raw.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁻]/g, ch => SUP[ch]).replace(/[−–]/g, '-').replace(/\s+/g, '').replace(/,/g, '');
+  s = s.replace(/(grams?|g)$/i, '');
+  const m = s.match(/^([+-]?(?:\d+\.?\d*|\.\d+))(?:(?:[x×*]10\^?\(?([+-]?\d+)\)?)|(?:e([+-]?\d+)))?$/i);
+  if (!m) return null;
+  const exp = m[2] ?? m[3];
+  return { v: parseFloat(m[1]) * (exp != null ? Math.pow(10, +exp) : 1) };
+}
+const CHECKS = {
+  ticl4: { q: 'M<sub>r</sub> of TiCl<sub>4</sub>', ans: mrOf('TiCl4'), eg: 'e.g. 123',
+    traps: [[48 + 35.5, 'You used only one chlorine. The 4 means <b>four</b> chlorines: 4 × 35.5.'],
+            [22 + 4 * 17, 'Those are atomic numbers, not A<sub>r</sub>. Read the bigger number in each box.'],
+            [48 + 4 * 35, 'Chlorine is 35.5, not 35. Don\'t round it.']] },
+  fecl3: { q: 'M<sub>r</sub> of FeCl<sub>3</sub>', ans: mrOf('FeCl3'), eg: 'e.g. 123',
+    traps: [[56 + 35.5, 'Only one chlorine counted. FeCl<sub>3</sub> has three: 3 × 35.5 = 106.5.'],
+            [2 * (56 + 3 * 35.5), 'You included the balancing 2 from 2FeCl<sub>3</sub>. The formula is FeCl<sub>3</sub> on its own.'],
+            [mrOf('Cl2'), 'That\'s the M<sub>r</sub> of chlorine gas, Cl<sub>2</sub>.']] }
+};
+document.querySelectorAll('.check[data-id]').forEach(host => {
+  const c = CHECKS[host.dataset.id];
+  host.innerHTML = `<label for="in-${host.dataset.id}">${c.q} =</label>
+    <input id="in-${host.dataset.id}" type="text" autocomplete="off" spellcheck="false" placeholder="${c.eg}">
+    <button type="button">Check</button><div class="fb" aria-live="polite"></div>`;
+  const input = host.querySelector('input'), fb = host.querySelector('.fb');
+  const run = () => {
+    fb.className = 'fb';
+    const p = parseAnswer(input.value);
+    if (!input.value.trim()){ fb.textContent = 'Type your answer in the box first.'; return; }
+    if (!p || !(p.v > 0)){ fb.innerHTML = 'I couldn\'t read that number. Write it like <code>142</code>.'; return; }
+    const close = (a, b) => Math.abs(a - b) < 0.05;
+    if (close(p.v, c.ans)){ fb.classList.add('ok'); fb.innerHTML = '✅ Spot on. Open the working above to check every line.'; return; }
+    for (const [v, msg] of (c.traps || [])){ if (close(p.v, v)){ fb.classList.add('no'); fb.innerHTML = '🤔 ' + msg; return; } }
+    fb.classList.add('no'); fb.innerHTML = 'Not quite. Count the atoms of each element first, then multiply each count by its A<sub>r</sub> and add.';
+  };
+  host.querySelector('button').addEventListener('click', run);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') run(); });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Percentage by Mass Help</title>
+<style>
+:root{
+  --bg:#f6f4ef; --card:#ffffff; --ink:#1f2430; --muted:#5d6675; --line:#e2ddd2;
+  --hi:#c85a17; --hi-soft:#fdeee3; --chem:#2861d4; --chem-soft:#e6eefc;
+  --tag:#fff4c2; --tagline:#e3c65a; --good:#1c8a4c; --good-soft:#e3f5ea;
+  --bad:#b83a3a; --warn-soft:#fff6dc; --stage:#fbfaf7; --rest:#9aa3b2;
+  --pt:#eef1f6; --pt-line:#cfd6e2;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121418; --card:#1b1f26; --ink:#e7eaf0; --muted:#9ba4b3; --line:#2c323c;
+    --hi:#f08a45; --hi-soft:#3a2818; --chem:#7ea6f7; --chem-soft:#1a2740;
+    --tag:#4a3f14; --tagline:#8a7424; --good:#4cc47f; --good-soft:#15301f;
+    --bad:#f07a7a; --warn-soft:#352c12; --stage:#161a20; --rest:#6b7484;
+    --pt:#232932; --pt-line:#39414e;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121418; --card:#1b1f26; --ink:#e7eaf0; --muted:#9ba4b3; --line:#2c323c;
+  --hi:#f08a45; --hi-soft:#3a2818; --chem:#7ea6f7; --chem-soft:#1a2740;
+  --tag:#4a3f14; --tagline:#8a7424; --good:#4cc47f; --good-soft:#15301f;
+  --bad:#f07a7a; --warn-soft:#352c12; --stage:#161a20; --rest:#6b7484;
+  --pt:#232932; --pt-line:#39414e;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;font-size:17px;line-height:1.55}
+main{max-width:960px;margin:0 auto;padding:0 16px 80px}
+h1{font-size:clamp(26px,5vw,38px);line-height:1.15;margin:28px 0 6px}
+h2{font-size:24px;margin:44px 0 10px}
+h3{font-size:19px;margin:22px 0 6px}
+h4{font-size:16px;margin:14px 0 4px}
+.lede{color:var(--muted);margin:0 0 18px}
+sup,sub{line-height:0}
+code{font-family:ui-monospace,Consolas,"Courier New",monospace;font-size:.92em;background:var(--stage);border:1px solid var(--line);border-radius:5px;padding:0 4px}
+button{font:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--chem);outline-offset:2px}
+.f{white-space:nowrap}
+
+nav.jump{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);
+  display:flex;gap:6px;flex-wrap:wrap;padding:8px 0;margin:0 0 10px}
+nav.jump a{font-size:14px;text-decoration:none;color:var(--ink);border:1px solid var(--line);
+  background:var(--card);border-radius:99px;padding:3px 11px}
+nav.jump a:hover{border-color:var(--chem)}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin:16px 0}
+.tip{background:var(--warn-soft);border:1px solid var(--tagline);border-radius:12px;padding:12px 16px;margin:14px 0}
+.tip p{margin:6px 0}
+.note{font-size:15px;color:var(--muted);margin:8px 0}
+
+/* ---- the mass bar ---- */
+.massbar{margin:14px 0 6px}
+.massbar .track{display:flex;height:54px;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--stage)}
+.massbar .seg{display:grid;place-content:center;text-align:center;color:#fff;font-size:13px;line-height:1.2;
+  min-width:0;overflow:hidden;background:var(--rest);border-right:1px solid rgba(255,255,255,.35);
+  transition:flex-grow .6s ease}
+.massbar .seg:last-child{border-right:0}
+.massbar .seg.on{background:var(--hi)}
+.massbar .seg b{font-size:15px}
+.massbar .scale{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:3px}
+.massbar .cap{font-size:15px;margin-top:6px}
+.massbar .cap .on{color:var(--hi);font-weight:700}
+
+/* ---- Mr table ---- */
+table.mr{width:100%;border-collapse:collapse;margin:10px 0;font-size:16px;background:var(--card)}
+table.mr th,table.mr td{padding:7px 9px;border:1px solid var(--line);text-align:left}
+table.mr th{background:var(--chem-soft);color:var(--chem);font-size:14px}
+table.mr tr.tot td{background:var(--good-soft);font-weight:700}
+table.mr tr.pick td{background:var(--hi-soft)}
+table.mr tr.pick td:first-child{border-left:4px solid var(--hi)}
+table.mr .sy{font-weight:700}
+
+table.map{width:100%;border-collapse:collapse;margin:10px 0;font-size:16px}
+table.map th,table.map td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+table.map th{color:var(--chem)}
+
+/* ---- periodic table ---- */
+.ptwrap{overflow-x:auto;padding-bottom:6px}
+.ptable{display:grid;grid-template-columns:repeat(18,minmax(30px,1fr));gap:2px;min-width:640px;margin:8px 0}
+.ptable .cell{display:grid;place-content:center;padding:3px 1px;border:1px solid var(--pt-line);background:var(--pt);
+  border-radius:4px;text-align:center;line-height:1.05;color:var(--ink)}
+.ptable .cell .ar{font-size:clamp(7px,.95vw,11px);color:var(--muted)}
+.ptable .cell .sym{font-size:clamp(10px,1.5vw,16px);font-weight:700}
+.ptable .cell .z{font-size:clamp(6px,.85vw,10px);color:var(--muted)}
+.ptable .cell.lit{background:var(--hi);border-color:var(--hi);color:#fff}
+.ptable .cell.lit .ar,.ptable .cell.lit .z{color:#ffe7d6}
+.ptable .gap{font-size:10px;color:var(--muted);display:grid;place-content:center}
+
+/* ---- question blocks ---- */
+article.q{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin:22px 0}
+article.q>header{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:2px}
+.qnum{font-weight:800;font-size:19px;background:var(--ink);color:var(--bg);border-radius:8px;padding:1px 10px}
+.ask{font-size:20px;font-weight:600}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.bar button{border:1px solid var(--chem);color:var(--chem);background:var(--card);border-radius:9px;padding:5px 13px;font-size:15px}
+.ansbox{border-left:4px solid var(--good);background:var(--good-soft);border-radius:0 10px 10px 0;padding:2px 14px 10px;margin-top:8px}
+.ansbox[hidden]{display:none}
+.big{font-size:22px;font-weight:700;margin:10px 0 4px}
+.sum{font-size:19px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:10px 0;overflow-x:auto}
+.frac{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;margin:0 4px}
+.frac .t{border-bottom:2px solid currentColor;padding:0 6px}
+.frac .b{padding:0 6px}
+
+/* ---- checker ---- */
+.check{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0 4px;padding:10px 14px;border-radius:12px;background:var(--chem-soft)}
+.check label{font-weight:600}
+.check input{font:inherit;width:120px;padding:5px 9px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+.check button{border:1px solid var(--chem);color:var(--chem);background:var(--card);border-radius:9px;padding:5px 13px}
+.check .fb{flex-basis:100%;font-size:15px}
+.fb.ok{color:var(--good)}.fb.no{color:var(--bad)}
+footer{color:var(--muted);font-size:14px;margin-top:40px}
+@media (max-width:560px){
+  article.q{padding:14px 12px}
+  table.mr{font-size:14px}
+  table.mr th,table.mr td{padding:6px 5px}
+  .massbar .seg{font-size:11px}
+  .sum{font-size:16px}
+}
+@media (prefers-reduced-motion: reduce){ .massbar .seg{transition:none} }
+</style>
+</head>
+<body>
+<main>
+<h1>Percentage by mass, explained</h1>
+<p class="lede">Help for Chemsheets GCSE 1413. The question is always the same one: <b>out of the whole compound, how much of the mass is that element?</b> Everything you need comes off the periodic table. Work down the page — the answers are hidden until you press a button.</p>
+
+<nav class="jump" aria-label="Jump to">
+  <a href="#idea">The idea</a><a href="#table">Off the periodic table</a><a href="#how">The method</a><a href="#names">Naming help</a><a href="#qs">Questions 1–10</a><a href="#cheat">Cheat sheet</a>
+</nav>
+
+<section id="idea">
+<h2>The idea: split the mass into slices</h2>
+<p>Imagine you could weigh one formula unit of a compound and then separate it into piles, one pile per element. Percentage by mass asks how big one pile is compared with the whole thing.</p>
+<p>Here is water. Press the buttons to change which element you are asking about — the sum changes, but the picture doesn't.</p>
+<div class="card">
+  <div class="bar" id="demo-btns"></div>
+  <div id="demo"></div>
+</div>
+<p class="note">Notice that the percentages of every element in a compound add up to 100%. That is a free check on your answers: in water, 11.1% hydrogen + 88.9% oxygen = 100%.</p>
+<div class="tip">
+<p><b>Why hydrogen is such a small slice.</b> Water is <i>two</i> hydrogens and only <i>one</i> oxygen — yet oxygen is nearly nine tenths of the mass. Percentage by mass is not about how many atoms there are; it is about how <b>heavy</b> they are. One oxygen atom (16) outweighs two hydrogens (2) eight times over.</p>
+</div>
+</section>
+
+<section id="table">
+<h2>Where every number comes from</h2>
+<p>There is only one source of data in this whole topic: the <b>bigger number</b> in each periodic table box, the relative atomic mass A<sub>r</sub>. The elements used on this sheet are lit up.</p>
+<div class="ptwrap"><div class="ptable" id="pt"></div></div>
+<table class="map" id="usedtable"></table>
+<div class="tip">
+<p><b>Read the bigger number.</b> Copper is A<sub>r</sub> = <b>63.5</b> (the 29 underneath is the atomic number — protons, not mass). Chlorine is 35.5. Those halves are meant to be there; don't round them.</p>
+</div>
+</section>
+
+<section id="how">
+<h2>The method: three lines, every time</h2>
+<div class="card">
+<p><b>1. Work out M<sub>r</sub> of the whole compound</b> — multiply each A<sub>r</sub> by how many atoms of it there are, and add.</p>
+<p><b>2. Work out the mass of just your element</b> — its A<sub>r</sub> × how many of it are in the formula. This is the number people most often get wrong, because they forget to multiply.</p>
+<p><b>3. Divide, then × 100.</b></p>
+<div class="sum">% by mass = 100 ×
+  <span class="frac"><span class="t">mass of your element in the formula</span><span class="b">M<sub>r</sub> of the whole compound</span></span></div>
+</div>
+
+<h3>The worked example from the top of the sheet</h3>
+<p>% by mass of Fe in <span class="f">Fe<sub>2</sub>O<sub>3</sub></span>:</p>
+<div class="pct" data-f="Fe2O3" data-el="Fe" data-open="1"></div>
+
+<div class="tip">
+<p><b>The number 2 has to appear twice.</b> Once when you build M<sub>r</sub> (2 × 56 = 112 of iron, plus 3 × 16 = 48 of oxygen, giving 160) and once on the top of the fraction (112, not 56). If the top of your fraction is a bare A<sub>r</sub> straight off the periodic table, check whether the formula has more than one of that atom.</p>
+<p><b>A percentage can never be more than 100.</b> If yours is, you have divided the wrong way round — put M<sub>r</sub> on the bottom.</p>
+<p><b>Round sensibly, at the end.</b> Three significant figures is right for almost all of these: 88.9%, 43.4%, 9.66%. Don't round M<sub>r</sub> part-way through.</p>
+</div>
+</section>
+
+<section id="names">
+<h2>Naming help for questions 8, 9 and 10</h2>
+<p>Three of the questions give you a name instead of a formula. You have to write the formula first, and then nothing is different. The rule is <b>the charges have to cancel out</b>.</p>
+<table class="map">
+  <tr><th>Name</th><th>The ions</th><th>Why the formula comes out like that</th></tr>
+  <tr><td>chromium(<b>III</b>) oxide</td><td>Cr<sup>3+</sup> and O<sup>2−</sup></td>
+      <td>The roman numeral <b>is</b> the charge on the metal: III means 3+. You need 2 Cr (6+) to balance 3 O (6−) → <span class="f">Cr<sub>2</sub>O<sub>3</sub></span></td></tr>
+  <tr><td>calcium hydroxide</td><td>Ca<sup>2+</sup> and OH<sup>−</sup></td>
+      <td>You need two hydroxides to balance one calcium. Two of a <i>group</i> of atoms means brackets → <span class="f">Ca(OH)<sub>2</sub></span></td></tr>
+  <tr><td>ammonium iodide</td><td>NH<sub>4</sub><sup>+</sup> and I<sup>−</sup></td>
+      <td>1+ and 1− already cancel, so one of each and no brackets needed → <span class="f">NH<sub>4</sub>I</span></td></tr>
+</table>
+<p class="note">Ammonium (NH<sub>4</sub><sup>+</sup>, positive) and ammonia (NH<sub>3</sub>, a neutral molecule) are different things. The sheet asks for ammonium.</p>
+</section>
+
+<section id="qs">
+<h2>Questions 1–10</h2>
+<p>Have a go on paper first, then type your answer in to check it, then open the working.</p>
+<div id="qs-host"></div>
+</section>
+
+<section id="cheat">
+<div class="card">
+<h3 style="margin-top:0">Cheat sheet</h3>
+<ul>
+  <li><b>% by mass = 100 × (mass of that element ÷ M<sub>r</sub> of the compound).</b></li>
+  <li><b>Mass of that element = its A<sub>r</sub> × how many atoms of it are in the formula.</b> Multiply. Every time.</li>
+  <li>A number outside a bracket multiplies everything inside: Ca(NO<sub>3</sub>)<sub>2</sub> has <b>6</b> oxygens, not 3.</li>
+  <li>A dot in the formula (CuSO<sub>4</sub>·5H<sub>2</sub>O) means water is part of the crystal. <b>Count it</b> — in both the M<sub>r</sub> and the element total.</li>
+  <li>An element on its own (Br<sub>2</sub>) is <b>100%</b> that element. Nothing else is in it.</li>
+  <li>All the percentages of a compound add up to 100%. Use it to check.</li>
+  <li>Answers above 100% mean the fraction is upside down. M<sub>r</sub> goes on the bottom.</li>
+  <li>Round at the end, to 3 significant figures, and write the <b>%</b> sign.</li>
+</ul>
+</div>
+</section>
+
+<footer>Help page for Chemsheets GCSE 1413 (Percentage by mass). Worksheet © www.CHEMSHEETS.co.uk. A<sub>r</sub> values are the GCSE periodic table values.</footer>
+</main>
+
+<script>
+'use strict';
+
+/* ================= periodic table data: sym name Z Ar col row ================= */
+const PT_RAW = `
+H Hydrogen 1 1 1 1
+He Helium 2 4 18 1
+Li Lithium 3 7 1 2
+Be Beryllium 4 9 2 2
+B Boron 5 11 13 2
+C Carbon 6 12 14 2
+N Nitrogen 7 14 15 2
+O Oxygen 8 16 16 2
+F Fluorine 9 19 17 2
+Ne Neon 10 20 18 2
+Na Sodium 11 23 1 3
+Mg Magnesium 12 24 2 3
+Al Aluminium 13 27 13 3
+Si Silicon 14 28 14 3
+P Phosphorus 15 31 15 3
+S Sulfur 16 32 16 3
+Cl Chlorine 17 35.5 17 3
+Ar Argon 18 40 18 3
+K Potassium 19 39 1 4
+Ca Calcium 20 40 2 4
+Sc Scandium 21 45 3 4
+Ti Titanium 22 48 4 4
+V Vanadium 23 51 5 4
+Cr Chromium 24 52 6 4
+Mn Manganese 25 55 7 4
+Fe Iron 26 56 8 4
+Co Cobalt 27 59 9 4
+Ni Nickel 28 59 10 4
+Cu Copper 29 63.5 11 4
+Zn Zinc 30 65 12 4
+Ga Gallium 31 70 13 4
+Ge Germanium 32 73 14 4
+As Arsenic 33 75 15 4
+Se Selenium 34 79 16 4
+Br Bromine 35 80 17 4
+Kr Krypton 36 84 18 4
+Rb Rubidium 37 85 1 5
+Sr Strontium 38 88 2 5
+Y Yttrium 39 89 3 5
+Zr Zirconium 40 91 4 5
+Nb Niobium 41 93 5 5
+Mo Molybdenum 42 96 6 5
+Tc Technetium 43 98 7 5
+Ru Ruthenium 44 101 8 5
+Rh Rhodium 45 103 9 5
+Pd Palladium 46 106 10 5
+Ag Silver 47 108 11 5
+Cd Cadmium 48 112 12 5
+In Indium 49 115 13 5
+Sn Tin 50 119 14 5
+Sb Antimony 51 122 15 5
+Te Tellurium 52 128 16 5
+I Iodine 53 127 17 5
+Xe Xenon 54 131 18 5
+Cs Caesium 55 133 1 6
+Ba Barium 56 137 2 6
+La Lanthanum 57 139 3 6
+Hf Hafnium 72 178.5 4 6
+Ta Tantalum 73 181 5 6
+W Tungsten 74 184 6 6
+Re Rhenium 75 186 7 6
+Os Osmium 76 190 8 6
+Ir Iridium 77 192 9 6
+Pt Platinum 78 195 10 6
+Au Gold 79 197 11 6
+Hg Mercury 80 201 12 6
+Tl Thallium 81 204 13 6
+Pb Lead 82 207 14 6
+Bi Bismuth 83 209 15 6
+Po Polonium 84 209 16 6
+At Astatine 85 210 17 6
+Rn Radon 86 222 18 6
+Fr Francium 87 223 1 7
+Ra Radium 88 226 2 7
+Ac Actinium 89 227 3 7
+`;
+const ELS = PT_RAW.trim().split('\n').map(l => {
+  const [sym, name, z, ar, col, row] = l.trim().split(/\s+/);
+  return { sym, name, z: +z, ar: +ar, col: +col, row: +row };
+});
+const AR = {}, NAME = {};
+ELS.forEach(e => { AR[e.sym] = e.ar; NAME[e.sym] = e.name.toLowerCase(); });
+
+/* ================= formula parsing ================= */
+function parseBody(s){
+  const out = new Map(), stack = [out];
+  let i = 0;
+  while (i < s.length){
+    const c = s[i];
+    if (c === '('){ stack.push(new Map()); i++; continue; }
+    if (c === ')'){
+      if (stack.length < 2) throw new Error('a ) with no matching (');
+      const grp = stack.pop(); i++;
+      let d = ''; while (/\d/.test(s[i] || '')) d += s[i++];
+      const k = d ? +d : 1, top = stack[stack.length - 1];
+      grp.forEach((n, sym) => top.set(sym, (top.get(sym) || 0) + n * k));
+      continue;
+    }
+    const m = s.slice(i).match(/^([A-Z][a-z]?)(\d*)/);
+    if (!m || !(m[1] in AR)) throw new Error('bad symbol in ' + s);
+    i += m[0].length;
+    const top = stack[stack.length - 1];
+    top.set(m[1], (top.get(m[1]) || 0) + (m[2] ? +m[2] : 1));
+  }
+  if (stack.length !== 1) throw new Error('a ( with no matching )');
+  return out;
+}
+function parseFormula(f){
+  const tally = new Map();
+  f.replace(/\s+/g, '').split('.').forEach(part => {
+    const m = part.match(/^(\d+)/);
+    const pre = m ? +m[1] : 1, body = m ? part.slice(m[1].length) : part;
+    parseBody(body).forEach((n, sym) => tally.set(sym, (tally.get(sym) || 0) + n * pre));
+  });
+  return tally;
+}
+const mrOf = f => [...parseFormula(f)].reduce((s, [sym, n]) => s + AR[sym] * n, 0);
+const num = v => (Math.round(v * 1000) / 1000).toString();
+const fmt = f => f.replace(/\s+/g, '').split('.')
+  .map(p => p.replace(/([A-Za-z\)])(\d+)/g, '$1<sub>$2</sub>')).join('·');
+/* round to n significant figures, keeping trailing zeros */
+function sig(v, n){
+  if (v === 0) return '0';
+  const d = Math.floor(Math.log10(Math.abs(v))) + 1, p = n - d;
+  const r = Math.round(v * Math.pow(10, p)) / Math.pow(10, p);
+  return p > 0 ? r.toFixed(p) : r.toString();
+}
+
+/* ================= the Mr table, with one row picked out ================= */
+function mrTable(f, pick){
+  const rows = [...parseFormula(f)];
+  let h = '<table class="mr"><tr><th>Element</th><th>How many atoms in the formula</th><th>A<sub>r</sub></th><th>Mass of that element</th></tr>';
+  rows.forEach(([sym, n]) => {
+    const a = AR[sym], m = a * n;
+    h += `<tr${sym === pick ? ' class="pick"' : ''}><td><span class="sy">${sym}</span> <span class="note" style="margin:0">${NAME[sym]}</span></td>` +
+      `<td>${n}</td><td>${num(a)}</td><td>${n} × ${num(a)} = <b>${num(m)}</b></td></tr>`;
+  });
+  h += `<tr class="tot"><td colspan="3">M<sub>r</sub> of <span class="f">${fmt(f)}</span> — add the last column up</td><td><b>${num(mrOf(f))}</b></td></tr></table>`;
+  return h;
+}
+
+/* ================= the mass bar ================= */
+function massBar(f, pick){
+  const rows = [...parseFormula(f)], mr = mrOf(f);
+  let h = '<div class="massbar"><div class="track">';
+  rows.forEach(([sym, n]) => {
+    const m = AR[sym] * n, pc = 100 * m / mr;
+    h += `<div class="seg${sym === pick ? ' on' : ''}" style="flex:${m} 1 0"` +
+      ` title="${sym}: ${num(m)} out of ${num(mr)}">` +
+      (pc > 7 ? `<span><b>${sym}</b><br>${num(m)}</span>` : `<span>${sym}</span>`) + '</div>';
+  });
+  h += `</div><div class="scale"><span>0</span><span>the whole compound weighs ${num(mr)}</span></div>`;
+  const m = AR[pick] * parseFormula(f).get(pick);
+  h += `<div class="cap">The <span class="on">${NAME[pick]}</span> slice is <span class="on">${num(m)}</span> out of ${num(mr)}.</div></div>`;
+  return h;
+}
+
+/* ================= the full worked percentage ================= */
+function pctWork(f, el){
+  const n = parseFormula(f).get(el), a = AR[el], m = a * n, mr = mrOf(f), pc = 100 * m / mr;
+  const exact = Math.abs(pc - Math.round(pc * 1000) / 1000) < 1e-9;
+  return massBar(f, el) + mrTable(f, el) +
+    `<h4>Now put the two numbers into the fraction</h4>` +
+    `<div class="sum">% ${el} = 100 × <span class="frac"><span class="t">${n} × ${num(a)} = ${num(m)}</span>` +
+    `<span class="b">${num(mr)}</span></span> = ${exact ? num(pc) : pc.toPrecision(6) + ' …'}</div>` +
+    `<p class="big">= ${sig(pc, 3)}%</p>` +
+    `<p class="note">(3 significant figures. ${pc === 100 ? 'It is exactly 100% because there is nothing else in there.' :
+      'Check: the other ' + (parseFormula(f).size - 1) + ' element' + (parseFormula(f).size === 2 ? '' : 's') +
+      ' make up the remaining ' + sig(100 - pc, 3) + '%.'})</p>`;
+}
+
+/* mount the standalone worked examples marked up in the HTML */
+document.querySelectorAll('.pct[data-f]').forEach(host => {
+  host.innerHTML = pctWork(host.dataset.f, host.dataset.el);
+});
+
+/* ================= the intro demo: water, switchable element ================= */
+(function(){
+  const host = document.getElementById('demo'), btns = document.getElementById('demo-btns');
+  if (!host) return;
+  const F = 'H2O';
+  [...parseFormula(F)].forEach(([sym]) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.innerHTML = `% by mass of ${sym}`;
+    b.addEventListener('click', () => { host.innerHTML = pctWork(F, sym); });
+    btns.appendChild(b);
+  });
+  host.innerHTML = pctWork(F, 'O');
+})();
+
+/* ================= the periodic table, with the sheet's elements lit ================= */
+const QS = [
+  { n: 1,  el: 'O',  f: 'H2O' },
+  { n: 2,  el: 'O',  f: 'SO3' },
+  { n: 3,  el: 'Na', f: 'Na2CO3' },
+  { n: 4,  el: 'N',  f: 'Ca(NO3)2',
+    note: 'There are <b>two</b> nitrogens, because the 2 outside the bracket doubles everything inside. A very common answer here is 8.54%, which is what you get from just one N.' },
+  { n: 5,  el: 'O',  f: 'Ca(NO3)2',
+    note: 'Same compound, so the M<sub>r</sub> is the same 164 you already worked out — no need to do it again. The oxygens: 3 inside the bracket × 2 outside = <b>6</b>.' },
+  { n: 6,  el: 'Br', f: 'Br2',
+    note: 'Not a trick question. Bromine gas is nothing but bromine, so it is 100% bromine by mass. The 2 cancels: 160 ÷ 160.' },
+  { n: 7,  el: 'O',  f: 'CuSO4.5H2O',
+    note: 'The dot means five water molecules are locked into the crystal, and they count. Oxygens: 4 in the sulfate <b>plus</b> 5 in the waters = <b>9</b>. The M<sub>r</sub> includes 5 × 18 = 90 of water too.' },
+  { n: 8,  el: 'Cr', f: 'Cr2O3', name: 'chromium(III) oxide',
+    note: 'The roman numeral III is the charge on chromium, 3+. Balancing it against O<sup>2−</sup> gives Cr<sub>2</sub>O<sub>3</sub>. It does <b>not</b> mean three of anything.' },
+  { n: 9,  el: 'O',  f: 'Ca(OH)2', name: 'calcium hydroxide',
+    note: 'Ca<sup>2+</sup> needs two OH<sup>−</sup>, so the hydroxide goes in brackets: Ca(OH)<sub>2</sub>. That is 2 oxygens and 2 hydrogens.' },
+  { n: 10, el: 'N',  f: 'NH4I', name: 'ammonium iodide',
+    note: 'Ammonium is NH<sub>4</sub><sup>+</sup> and iodide is I<sup>−</sup>, so one of each. Iodine is heavy (127), which is why the nitrogen slice is so thin.' }
+];
+
+(function(){
+  const pt = document.getElementById('pt');
+  if (!pt) return;
+  const used = new Set();
+  QS.forEach(q => parseFormula(q.f).forEach((n, sym) => used.add(sym)));
+  ELS.forEach(e => {
+    const d = document.createElement('div');
+    d.className = 'cell' + (used.has(e.sym) ? ' lit' : '');
+    d.style.gridColumn = e.col; d.style.gridRow = e.row;
+    d.innerHTML = `<span class="ar">${num(e.ar)}</span><span class="sym">${e.sym}</span><span class="z">${e.z}</span>`;
+    pt.appendChild(d);
+  });
+  const gap = document.createElement('div');
+  gap.className = 'gap'; gap.style.gridColumn = '4 / span 15'; gap.style.gridRow = '7';
+  gap.textContent = 'the lanthanides and actinides live here — not needed at GCSE';
+  pt.appendChild(gap);
+
+  const t = document.getElementById('usedtable');
+  t.innerHTML = '<tr><th>Element</th><th>Symbol</th><th>A<sub>r</sub> — the number you use</th><th>Atomic number — the number you don\'t</th></tr>' +
+    [...used].map(s => ELS.find(e => e.sym === s))
+      .sort((a, b) => a.z - b.z)
+      .map(e => `<tr><td>${e.name}</td><td><b>${e.sym}</b></td><td><b>${num(e.ar)}</b></td><td>${e.z}</td></tr>`).join('');
+})();
+
+/* ================= answer checking ================= */
+function parseAnswer(raw){
+  const s = raw.replace(/[−–]/g, '-').replace(/\s+/g, '').replace(/%$/, '');
+  const m = s.match(/^([+-]?(?:\d+\.?\d*|\.\d+))$/);
+  return m ? parseFloat(m[1]) : null;
+}
+
+/* ================= build the ten questions ================= */
+(function(){
+  const host = document.getElementById('qs-host');
+  QS.forEach(q => {
+    const n = parseFormula(q.f).get(q.el), mr = mrOf(q.f), mass = AR[q.el] * n, pc = 100 * mass / mr;
+    const art = document.createElement('article');
+    art.className = 'q'; art.id = 'q' + q.n;
+    art.innerHTML =
+      `<header><span class="qnum">${q.n}</span><span class="ask">% by mass of ${q.el} in ` +
+        (q.name ? `${q.name}` : `<span class="f">${fmt(q.f)}</span>`) + '</span></header>' +
+      (q.name ? `<div class="bar"><button type="button" class="showf">Show me the formula first</button></div>
+                 <p class="fslot" hidden>The formula is <span class="f" style="font-size:20px"><b>${fmt(q.f)}</b></span>.</p>` : '') +
+      `<div class="check">
+         <label>Your answer:</label>
+         <input type="text" autocomplete="off" spellcheck="false" placeholder="e.g. 12.3"><span>%</span>
+         <button type="button" class="ck">Check</button><div class="fb" aria-live="polite"></div>
+       </div>
+       <div class="bar"><button type="button" class="rev">Show the full working</button></div>
+       <div class="ansbox" hidden></div>` +
+      (q.note ? `<p class="note">${q.note}</p>` : '');
+    host.appendChild(art);
+
+    const showf = art.querySelector('.showf');
+    if (showf) showf.addEventListener('click', () => {
+      const p = art.querySelector('.fslot');
+      p.hidden = !p.hidden;
+      showf.textContent = p.hidden ? 'Show me the formula first' : 'Hide the formula';
+    });
+
+    const box = art.querySelector('.ansbox'), rev = art.querySelector('.rev');
+    rev.addEventListener('click', () => {
+      if (!box.innerHTML) box.innerHTML = pctWork(q.f, q.el);
+      box.hidden = !box.hidden;
+      rev.textContent = box.hidden ? 'Show the full working' : 'Hide the working';
+    });
+
+    const input = art.querySelector('input'), fb = art.querySelector('.fb');
+    const run = () => {
+      fb.className = 'fb';
+      const v = parseAnswer(input.value);
+      if (!input.value.trim()){ fb.textContent = 'Type your answer in the box first.'; return; }
+      if (v === null){ fb.innerHTML = 'I couldn\'t read that. Write it like <code>43.4</code> — just the number.'; return; }
+      if (Math.abs(v - pc) < 0.06){ fb.classList.add('ok'); fb.innerHTML = '✅ Correct. Open the working to check how you got there.'; return; }
+      /* did they forget to multiply by how many atoms there are? */
+      if (n > 1 && Math.abs(v - 100 * AR[q.el] / mr) < 0.06){
+        fb.classList.add('no');
+        fb.innerHTML = `🤔 You used just one ${q.el} on the top. The formula has <b>${n}</b> of them, so the top is ${n} × ${num(AR[q.el])} = ${num(mass)}.`;
+        return;
+      }
+      if (Math.abs(v - mr / mass) < 0.06 || Math.abs(v - 100 * mr / mass) < 0.5){
+        fb.classList.add('no'); fb.innerHTML = '🤔 That\'s upside down. M<sub>r</sub> of the whole compound goes on the <b>bottom</b>.';
+        return;
+      }
+      if (Math.abs(v - mass / mr) < 0.01){
+        fb.classList.add('no'); fb.innerHTML = '🤔 Right fraction, but you forgot to <b>× 100</b> to turn it into a percentage.';
+        return;
+      }
+      if (Math.abs(v - (100 - pc)) < 0.06){
+        fb.classList.add('no'); fb.innerHTML = `🤔 That\'s everything <i>except</i> the ${NAME[q.el]}. The question asks for the ${NAME[q.el]} itself.`;
+        return;
+      }
+      fb.classList.add('no');
+      fb.innerHTML = 'Not quite. Work out M<sub>r</sub> of the whole thing first, then the mass of just the ' + NAME[q.el] + ', then divide and × 100.';
+    };
+    art.querySelector('.ck').addEventListener('click', run);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') run(); });
+  });
+})();
+</script>
+</body>
+</html>

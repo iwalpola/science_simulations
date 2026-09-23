@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Moles Help</title>
+<style>
+:root{
+  --bg:#f6f4ef; --card:#ffffff; --ink:#1f2430; --muted:#5d6675; --line:#e2ddd2;
+  --hi:#c85a17; --hi-soft:#fdeee3; --chem:#2861d4; --chem-soft:#e6eefc;
+  --tag:#fff4c2; --tagline:#e3c65a; --good:#1c8a4c; --good-soft:#e3f5ea;
+  --bad:#b83a3a; --warn-soft:#fff6dc; --stage:#fbfaf7;
+  --dA:#7a58cc; --dA-soft:#ece5fb; --dB:#16877b; --dB-soft:#dcf2ef;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121418; --card:#1b1f26; --ink:#e7eaf0; --muted:#9ba4b3; --line:#2c323c;
+    --hi:#f08a45; --hi-soft:#3a2818; --chem:#7ea6f7; --chem-soft:#1a2740;
+    --tag:#4a3f14; --tagline:#8a7424; --good:#4cc47f; --good-soft:#15301f;
+    --bad:#f07a7a; --warn-soft:#352c12; --stage:#161a20;
+    --dA:#b9a0f5; --dA-soft:#2a2140; --dB:#5fc9bd; --dB-soft:#11322f;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121418; --card:#1b1f26; --ink:#e7eaf0; --muted:#9ba4b3; --line:#2c323c;
+  --hi:#f08a45; --hi-soft:#3a2818; --chem:#7ea6f7; --chem-soft:#1a2740;
+  --tag:#4a3f14; --tagline:#8a7424; --good:#4cc47f; --good-soft:#15301f;
+  --bad:#f07a7a; --warn-soft:#352c12; --stage:#161a20;
+  --dA:#b9a0f5; --dA-soft:#2a2140; --dB:#5fc9bd; --dB-soft:#11322f;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;font-size:17px;line-height:1.55}
+main{max-width:960px;margin:0 auto;padding:0 16px 80px}
+h1{font-size:clamp(26px,5vw,38px);line-height:1.15;margin:28px 0 6px}
+h2{font-size:24px;margin:44px 0 10px}
+h3{font-size:19px;margin:22px 0 6px}
+h4{font-size:16px;margin:16px 0 4px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-size:13px}
+.lede{color:var(--muted);margin:0 0 18px}
+sup,sub{line-height:0}
+code{font-family:ui-monospace,Consolas,"Courier New",monospace;font-size:.92em;background:var(--stage);border:1px solid var(--line);border-radius:5px;padding:0 4px}
+button{font:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--chem);outline-offset:2px}
+.f{white-space:nowrap}
+
+nav.jump{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);
+  display:flex;gap:6px;flex-wrap:wrap;padding:8px 0;margin:0 0 10px}
+nav.jump a{font-size:14px;text-decoration:none;color:var(--ink);border:1px solid var(--line);
+  background:var(--card);border-radius:99px;padding:3px 11px}
+nav.jump a:hover{border-color:var(--chem)}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin:16px 0}
+.tip{background:var(--warn-soft);border:1px solid var(--tagline);border-radius:12px;padding:12px 16px;margin:14px 0}
+.tip p{margin:6px 0}
+.note{font-size:15px;color:var(--muted);margin:8px 0}
+
+table.map{width:100%;border-collapse:collapse;margin:10px 0;font-size:16px}
+table.map th,table.map td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+table.map th{color:var(--chem)}
+
+/* ---- Mr table ---- */
+table.mr{width:100%;border-collapse:collapse;margin:8px 0;font-size:16px;background:var(--card)}
+table.mr th,table.mr td{padding:6px 9px;border:1px solid var(--line);text-align:left}
+table.mr th{background:var(--chem-soft);color:var(--chem);font-size:14px}
+table.mr tr.tot td{background:var(--good-soft);font-weight:700}
+table.mr .sy{font-weight:700}
+
+/* ---- the ratio box ---- */
+.ratio{display:grid;grid-template-columns:auto 1fr 1fr;border:2px solid var(--line);border-radius:12px;
+  overflow:hidden;margin:12px 0;background:var(--card);max-width:560px}
+.ratio>div{padding:9px 12px;border-top:1px solid var(--line);text-align:center;font-size:19px}
+.ratio>div.rh{border-top:0;font-size:14px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;
+  background:var(--stage);color:var(--muted)}
+.ratio>div.rl{text-align:left;font-size:14px;color:var(--muted);border-right:1px solid var(--line);
+  background:var(--stage);line-height:1.25;display:grid;align-items:center}
+.ratio>div.rh.rl{color:var(--muted);border-top:0}
+.ratio .unk{font-weight:800;color:var(--hi)}
+.ratio .dA{background:var(--dA-soft);color:var(--dA);font-weight:700}
+.ratio .dB{background:var(--dB-soft);color:var(--dB);font-weight:700}
+.crossline{font-size:19px;margin:10px 0}
+.crossline .a{color:var(--dA);font-weight:700}
+.crossline .b{color:var(--dB);font-weight:700}
+.big{font-size:23px;font-weight:700;margin:10px 0 2px}
+.stepbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.stepbar button{border:1px solid var(--chem);color:var(--chem);background:var(--card);border-radius:9px;padding:5px 13px;font-size:15px}
+.stepline[hidden]{display:none}
+.stepline{margin:8px 0}
+
+/* ---- unit ladder ---- */
+.ladder{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch;margin:12px 0}
+.rung{flex:1 1 150px;border:1px solid var(--line);border-radius:10px;background:var(--card);padding:10px 12px;text-align:center}
+.rung .u{font-size:21px;font-weight:700}
+.rung .op{font-size:15px;color:var(--chem);font-weight:600;margin-top:2px}
+.rung .eg{font-size:13px;color:var(--muted);margin-top:4px}
+
+/* ---- question blocks ---- */
+article.q{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin:22px 0}
+article.q>header{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:2px}
+.qnum{font-weight:800;font-size:18px;background:var(--ink);color:var(--bg);border-radius:8px;padding:1px 10px}
+.ask{font-size:20px;font-weight:600}
+.ansbox{border-left:4px solid var(--good);background:var(--good-soft);border-radius:0 10px 10px 0;padding:4px 14px 12px;margin-top:8px}
+.ansbox[hidden]{display:none}
+.secthead{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  background:var(--chem);color:#fff;border-radius:6px;padding:1px 8px;margin:16px 0 4px}
+.secthead.two{background:var(--hi)}
+.secthead.three{background:var(--good)}
+
+/* ---- checker ---- */
+.check{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0 4px;padding:10px 14px;border-radius:12px;background:var(--chem-soft)}
+.check label{font-weight:600}
+.check input{font:inherit;width:150px;padding:5px 9px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+.check button{border:1px solid var(--chem);color:var(--chem);background:var(--card);border-radius:9px;padding:5px 13px}
+.check .fb{flex-basis:100%;font-size:15px}
+.fb.ok{color:var(--good)}.fb.no{color:var(--bad)}
+footer{color:var(--muted);font-size:14px;margin-top:40px}
+@media (max-width:560px){
+  article.q{padding:14px 12px}
+  table.mr{font-size:14px}
+  table.mr th,table.mr td{padding:5px 5px}
+  .ratio>div{font-size:16px;padding:7px 6px}
+  .crossline{font-size:16px}
+}
+</style>
+</head>
+<body>
+<main>
+<h1>Moles: M<sub>r</sub> first, then a ratio</h1>
+<p class="lede">Help for Chemsheets GCSE 1092. Every question on this sheet is the same two moves. <b>Work out the relative formula mass. Then set up a ratio and cross-multiply.</b> You never need to remember a triangle or which way round a formula goes — the ratio tells you.</p>
+
+<nav class="jump" aria-label="Jump to">
+  <a href="#idea">The one fact</a><a href="#ratio">The ratio method</a><a href="#units">Units</a><a href="#sf">Sig figs</a><a href="#q1">Q1</a><a href="#q2">Q2</a><a href="#q3">Q3</a><a href="#q4">Q4</a><a href="#q5">Q5</a><a href="#cheat">Cheat sheet</a>
+</nav>
+
+<section id="idea">
+<h2>The one fact this whole sheet rests on</h2>
+<div class="card" style="text-align:center">
+  <p style="font-size:22px;margin:6px 0"><b>M<sub>r</sub> grams of a substance is <span style="color:var(--hi)">exactly 1 mole</span> of it.</b></p>
+  <p class="note" style="margin:2px 0">M<sub>r</sub> of water is 18, so <b>18 g of water is 1 mole of water</b>.<br>
+  M<sub>r</sub> of carbon dioxide is 44, so <b>44 g of CO<sub>2</sub> is 1 mole of CO<sub>2</sub></b>.</p>
+</div>
+<p>That single sentence is the bridge between grams (what a balance shows you) and moles (how chemists count particles). Everything else on the sheet is proportion: if 18 g is 1 mole, then 36 g is 2 moles, 9 g is 0.5 moles, 90 g is 5 moles.</p>
+<p class="note">It works because of how the mole was defined. One mole is 6.022 × 10<sup>23</sup> particles, and that number was chosen precisely so that this comes out tidy. If that is new, the <a href="avogadros_constant.html">Avogadro constant page</a> covers it.</p>
+
+<div class="tip">
+<p><b>So step one is always the same: work out M<sub>r</sub>.</b> Until you have that number you cannot start. If you are shaky on it, do the <a href="relative_formula_mass.html">relative formula mass page</a> first.</p>
+</div>
+</section>
+
+<section id="ratio">
+<h2>The ratio method</h2>
+<p>Once you have M<sub>r</sub>, write down two rows. The top row is the fact you just worked out. The bottom row is what the question actually gives you, with a <b>?</b> where the answer goes.</p>
+
+<div class="card">
+<p><b>Worked example: how many moles are there in 90.0 g of H<sub>2</sub>O?</b></p>
+<span class="secthead">Step 1 · M<sub>r</sub></span>
+<div class="mrslot" data-formula="H2O"></div>
+<span class="secthead two">Step 2 · set up the ratio</span>
+<div class="demo-ratio"></div>
+</div>
+
+<div class="tip">
+<p><b>Why cross-multiplying is safe.</b> The two columns are in proportion, so the two diagonal products are always equal. That is true whichever box is empty — which is why the <i>same</i> setup answers "find the moles", "find the mass" and even "find the M<sub>r</sub>". You do not have to decide whether to multiply or divide before you start. Set it up, cross-multiply, then rearrange.</p>
+<p><b>The top row always has a 1 in the moles column.</b> That is the whole point of M<sub>r</sub>: it is the mass of exactly one mole.</p>
+</div>
+
+<h3>Check it looks sensible</h3>
+<p>Before you write the answer down, ask which number should be bigger.</p>
+<table class="map">
+  <tr><th>If the mass is…</th><th>then the number of moles is…</th></tr>
+  <tr><td><b>bigger</b> than M<sub>r</sub> grams (90 g of water, M<sub>r</sub> 18)</td><td>more than 1 mole (5 moles) ✓</td></tr>
+  <tr><td><b>smaller</b> than M<sub>r</sub> grams (5.8 g of C<sub>4</sub>H<sub>10</sub>, M<sub>r</sub> 58)</td><td>less than 1 mole (0.1 moles) ✓</td></tr>
+  <tr><td><b>tiny</b> (20.6 mg of gold, M<sub>r</sub> 197)</td><td>a very small fraction of a mole ✓</td></tr>
+</table>
+<p class="note">If you get 5 moles from 5.8 g of something with an M<sub>r</sub> of 58, you have divided the wrong way round. This check catches it every time.</p>
+</section>
+
+<section id="units">
+<h2>Units: get to grams before you do anything</h2>
+<p>M<sub>r</sub> is in grams, so the mass in your ratio has to be in grams too. Convert <b>first</b>, before the ratio, and the rest is unchanged.</p>
+<div class="ladder">
+  <div class="rung"><div class="u">tonnes</div><div class="op">× 1 000 000</div><div class="eg">102 t → 1.02 × 10<sup>8</sup> g</div></div>
+  <div class="rung"><div class="u">kilograms</div><div class="op">× 1000</div><div class="eg">2.00 kg → 2000 g</div></div>
+  <div class="rung"><div class="u" style="color:var(--hi)">GRAMS</div><div class="op">the unit M<sub>r</sub> uses</div><div class="eg">this is where you want to be</div></div>
+  <div class="rung"><div class="u">milligrams</div><div class="op">÷ 1000</div><div class="eg">20.6 mg → 0.0206 g</div></div>
+</div>
+<p class="note">A tonne is 1000 kg, and each kg is 1000 g, so a tonne is 1 000 000 g. (The sheet writes "tons"; take it to mean tonnes.) A milligram is a thousandth of a gram, so you <i>divide</i> — a few mg is a small number of grams, and it should look small.</p>
+<div class="tip">
+<p><b>Convert the mass, never the M<sub>r</sub>.</b> M<sub>r</sub> of NH<sub>3</sub> is 17 whether you weighed out milligrams or tonnes of it. Only the number in the bottom-left box changes.</p>
+</div>
+</section>
+
+<section id="sf">
+<h2>Significant figures, and typing big numbers</h2>
+<div class="tip">
+<p><b>Significant figures.</b> Start counting at the first digit that isn't zero. 3.1875 × 10<sup>6</sup> to 3 s.f. → <b>3.19 × 10<sup>6</sup></b>. 0.00010457 to 3 s.f. → <b>1.05 × 10<sup>−4</sup></b>. The power of ten is not a significant figure and never changes when you round.</p>
+<p><b>Keep trailing zeros when they count.</b> 90.0 ÷ 18 = 5 exactly, but the question wants 3 s.f., so write <b>5.00</b>. Writing 5 throws away the precision you were given.</p>
+</div>
+<div class="tip">
+<p><b>On the calculator.</b> Use the <kbd style="font-family:inherit;font-size:.85em;border:1px solid var(--muted);border-bottom-width:2px;border-radius:5px;padding:0 5px;background:var(--card)">×10<sup>x</sup></kbd> button (sometimes <kbd style="font-family:inherit;font-size:.85em;border:1px solid var(--muted);border-bottom-width:2px;border-radius:5px;padding:0 5px;background:var(--card)">EXP</kbd> or <kbd style="font-family:inherit;font-size:.85em;border:1px solid var(--muted);border-bottom-width:2px;border-radius:5px;padding:0 5px;background:var(--card)">EE</kbd>) rather than typing <code>x10^</code>, which gets misread.</p>
+<p>To type an answer into the boxes on this page, write <code>3.19e6</code> or <code>3.19x10^6</code>, and <code>1.05e-4</code> for small ones.</p>
+</div>
+</section>
+
+<section id="q1">
+<h2>Question 1: mass → moles</h2>
+<p>You are given grams and asked for moles. The <b>?</b> sits in the bottom right.</p>
+<div class="qs" data-set="1"></div>
+</section>
+
+<section id="q2">
+<h2>Question 2: moles → mass</h2>
+<p>Now it is the other way round, and the <b>?</b> moves to the bottom left. Notice that you do not change the method at all — you set up the same two rows and cross-multiply. That is the advantage of doing it this way rather than memorising two formulas.</p>
+<div class="qs" data-set="2"></div>
+</section>
+
+<section id="q3">
+<h2>Question 3: convert the units first, to 3 s.f.</h2>
+<p>Exactly like Question 1, with one extra line at the top: get the mass into grams.</p>
+<div class="qs" data-set="3"></div>
+</section>
+
+<section id="q4">
+<h2>Question 4: moles → mass, to 3 s.f.</h2>
+<div class="qs" data-set="4"></div>
+</section>
+
+<section id="q5">
+<h2>Question 5: the M<sub>r</sub> is the missing one</h2>
+<p>This looks like a different kind of question, and it isn't. You are told the mass and the moles, and the <b>?</b> has moved up into the top row. Same two rows, same cross-multiply.</p>
+<div class="qs" data-set="5"></div>
+</section>
+
+<section id="cheat">
+<div class="card">
+<h3 style="margin-top:0">Cheat sheet</h3>
+<ul>
+  <li><b>M<sub>r</sub> grams = 1 mole.</b> That is the whole topic.</li>
+  <li><b>Step 1:</b> work out M<sub>r</sub> from the periodic table. Multiply each A<sub>r</sub> by how many atoms, add them up.</li>
+  <li><b>Step 2:</b> convert the mass to <b>grams</b> if it isn't already. kg × 1000, tonnes × 1 000 000, mg ÷ 1000.</li>
+  <li><b>Step 3:</b> two rows — <code>M<sub>r</sub> g : 1 mol</code> on top, the question's numbers underneath with a <b>?</b>.</li>
+  <li><b>Step 4:</b> cross-multiply (the two diagonals are equal), then rearrange for the <b>?</b>.</li>
+  <li>If you'd rather have the formula: <b>moles = mass ÷ M<sub>r</sub></b> and <b>mass = moles × M<sub>r</sub></b>. Both fall straight out of the ratio, so you can always rebuild them.</li>
+  <li><b>Sanity check:</b> mass bigger than M<sub>r</sub> grams → more than 1 mole. Smaller → less than 1 mole.</li>
+  <li>Round to the s.f. asked for, at the end, and give the unit: <b>mol</b> or <b>g</b>. M<sub>r</sub> has no unit.</li>
+</ul>
+</div>
+</section>
+
+<footer>Help page for Chemsheets GCSE 1092 (Moles 1). Worksheet © www.CHEMSHEETS.co.uk. A<sub>r</sub> values are the GCSE periodic table values.</footer>
+</main>
+
+<script>
+'use strict';
+
+/* ================= periodic table data: sym name Z Ar ================= */
+const PT_RAW = `
+H Hydrogen 1 1
+He Helium 2 4
+Li Lithium 3 7
+Be Beryllium 4 9
+B Boron 5 11
+C Carbon 6 12
+N Nitrogen 7 14
+O Oxygen 8 16
+F Fluorine 9 19
+Ne Neon 10 20
+Na Sodium 11 23
+Mg Magnesium 12 24
+Al Aluminium 13 27
+Si Silicon 14 28
+P Phosphorus 15 31
+S Sulfur 16 32
+Cl Chlorine 17 35.5
+Ar Argon 18 40
+K Potassium 19 39
+Ca Calcium 20 40
+Sc Scandium 21 45
+Ti Titanium 22 48
+V Vanadium 23 51
+Cr Chromium 24 52
+Mn Manganese 25 55
+Fe Iron 26 56
+Co Cobalt 27 59
+Ni Nickel 28 59
+Cu Copper 29 63.5
+Zn Zinc 30 65
+Ga Gallium 31 70
+Ge Germanium 32 73
+As Arsenic 33 75
+Se Selenium 34 79
+Br Bromine 35 80
+Kr Krypton 36 84
+Rb Rubidium 37 85
+Sr Strontium 38 88
+Y Yttrium 39 89
+Zr Zirconium 40 91
+Nb Niobium 41 93
+Mo Molybdenum 42 96
+Tc Technetium 43 98
+Ru Ruthenium 44 101
+Rh Rhodium 45 103
+Pd Palladium 46 106
+Ag Silver 47 108
+Cd Cadmium 48 112
+In Indium 49 115
+Sn Tin 50 119
+Sb Antimony 51 122
+Te Tellurium 52 128
+I Iodine 53 127
+Xe Xenon 54 131
+Cs Caesium 55 133
+Ba Barium 56 137
+La Lanthanum 57 139
+Hf Hafnium 72 178.5
+Ta Tantalum 73 181
+W Tungsten 74 184
+Re Rhenium 75 186
+Os Osmium 76 190
+Ir Iridium 77 192
+Pt Platinum 78 195
+Au Gold 79 197
+Hg Mercury 80 201
+Tl Thallium 81 204
+Pb Lead 82 207
+Bi Bismuth 83 209
+Po Polonium 84 209
+At Astatine 85 210
+Rn Radon 86 222
+Fr Francium 87 223
+Ra Radium 88 226
+Ac Actinium 89 227
+`;
+const AR = {}, NAME = {};
+PT_RAW.trim().split('\n').forEach(l => {
+  const [sym, name, z, ar] = l.trim().split(/\s+/);
+  AR[sym] = +ar; NAME[sym] = name.toLowerCase();
+});
+
+/* ================= formula parsing ================= */
+function parseBody(s){
+  const out = new Map(), stack = [out];
+  let i = 0;
+  while (i < s.length){
+    const c = s[i];
+    if (c === '('){ stack.push(new Map()); i++; continue; }
+    if (c === ')'){
+      const grp = stack.pop(); i++;
+      let d = ''; while (/\d/.test(s[i] || '')) d += s[i++];
+      const k = d ? +d : 1, top = stack[stack.length - 1];
+      grp.forEach((n, sym) => top.set(sym, (top.get(sym) || 0) + n * k));
+      continue;
+    }
+    const m = s.slice(i).match(/^([A-Z][a-z]?)(\d*)/);
+    if (!m || !(m[1] in AR)) throw new Error('bad symbol in ' + s);
+    i += m[0].length;
+    const top = stack[stack.length - 1];
+    top.set(m[1], (top.get(m[1]) || 0) + (m[2] ? +m[2] : 1));
+  }
+  return out;
+}
+function parseFormula(f){
+  const tally = new Map();
+  f.replace(/\s+/g, '').split('.').forEach(part => {
+    const m = part.match(/^(\d+)/);
+    const pre = m ? +m[1] : 1, body = m ? part.slice(m[1].length) : part;
+    parseBody(body).forEach((n, sym) => tally.set(sym, (tally.get(sym) || 0) + n * pre));
+  });
+  return tally;
+}
+const mrOf = f => [...parseFormula(f)].reduce((s, [sym, n]) => s + AR[sym] * n, 0);
+const num = v => (Math.round(v * 1e6) / 1e6).toString();
+const fmt = f => f.replace(/\s+/g, '').split('.')
+  .map(p => p.replace(/([A-Za-z\)])(\d+)/g, '$1<sub>$2</sub>')).join('·');
+
+/* round to n significant figures, keeping trailing zeros; scientific when extreme */
+function sig(v, n){
+  if (v === 0) return '0';
+  const d = Math.floor(Math.log10(Math.abs(v))) + 1, p = n - d;
+  const r = Math.round(v * Math.pow(10, p)) / Math.pow(10, p);
+  return p > 0 ? r.toFixed(p) : r.toString();
+}
+const X = n => `×10<sup>${n < 0 ? '−' + (-n) : n}</sup>`;
+function pretty(v, n){
+  if (v === 0) return '0';
+  const e = Math.floor(Math.log10(Math.abs(v)));
+  if (e >= 5 || e <= -3) return `${(v / Math.pow(10, e)).toFixed(n - 1)} ${X(e)}`;
+  return sig(v, n);
+}
+
+/* ================= the Mr table ================= */
+function mrTable(f){
+  const rows = [...parseFormula(f)];
+  let h = '<table class="mr"><tr><th>Element</th><th>Atoms</th><th>A<sub>r</sub></th><th>Mass</th></tr>';
+  rows.forEach(([sym, n]) => {
+    h += `<tr><td><span class="sy">${sym}</span> <span class="note" style="margin:0">${NAME[sym]}</span></td>` +
+      `<td>${n}</td><td>${num(AR[sym])}</td><td>${n} × ${num(AR[sym])} = <b>${num(AR[sym] * n)}</b></td></tr>`;
+  });
+  h += `<tr class="tot"><td colspan="3">M<sub>r</sub> of <span class="f">${fmt(f)}</span></td><td><b>${num(mrOf(f))}</b></td></tr></table>`;
+  return h;
+}
+document.querySelectorAll('.mrslot[data-formula]').forEach(h => { h.innerHTML = mrTable(h.dataset.formula); });
+
+/* ================= the ratio box =================
+   unknown is 'moles', 'mass' or 'mr'. Everything shown is derived from the other two. */
+function ratioHTML(o){
+  const mrCell = o.unknown === 'mr' ? '<span class="unk">?</span>' : num(o.mr);
+  const massCell = o.unknown === 'mass' ? '<span class="unk">?</span>' : o.massText;
+  const molCell = o.unknown === 'moles' ? '<span class="unk">?</span>' : o.molesText;
+  return '<div class="ratio">' +
+    '<div class="rh rl">&nbsp;</div><div class="rh">mass in grams</div><div class="rh">moles</div>' +
+    `<div class="rl">what M<sub>r</sub><br>tells you</div><div class="c" data-c="a1">${mrCell}</div><div class="c" data-c="b1">1</div>` +
+    `<div class="rl">what the<br>question says</div><div class="c" data-c="b2">${massCell}</div><div class="c" data-c="a2">${molCell}</div>` +
+    '</div>';
+}
+
+/* the cross-multiply working, derived from whichever box is empty */
+function crossWork(o){
+  const mr = o.mr, mass = o.mass, mol = o.moles;
+  const L = o.unknown === 'mr' ? '?' : num(mr), M = o.unknown === 'mass' ? '?' : o.massText,
+        N = o.unknown === 'moles' ? '?' : o.molesText;
+  /* the two diagonals are always M_r × moles  and  1 × mass */
+  const line2 = `${L} × ${N} = 1 × ${M}`;
+  let line3, ansText, unit;
+  if (o.unknown === 'moles'){ line3 = `? = ${M} ÷ ${L}`; ansText = pretty(mol, o.sf); unit = 'mol'; }
+  else if (o.unknown === 'mass'){ line3 = `? = ${L} × ${N}`; ansText = pretty(mass, o.sf); unit = 'g'; }
+  else { line3 = `? = ${M} ÷ ${N}`; ansText = pretty(mr, o.sf); unit = '(no units)'; }
+  return { line2, line3, ansText, unit };
+}
+
+function mountRatio(host, o){
+  const w = crossWork(o);
+  host.innerHTML = ratioHTML(o) +
+    '<div class="stepbar"><button type="button" class="next">Cross-multiply</button><button type="button" class="all">Show it all</button></div>' +
+    `<div class="stepline" data-s="0" hidden><p>Multiply diagonally. The two answers must be equal:</p>
+       <p class="crossline"><span class="a">${w.line2.split(' = ')[0]}</span> = <span class="b">${w.line2.split(' = ')[1]}</span></p></div>` +
+    `<div class="stepline" data-s="1" hidden><p>Now get the <b>?</b> on its own:</p><p class="crossline">${w.line3}</p></div>` +
+    `<div class="stepline" data-s="2" hidden><p class="big">? = ${w.ansText} ${w.unit}</p>` +
+      (o.sf ? `<p class="note">Rounded to ${o.sf} significant figures${o.exactNote ? '. ' + o.exactNote : '.'}</p>` :
+              (o.exactNote ? `<p class="note">${o.exactNote}</p>` : '')) + '</div>';
+
+  const next = host.querySelector('.next'), all = host.querySelector('.all');
+  const lines = host.querySelectorAll('.stepline');
+  const cells = host.querySelectorAll('.ratio .c');
+  let shown = 0;
+  const show = k => {
+    shown = k;
+    lines.forEach(l => { l.hidden = +l.dataset.s >= shown; });
+    cells.forEach(c => {
+      const d = c.dataset.c[0];
+      c.classList.toggle('dA', shown >= 1 && d === 'a');
+      c.classList.toggle('dB', shown >= 1 && d === 'b');
+    });
+    if (shown >= 3){ next.textContent = 'Start again'; all.hidden = true; }
+    else { next.textContent = shown === 0 ? 'Cross-multiply' : 'Next step'; all.hidden = false; }
+  };
+  next.addEventListener('click', () => show(shown >= 3 ? 0 : shown + 1));
+  all.addEventListener('click', () => show(3));
+  show(0);
+}
+
+/* the worked example at the top */
+document.querySelectorAll('.demo-ratio').forEach(h => mountRatio(h, {
+  mr: mrOf('H2O'), mass: 90, moles: 5, massText: '90.0', molesText: '5.00',
+  unknown: 'moles', sf: 3, exactNote: '90.0 ÷ 18 comes out at exactly 5, but the question gave 3 significant figures, so write 5.00.'
+}));
+
+/* ================= the questions ================= */
+/* mass is always in grams. `given` describes what the sheet actually wrote. */
+const QS = [
+  { set: 1, id: '1a', f: 'H2O', unknown: 'moles', mass: 90.0, massText: '90.0', sf: 3,
+    ask: 'moles in 90.0 g of H<sub>2</sub>O',
+    note: 'Water is the one worth knowing by heart: M<sub>r</sub> = 18. 90 is five lots of 18, so five moles — you can almost do this one in your head, which makes it a good one to check the method against.' },
+  { set: 1, id: '1b', f: 'C4H10', unknown: 'moles', mass: 5.8, massText: '5.8', sf: 2,
+    ask: 'moles in 5.8 g of C<sub>4</sub>H<sub>10</sub>',
+    note: 'Ten hydrogens. It is easy to read C<sub>4</sub>H<sub>10</sub> as having one hydrogen and a stray zero — it is 10, giving 48 + 10 = 58. The mass is smaller than M<sub>r</sub>, so the answer must be less than 1 mole.' },
+  { set: 1, id: '1c', f: 'NH3', unknown: 'moles', mass: 476000, conv: ['476 kg', 1000, '476 000'], sf: 3,
+    ask: 'moles in 476 kg of NH<sub>3</sub>',
+    note: 'Kilograms, so × 1000 before the ratio. 476 000 ÷ 17 comes out exactly: 28 000 mol.' },
+
+  { set: 2, id: '2a', f: 'N2', unknown: 'mass', moles: 4.00, molesText: '4.00', sf: 3,
+    ask: 'mass of 4.00 moles of N<sub>2</sub>',
+    note: 'Nitrogen goes around as N<sub>2</sub>, so M<sub>r</sub> is 28, not 14. Four moles, so four lots of 28.' },
+  { set: 2, id: '2b', f: 'HNO3', unknown: 'mass', moles: 0.100, molesText: '0.100', sf: 3,
+    ask: 'mass of 0.100 moles of HNO<sub>3</sub>',
+    note: 'A tenth of a mole, so a tenth of the M<sub>r</sub> in grams. Write 6.30 g, not 6.3 — the question gave 3 significant figures.' },
+  { set: 2, id: '2c', f: 'K2O', unknown: 'mass', moles: 0.0200, molesText: '0.0200', sf: 3,
+    ask: 'mass of 0.0200 moles of K<sub>2</sub>O',
+    note: 'Potassium is A<sub>r</sub> 39 (19 is its atomic number), and there are two of them: 78 + 16 = 94.' },
+
+  { set: 3, id: '3a', f: 'O2', unknown: 'moles', mass: 1.02e8,
+    conv: ['102 tonnes', 1e6, '1.02 × 10<sup>8</sup>'], sf: 3,
+    ask: 'moles in 102 tonnes of O<sub>2</sub>',
+    note: 'A tonne is a million grams, so this is a huge number of moles. Use the ×10<sup>x</sup> button rather than typing lots of zeros.' },
+  { set: 3, id: '3b', f: 'Al2O3', unknown: 'moles', mass: 2000,
+    conv: ['2.00 kg', 1000, '2000'], sf: 3,
+    ask: 'moles in 2.00 kg of Al<sub>2</sub>O<sub>3</sub>',
+    note: 'Two aluminiums (54) and three oxygens (48) gives 102. The answer, 19.6 mol, does not come out neatly — that is normal and not a sign you have gone wrong.' },
+  { set: 3, id: '3c', f: 'Au', unknown: 'moles', mass: 0.0206,
+    conv: ['20.6 mg', 1 / 1000, '0.0206'], sf: 3,
+    ask: 'moles in 20.6 mg of Au',
+    note: 'Milligrams, so <b>divide</b> by 1000. Gold is a single atom, so its M<sub>r</sub> is just its A<sub>r</sub>, 197. A tiny mass of a heavy element means a very small fraction of a mole.' },
+
+  { set: 4, id: '4a', f: 'C2H5OH', unknown: 'mass', moles: 0.400, molesText: '0.400', sf: 3,
+    ask: 'mass of 0.400 moles of C<sub>2</sub>H<sub>5</sub>OH',
+    note: 'Ethanol is written C<sub>2</sub>H<sub>5</sub>OH to show its shape, but for M<sub>r</sub> you just count everything: 2 C, 6 H (five then one more), 1 O. That is 24 + 6 + 16 = 46.' },
+  { set: 4, id: '4b', f: 'Ca(OH)2', unknown: 'mass', moles: 10.0, molesText: '10.0', sf: 3,
+    ask: 'mass of 10.0 moles of Ca(OH)<sub>2</sub>',
+    note: 'The 2 outside the bracket doubles both the O and the H: 40 + 32 + 2 = 74. Ten moles, so ten times that.' },
+
+  { set: 5, id: '5', f: null, unknown: 'mr', mass: 1.64, moles: 0.0200, massText: '1.64', molesText: '0.0200', sf: 3,
+    ask: '0.0200 moles of a compound has a mass of 1.64 g. Find its M<sub>r</sub>.',
+    note: 'There is no formula to work from here, so there is no Step 1 — the M<sub>r</sub> <i>is</i> the answer. The ratio is set up exactly as before; only the position of the <b>?</b> has moved. Notice the answer has no units: M<sub>r</sub> is a comparison, not a mass.' }
+];
+
+/* ================= answer parsing ================= */
+const SUP = { '⁰':'0','¹':'1','²':'2','³':'3','⁴':'4','⁵':'5','⁶':'6','⁷':'7','⁸':'8','⁹':'9','⁻':'-' };
+function parseAnswer(raw){
+  let s = raw.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁻]/g, ch => SUP[ch]).replace(/[−–]/g, '-').replace(/\s+/g, '').replace(/,/g, '');
+  s = s.replace(/(mol(es)?|grams?|g)$/i, '');
+  const m = s.match(/^([+-]?(?:\d+\.?\d*|\.\d+))(?:(?:[x×*]10\^?\(?([+-]?\d+)\)?)|(?:e([+-]?\d+)))?$/i);
+  if (!m) return null;
+  const exp = m[2] ?? m[3];
+  return { v: parseFloat(m[1]) * (exp != null ? Math.pow(10, +exp) : 1) };
+}
+
+/* ================= build the question cards ================= */
+document.querySelectorAll('.qs[data-set]').forEach(host => {
+  QS.filter(q => q.set === +host.dataset.set).forEach(q => {
+    const mr = q.f ? mrOf(q.f) : q.mass / q.moles;
+    const mass = q.unknown === 'mass' ? q.moles * mr : q.mass;
+    const moles = q.unknown === 'moles' ? q.mass / mr : q.moles;
+    const answer = q.unknown === 'moles' ? moles : q.unknown === 'mass' ? mass : mr;
+    const unit = q.unknown === 'mr' ? '' : q.unknown === 'mass' ? 'g' : 'mol';
+
+    const art = document.createElement('article');
+    art.className = 'q'; art.id = 'q' + q.id;
+    art.innerHTML =
+      `<header><span class="qnum">${q.id}</span><span class="ask">${q.ask}</span></header>
+       <div class="check">
+         <label>Your answer:</label>
+         <input type="text" autocomplete="off" spellcheck="false" placeholder="e.g. 1.23 or 1.23e-4">
+         <span>${unit}</span><button type="button" class="ck">Check</button>
+         <div class="fb" aria-live="polite"></div>
+       </div>
+       <div class="stepbar"><button type="button" class="rev">Show the working</button></div>
+       <div class="ansbox" hidden></div>
+       <p class="note">${q.note}</p>`;
+    host.appendChild(art);
+
+    const box = art.querySelector('.ansbox'), rev = art.querySelector('.rev');
+    rev.addEventListener('click', () => {
+      if (!box.dataset.built){
+        let h = '';
+        if (q.f){
+          h += '<span class="secthead">Step 1 · work out M<sub>r</sub></span>' + mrTable(q.f);
+        } else {
+          h += '<span class="secthead">Step 1 · M<sub>r</sub></span><p>You are not given a formula, so you cannot work M<sub>r</sub> out — it is what the question is asking for. Leave it as <b>?</b> and carry on.</p>';
+        }
+        if (q.conv){
+          h += '<span class="secthead two">Step 2 · get the mass into grams</span>' +
+            `<p class="crossline">${q.conv[0]} ${q.conv[1] >= 1 ? '× ' + q.conv[1].toLocaleString('en-GB') : '÷ 1000'} = <b>${q.conv[2]} g</b></p>`;
+        }
+        h += `<span class="secthead ${q.conv ? 'three' : 'two'}">Step ${q.conv ? 3 : 2} · set up the ratio and cross-multiply</span>`;
+        box.innerHTML = h + '<div class="rslot"></div>';
+        mountRatio(box.querySelector('.rslot'), {
+          mr, mass, moles, unknown: q.unknown, sf: q.sf,
+          massText: q.conv ? q.conv[2] : (q.massText || num(mass)),
+          molesText: q.molesText || num(moles)
+        });
+        box.dataset.built = '1';
+      }
+      box.hidden = !box.hidden;
+      rev.textContent = box.hidden ? 'Show the working' : 'Hide the working';
+    });
+
+    const input = art.querySelector('input'), fb = art.querySelector('.fb');
+    const run = () => {
+      fb.className = 'fb';
+      const p = parseAnswer(input.value);
+      if (!input.value.trim()){ fb.textContent = 'Type your answer in the box first.'; return; }
+      if (!p || !(p.v > 0)){ fb.innerHTML = 'I couldn\'t read that. Write it like <code>19.6</code> or <code>1.05e-4</code>.'; return; }
+      const rel = (a, b) => Math.abs(a / b - 1) < 0.005;
+      if (rel(p.v, answer)){ fb.classList.add('ok'); fb.innerHTML = '✅ Correct. Open the working to check every line.'; return; }
+      /* the classic: divided the wrong way round */
+      if (q.unknown === 'moles' && rel(p.v, mr / mass)){
+        fb.classList.add('no'); fb.innerHTML = '🤔 Upside down. Cross-multiplying gives <b>mass ÷ M<sub>r</sub></b>, not M<sub>r</sub> ÷ mass.'; return;
+      }
+      if (q.unknown === 'moles' && rel(p.v, mass * mr)){
+        fb.classList.add('no'); fb.innerHTML = '🤔 You multiplied. Set the ratio up and cross-multiply — the mass ends up divided by M<sub>r</sub>.'; return;
+      }
+      if (q.unknown === 'mass' && rel(p.v, moles / mr)){
+        fb.classList.add('no'); fb.innerHTML = '🤔 You divided. Going from moles to mass, the ratio gives <b>moles × M<sub>r</sub></b>.'; return;
+      }
+      if (q.conv){
+        const raw = q.unknown === 'moles' ? mass / q.conv[1] / mr : null;
+        if (raw && rel(p.v, raw)){
+          fb.classList.add('no');
+          fb.innerHTML = `🤔 You used ${q.conv[0]} straight in the ratio. Convert it to grams first: that's <b>${q.conv[2]} g</b>.`;
+          return;
+        }
+      }
+      const lr = Math.log10(p.v / answer), k = Math.round(lr);
+      if (k !== 0 && Math.abs(lr - k) < 0.002){
+        fb.classList.add('no');
+        fb.innerHTML = `So close — your digits are right but the power of ten is out by ${Math.abs(k)}. That is usually a unit conversion, or the calculator misreading <code>x10^</code>. Use the ×10<sup>x</sup> button.`;
+        return;
+      }
+      fb.classList.add('no');
+      fb.innerHTML = 'Not quite. Work out M<sub>r</sub> first, check the mass is in grams, then set up the two rows and cross-multiply.';
+    };
+    art.querySelector('.ck').addEventListener('click', run);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') run(); });
+  });
+});
+</script>
+</body>
+</html>
