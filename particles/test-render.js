@@ -1000,6 +1000,208 @@ function pureStory(THREE){
   console.log(`      ${A.Au} Au + ${A.Ag} Ag + ${A.Cu} Cu: ${(massFrac*100).toFixed(1)}% gold by mass, ${(A.atomAu*100).toFixed(0)}% of atoms`);
 }
 
+/* ===========================================================================
+   CONVECTION — the 3D story
+
+   Every chapter is a pure function of its own clock, so each is driven
+   straight through frame(t). On top of the render-path checks, the things a
+   pupil is told must be what the picture does:
+
+     - the hot box really holds fewer particles, and the counts on screen are
+       the counts in the boxes
+     - the heated parcel spreads by the amount WATER and EXAG say, and its
+       particles do not get any bigger
+     - every figure a caption quotes comes out of WATER
+     - the flow goes up the middle, out along the top, down the wall and back
+       along the bottom — and so do the arrows drawn on it
+     - the dye starts at the crystal, reaches the top, comes down the sides,
+       and never leaves the water
+=========================================================================== */
+function convectionStory(THREE){
+  section('CONVECTION  convection.html  (render path)');
+  const html = read('convection.html');
+  const numbers = [];
+  const dom = makeDom(600, 400, numbers);
+  dom.querySelectorAll = () => [];
+  stubRenderer(THREE, dom, numbers);
+
+  const expose = ['frame','enterChapter','CH','camera','renderer','worldAt',
+    'WATER','EXAG','REAL_EXPANSION','VOL_RATIO','KH','NC','NH','PR','pct',
+    'parcelMesh','coldMesh','hotMesh','coldGrp','hotGrp','BOX_L','thermoLbl','countC','countH',
+    'flowVel','LOOPS','LOOP_N','FLOW','POT','CRYSTAL','puffAt','dyeState','dyePos','dyeAlpha',
+    'ARCS','warmthAt','CUES'].join(',');
+  const js = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+  const win = {addEventListener(){}, removeEventListener(){},
+               innerWidth:1280, innerHeight:720, devicePixelRatio:1};
+  let S = null;
+  try {
+    S = new Function(
+      'THREE','document','window','performance','requestAnimationFrame','navigator',
+      js + '\nreturn {' + expose + '};'
+    )(THREE, dom, win, {now(){ return 0; }}, () => 0, {userAgent:'node'});
+  } catch(e){
+    chk(false, 'the scene threw while loading: ' + e.message);
+    console.log((e.stack || '').split('\n').slice(0, 4).join('\n'));
+    return;
+  }
+  chk(true, 'the scene loads');
+
+  const finiteArr = a => { for(let i=0;i<a.length;i++) if(!isFinite(a[i])) return false; return true; };
+  const matrixOf = (mesh, i) => mesh.instanceMatrix.array.slice(i*16, i*16+16);
+  const positions = (mesh, n) => {
+    const P = [];
+    for(let i=0;i<n;i++){ const m = matrixOf(mesh, i); P.push([m[12], m[13], m[14]]); }
+    return P;
+  };
+  const meanNN = P => {
+    let s = 0;
+    for(let i=0;i<P.length;i++){
+      let b = Infinity;
+      for(let j=0;j<P.length;j++) if(i !== j){
+        const d = Math.hypot(P[i][0]-P[j][0], P[i][1]-P[j][1], P[i][2]-P[j][2]);
+        if(d < b) b = d;
+      }
+      s += b;
+    }
+    return s/P.length;
+  };
+
+  /* ---------- every chapter, every frame ---------- */
+  section('    every chapter');
+  for(let c=0;c<S.CH.length;c++){
+    S.enterChapter(c);
+    const before = S.renderer.__renders;
+    let bad = 0, outside = 0, t = 0;
+    try {
+      for(t=0; t<=S.CH[c].len + 4; t+=1/30){
+        S.frame(t);
+        const p = S.camera.position;
+        if(!isFinite(p.x) || !isFinite(p.y) || !isFinite(p.z)) bad++;
+        if(S.worldAt(c, t) === 'macro' && S.CH[c].dye){
+          if(!finiteArr(S.dyePos) || !finiteArr(S.dyeAlpha)) bad++;
+          for(let i=0;i<S.dyeAlpha.length;i++){
+            if(S.dyeAlpha[i] <= 0) continue;
+            const x = S.dyePos[i*3], y = S.dyePos[i*3+1] - S.POT.yb, z = S.dyePos[i*3+2];
+            if(Math.hypot(x, z) > S.POT.R + 1e-6 || y < 0 || y > S.POT.H) outside++;
+          }
+        }
+        for(const m of [S.parcelMesh, S.coldMesh, S.hotMesh])
+          if(m.parent.visible && !finiteArr(m.instanceMatrix.array)) bad++;
+      }
+    } catch(e){
+      chk(false, `chapter ${c} ("${S.CH[c].title}") threw at t=${t.toFixed(2)}: ${e.message}`);
+      console.log('      ' + (e.stack || '').split('\n').slice(1, 3).join('\n      '));
+      return;
+    }
+    chk(S.renderer.__renders > before, `chapter ${c} drew nothing`);
+    chk(bad === 0, `chapter ${c}: ${bad} frames with a non-finite camera, dye puff or particle`);
+    chk(outside === 0, `chapter ${c}: ${outside} dye puffs outside the water`);
+  }
+  chk(true, `all ${S.CH.length} chapters run to the end without throwing`);
+  chk(numbers.every(n=>isFinite(n[1])), 'a non-finite number reached a 2D canvas');
+
+  /* ---------- the worlds ---------- */
+  section('    the camera goes where the story says');
+  chk(S.worldAt(0, 5) === 'macro', 'chapter 0 should be at the pan');
+  chk(S.worldAt(1, 0.5) === 'macro' && S.worldAt(1, 5) === 'micro', 'chapter 1 should zoom from the pan into the particles');
+  chk(S.worldAt(2, 5) === 'micro', 'chapter 2 should be among the particles');
+  chk(S.worldAt(3, 5) === 'macro' && S.worldAt(4, 5) === 'macro', 'chapters 3 and 4 should be back at the pan');
+
+  /* ---------- the numbers ---------- */
+  section('    the numbers come out of WATER');
+  const W = S.WATER;
+  chk(W.hot.rho < W.cold.rho, 'hot water should be less dense than cold');
+  chk(Math.abs(S.VOL_RATIO - (1 + S.EXAG*(W.cold.rho/W.hot.rho - 1))) < 1e-12, 'VOL_RATIO is not derived from WATER and EXAG');
+  chk(S.NH === Math.round(S.NC/S.VOL_RATIO), 'NH is not NC shrunk by the volume ratio');
+  chk(S.NH < S.NC, 'the hot box should hold fewer particles than the cold box');
+  chk(S.hotMesh.count === S.NH && S.coldMesh.count === S.NC, 'the boxes do not hold the particles NC and NH say');
+  chk(S.countC.userData.text === S.NC + ' particles', `the cold count on screen reads "${S.countC.userData.text}"`);
+  chk(S.countH.userData.text === S.NH + ' particles', `the hot count on screen reads "${S.countH.userData.text}"`);
+  const zoom = S.CH[1], side = S.CH[2];
+  const plain = s => (s || '').replace(/<[^>]+>/g, '');
+  chk(zoom.scale.includes(S.pct(S.REAL_EXPANSION)), 'chapter 1 does not quote the real expansion from WATER');
+  chk(zoom.scale.includes(W.cold.rho.toFixed(1)) && zoom.scale.includes(W.hot.rho.toFixed(1)), 'chapter 1 does not quote the densities in WATER');
+  chk(zoom.scale.includes(String(S.EXAG)) && side.scale.includes(String(S.EXAG)), 'a caption does not say how far it is exaggerated');
+  chk(plain(side.text).includes(String(S.NC)) && plain(side.text).includes(String(S.NH)), 'chapter 2 quotes different particle counts');
+  /* every percentage or kg/m³ figure the captions quote is one of ours */
+  const allowed = new Set([S.pct(S.REAL_EXPANSION), W.cold.rho.toFixed(1), W.hot.rho.toFixed(1)]);
+  for(const C of S.CH){
+    const txt = plain(C.text) + ' ' + (C.scale || '') + ' ' + (C.look || '');
+    for(const m of txt.match(/\d+(\.\d+)?%|\d+\.\d+(?= )/g) || [])
+      chk(allowed.has(m), `chapter "${C.title}" quotes ${m}, which does not come from WATER`);
+  }
+  console.log(`      ${W.cold.T} °C: ${W.cold.rho}  ${W.hot.T} °C: ${W.hot.rho} kg/m³ → real ${S.pct(S.REAL_EXPANSION)}, shown ×${S.EXAG} = ${S.VOL_RATIO.toFixed(3)} → ${S.NC} vs ${S.NH} particles`);
+
+  /* ---------- chapter 1: heating spreads the particles, not their size ---------- */
+  section('    heating the parcel');
+  S.enterChapter(1);
+  S.frame(2.5);
+  const P0 = positions(S.parcelMesh, S.NC), s0 = matrixOf(S.parcelMesh, 0)[0];
+  S.frame(S.CH[1].len);
+  const P1 = positions(S.parcelMesh, S.NC), s1 = matrixOf(S.parcelMesh, 0)[0];
+  chk(Math.abs(s0 - S.PR) < 1e-6 && Math.abs(s1 - S.PR) < 1e-6, 'the particles changed size on heating');
+  /* how far the parcel spread: the rms distance from its centre (the nearest
+     neighbour is no good here — the hotter jiggle pulls neighbours together
+     as often as it pushes them apart) */
+  const rms = P => Math.sqrt(P.reduce((a,p)=>a + p[0]*p[0] + p[1]*p[1] + p[2]*p[2], 0)/P.length);
+  const nnRatio = rms(P1)/rms(P0);
+  chk(Math.abs(nnRatio/S.KH - 1) < 0.03, `the parcel grew ×${nnRatio.toFixed(3)}, WATER and EXAG say ×${S.KH.toFixed(3)}`);
+  chk(S.thermoLbl.userData.text === W.hot.T + ' °C', `the thermometer ends at "${S.thermoLbl.userData.text}", not ${W.hot.T} °C`);
+  const densityCue = S.CUES.find(c=>c.ch === 1 && c.obj.userData.text === 'density decreases');
+  chk(!!densityCue, 'chapter 1 has no "density decreases" label');
+  if(densityCue) chk(densityCue.t0 > 3.2, '"density decreases" appears before the heating has started');
+  console.log(`      parcel spread ×${nnRatio.toFixed(3)} (expected ×${S.KH.toFixed(3)}), radius ${S.PR} throughout`);
+
+  /* ---------- chapter 2: same volume, fewer particles ---------- */
+  section('    hot beside cold');
+  S.enterChapter(2);
+  S.frame(3);
+  const PC = positions(S.coldMesh, S.NC), PH = positions(S.hotMesh, S.NH);
+  const inBox = P => P.every(p=>p.every(v=>Math.abs(v) + S.PR <= S.BOX_L/2 + 0.06));
+  chk(inBox(PC) && inBox(PH), 'a particle sits outside its box');
+  const pairRatio = meanNN(PH)/meanNN(PC);
+  chk(Math.abs(pairRatio/S.KH - 1) < 0.08, `hot spacing is ×${pairRatio.toFixed(3)} the cold, should be ×${S.KH.toFixed(3)}`);
+  console.log(`      nearest neighbour, hot ÷ cold: ×${pairRatio.toFixed(3)} (expected ×${S.KH.toFixed(3)})`);
+  S.frame(S.CH[2].len);
+  chk(S.hotGrp.position.y > 0.5 && S.coldGrp.position.y < -0.5, 'the hot box should rise and the cold one sink');
+
+  /* ---------- the flow ---------- */
+  section('    the flow');
+  const F = S.FLOW;
+  chk(S.flowVel(0.02, F.H/2)[1] > 0, 'the water should rise up the middle');
+  chk(S.flowVel(F.R - 0.02, F.H/2)[1] < 0, 'the water should sink down the wall');
+  chk(S.flowVel(F.R/2, F.H - 0.02)[0] > 0, 'the water should flow out along the top');
+  chk(S.flowVel(F.R/2, 0.02)[0] < 0, 'the water should flow in along the bottom');
+  let gap = 0;
+  for(const L of S.LOOPS) gap = Math.max(gap, Math.hypot(L.r[0]-L.r[S.LOOP_N-1], L.y[0]-L.y[S.LOOP_N-1]));
+  chk(gap < 0.05, `a streamline does not close: the ends are ${gap.toFixed(3)} apart`);
+
+  /* ---------- the arrows follow the flow ---------- */
+  section('    the arrows');
+  const wantDir = [[0,1],[1,0],[0,-1],[-1,0]];         // rise, out, sink, in — on the right-hand side
+  for(const A of S.ARCS){
+    const want = wantDir[A.k], d = A.dirMid;
+    const along = want[0]*A.side*d.x + want[1]*d.y;
+    chk(along > 0.5, `arrow ${A.k} on the ${A.side > 0 ? 'right' : 'left'} points the wrong way`);
+  }
+  const warm = k => { const A = S.ARCS.find(a=>a.k === k && a.side === 1); return S.warmthAt(A.mid.x, A.mid.y - S.POT.yb); };
+  chk(warm(0) > 0.8 && warm(2) < 0.2, `the rising arrow should be red and the sinking one blue (warmth ${warm(0).toFixed(2)}, ${warm(2).toFixed(2)})`);
+
+  /* ---------- the dye ---------- */
+  section('    the dye');
+  const out = [0,0,0,0];
+  const cfg3 = S.CH[3].dye;
+  chk(S.puffAt(cfg3, 0, cfg3.emit + 0.01, out) && Math.hypot(out[0]-S.CRYSTAL.r, out[1]-S.CRYSTAL.y) < 0.1,
+      'a new puff of dye does not start at the crystal');
+  S.enterChapter(0); S.frame(S.CH[0].len);
+  chk(S.dyeState.live > 0 && S.dyeState.maxY < 0.35*F.H, `before the water moves the dye should stay by the crystal (reaches ${S.dyeState.maxY.toFixed(2)})`);
+  S.enterChapter(3); S.frame(S.CH[3].len);
+  chk(S.dyeState.maxY > 0.85*F.H, `by the end of chapter 3 the dye should have reached the top (reaches ${S.dyeState.maxY.toFixed(2)} of ${F.H.toFixed(2)})`);
+  S.enterChapter(4); S.frame(S.CH[4].len);
+  chk(S.dyeState.nearWall > 20, `in the full current the dye should come down the sides (${S.dyeState.nearWall} puffs there)`);
+  console.log(`      ${S.dyeState.live} puffs live, ${S.dyeState.nearWall} low down by the wall`);
+}
+
 /* =========================================================================== */
 (async function main(){
   const url = threeUrlOf(read('melting-snowman.html'));
@@ -1026,6 +1228,7 @@ function pureStory(THREE){
     alkaliStory(THREE);
     particleTypesStory(THREE);
     pureStory(THREE);
+    convectionStory(THREE);
     console.log('\n' + (fails ? `${fails} of ${checks} checks FAILED`
                                : `all ${checks} checks pass`));
     if(fails) process.exitCode = 1;

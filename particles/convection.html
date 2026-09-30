@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Convection — the 3D story</title>
+<style>
+  :root{
+    --ink:#eef2f7;
+    --dim:#93a2b6;
+    --panel:rgba(10,14,21,.78);
+    --line:rgba(147,162,182,.22);
+    --side:360px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;background:#080b11;color:var(--ink);overflow:hidden;
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+
+  #stage{position:fixed;top:0;right:0;bottom:0;left:var(--side);}
+  canvas{display:block;}
+  #fade{position:fixed;top:0;right:0;bottom:0;left:var(--side);background:#080b11;
+    opacity:0;pointer-events:none;z-index:2;}
+
+  #side{
+    position:fixed;top:0;left:0;bottom:0;width:var(--side);
+    background:var(--panel);backdrop-filter:blur(16px);
+    border-right:1px solid var(--line);
+    padding:20px 22px 16px;
+    display:flex;flex-direction:column;gap:14px;
+    overflow-y:auto;
+  }
+  #side h1{
+    margin:0;
+    font-family:"Iowan Old Style","Charter","Palatino Linotype",Georgia,serif;
+    font-weight:600;font-size:19px;letter-spacing:.2px;line-height:1.25;
+  }
+  #side .byline{margin:4px 0 0;font-size:12px;line-height:1.5;color:var(--dim);}
+  #side a{color:var(--dim);text-decoration:none;font-size:12px;
+    border-bottom:1px solid rgba(147,162,182,.3);}
+  #side a:hover{color:var(--ink);}
+  .links{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;}
+
+  .story{flex:1;min-height:0;}
+  .story .step{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:700;}
+  .story h2{
+    margin:3px 0 0;font-family:"Iowan Old Style","Charter",Georgia,serif;
+    font-size:17px;font-weight:600;letter-spacing:.2px;
+  }
+  .story p{margin:8px 0 0;font-size:13.5px;line-height:1.62;color:#cbd5e1;}
+  .story p b{color:#ffd9a0;font-weight:600;}
+  .story .look{
+    margin-top:10px;font-size:12.5px;line-height:1.5;color:#a9c7ee;
+    border-left:2px solid rgba(127,176,255,.45);padding-left:10px;
+  }
+  .story .scale{
+    margin-top:10px;font-size:12px;line-height:1.5;color:#c9b8e0;
+    border-left:2px solid rgba(190,150,240,.45);padding-left:10px;
+  }
+  .terms{
+    margin:12px 0 0;padding:10px 12px;
+    background:rgba(255,217,160,.05);border:1px solid rgba(255,217,160,.18);border-radius:10px;
+  }
+  .terms .hd{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#d9b98a;font-weight:700;margin-bottom:6px;}
+  .terms dt{font-size:12.5px;font-weight:700;color:#ffd9a0;}
+  .terms dd{margin:1px 0 7px;font-size:12.5px;line-height:1.5;color:#cbd5e1;}
+  .terms dd:last-child{margin-bottom:0;}
+
+  .nav{
+    position:fixed;left:var(--side);right:0;bottom:20px;z-index:5;
+    margin:0 auto;width:fit-content;max-width:calc(100% - var(--side) - 32px);
+    display:flex;align-items:center;gap:8px;flex-wrap:nowrap;justify-content:center;
+    background:var(--panel);backdrop-filter:blur(16px);
+    border:1px solid var(--line);border-radius:999px;
+    padding:9px 12px;white-space:nowrap;
+  }
+  .nav button{
+    font:inherit;font-size:12.5px;font-weight:500;color:var(--dim);
+    background:rgba(255,255,255,.05);border:1px solid var(--line);
+    border-radius:999px;padding:7px 14px;cursor:pointer;
+    transition:background .15s ease,color .15s ease,opacity .15s ease;
+  }
+  .nav button:hover:not(:disabled){background:rgba(255,255,255,.12);color:var(--ink);}
+  .nav button:disabled{opacity:.32;cursor:default;}
+  .nav button.primary{background:rgba(127,176,255,.2);color:#dce9ff;border-color:rgba(127,176,255,.35);}
+  .dots{display:flex;gap:6px;padding:0 4px;}
+  .dots i{
+    width:7px;height:7px;border-radius:50%;background:rgba(147,162,182,.3);
+    cursor:pointer;transition:background .2s ease,transform .2s ease;
+  }
+  .dots i.on{background:var(--ink);transform:scale(1.25);}
+
+  #key{
+    position:fixed;top:18px;right:20px;z-index:5;
+    background:var(--panel);backdrop-filter:blur(16px);
+    border:1px solid var(--line);border-radius:12px;
+    padding:11px 14px;
+    font-size:11.5px;line-height:1.75;color:var(--dim);
+  }
+  #key div{display:flex;align-items:center;gap:8px;}
+  .dot{width:11px;height:11px;border-radius:50%;flex:none;
+    box-shadow:inset -2px -2px 3px rgba(0,0,0,.45);}
+  .sq{width:11px;height:11px;border-radius:2px;flex:none;}
+  .grad{width:22px;height:5px;border-radius:3px;flex:none;
+    background:linear-gradient(90deg,#ff5a3c,#4f8fff);}
+
+  .hint{
+    position:fixed;right:20px;bottom:20px;z-index:3;
+    font-size:11px;color:#5a687d;pointer-events:none;
+  }
+
+  @media (max-width:860px){
+    :root{--side:0px;}
+    #stage,#fade{left:0;bottom:44vh;}
+    #side{
+      top:auto;left:0;right:0;bottom:0;width:auto;height:44vh;
+      border-right:none;border-top:1px solid var(--line);
+      padding:14px 16px;gap:11px;
+    }
+    #side h1{font-size:16px;}
+    #side .byline{display:none;}
+    .nav{
+      left:0;right:0;bottom:44vh;
+      width:auto;max-width:none;margin:0;
+      border-radius:0;border-width:1px 0 0;
+      flex-wrap:wrap;white-space:normal;justify-content:center;
+    }
+    #key{top:14px;right:14px;padding:8px 10px;font-size:11px;line-height:1.6;}
+    .hint{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<div id="stage"></div>
+<div id="fade"></div>
+
+<div id="side">
+  <div>
+    <h1>Convection</h1>
+    <p class="byline">Why a pan of water heated from underneath starts to go round</p>
+    <div class="links">
+      <a href="./index.html">← Particle model</a>
+      <a href="../index.html">All simulations</a>
+    </div>
+  </div>
+
+  <div class="story">
+    <div class="step" id="sStep"></div>
+    <h2 id="sTitle"></h2>
+    <p id="sText"></p>
+    <div class="look" id="sLook"></div>
+    <div class="scale" id="sScale"></div>
+    <dl class="terms" id="sTerms"></dl>
+  </div>
+</div>
+
+<!-- outside #side: its backdrop-filter would otherwise pin fixed children to the column -->
+<div class="nav">
+  <button id="back">← Back</button>
+  <button id="next" class="primary">Next →</button>
+  <button id="replay">Replay</button>
+  <div class="dots" id="dots"></div>
+</div>
+
+<div id="key"></div>
+
+<div class="hint">drag to orbit · scroll to zoom</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ===========================================================================
+   CONVECTION — the 3D story
+
+   A glass pan of cold water on a gas ring, a crystal of potassium
+   permanganate on the bottom over the flame, and five chapters:
+
+     0  the hob          — the flame lights; only the water over it warms
+     1  zoom in          — 125 particles heat up, speed up and spread out:
+                           same mass, bigger volume, density decreases
+     2  hot beside cold  — two boxes the same size; the hot one holds fewer
+                           particles, so it is less dense, so it rises
+     3  back to the pan  — the dye leaves the crystal and goes up the middle
+     4  the current      — curved arrows draw themselves round the loop
+
+   TWO WORLDS. The pan is at the origin; the particles are parked at
+   MICRO_Y. The camera teleports between them behind a fade.
+
+   EVERYTHING IS A PURE FUNCTION OF THE CHAPTER'S OWN CLOCK t. frame(t) can be
+   called with any t in any order and draws the same picture, so Replay and
+   scrubbing are exact.
+
+   THE FLOW. The water moves on the streamlines of one closed-form stream
+   function, psi = sin(pi r/R) sin(pi y/H): up the middle, out along the top,
+   down the wall, back along the bottom. Following a streamline needs
+   integrating, so it is done ONCE, at build, for a set of levels
+   (traceLoop), and what is left behind is a lookup: a dye puff is a level, a
+   starting phase and an age.
+
+   THE NUMBERS. The two densities are real water at 20 °C and 80 °C, out of
+   WATER. Real water only expands a few percent over that range, far too
+   little to see, so the spreading is exaggerated EXAG times — and the page
+   says so. Every figure the particles and the captions use comes out of
+   those three constants: how much the parcel grows, and how many particles
+   fit in the hot box.
+=========================================================================== */
+
+/* ------------------------------------------------------------ the numbers */
+const WATER = {
+  cold:{T:20, rho:998.2},     // kg/m³, data book
+  hot :{T:80, rho:971.8}
+};
+const EXAG = 20;                                            // how much the spreading is exaggerated
+const REAL_EXPANSION = WATER.cold.rho/WATER.hot.rho - 1;    // extra volume, as a fraction
+const VOL_RATIO = 1 + EXAG*REAL_EXPANSION;                  // what the picture shows
+const KH = Math.cbrt(VOL_RATIO);                            // the gaps grow by this much
+const NC = 125;                                             // particles in a box of cold water
+const NH = Math.round(NC/VOL_RATIO);                        // ...and in the same box of hot water
+
+const pct = x => (x*100).toFixed(1) + '%';
+
+/* ----------------------------------------------------------------- helpers */
+const clamp = (v,a,b) => v<a?a:(v>b?b:v);
+const lerp  = (a,b,u) => a + (b-a)*u;
+const ss = (a,b,x) => { const u = clamp((x-a)/(b-a),0,1); return u*u*(3-2*u); };
+const hexCss = n => '#'+n.toString(16).padStart(6,'0');
+
+/* the integral of ss(a,b,t) from -infinity to t, so that anything whose RATE
+   ramps up smoothly still has a closed-form position */
+function ssInt(a, b, t){
+  if(t <= a) return 0;
+  const w = b - a, x = (t - a)/w;
+  return x < 1 ? w*(x*x*x - x*x*x*x/2) : w*0.5 + (t - b);
+}
+
+function rng(seed){
+  let a = seed >>> 0;
+  return function(){
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function hash(i){
+  let x = Math.imul(i|0, 0x9E3779B1);
+  x ^= x >>> 16; x = Math.imul(x, 0x85EBCA6B);
+  x ^= x >>> 13; x = Math.imul(x, 0xC2B2AE35);
+  x ^= x >>> 16;
+  return (x >>> 0)/4294967296;
+}
+
+/* =========================================================================
+   THE FLOW  (no three.js in here, so the tests can run it)
+========================================================================= */
+const POT = {R:1.55, yb:0.53, H:1.3};          // inside of the pan: radius, floor, water depth
+const FLOW = {R:POT.R - 0.05, H:POT.H - 0.04}; // the region the water circulates in
+
+function flowPsi(r, y){ return Math.sin(Math.PI*r/FLOW.R)*Math.sin(Math.PI*y/FLOW.H); }
+/* velocity in the (r, y) half-plane: u_r = -dpsi/dy, u_y = dpsi/dr */
+function flowVel(r, y){
+  const kr = Math.PI/FLOW.R, ky = Math.PI/FLOW.H;
+  return [-ky*Math.sin(kr*r)*Math.cos(ky*y), kr*Math.cos(kr*r)*Math.sin(ky*y)];
+}
+
+/* Follow the streamline psi = c once round, and resample it evenly in time.
+   Starts at the bottom of the loop (mid radius, below mid height) and stops
+   when the angle round the loop's centre has turned a full circle. */
+const LOOP_N = 256;
+function traceLoop(c){
+  const cr = FLOW.R/2, cy = FLOW.H/2;
+  let r = cr, y = FLOW.H/Math.PI*Math.asin(c);
+  const dt = 0.002;
+  const rs = [r], ys = [y];
+  let prev = Math.atan2(y-cy, r-cr), turned = 0, before = 0, steps = 0;
+  while(turned > -2*Math.PI && steps < 200000){
+    before = turned;
+    const k1 = flowVel(r, y);
+    const k2 = flowVel(r + k1[0]*dt/2, y + k1[1]*dt/2);
+    const k3 = flowVel(r + k2[0]*dt/2, y + k2[1]*dt/2);
+    const k4 = flowVel(r + k3[0]*dt, y + k3[1]*dt);
+    r += dt*(k1[0] + 2*k2[0] + 2*k3[0] + k4[0])/6;
+    y += dt*(k1[1] + 2*k2[1] + 2*k3[1] + k4[1])/6;
+    const a = Math.atan2(y-cy, r-cr);
+    let da = a - prev;
+    if(da >  Math.PI) da -= 2*Math.PI;
+    if(da < -Math.PI) da += 2*Math.PI;
+    turned += da; prev = a;
+    rs.push(r); ys.push(y); steps++;
+  }
+  /* the last step overshoots the full turn; find where in it the loop closed */
+  const span = (steps - 1) + (-2*Math.PI - before)/(turned - before);
+  const T = span*dt;
+  const R = new Float32Array(LOOP_N), Y = new Float32Array(LOOP_N);
+  for(let i=0;i<LOOP_N;i++){
+    const f = i/LOOP_N*span, j = Math.floor(f), u = f - j;
+    const j1 = Math.min(j+1, steps);
+    R[i] = lerp(rs[j], rs[j1], u); Y[i] = lerp(ys[j], ys[j1], u);
+  }
+  return {c, T, r:R, y:Y};
+}
+
+function loopAt(L, phase, out){
+  const f = (phase - Math.floor(phase))*LOOP_N;
+  const i = Math.floor(f), u = f - i, j = (i+1) % LOOP_N;
+  out[0] = lerp(L.r[i], L.r[j], u);
+  out[1] = lerp(L.y[i], L.y[j], u);
+  return out;
+}
+
+/* The dye travels on a spread of levels. Small c hugs the walls and the
+   surface; larger c cuts the corners. Each puff starts at the point on its
+   loop nearest the crystal. */
+const DYE_LEVELS = 24;
+const CRYSTAL = {r:0.05, y:0.05};
+const LOOPS = [];
+for(let i=0;i<DYE_LEVELS;i++){
+  const c = 0.02 + 0.43*Math.pow(i/(DYE_LEVELS-1), 1.6);
+  const L = traceLoop(c);
+  let best = 0, bd = Infinity;
+  for(let k=0;k<LOOP_N;k++){
+    const d = Math.hypot(L.r[k]-CRYSTAL.r, L.y[k]-CRYSTAL.y);
+    if(d < bd){ bd = d; best = k; }
+  }
+  L.src = best/LOOP_N;
+  LOOPS.push(L);
+}
+
+/* one full-strength second of flow carries the middle level this far round */
+const LOOP_SECONDS = 11;
+const FLOW_RATE = LOOPS[DYE_LEVELS>>1].T/LOOP_SECONDS;
+
+/* the dye */
+const EMIT_DT = 0.035, DYE_LIFE = 24;
+const DYE_MAX = Math.ceil(DYE_LIFE/EMIT_DT) + 1;
+
+/* seconds of full-strength flow that have happened by dye time tau */
+function flowSeconds(cfg, tau){ return ssInt(cfg.flow, cfg.flow + cfg.ramp, tau); }
+
+/* Where puff k is at dye time tau, in the (r, y) half-plane plus an angle
+   round the pan. Returns false if it has not been released or has faded. */
+function puffAt(cfg, k, tau, out){
+  const te = cfg.emit + k*EMIT_DT;
+  const age = tau - te;
+  if(age < 0 || age > DYE_LIFE) return false;
+  const h1 = hash(k*5+1), h2 = hash(k*5+2), h3 = hash(k*5+3), h4 = hash(k*5+4);
+  const L = LOOPS[Math.min(DYE_LEVELS-1, Math.floor(h1*h1*DYE_LEVELS))];
+  const adv = (flowSeconds(cfg, tau) - flowSeconds(cfg, te))*FLOW_RATE/L.T;  // loops travelled
+  loopAt(L, L.src + adv, out);
+  /* leaving the crystal: slide from it onto the streamline over the first
+     part of the journey, so nothing appears out of nowhere */
+  const b = ss(0, 0.12, adv);
+  let r = lerp(CRYSTAL.r, out[0], b), y = lerp(CRYSTAL.y, out[1], b);
+  /* it spreads as it goes — a random walk whose size grows as sqrt(age) */
+  const sig = 0.03 + 0.055*Math.sqrt(age);
+  r += sig*(h2*2-1);
+  y += sig*(h3*2-1)*0.7;
+  out[0] = clamp(Math.abs(r), 0, FLOW.R);
+  out[1] = clamp(y, 0.012, FLOW.H);
+  out[2] = h4*Math.PI*2;
+  out[3] = age;
+  return true;
+}
+
+/* =========================================================================
+   THE PARTICLES  (no three.js here either)
+
+   A box of liquid is n particles packed at random into a cube of side L:
+   dropped in anywhere, then pushed apart until nobody is closer than the
+   average spacing. Done once, at build, from a fixed seed.
+========================================================================= */
+const MICRO_Y = 400;
+const BOX_L = 2.0;             // side of a sample box
+const PR = 0.16;               // particle radius — the same hot or cold
+
+function relaxBox(n, L, seed){
+  const R = rng(seed), P = new Float32Array(n*3);
+  const d = L/Math.cbrt(n), lim = L/2 - d/2;
+  for(let i=0;i<n*3;i++) P[i] = (R()*2-1)*lim;
+  for(let it=0; it<500; it++){
+    for(let i=0;i<n;i++) for(let j=i+1;j<n;j++){
+      const dx = P[j*3]-P[i*3], dy = P[j*3+1]-P[i*3+1], dz = P[j*3+2]-P[i*3+2];
+      const r2 = dx*dx+dy*dy+dz*dz;
+      if(r2 >= d*d) continue;
+      const r = Math.sqrt(r2) || 1e-6, push = (d - r)*0.25/r;
+      P[i*3] -= dx*push; P[i*3+1] -= dy*push; P[i*3+2] -= dz*push;
+      P[j*3] += dx*push; P[j*3+1] += dy*push; P[j*3+2] += dz*push;
+    }
+    for(let i=0;i<n*3;i++) P[i] = clamp(P[i], -lim, lim);
+  }
+  return P;
+}
+
+const COLD_BOX = relaxBox(NC, BOX_L, 11);
+const HOT_BOX  = relaxBox(NH, BOX_L, 23);
+
+/* per-particle jiggle: three phases and three rates each, fixed by index */
+function jiggleTable(n, off){
+  const J = new Float32Array(n*6);
+  for(let i=0;i<n;i++) for(let k=0;k<3;k++){
+    J[i*6+k]   = hash(off + i*9 + k)*6.283;
+    J[i*6+3+k] = 0.7 + 0.6*hash(off + i*9 + 3 + k);
+  }
+  return J;
+}
+const JIG_C = jiggleTable(NC, 1000), JIG_H = jiggleTable(NH, 5000);
+
+/* Particle i of a box at time t: its place, scaled by the spacing k, plus a
+   jiggle whose size and speed grow with temperature. phi is the jiggle's
+   phase — the integral of its rate, so a rate that ramps up never jumps. */
+function particleAt(base, jig, i, k, amp, phi, out){
+  const s = 0.35*phi;                 // the slow drift of a liquid
+  for(let a=0;a<3;a++){
+    out[a] = base[i*3+a]*k
+           + amp*Math.sin(phi*jig[i*6+3+a] + jig[i*6+a])
+           + amp*0.8*Math.sin(s*jig[i*6+3+((a+1)%3)] + jig[i*6+((a+2)%3)]);
+  }
+  return out;
+}
+
+/* chapter 1's heating: 20 °C to 80 °C, smoothly, between these times */
+const HEAT0 = 3.2, HEAT1 = 9.2;
+const JIG_W = 7.0;                    // jiggle rate at 20 °C, radians a second
+const JIG_HOT = 1.25;                 // extra rate at 80 °C, as a fraction
+const AMP_COLD = 0.028, AMP_HOT = 0.055;
+function parcelState(t){
+  const u = ss(HEAT0, HEAT1, t);
+  return {
+    u,
+    tempC: lerp(WATER.cold.T, WATER.hot.T, u),
+    k:     lerp(1, KH, u),
+    amp:   lerp(AMP_COLD, AMP_HOT, u),
+    phi:   JIG_W*(t + JIG_HOT*ssInt(HEAT0, HEAT1, t))
+  };
+}
+
+/* =========================================================================
+   THREE
+========================================================================= */
+const stage = document.getElementById('stage');
+const fadeEl = document.getElementById('fade');
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio||1));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x080b11);
+scene.fog = new THREE.Fog(0x080b11, 40, 90);
+const camera = new THREE.PerspectiveCamera(44, 1, 0.03, 200);
+
+scene.add(new THREE.HemisphereLight(0x9fb4d0, 0x0a0d13, 0.6));
+const keyL  = new THREE.DirectionalLight(0xffffff, 0.95); keyL.position.set(6,11,8); scene.add(keyL);
+const fillL = new THREE.DirectionalLight(0x9ec3ff, 0.40); fillL.position.set(-8,4,-6); scene.add(fillL);
+const rimL  = new THREE.DirectionalLight(0xffd9b0, 0.32); rimL.position.set(0,3,-10); scene.add(rimL);
+
+(function environment(){
+  const env = new THREE.Scene();
+  const box = new THREE.BoxGeometry(1,1,1);
+  env.add(new THREE.Mesh(new THREE.BoxGeometry(30,18,30),
+    new THREE.MeshBasicMaterial({color:0x1d2634, side:THREE.BackSide})));
+  const panel=(hex,gain,x,y,z,sx,sy,sz)=>{
+    const m=new THREE.Mesh(box,new THREE.MeshBasicMaterial({color:hex}));
+    m.material.color.multiplyScalar(gain);
+    m.position.set(x,y,z); m.scale.set(sx,sy,sz); env.add(m);
+  };
+  panel(0xffffff,1.1,  0, 8.4,  0, 14,0.1,14);
+  panel(0xbcd6ff,1.3,-11, 1.5,  0, 0.1,11,20);
+  panel(0xffd7b0,0.9, 11, 1.5,  2, 0.1,11,20);
+  panel(0x8fb0e0,0.5,  0, 0.0,-12, 22,11,0.1);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(env, 0.04).texture;
+  pmrem.dispose();
+})();
+
+const SPH  = new THREE.SphereGeometry(1,20,14);
+const CYL  = new THREE.CylinderGeometry(1,1,1,16);
+const CONE = new THREE.ConeGeometry(1,1,20);
+const BOX  = new THREE.BoxGeometry(1,1,1);
+
+function linearise(root){
+  root.traverse(o=>{
+    if(!o.material) return;
+    (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{
+      if(!m || m.userData.__lin) return;
+      m.userData.__lin = true;
+      if(m.color)    m.color.convertSRGBToLinear();
+      if(m.emissive) m.emissive.convertSRGBToLinear();
+    });
+  });
+}
+
+/* a soft radial falloff, for anything big and flat */
+function falloffMap(stops){
+  const S = 512, c = document.createElement('canvas');
+  c.width = c.height = S;
+  const x = c.getContext('2d');
+  x.fillStyle = '#000'; x.fillRect(0,0,S,S);
+  const g = x.createRadialGradient(S/2,S/2,0, S/2,S/2,S*0.5);
+  stops.forEach(s=>g.addColorStop(s[0], s[1]));
+  x.fillStyle = g; x.fillRect(0,0,S,S);
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+}
+
+/* ------------------------------------------------------------------ labels */
+function roundRect(ctx, x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x+r, y); ctx.lineTo(x+w-r, y); ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+  ctx.lineTo(x+w, y+h-r); ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+  ctx.lineTo(x+r, y+h); ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+  ctx.lineTo(x, y+r); ctx.quadraticCurveTo(x, y, x+r, y);
+  ctx.closePath();
+}
+function makeLabel(text, opt){
+  opt = opt || {};
+  const size = opt.size || 54, pad = opt.bg ? 26 : 18;
+  const c = document.createElement('canvas'), ctx = c.getContext('2d');
+  const font = (opt.weight || 600)+' '+size+'px "Iowan Old Style", Charter, Georgia, serif';
+  ctx.font = font;
+  const w = Math.ceil(ctx.measureText(text).width) + pad*2, h = size + pad*2;
+  c.width = w; c.height = h;
+  if(opt.bg){
+    roundRect(ctx, 3, 3, w-6, h-6, (h-6)/2);
+    ctx.fillStyle = opt.bg; ctx.fill();
+    if(opt.border){ ctx.lineWidth = 4; ctx.strokeStyle = opt.border; ctx.stroke(); }
+  }
+  ctx.font = font; ctx.textAlign='center'; ctx.textBaseline='middle';
+  if(!opt.bg){ ctx.shadowColor = 'rgba(0,0,0,.9)'; ctx.shadowBlur = 14; }
+  ctx.fillStyle = opt.color || '#eef2f7';
+  ctx.fillText(text, w/2, h/2 + size*0.04);
+  const tex = new THREE.CanvasTexture(c); tex.anisotropy = 4;
+  tex.encoding = THREE.sRGBEncoding;
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({
+    map:tex, transparent:true, depthTest:false, depthWrite:false}));
+  spr.renderOrder = 30;
+  const scale = opt.scale || 0.3;
+  spr.scale.set(w/h*scale, scale, 1);
+  spr.userData.opt = opt; spr.userData.text = text;
+  return spr;
+}
+function setLabel(spr, text){
+  const fresh = makeLabel(text, spr.userData.opt);
+  if(spr.material.map) spr.material.map.dispose();
+  spr.material.map = fresh.material.map;
+  spr.material.needsUpdate = true;
+  spr.scale.copy(fresh.scale); spr.userData.text = text;
+  fresh.material.dispose();
+}
+
+/* a thin line from a label to the thing it names */
+function leader(parent, a, b, col){
+  const g = new THREE.BufferGeometry().setFromPoints([a, b]);
+  const l = new THREE.Line(g, new THREE.LineBasicMaterial({
+    color:col || 0xb8c4d4, transparent:true, depthTest:false, depthWrite:false}));
+  l.renderOrder = 29;
+  parent.add(l);
+  return l;
+}
+
+/* a straight arrow along +y, base at the origin */
+function makeArrow(len, col, rad){
+  rad = rad || 0.06;
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({color:col, roughness:0.4, transparent:true,
+    emissive:new THREE.Color(col).multiplyScalar(0.45)});
+  const head = Math.min(len*0.4, rad*4.2);
+  const shaft = new THREE.Mesh(CYL, mat);
+  shaft.scale.set(rad, len-head, rad); shaft.position.y = (len-head)/2;
+  const tip = new THREE.Mesh(CONE, mat);
+  tip.scale.set(rad*2.6, head, rad*2.6); tip.position.y = len - head/2;
+  g.add(shaft, tip);
+  return g;
+}
+
+/* ---------------------------------------------------------- the cue sheet */
+/* Everything that fades in on time is a cue: an object, the chapter it
+   belongs to, when it arrives, optionally when it leaves, and how far it
+   drifts upward as it arrives. */
+const CUES = [];
+function cue(ch, obj, t0, o){
+  o = o || {};
+  obj.traverse(m=>{ if(m.material){ m.material.transparent = true; m.userData.op = m.userData.op || m.material.opacity; }});
+  CUES.push({ch, obj, t0, t1:o.t1, rise:o.rise || 0, base:obj.position.clone()});
+  obj.visible = false;
+  return obj;
+}
+function setOpacity(obj, a){
+  obj.traverse(m=>{ if(m.material) m.material.opacity = a*(m.userData.op != null ? m.userData.op : 1); });
+}
+function runCues(ch, t){
+  for(const c of CUES){
+    if(c.ch !== ch){ c.obj.visible = false; continue; }
+    let a = ss(c.t0, c.t0 + 0.6, t);
+    if(c.t1 != null) a *= 1 - ss(c.t1, c.t1 + 0.5, t);
+    c.obj.visible = a > 0.002;
+    if(!c.obj.visible) continue;
+    setOpacity(c.obj, a);
+    c.obj.position.y = c.base.y + c.rise*ss(c.t0, c.t0 + 1.8, t);
+  }
+}
+
+/* colours */
+const COL = {
+  flame  : 0x3f7dff,
+  flameIn: 0x9fe8ff,
+  hot    : 0xff5a3c,
+  cold   : 0x4f8fff,
+  warm   : 0xff8a3c,
+  energy : 0xffae2b,
+  pCold  : 0x5aa9ff,     // a water particle at 20 °C
+  pHot   : 0xff8a5c,     // ...and at 80 °C
+  dye    : 0x8c1a9e,
+  gold   : 0xffd27a
+};
+
+/* =========================================================================
+   THE KITCHEN  (the macro world, at the origin)
+========================================================================= */
+const macro = new THREE.Group(); scene.add(macro);
+
+/* the worktop: a pool of light fading into the dark */
+const worktop = new THREE.Mesh(new THREE.CylinderGeometry(16,16,0.4,64),
+  new THREE.MeshStandardMaterial({color:0x4a515d, roughness:0.94, metalness:0, envMapIntensity:0.10,
+    map:falloffMap([[0,'rgba(255,255,255,1)'],[0.16,'rgba(226,232,242,0.7)'],
+                    [0.32,'rgba(140,152,172,0.2)'],[0.44,'rgba(56,64,78,0.05)'],[0.5,'rgba(0,0,0,0)']])}));
+worktop.position.y = -0.33; macro.add(worktop);
+
+/* the tiled wall behind — the white card behind the beaker, so the dye shows */
+const tileMap = (function(){
+  const S = 1024, c = document.createElement('canvas');
+  c.width = c.height = S;
+  const x = c.getContext('2d');
+  x.fillStyle = '#0b0d11'; x.fillRect(0,0,S,S);
+  const g = x.createRadialGradient(S/2,S*0.62,0, S/2,S*0.62,S*0.62);
+  g.addColorStop(0.00,'rgba(222,228,236,1)');
+  g.addColorStop(0.45,'rgba(190,198,210,0.85)');
+  g.addColorStop(0.80,'rgba(70,78,92,0.35)');
+  g.addColorStop(1.00,'rgba(11,13,17,0)');
+  x.fillStyle = g; x.fillRect(0,0,S,S);
+  x.strokeStyle = 'rgba(40,46,56,0.35)'; x.lineWidth = 4;
+  const n = 9;
+  for(let i=1;i<n;i++){
+    x.beginPath(); x.moveTo(i*S/n,0); x.lineTo(i*S/n,S); x.stroke();
+    x.beginPath(); x.moveTo(0,i*S/n); x.lineTo(S,i*S/n); x.stroke();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+})();
+const wall = new THREE.Mesh(new THREE.PlaneGeometry(9.5, 7.5),
+  new THREE.MeshStandardMaterial({color:0xffffff, map:tileMap, roughness:0.7, envMapIntensity:0.2}));
+wall.position.set(0, 2.9, -2.35); macro.add(wall);
+
+/* the hob: black glass */
+const hob = new THREE.Mesh(BOX, new THREE.MeshStandardMaterial({
+  color:0x14171c, roughness:0.45, metalness:0.1, envMapIntensity:0.25}));
+hob.scale.set(6.4, 0.12, 4.3); hob.position.y = -0.06; macro.add(hob);
+
+/* the gas ring */
+const steel = new THREE.MeshStandardMaterial({color:0x8a9099, roughness:0.35, metalness:0.8, envMapIntensity:0.55});
+const iron  = new THREE.MeshStandardMaterial({color:0x23262b, roughness:0.6,  metalness:0.5, envMapIntensity:0.4});
+const ringBase = new THREE.Mesh(CYL, steel);
+ringBase.scale.set(0.62, 0.08, 0.62); ringBase.position.y = 0.04; macro.add(ringBase);
+const cap = new THREE.Mesh(CYL, iron);
+cap.scale.set(0.42, 0.1, 0.42); cap.position.y = 0.13; macro.add(cap);
+
+/* the pan support: four arms, each on a leg */
+for(let i=0;i<4;i++){
+  const a = Math.PI/4 + i*Math.PI/2;
+  const arm = new THREE.Mesh(BOX, iron);
+  arm.scale.set(1.25, 0.07, 0.08);
+  arm.position.set(Math.cos(a)*1.35, 0.445, Math.sin(a)*1.35);
+  arm.rotation.y = -a;
+  macro.add(arm);
+  const leg = new THREE.Mesh(CYL, iron);
+  leg.scale.set(0.05, 0.41, 0.05);
+  leg.position.set(Math.cos(a)*1.9, 0.205, Math.sin(a)*1.9);
+  macro.add(leg);
+}
+
+/* the flames: a ring of small blue jets leaning outward */
+const JETS = [];
+(function flames(){
+  const N = 18, up = new THREE.Vector3(0,1,0);
+  for(let i=0;i<N;i++){
+    const a = i/N*Math.PI*2;
+    const dir = new THREE.Vector3(Math.cos(a)*Math.sin(0.55), Math.cos(0.55), Math.sin(a)*Math.sin(0.55));
+    const q = new THREE.Quaternion().setFromUnitVectors(up, dir);
+    const base = new THREE.Vector3(Math.cos(a)*0.44, 0.19, Math.sin(a)*0.44);
+    const mk = (col, rad, op) => {
+      const m = new THREE.Mesh(CONE, new THREE.MeshBasicMaterial({color:col, transparent:true, opacity:0,
+        blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide}));
+      m.quaternion.copy(q); m.userData.op = op; m.userData.rad = rad;
+      macro.add(m);
+      return m;
+    };
+    JETS.push({outer:mk(COL.flame, 0.055, 0.6), inner:mk(COL.flameIn, 0.028, 0.8), base, dir, i});
+  }
+})();
+const flameLight = new THREE.PointLight(0x6f9cff, 0, 3.2);
+flameLight.position.set(0, 0.32, 0); macro.add(flameLight);
+
+function updateFlame(lit, t){
+  for(const j of JETS){
+    const flick = 0.85 + 0.1*Math.sin(t*23 + j.i*1.7) + 0.05*Math.sin(t*37 + j.i*0.9);
+    [[j.outer, 0.24], [j.inner, 0.12]].forEach(p=>{
+      const m = p[0], h = p[1]*flick*(0.3 + 0.7*lit);
+      m.scale.set(m.userData.rad, h, m.userData.rad);
+      m.position.copy(j.base).addScaledVector(j.dir, h/2);
+      m.material.opacity = lit*m.userData.op*flick;
+      m.visible = lit > 0.001;
+    });
+  }
+  flameLight.intensity = 1.5*lit;
+}
+
+/* the glass pan: a lathe, outer skin then inner skin, closed at the rim */
+const PAN_BOTTOM = 0.48, PAN_TOP = 2.23;
+const glass = new THREE.MeshStandardMaterial({color:0xcfe3f0, roughness:0.05, metalness:0,
+  transparent:true, opacity:0.16, depthWrite:false, side:THREE.DoubleSide, envMapIntensity:1.4});
+const pan = new THREE.Mesh(new THREE.LatheGeometry([
+  new THREE.Vector2(0,    PAN_BOTTOM),
+  new THREE.Vector2(1.53, PAN_BOTTOM),
+  new THREE.Vector2(1.60, PAN_BOTTOM+0.06),
+  new THREE.Vector2(1.60, PAN_TOP),
+  new THREE.Vector2(POT.R,PAN_TOP),
+  new THREE.Vector2(POT.R,POT.yb+0.07),
+  new THREE.Vector2(POT.R-0.06,POT.yb),
+  new THREE.Vector2(0,    POT.yb)
+], 72), glass);
+pan.renderOrder = 6;
+macro.add(pan);
+const rim = new THREE.Mesh(new THREE.TorusGeometry(1.575, 0.028, 8, 72),
+  new THREE.MeshStandardMaterial({color:0xdfeaf5, roughness:0.1, transparent:true, opacity:0.45,
+    depthWrite:false, envMapIntensity:1.4}));
+rim.rotation.x = Math.PI/2; rim.position.y = PAN_TOP; macro.add(rim);
+
+/* a handle, out to the back right */
+const handle = new THREE.Mesh(CYL, new THREE.MeshStandardMaterial({color:0x1c1f24, roughness:0.55, envMapIntensity:0.3}));
+handle.scale.set(0.09, 2.0, 0.09);
+handle.rotation.z = Math.PI/2 - 0.08;
+handle.position.set(2.55, 2.02, 0);
+const handleArm = new THREE.Group(); handleArm.add(handle);
+handleArm.rotation.y = 0.55; macro.add(handleArm);
+
+/* the water: colourless, so faint — see AGENTS.md on milky solutions */
+const water = new THREE.Mesh(new THREE.CylinderGeometry(POT.R-0.01, POT.R-0.01, POT.H, 72),
+  new THREE.MeshStandardMaterial({color:new THREE.Color(0.58,0.72,0.84), roughness:0.1,
+    transparent:true, opacity:0.20, depthWrite:false, envMapIntensity:1.0}));
+water.position.y = POT.yb + POT.H/2; water.renderOrder = 2;
+macro.add(water);
+const surface = new THREE.Mesh(new THREE.CircleGeometry(POT.R-0.01, 72),
+  new THREE.MeshStandardMaterial({color:new THREE.Color(0.62,0.76,0.88), roughness:0.05,
+    transparent:true, opacity:0.22, depthWrite:false, side:THREE.DoubleSide, envMapIntensity:1.2}));
+surface.rotation.x = -Math.PI/2;
+surface.position.y = POT.yb + POT.H + 0.004;      // clear of the cylinder cap: no z-fighting
+surface.renderOrder = 3;
+macro.add(surface);
+
+/* the crystal */
+const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.075, 0),
+  new THREE.MeshStandardMaterial({color:0x2a0a3a, roughness:0.25, metalness:0.2, envMapIntensity:0.9}));
+crystal.scale.set(1, 0.7, 1.2);
+crystal.rotation.y = 0.4;
+crystal.position.set(0, POT.yb + 0.05, 0);
+macro.add(crystal);
+
+/* The warmth above the flame: a soft orange column that fills from the
+   bottom. Normal blending, not additive — additive vanishes against the
+   pale wall behind. */
+const glowTex = (function(){
+  const W = 128, H = 256, c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const x = c.getContext('2d');
+  const g = x.createLinearGradient(0,H,0,0);
+  g.addColorStop(0,'rgba(255,140,60,0.9)');
+  g.addColorStop(0.6,'rgba(255,120,60,0.5)');
+  g.addColorStop(1,'rgba(255,110,60,0)');
+  x.fillStyle = g; x.fillRect(0,0,W,H);
+  /* feather the sides */
+  const s = x.createLinearGradient(0,0,W,0);
+  s.addColorStop(0,'rgba(0,0,0,1)'); s.addColorStop(0.35,'rgba(0,0,0,0)');
+  s.addColorStop(0.65,'rgba(0,0,0,0)'); s.addColorStop(1,'rgba(0,0,0,1)');
+  x.globalCompositeOperation = 'destination-out';
+  x.fillStyle = s; x.fillRect(0,0,W,H);
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+})();
+const glow = new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex, transparent:true,
+  opacity:0, depthWrite:false, depthTest:false}));
+glow.renderOrder = 4;
+macro.add(glow);
+function setGlow(height, op){
+  glow.scale.set(1.25, Math.max(0.05, height), 1);
+  glow.position.set(0, POT.yb + height/2, 0);
+  glow.material.opacity = op;
+  glow.visible = op > 0.002;
+}
+
+/* -------------------------------------------------------------- the dye */
+/* Points with their own small shader: every puff has its own size and
+   opacity. The colour is written straight to the output, which is already
+   the sRGB the eye sees. */
+const dyeGeo = new THREE.BufferGeometry();
+const dyePos = new Float32Array(DYE_MAX*3), dyeSize = new Float32Array(DYE_MAX), dyeAlpha = new Float32Array(DYE_MAX);
+dyeGeo.setAttribute('position', new THREE.BufferAttribute(dyePos, 3));
+dyeGeo.setAttribute('aSize',    new THREE.BufferAttribute(dyeSize, 1));
+dyeGeo.setAttribute('aAlpha',   new THREE.BufferAttribute(dyeAlpha, 1));
+const dyeMat = new THREE.ShaderMaterial({
+  uniforms:{uScale:{value:600}, uCol:{value:new THREE.Vector3(0.55,0.10,0.62)}},
+  vertexShader:[
+    'attribute float aSize; attribute float aAlpha; uniform float uScale; varying float vA;',
+    'void main(){',
+    '  vec4 mv = modelViewMatrix*vec4(position,1.0);',
+    '  gl_PointSize = aSize*uScale/max(0.05,-mv.z);',
+    '  gl_Position = projectionMatrix*mv; vA = aAlpha;',
+    '}'].join('\n'),
+  fragmentShader:[
+    'uniform vec3 uCol; varying float vA;',
+    'void main(){',
+    '  vec2 d = gl_PointCoord - 0.5; float r2 = dot(d,d)*4.0;',
+    '  if(r2 > 1.0) discard;',
+    '  float f = 1.0 - r2;',
+    '  gl_FragColor = vec4(uCol, vA*f*f);',
+    '}'].join('\n'),
+  transparent:true, depthWrite:false
+});
+const dye = new THREE.Points(dyeGeo, dyeMat);
+dye.frustumCulled = false; dye.renderOrder = 3;
+macro.add(dye);
+
+/* how many puffs are drawn and where, for the tests */
+const dyeState = {live:0, maxY:0, maxR:0, nearWall:0};
+const _p = [0,0,0,0];
+function updateDye(cfg, tau){
+  let live = 0, maxY = 0, maxR = 0, nearWall = 0;
+  const kLast = Math.floor((tau - cfg.emit)/EMIT_DT);
+  for(let s=0;s<DYE_MAX;s++){
+    /* slot s holds the newest puff k with k ≡ s (mod DYE_MAX) */
+    const k = kLast - ((((kLast - s) % DYE_MAX) + DYE_MAX) % DYE_MAX);
+    if(kLast < 0 || k < 0 || !puffAt(cfg, k, tau, _p)){
+      dyeAlpha[s] = 0; dyeSize[s] = 0;
+      dyePos[s*3] = 0; dyePos[s*3+1] = POT.yb; dyePos[s*3+2] = 0;
+      continue;
+    }
+    const r = _p[0], y = _p[1], th = _p[2], age = _p[3];
+    dyePos[s*3]   = r*Math.cos(th);
+    dyePos[s*3+1] = POT.yb + y;
+    dyePos[s*3+2] = r*Math.sin(th);
+    dyeSize[s]  = 0.09 + 0.05*Math.pow(age, 0.6);
+    dyeAlpha[s] = 0.55*ss(0, 0.5, age)*Math.pow(1 - age/DYE_LIFE, 1.5)/(1 + 0.1*age);
+    live++;
+    if(y > maxY) maxY = y;
+    if(r > maxR) maxR = r;
+    if(r > 0.8*FLOW.R && y < 0.6*FLOW.H) nearWall++;
+  }
+  dyeGeo.attributes.position.needsUpdate = true;
+  dyeGeo.attributes.aSize.needsUpdate = true;
+  dyeGeo.attributes.aAlpha.needsUpdate = true;
+  dyeState.live = live; dyeState.maxY = maxY; dyeState.maxR = maxR; dyeState.nearWall = nearWall;
+}
+
+/* ------------------------------------------------------- the curved arrows */
+/* Four arcs on each side of the cross-section, all cut from one streamline
+   of the same flow the dye rides on, so the arrows and the dye cannot
+   disagree. Coloured by how warm the water is at that point in the loop:
+   hottest just after it passes over the flame, coolest after the wall. */
+const ARC_LEVEL = 0.5, ARC_GAP = 0.26;
+const ARCS = [];
+const warmthAt = (r, y) => 0.5 + 0.5*Math.cos(Math.atan2(y - FLOW.H/2, r - FLOW.R/2) - 3*Math.PI/4);
+const C_HOT = new THREE.Color(COL.hot), C_COLD = new THREE.Color(COL.cold);
+
+(function buildArcs(){
+  const L = traceLoop(ARC_LEVEL);
+  const cr = FLOW.R/2, cy = FLOW.H/2, A0 = -3*Math.PI/4;
+  const ang = i => Math.atan2(L.y[i]-cy, L.r[i]-cr);
+  /* start at the bottom-left of the loop, then unwrap the angle as it turns */
+  let start = 0, bd = Infinity;
+  for(let i=0;i<LOOP_N;i++){
+    let d = Math.abs(ang(i) - A0); d = Math.min(d, 2*Math.PI - d);
+    if(d < bd){ bd = d; start = i; }
+  }
+  const pts = [];
+  let prev = ang(start), acc = prev;
+  for(let n=0;n<=LOOP_N;n++){
+    const i = (start + n) % LOOP_N, a = ang(i);
+    let da = a - prev;
+    if(da >  Math.PI) da -= 2*Math.PI;
+    if(da < -Math.PI) da += 2*Math.PI;
+    acc += n ? da : 0; prev = a;
+    pts.push({r:L.r[i], y:L.y[i], a:acc});
+  }
+  const up = new THREE.Vector3(0,1,0);
+  for(let k=0;k<4;k++){
+    const hi = A0 - k*Math.PI/2 - ARC_GAP, lo = A0 - (k+1)*Math.PI/2 + ARC_GAP;
+    const arc = pts.filter(p=>p.a <= hi && p.a >= lo);
+    for(const side of [1,-1]){
+      const v = arc.map(p=>new THREE.Vector3(side*p.r, POT.yb + p.y, 0));
+      const curve = new THREE.CatmullRomCurve3(v);
+      const TS = 48, RS = 8;
+      const geo = new THREE.TubeGeometry(curve, TS, 0.042, RS, false);
+      const cols = new Float32Array(geo.attributes.position.count*3);
+      const c = new THREE.Color();
+      for(let i=0;i<=TS;i++){
+        const p = curve.getPointAt(i/TS);
+        c.copy(C_COLD).lerp(C_HOT, warmthAt(Math.abs(p.x), p.y - POT.yb));
+        for(let j=0;j<=RS;j++){
+          const q = i*(RS+1) + j;
+          cols[q*3] = c.r; cols[q*3+1] = c.g; cols[q*3+2] = c.b;
+        }
+      }
+      /* vertex colours are read as linear */
+      for(let i=0;i<cols.length;i+=3){
+        c.setRGB(cols[i], cols[i+1], cols[i+2]).convertSRGBToLinear();
+        cols[i] = c.r; cols[i+1] = c.g; cols[i+2] = c.b;
+      }
+      geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+      const mat = new THREE.MeshBasicMaterial({vertexColors:true, transparent:true,
+        depthTest:false, depthWrite:false});
+      const tube = new THREE.Mesh(geo, mat);
+      tube.renderOrder = 20; macro.add(tube);
+
+      const end = curve.getPointAt(1), tan = curve.getTangentAt(1);
+      const endCol = new THREE.Color().copy(C_COLD).lerp(C_HOT, warmthAt(Math.abs(end.x), end.y - POT.yb));
+      const head = new THREE.Mesh(CONE, new THREE.MeshBasicMaterial({color:endCol,
+        transparent:true, depthTest:false, depthWrite:false}));
+      head.scale.set(0.11, 0.2, 0.11);
+      head.quaternion.setFromUnitVectors(up, tan);
+      head.position.copy(end).addScaledVector(tan, 0.1);
+      head.renderOrder = 21; macro.add(head);
+
+      ARCS.push({k, side, tube, head, curve, TS, RS,
+                 dirMid:curve.getTangentAt(0.5), mid:curve.getPointAt(0.5)});
+    }
+  }
+})();
+const ARC_T0 = 1.8, ARC_STEP = 1.7, ARC_GROW = 1.2;
+function updateArcs(on, t){
+  for(const A of ARCS){
+    const t0 = ARC_T0 + A.k*ARC_STEP;
+    const g = on ? ss(t0, t0 + ARC_GROW, t) : 0;
+    const segs = Math.round(g*A.TS);
+    A.tube.visible = segs > 0;
+    A.tube.geometry.setDrawRange(0, segs*A.RS*6);
+    A.tube.material.opacity = 0.95;
+    A.head.visible = g >= 0.999;
+    A.head.material.opacity = 0.95;
+  }
+}
+
+/* =========================================================================
+   THE PARTICLES  (the micro world, at MICRO_Y)
+========================================================================= */
+const micro = new THREE.Group(); micro.position.y = MICRO_Y; scene.add(micro);
+
+function boxEdges(col, op){
+  const e = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(BOX_L, BOX_L, BOX_L)),
+    new THREE.LineBasicMaterial({color:col, transparent:true, opacity:op}));
+  return e;
+}
+function instanced(n, col){
+  const mat = new THREE.MeshStandardMaterial({color:col, roughness:0.35, metalness:0.1,
+    emissive:new THREE.Color(col).multiplyScalar(0.12)});
+  const m = new THREE.InstancedMesh(SPH, mat, n);
+  m.frustumCulled = false;
+  linearise(m);
+  return m;
+}
+const _q = [0,0,0];
+function placeBox(mesh, base, jig, n, k, amp, phi){
+  const A = mesh.instanceMatrix.array;
+  for(let i=0;i<n;i++){
+    particleAt(base, jig, i, k, amp, phi, _q);
+    const o = i*16;
+    A[o]=PR; A[o+1]=0; A[o+2]=0; A[o+3]=0;
+    A[o+4]=0; A[o+5]=PR; A[o+6]=0; A[o+7]=0;
+    A[o+8]=0; A[o+9]=0; A[o+10]=PR; A[o+11]=0;
+    A[o+12]=_q[0]; A[o+13]=_q[1]; A[o+14]=_q[2]; A[o+15]=1;
+  }
+  mesh.instanceMatrix.needsUpdate = true;
+}
+
+/* ---------- chapter 1: one parcel, heated ---------- */
+const parcel = new THREE.Group(); micro.add(parcel);
+const parcelMesh = instanced(NC, COL.pCold); parcel.add(parcelMesh);
+const parcelEdges = boxEdges(0x9fb4cc, 0.5); parcel.add(parcelEdges);
+
+/* the heat coming up from below */
+const heater = new THREE.Group(); parcel.add(heater);
+const plate = new THREE.Mesh(BOX, new THREE.MeshStandardMaterial({color:COL.warm, roughness:0.5,
+  emissive:new THREE.Color(COL.warm).multiplyScalar(0.6)}));
+plate.scale.set(2.6, 0.06, 2.6); plate.position.y = -1.72; heater.add(plate);
+const heatArrows = [];
+for(let i=0;i<5;i++){
+  const a = makeArrow(0.34, COL.energy, 0.035);
+  a.position.set(-1.0 + i*0.5, -1.66, 0.9);
+  heater.add(a); heatArrows.push(a);
+}
+linearise(heater);
+
+/* ---------- chapter 2: cold beside hot, the same size ---------- */
+const pair = new THREE.Group(); micro.add(pair);
+const PAIR_X = 2.0;
+const coldGrp = new THREE.Group(); coldGrp.position.x = -PAIR_X; pair.add(coldGrp);
+const hotGrp  = new THREE.Group(); hotGrp.position.x  =  PAIR_X; pair.add(hotGrp);
+const coldMesh = instanced(NC, COL.pCold); coldGrp.add(coldMesh);
+const hotMesh  = instanced(NH, COL.pHot);  hotGrp.add(hotMesh);
+coldGrp.add(boxEdges(0x7fb0ff, 0.6));
+hotGrp.add(boxEdges(0xffa27a, 0.6));
+const RISE = 1.0, MOVE0 = 7.0, MOVE1 = 11.0;
+
+/* =========================================================================
+   LABELS
+========================================================================= */
+const V = (x,y,z) => new THREE.Vector3(x,y,z||0);
+const lbl = (parent, text, pos, opt) => { const s = makeLabel(text, opt); s.position.copy(pos); parent.add(s); return s; };
+const DIM = '#b8c4d4', GOLDTXT = '#2a1b00';
+const PILL_GOLD = {bg:'rgba(255,210,122,0.95)', color:GOLDTXT, weight:700};
+const PILL_DARK = {bg:'rgba(10,14,21,0.82)', border:'rgba(147,162,182,0.45)'};
+
+/* chapter 0 — the hob */
+cue(0, lbl(macro, 'cold water · '+WATER.cold.T+' °C', V(2.85, 1.55, 0.3), {scale:0.28, color:'#9ec3ff'}), 0.8);
+cue(0, lbl(macro, 'gas flame', V(1.75, 0.12, 1.55), {scale:0.26, color:'#9fc4ff'}), 1.6);
+{
+  const g = new THREE.Group(); macro.add(g);
+  lbl(g, 'purple dye crystal', V(-2.7, 0.15, 1.1), {scale:0.26, color:'#e2b8f2'});
+  leader(g, V(-1.75, 0.2, 1.05), V(-0.08, POT.yb+0.06, 0.02), 0xe2b8f2);
+  cue(0, g, 2.8);
+}
+cue(0, lbl(macro, 'the water over the flame warms up first', V(0, 2.75, 0), Object.assign({scale:0.27}, PILL_DARK)), 5.2, {rise:0.1});
+
+/* chapter 1 — zoomed in */
+cue(1, lbl(micro, 'zoomed in: the water just above the flame', V(0, 2.25, 0), {scale:0.3, color:DIM}), 1.7, {t1:5.0});
+const thermoLbl = cue(1, lbl(micro, WATER.cold.T+' °C', V(0, 1.85, 0), Object.assign({scale:0.36, color:'#ffb4b4'}, PILL_DARK)), 2.0);
+cue(1, lbl(micro, 'energy from the flame', V(0, -2.15, 0.9), {scale:0.28, color:hexCss(COL.energy)}), HEAT0 - 0.2);
+cue(1, lbl(micro, 'the particles move faster…', V(3.05, 0.95, 0), {scale:0.3}), HEAT0 + 0.6);
+cue(1, lbl(micro, '…and spread further apart', V(3.05, 0.35, 0), {scale:0.3}), HEAT0 + 2.8);
+cue(1, lbl(micro, 'density decreases', V(3.05, -0.45, 0), Object.assign({scale:0.44}, PILL_GOLD)), HEAT1 - 0.6, {rise:0.15});
+cue(1, lbl(micro, 'same particles · same size · more space between them', V(0.3, -2.75, 0.9), {scale:0.24, color:DIM}), HEAT1 + 1.2);
+cue(1, lbl(micro, 'spacing exaggerated ×'+EXAG+' · each ball is one water particle', V(0.3, -3.15, 0.9), {scale:0.2, color:'#8a97aa'}), 2.4);
+
+/* chapter 2 — hot beside cold */
+cue(2, lbl(coldGrp, 'cold water · '+WATER.cold.T+' °C', V(0, 1.45, 0), {scale:0.32, color:'#9ec3ff'}), 0.5);
+cue(2, lbl(hotGrp,  'hot water · '+WATER.hot.T+' °C',  V(0, 1.45, 0), {scale:0.32, color:'#ffb08a'}), 0.9);
+const countC = cue(2, lbl(coldGrp, NC+' particles', V(0, -1.45, 0), {scale:0.32}), 2.0);
+const countH = cue(2, lbl(hotGrp,  NH+' particles', V(0, -1.45, 0), {scale:0.32}), 2.6);
+cue(2, lbl(pair, '← same volume →', V(0, 0, 0), {scale:0.26, color:DIM}), 3.4);
+cue(2, lbl(coldGrp, 'more dense', V(0, -1.95, 0), Object.assign({scale:0.36}, PILL_DARK, {color:'#9ec3ff'})), 4.4);
+cue(2, lbl(hotGrp,  'less dense', V(0, -1.95, 0), Object.assign({scale:0.36}, PILL_GOLD)), 4.9);
+{
+  const up = makeArrow(1.3, COL.hot, 0.07); up.position.set(PAIR_X + 1.55, -0.2, 0); pair.add(up);
+  const dn = makeArrow(1.3, COL.cold, 0.07); dn.rotation.z = Math.PI; dn.position.set(-PAIR_X - 1.55, 0.2, 0); pair.add(dn);
+  linearise(up); linearise(dn);
+  cue(2, up, MOVE0 - 0.4); cue(2, dn, MOVE0 - 0.4);
+  cue(2, lbl(pair, 'rises', V(PAIR_X + 1.55, 1.45, 0), {scale:0.32, color:'#ffb08a'}), MOVE0);
+  cue(2, lbl(pair, 'sinks', V(-PAIR_X - 1.55, -1.45, 0), {scale:0.32, color:'#9ec3ff'}), MOVE0);
+}
+cue(2, lbl(pair, 'spacing exaggerated ×'+EXAG+' — real water: '+WATER.cold.rho.toFixed(0)+' vs '+WATER.hot.rho.toFixed(0)+' kg/m³',
+          V(0, -3.75, 0), {scale:0.2, color:'#8a97aa'}), 1.2);
+
+/* chapter 3 — the hot water rises */
+cue(3, lbl(macro, 'the dye shows where the water goes', V(-2.95, 1.95, 0.3), {scale:0.26, color:'#e2b8f2'}), 1.0);
+cue(3, lbl(macro, 'hot, less dense water rises', V(0, 2.75, 0), Object.assign({scale:0.3}, PILL_GOLD)), 4.2, {rise:0.1});
+cue(3, lbl(macro, 'cooler water flows in', V(2.8, 0.42, 0.4), {scale:0.26, color:'#9ec3ff'}), 7.0);
+
+/* chapter 4 — the convection current */
+const STEP_LBL = [
+  ['① hot, less dense water rises',  V(0, 2.62, 0)],
+  ['② it spreads out and cools',     V(-2.95, 2.3, 0)],
+  ['③ cooler, denser water sinks',   V(2.95, 1.35, 0)],
+  ['④ it flows back over the flame', V(-2.95, 0.5, 0)]
+];
+STEP_LBL.forEach((s,k)=>cue(4, lbl(macro, s[0], s[1], Object.assign({scale:0.24}, PILL_DARK)), ARC_T0 + k*ARC_STEP + 0.3));
+cue(4, lbl(macro, 'a convection current', V(0, 3.1, 0), Object.assign({scale:0.36}, PILL_GOLD)), ARC_T0 + 4*ARC_STEP + 0.4, {rise:0.08});
+
+linearise(macro);
+linearise(micro);
+
+/* =========================================================================
+   THE CHAPTERS
+========================================================================= */
+/* camera keys: orbit distance, azimuth, elevation, and the point looked at */
+const CAM = {
+  wide   : {dist:13,  az:0.55, el:0.36, look:[0,1.2,0]},
+  hob    : {dist:8.8, az:0.32, el:0.24, look:[0,1.15,0]},
+  hotspot: {dist:1.1, az:0.32, el:0.18, look:[0,POT.yb+0.25,0]},
+  pan    : {dist:8.4, az:0.2,  el:0.2,  look:[0,1.25,0]},
+  front  : {dist:8.6, az:0.0,  el:0.1,  look:[0,1.35,0]},
+  pIn    : {dist:3.2, az:0.55, el:0.35, look:[0,MICRO_Y,0]},
+  parcel : {dist:8.2, az:0.4,  el:0.2,  look:[0.7,MICRO_Y-0.3,0]},
+  pair   : {dist:11.5,az:0.0,  el:0.1,  look:[0,MICRO_Y-0.2,0]}
+};
+
+/* A chapter is a list of shots (a world and a camera move, each ending at
+   `until`), what the flame and the dye are doing, and its words. */
+const CH = [
+  {
+    part:'On the hob', len:9,
+    shots:[{world:'macro', from:CAM.wide, to:CAM.hob, dur:3.2}],
+    flame:t=>ss(1.0, 1.6, t),
+    glow:t=>[lerp(0.15, 0.42, ss(3, 8, t)), 0.5*ss(3, 6, t)],
+    dye:{tau0:0, emit:2.0, flow:Infinity, ramp:1},
+    title:'A pan of cold water on the hob',
+    text:'A glass pan of cold water sits on a gas ring. On the bottom, right in the middle, is a single crystal of <b>potassium permanganate</b> — a purple dye. It dissolves slowly, so it will show us where the water goes.<br><br>The flame heats the <b>bottom of the pan</b>, so only the water just above the flame warms up at first.',
+    look:'The orange glow is the water over the flame warming up. The water near the sides is still cold.',
+    terms:[['Fluid','a liquid or a gas — anything whose particles can move from place to place.']],
+    key:['flame','dye','glow']
+  },
+  {
+    part:'Zoom in', len:13,
+    shots:[{world:'macro', from:CAM.hob, to:CAM.hotspot, dur:1.4, until:1.4},
+           {world:'micro', from:CAM.pIn, to:CAM.parcel, dur:2.0}],
+    flame:()=>1,
+    glow:()=>[0.42, 0.5],
+    dye:{tau0:9, emit:2.0, flow:Infinity, ramp:1},
+    micro:'parcel',
+    title:'Heated water spreads out',
+    text:'These are the particles in a small piece of the water just above the flame. Energy from the flame makes them <b>move faster</b>. Moving faster, they push each other <b>further apart</b>.<br><br>The piece of water still has the <b>same particles</b>, so the <b>same mass</b> — but now it takes up a <b>bigger volume</b>. Same mass in a bigger volume means the <b>density decreases</b>.',
+    look:'The particles themselves do not get any bigger. Only the gaps between them grow.',
+    scale:'Not to scale. Real water takes up only '+pct(REAL_EXPANSION)+' more room at '+WATER.hot.T+' °C than at '+WATER.cold.T+' °C ('+WATER.cold.rho.toFixed(1)+' → '+WATER.hot.rho.toFixed(1)+' kg/m³) — too little to see. Here the spreading is exaggerated '+EXAG+' times.',
+    terms:[['Density','how much mass is packed into each cubic metre: density = mass ÷ volume.'],
+           ['Expand','take up more space. Most things expand when they are heated.']],
+    key:['pCold','pHot','energy']
+  },
+  {
+    part:'Hot beside cold', len:13,
+    shots:[{world:'micro', from:CAM.parcel, to:CAM.pair, dur:2.0}],
+    micro:'pair',
+    title:'Hot water is less dense than cold water',
+    text:'Two boxes the same size. On the left, cold water from beside the wall of the pan; on the right, hot water from above the flame. The cold box holds <b>'+NC+'</b> particles; the hot box only <b>'+NH+'</b>.<br><br>Fewer particles in the same volume means less mass, so the hot water is <b>less dense</b>. Less dense water <b>rises</b> through denser water, for the same reason a cork floats — and the denser cold water <b>sinks</b>.',
+    look:'Count them: same volume, fewer particles, less mass.',
+    scale:'The difference is exaggerated '+EXAG+' times. In real water the hot box would hold only about '+pct(REAL_EXPANSION)+' fewer particles.',
+    terms:[['Less dense','less mass in the same volume. A less dense fluid floats up through a denser one.']],
+    key:['pCold','pHot']
+  },
+  {
+    part:'Back to the pan', len:11,
+    shots:[{world:'macro', from:CAM.hotspot, to:CAM.pan, dur:2.8}],
+    flame:()=>1,
+    glow:t=>[lerp(0.42, POT.H, ss(1.2, 7, t)), 0.5],
+    dye:{tau0:9, emit:2.0, flow:10.0, ramp:4},
+    title:'The hot water rises',
+    text:'The hot, less dense water above the flame <b>rises</b> up the middle of the pan, and carries the purple dye with it.<br><br>As it rises, cooler, denser water flows in along the bottom to take its place over the flame — and that water is heated in turn.',
+    look:'The dye leaves the crystal and goes straight up the middle.',
+    terms:[],
+    key:['flame','dye','glow']
+  },
+  {
+    part:'The convection current', len:14,
+    shots:[{world:'macro', from:CAM.pan, to:CAM.front, dur:2.2}],
+    flame:()=>1,
+    glow:()=>[POT.H, 0.45],
+    dye:{tau0:30, emit:2.0, flow:10.0, ramp:4},
+    arrows:true,
+    title:'A convection current',
+    text:'At the top, the hot water spreads out towards the sides and <b>cools</b>. Cooler water is <b>denser</b>, so it <b>sinks</b> down the sides of the pan. Along the bottom it flows back to the middle, where the flame heats it — and it rises again.<br><br>This loop is a <b>convection current</b>. It carries energy from the flame all through the water.',
+    look:'Follow the dye round the arrows: up the middle, out across the top, down the sides, back along the bottom.',
+    terms:[['Convection current','the circulation set up when a fluid is heated in one place: hot fluid rises, cooler fluid sinks to take its place.'],
+           ['Convection','how energy is transferred through a fluid by the fluid itself moving.']],
+    key:['flame','dye','arrows']
+  }
+];
+
+const KEY = {
+  flame :'<div><span class="dot" style="background:'+hexCss(COL.flame)+'"></span>gas flame</div>',
+  dye   :'<div><span class="dot" style="background:#8c1a9e"></span>purple dye</div>',
+  glow  :'<div><span class="sq" style="background:'+hexCss(COL.warm)+'"></span>warmer water</div>',
+  arrows:'<div><span class="grad"></span>warm water → cooler water</div>',
+  pCold :'<div><span class="dot" style="background:'+hexCss(COL.pCold)+'"></span>water particle, '+WATER.cold.T+' °C</div>',
+  pHot  :'<div><span class="dot" style="background:'+hexCss(COL.pHot)+'"></span>water particle, '+WATER.hot.T+' °C</div>',
+  energy:'<div><span class="sq" style="background:'+hexCss(COL.energy)+'"></span>energy from the flame</div>'
+};
+
+/* ------------------------------------------------------------- the camera */
+const FADE = 0.32;
+function shotAt(C, t){
+  let s0 = 0;
+  for(let i=0;i<C.shots.length;i++){
+    const sh = C.shots[i], end = sh.until != null ? sh.until : Infinity;
+    if(t < end || i === C.shots.length-1){
+      const u = ss(0, sh.dur, t - s0);
+      let fade = 1 - clamp((t - s0)/FADE, 0, 1);                 // fading in at its start
+      if(isFinite(end)) fade = Math.max(fade, 1 - clamp((end - t)/FADE, 0, 1));
+      return {world:sh.world, cam:lerpCam(sh.from, sh.to, u), fade, index:i};
+    }
+    s0 = end;
+  }
+}
+function lerpCam(a, b, u){
+  return {
+    dist: Math.exp(lerp(Math.log(a.dist), Math.log(b.dist), u)),   // a zoom feels even in log distance
+    az: lerp(a.az, b.az, u), el: lerp(a.el, b.el, u),
+    look:[lerp(a.look[0],b.look[0],u), lerp(a.look[1],b.look[1],u), lerp(a.look[2],b.look[2],u)]
+  };
+}
+function worldAt(ch, t){ return shotAt(CH[ch], t).world; }
+
+let dragAz = 0, dragEl = 0, zoomAdj = 0;
+function applyCamera(c){
+  const az = c.az + dragAz, el = clamp(c.el + dragEl, -0.4, 1.2);
+  const d = Math.max(0.4, c.dist*Math.exp(zoomAdj));
+  camera.position.set(
+    c.look[0] + d*Math.cos(el)*Math.sin(az),
+    c.look[1] + d*Math.sin(el),
+    c.look[2] + d*Math.cos(el)*Math.cos(az));
+  camera.lookAt(c.look[0], c.look[1], c.look[2]);
+}
+
+/* ---------------------------------------------------------------- a frame */
+let cur = 0, shownTemp = null;
+const cPart = new THREE.Color();
+
+function frame(t){
+  const C = CH[cur];
+  const shot = shotAt(C, t);
+  applyCamera(shot.cam);
+  fadeEl.style.opacity = shot.fade.toFixed(3);
+
+  const inMacro = shot.world === 'macro';
+  macro.visible = inMacro;
+  micro.visible = !inMacro;
+
+  if(inMacro){
+    updateFlame(C.flame ? C.flame(t) : 0, t);
+    const g = C.glow ? C.glow(t) : [0.1, 0];
+    setGlow(g[0], g[1]);
+    dye.visible = !!C.dye;
+    if(C.dye) updateDye(C.dye, C.dye.tau0 + t);
+    updateArcs(!!C.arrows, t);
+  }
+
+  parcel.visible = C.micro === 'parcel';
+  pair.visible   = C.micro === 'pair';
+
+  if(C.micro === 'parcel'){
+    const s = parcelState(t);
+    placeBox(parcelMesh, COLD_BOX, JIG_C, NC, s.k, s.amp, s.phi);
+    parcelEdges.scale.setScalar(s.k);
+    cPart.set(COL.pCold).lerp(new THREE.Color(COL.pHot), s.u).convertSRGBToLinear();
+    parcelMesh.material.color.copy(cPart);
+    parcelMesh.material.emissive.copy(cPart).multiplyScalar(0.12);
+    const on = ss(HEAT0 - 0.4, HEAT0, t)*(1 - ss(HEAT1, HEAT1 + 0.6, t));
+    heater.visible = on > 0.01;
+    plate.material.emissive.set(COL.warm).convertSRGBToLinear().multiplyScalar(0.25 + 0.6*on);
+    heatArrows.forEach((a, i)=>{
+      const f = ((t*0.9 + i*0.37) % 1 + 1) % 1;
+      a.position.y = -1.66 + 0.25*f;
+      setOpacity(a, on*Math.sin(Math.PI*f));
+    });
+    const T = Math.round(s.tempC);
+    if(T !== shownTemp){ shownTemp = T; setLabel(thermoLbl, T+' °C'); }
+  }
+  if(C.micro === 'pair'){
+    placeBox(coldMesh, COLD_BOX, JIG_C, NC, 1, AMP_COLD, JIG_W*t);
+    placeBox(hotMesh,  HOT_BOX,  JIG_H, NH, 1, AMP_HOT,  JIG_W*(1 + JIG_HOT)*t);
+    const m = ss(MOVE0, MOVE1, t);
+    coldGrp.position.y = -RISE*m;
+    hotGrp.position.y  =  RISE*m;
+  }
+
+  runCues(cur, t);
+  renderer.render(scene, camera);
+}
+
+/* --------------------------------------------------------------- chapters */
+let chStart = null;
+function enterChapter(i){
+  cur = i; chStart = null; shownTemp = null;
+  dragAz = dragEl = zoomAdj = 0;
+  const C = CH[i];
+  document.getElementById('sStep').textContent = (i+1)+' / '+CH.length+' · '+C.part;
+  document.getElementById('sTitle').innerHTML = C.title;
+  document.getElementById('sText').innerHTML = C.text;
+  const lk = document.getElementById('sLook');
+  lk.textContent = C.look ? 'Watch for: '+C.look : ''; lk.hidden = !C.look;
+  const sc = document.getElementById('sScale');
+  sc.textContent = C.scale || ''; sc.hidden = !C.scale;
+  const tm = document.getElementById('sTerms');
+  tm.innerHTML = C.terms.length
+    ? '<div class="hd">Key words</div>' + C.terms.map(x=>'<dt>'+x[0]+'</dt><dd>'+x[1]+'</dd>').join('')
+    : '';
+  tm.hidden = !C.terms.length;
+  document.getElementById('key').innerHTML = C.key.map(k=>KEY[k]).join('');
+  document.getElementById('back').disabled = i === 0;
+  document.getElementById('next').disabled = i === CH.length-1;
+  document.querySelectorAll('#dots i').forEach((d,k)=>d.classList.toggle('on', k === i));
+}
+
+function animate(now){
+  requestAnimationFrame(animate);
+  if(chStart === null) chStart = now;
+  frame((now - chStart)/1000);
+}
+
+/* ------------------------------------------------------------------ wiring */
+const cv = renderer.domElement;
+cv.style.touchAction = 'none';
+cv.style.cursor = 'grab';
+let dragging = false, lastX = 0, lastY = 0;
+cv.addEventListener('pointerdown', e=>{
+  dragging = true; lastX = e.clientX; lastY = e.clientY;
+  cv.style.cursor = 'grabbing';
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove', e=>{
+  if(!dragging) return;
+  dragAz += (e.clientX - lastX)*0.006;
+  dragEl = clamp(dragEl + (e.clientY - lastY)*0.004, -0.5, 1.0);
+  lastX = e.clientX; lastY = e.clientY;
+});
+['pointerup','pointercancel'].forEach(ev=>
+  cv.addEventListener(ev, ()=>{ dragging = false; cv.style.cursor = 'grab'; }));
+cv.addEventListener('wheel', e=>{
+  e.preventDefault();
+  zoomAdj = clamp(zoomAdj + e.deltaY*0.001, -0.9, 0.9);
+}, {passive:false});
+
+const dotsEl = document.getElementById('dots');
+CH.forEach((c,i)=>{
+  const d = document.createElement('i');
+  d.title = c.title;
+  d.addEventListener('click', ()=>enterChapter(i));
+  dotsEl.appendChild(d);
+});
+document.getElementById('next').addEventListener('click', ()=>{ if(cur < CH.length-1) enterChapter(cur+1); });
+document.getElementById('back').addEventListener('click', ()=>{ if(cur > 0) enterChapter(cur-1); });
+document.getElementById('replay').addEventListener('click', ()=>enterChapter(cur));
+window.addEventListener('keydown', e=>{
+  if(e.key === 'ArrowRight' && cur < CH.length-1) enterChapter(cur+1);
+  if(e.key === 'ArrowLeft'  && cur > 0) enterChapter(cur-1);
+});
+
+function resize(){
+  const w = stage.clientWidth || window.innerWidth;
+  const h = stage.clientHeight || window.innerHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w/h;
+  camera.fov = (w/h < 1.1) ? 62 : 44;
+  camera.updateProjectionMatrix();
+  const pr = Math.min(2, window.devicePixelRatio||1);
+  dyeMat.uniforms.uScale.value = h*pr/(2*Math.tan(camera.fov*Math.PI/360));
+}
+window.addEventListener('resize', resize);
+resize();
+
+enterChapter(0);
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>
