@@ -1,0 +1,1541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Density — the 3D story</title>
+<style>
+  :root{
+    --ink:#eef2f7;
+    --dim:#93a2b6;
+    --panel:rgba(10,14,21,.78);
+    --line:rgba(147,162,182,.22);
+    --side:376px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;background:#080b11;color:var(--ink);overflow:hidden;
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+
+  #stage{position:fixed;top:0;right:0;bottom:0;left:var(--side);}
+  canvas{display:block;}
+  #fade{position:fixed;top:0;right:0;bottom:0;left:var(--side);background:#080b11;
+    opacity:0;pointer-events:none;z-index:2;}
+
+  #side{
+    position:fixed;top:0;left:0;bottom:0;width:var(--side);
+    background:var(--panel);backdrop-filter:blur(16px);
+    border-right:1px solid var(--line);
+    padding:20px 22px 16px;
+    display:flex;flex-direction:column;gap:14px;
+    overflow-y:auto;
+  }
+  #side h1{
+    margin:0;
+    font-family:"Iowan Old Style","Charter","Palatino Linotype",Georgia,serif;
+    font-weight:600;font-size:19px;letter-spacing:.2px;line-height:1.25;
+  }
+  #side .byline{margin:4px 0 0;font-size:12px;line-height:1.5;color:var(--dim);}
+  #side a{color:var(--dim);text-decoration:none;font-size:12px;
+    border-bottom:1px solid rgba(147,162,182,.3);}
+  #side a:hover{color:var(--ink);}
+  .links{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;}
+
+  .cards{display:flex;flex-direction:column;gap:8px;}
+  .card{
+    background:rgba(255,255,255,.04);
+    border:1px solid var(--line);border-radius:11px;
+    padding:8px 12px;
+  }
+  .card .who{font-size:10px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;}
+  .card .nums{display:flex;gap:12px;flex-wrap:wrap;margin-top:5px;}
+  .card .n{font-size:10px;color:var(--dim);line-height:1.2;}
+  .card .n b{display:block;color:var(--ink);font-size:15px;font-weight:600;
+    font-variant-numeric:tabular-nums;margin-top:2px;white-space:nowrap;}
+  .card .n.hot b{color:#ffd27a;}
+
+  .story{flex:1;min-height:0;}
+  .story .step{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:700;}
+  .story h2{
+    margin:3px 0 0;font-family:"Iowan Old Style","Charter",Georgia,serif;
+    font-size:17px;font-weight:600;letter-spacing:.2px;
+  }
+  .story p{margin:8px 0 0;font-size:13px;line-height:1.62;color:#cbd5e1;}
+  .story p b{color:#ffd9a0;font-weight:600;}
+  .story .look{
+    margin-top:10px;font-size:12px;line-height:1.5;color:#a9c7ee;
+    border-left:2px solid rgba(127,176,255,.45);padding-left:10px;
+  }
+  .story .scale{
+    margin-top:10px;font-size:12px;line-height:1.5;color:#c9b8e0;
+    border-left:2px solid rgba(190,150,240,.45);padding-left:10px;
+  }
+  .formula{
+    margin:10px 0 0;padding:10px 12px;text-align:center;
+    font-family:"Iowan Old Style","Charter",Georgia,serif;font-size:16px;color:#ffe2a8;
+    background:rgba(255,210,122,.07);border:1px solid rgba(255,210,122,.3);border-radius:10px;
+  }
+  .formula small{display:block;font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-size:11.5px;color:#cbb88f;margin-top:4px;}
+  .terms{
+    margin:12px 0 0;padding:10px 12px;
+    background:rgba(255,217,160,.05);border:1px solid rgba(255,217,160,.18);border-radius:10px;
+  }
+  .terms .hd{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#d9b98a;font-weight:700;margin-bottom:6px;}
+  .terms dt{font-size:12.5px;font-weight:700;color:#ffd9a0;}
+  .terms dd{margin:1px 0 7px;font-size:12.5px;line-height:1.5;color:#cbd5e1;}
+  .terms dd:last-child{margin-bottom:0;}
+
+  table.sum{width:100%;border-collapse:collapse;margin-top:10px;font-size:12px;}
+  table.sum th,table.sum td{text-align:left;padding:4px 6px;border-bottom:1px solid var(--line);}
+  table.sum th{color:var(--dim);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;}
+  table.sum td{color:#cbd5e1;font-variant-numeric:tabular-nums;}
+  table.sum td:first-child{color:var(--ink);font-weight:600;}
+  table.sum td:last-child{text-align:right;}
+
+  .nav{
+    position:fixed;left:var(--side);right:0;bottom:20px;z-index:5;
+    margin:0 auto;width:fit-content;max-width:calc(100% - var(--side) - 32px);
+    display:flex;align-items:center;gap:8px;flex-wrap:nowrap;justify-content:center;
+    background:var(--panel);backdrop-filter:blur(16px);
+    border:1px solid var(--line);border-radius:999px;
+    padding:9px 12px;white-space:nowrap;
+  }
+  .nav button{
+    font:inherit;font-size:12.5px;font-weight:500;color:var(--dim);
+    background:rgba(255,255,255,.05);border:1px solid var(--line);
+    border-radius:999px;padding:7px 14px;cursor:pointer;
+    transition:background .15s ease,color .15s ease,opacity .15s ease;
+  }
+  .nav button:hover:not(:disabled){background:rgba(255,255,255,.12);color:var(--ink);}
+  .nav button:disabled{opacity:.32;cursor:default;}
+  .nav button.primary{background:rgba(127,176,255,.2);color:#dce9ff;border-color:rgba(127,176,255,.35);}
+  .dots{display:flex;gap:6px;padding:0 4px;}
+  .dots i{
+    width:7px;height:7px;border-radius:50%;background:rgba(147,162,182,.3);
+    cursor:pointer;transition:background .2s ease,transform .2s ease;
+  }
+  .dots i.on{background:var(--ink);transform:scale(1.25);}
+
+  #key{
+    position:fixed;top:18px;right:20px;z-index:5;
+    background:var(--panel);backdrop-filter:blur(16px);
+    border:1px solid var(--line);border-radius:12px;
+    padding:11px 14px;
+    font-size:11.5px;line-height:1.75;color:var(--dim);
+  }
+  #key:empty{display:none;}
+  #key div{display:flex;align-items:center;gap:8px;}
+  .dot{width:11px;height:11px;border-radius:50%;flex:none;
+    box-shadow:inset -2px -2px 3px rgba(0,0,0,.45);}
+
+  .hint{
+    position:fixed;right:20px;bottom:20px;z-index:3;
+    font-size:11px;color:#5a687d;pointer-events:none;
+  }
+
+  @media (max-width:860px){
+    :root{--side:0px;}
+    #stage,#fade{left:0;bottom:44vh;}
+    #side{
+      top:auto;left:0;right:0;bottom:0;width:auto;height:44vh;
+      border-right:none;border-top:1px solid var(--line);
+      padding:14px 16px;gap:11px;
+    }
+    #side h1{font-size:16px;}
+    #side .byline{display:none;}
+    .cards{flex-direction:row;}
+    .card{flex:1;min-width:0;}
+    .card .nums{gap:8px;}
+    .card .n b{font-size:13px;}
+    .nav{
+      left:0;right:0;bottom:44vh;
+      width:auto;max-width:none;margin:0;
+      border-radius:0;border-width:1px 0 0;
+      flex-wrap:wrap;white-space:normal;justify-content:center;
+    }
+    #key{top:14px;right:14px;padding:8px 10px;font-size:11px;line-height:1.6;}
+    .hint{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<div id="stage"></div>
+<div id="fade"></div>
+
+<div id="side">
+  <div>
+    <h1>Density</h1>
+    <p class="byline">How much mass is packed into each bit of space</p>
+    <div class="links">
+      <a href="./index.html">← Particle model</a>
+      <a href="../index.html">All simulations</a>
+    </div>
+  </div>
+
+  <div class="cards" id="cards"></div>
+
+  <div class="story">
+    <div class="step" id="sStep"></div>
+    <h2 id="sTitle"></h2>
+    <p id="sText"></p>
+    <div class="formula" id="sFormula"></div>
+    <div class="look" id="sLook"></div>
+    <div class="scale" id="sScale"></div>
+    <dl class="terms" id="sTerms"></dl>
+  </div>
+</div>
+
+<!-- outside #side: its backdrop-filter would otherwise pin fixed children to the column -->
+<div class="nav">
+  <button id="back">← Back</button>
+  <button id="next" class="primary">Next →</button>
+  <button id="replay">Replay</button>
+  <div class="dots" id="dots"></div>
+</div>
+
+<div id="key"></div>
+
+<div class="hint">drag to orbit · scroll to zoom</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ===========================================================================
+   DENSITY — the 3D story
+
+   Nine chapters, from the kitchen to the definition and back to the particles:
+
+     0  sugar into candy floss  — the same 20 g on the same scale the whole
+                                  time, while its volume grows hundreds of
+                                  times
+     1  zoom in                 — the same molecules, spread out into threads
+                                  with air between them
+     2  cake and brownie        — two slices the same size, very different
+                                  masses
+     3  same volume             — three 10 cm cubes weighed: density is the
+                                  mass in each bit of volume
+     4  same mass               — a kilogram of each: the denser, the smaller
+     5  heavier atoms           — inside aluminium and iron: iron's atoms are
+                                  about twice as heavy and a little closer
+     6  solid, liquid, gas      — the same gold atoms packed three ways
+     7  water is unusual        — solid wax sinks in melted wax; ice floats
+     8  the ladder              — everything so far on one scale, with air and
+                                  water for reference
+
+   One scene unit is 10 cm, so every object is drawn at its real size: the
+   floss cloud is the size its volume says, and every cube is cut to the side
+   its volume says.
+
+   EVERY NUMBER IS DERIVED. The tables below hold masses and densities; the
+   volumes, the cube sides, the scale readings, the cards and every figure in
+   a caption are worked out from them, and test-render.js checks that.
+
+   EVERYTHING IS A PURE FUNCTION OF THE CHAPTER'S OWN CLOCK t, as in
+   convection.html and conduction.html.
+=========================================================================== */
+
+/* ------------------------------------------------------------ the numbers */
+const UNIT_CM = 10;                     // one scene unit, in centimetres
+
+/* the kitchen: grams, cm³, g/cm³ */
+const SUGAR = {mass:20, rho:1.59};      // the crystals themselves (sucrose), g/cm³
+const FLOSS_V = 5000;                   // cm³: a cone of floss about 21 cm across
+const SLICE = {w:8, d:6, h:5};          // cm
+const CAKE_RHO = 0.35, BROWNIE_RHO = 0.95;   // g/cm³, typical — every recipe differs
+
+const SUGAR_V   = SUGAR.mass/SUGAR.rho;            // cm³
+const FLOSS_RHO = SUGAR.mass/FLOSS_V;              // g/cm³
+const SLICE_V   = SLICE.w*SLICE.d*SLICE.h;         // cm³
+const CAKE_M    = Math.round(CAKE_RHO*SLICE_V);    // g
+const BROWNIE_M = Math.round(BROWNIE_RHO*SLICE_V); // g
+
+/* the lab: kilograms, m³, kg/m³ */
+const SOLIDS = {
+  wood     :{name:'pine wood', rho:500,  col:0xd9b27c},
+  aluminium:{name:'aluminium', rho:2700, col:0xc9cfd6},
+  iron     :{name:'iron',      rho:7870, col:0x8f9298}   // the iron of 3dreactionscenes/
+};
+const SOLID_KEYS = ['wood','aluminium','iron'];
+const CUBE_CM = 10;                                 // chapter 3: every cube 10 cm along a side
+const CUBE_V_M3 = Math.pow(CUBE_CM, 3)/1e6;          // 0.001 m³ (from cm³, so it prints exactly)
+const SAME_M = 1;                                   // chapter 4: a kilogram of each
+const massOfCube = k => SOLIDS[k].rho*CUBE_V_M3;                  // kg
+const volOfKilo  = k => SAME_M/SOLIDS[k].rho*1e6;                 // cm³
+const sideOfKilo = k => Math.cbrt(volOfKilo(k));                  // cm
+
+const CH_LADDER = 8;                                // the chapter the ladder belongs to
+const AIR_RHO = 1.2, WATER_RHO = 1000;              // kg/m³, for the ladder
+
+/* the ladder, in kg/m³: food goes from g/cm³ to kg/m³ by ×1000 */
+const LADDER = [
+  {name:'air',         rho:AIR_RHO,            col:0x9aa8b8},
+  {name:'candy floss', rho:FLOSS_RHO*1000,     col:0xf7a8cf},
+  {name:'sponge cake', rho:CAKE_RHO*1000,      col:0xe9c27a},
+  {name:'pine wood',   rho:SOLIDS.wood.rho,    col:SOLIDS.wood.col},
+  {name:'brownie',     rho:BROWNIE_RHO*1000,   col:0x6a3a22},
+  {name:'water',       rho:WATER_RHO,          col:0x5aa9ff},
+  {name:'sugar',       rho:SUGAR.rho*1000,     col:0xf1ede4},
+  {name:'aluminium',   rho:SOLIDS.aluminium.rho, col:SOLIDS.aluminium.col},
+  {name:'iron',        rho:SOLIDS.iron.rho,    col:SOLIDS.iron.col}
+];
+
+/* ----------------------------------------------------------------- helpers */
+const clamp = (v,a,b) => v<a?a:(v>b?b:v);
+const lerp  = (a,b,u) => a + (b-a)*u;
+const ss = (a,b,x) => { const u = clamp((x-a)/(b-a),0,1); return u*u*(3-2*u); };
+const hexCss = n => '#'+n.toString(16).padStart(6,'0');
+const sig = (x, n) => String(Number(x.toPrecision(n)));          // 0.004, 0.35, 1.59
+const grp = x => Math.round(x).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+function rng(seed){
+  let a = seed >>> 0;
+  return function(){
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function hash(i){
+  let x = Math.imul(i|0, 0x9E3779B1);
+  x ^= x >>> 16; x = Math.imul(x, 0x85EBCA6B);
+  x ^= x >>> 13; x = Math.imul(x, 0xC2B2AE35);
+  x ^= x >>> 16;
+  return (x >>> 0)/4294967296;
+}
+
+/* the figures the captions quote */
+const FIG = {
+  flossTimes: Number((SUGAR.rho/FLOSS_RHO).toPrecision(1)),          // how many times less dense
+  flossAir:   ((1 - FLOSS_RHO/SUGAR.rho)*100).toFixed(1),            // % of the floss that is air
+  flossVolTimes: Number((FLOSS_V/SUGAR_V).toPrecision(1))
+};
+
+/* =========================================================================
+   THE SCALE READING
+========================================================================= */
+/* A load arrives at time `at`. The display jumps, overshoots a little and
+   settles, like a real kitchen scale. */
+const SETTLE = 1.1;
+function settle(s){ return s <= 0 ? 0 : 1 - Math.exp(-6*s)*Math.cos(10*s); }
+const readingAt = (m, at, t) => m*settle(t - at);
+const settledAt = (at, t) => t - at >= SETTLE;
+
+/* ----- chapter 0: the sugar ----- */
+const N_CRY = 260;
+const POUR0 = 0.8, POUR1 = 2.2, FALL = 0.35;       // crystals land between these
+const SPIN0 = 3.6, SPIN1 = 8.6, RISE = 0.9;         // and are spun into floss between these
+/* crystal order: the bottom of the heap lands first, the top is spun first */
+const CRY = (function(){
+  const R = rng(5), out = [];
+  const r = 0.3, h = 3*(SUGAR_V/1000)/(Math.PI*r*r);   // a cone holding the sugar's volume, in units
+  while(out.length < N_CRY){
+    const x = (R()*2-1)*r, z = (R()*2-1)*r, y = R()*h;
+    if(Math.hypot(x, z) > r*(1 - y/h)) continue;
+    out.push({x, y, z, rx:R()*6.3, ry:R()*6.3, ang:R()*6.3, fr:R(), fy:R()});
+  }
+  out.sort((a,b)=>a.y - b.y);
+  out.forEach((c,i)=>{
+    c.land = POUR0 + (POUR1 - POUR0)*i/(N_CRY-1);
+    c.rise = SPIN0 + (SPIN1 - SPIN0 - RISE)*(N_CRY-1-i)/(N_CRY-1);
+  });
+  return {list:out, h, r};
+})();
+/* how much of the sugar has landed, and how much has been spun into floss */
+function sugarState(t){
+  let landed = 0, spun = 0;
+  for(const c of CRY.list){
+    if(t >= c.land) landed++;
+    spun += ss(c.rise, c.rise + RISE, t);
+  }
+  landed /= N_CRY; spun /= N_CRY;
+  const mass = SUGAR.mass*landed;                              // spinning does not change the mass
+  const vol  = SUGAR_V*(landed - spun) + FLOSS_V*spun;         // what is left as crystals + the floss
+  return {landed, spun, mass, vol, rho: vol > 0 ? mass/vol : 0};
+}
+
+/* ----- chapter 1: the molecules ----- */
+const MOL = (function(){
+  const R = rng(17), A = 0.42, nx = 6, ny = 5, nz = 4, n = nx*ny*nz;
+  const home = [], slot = [];
+  for(let i=0;i<nx;i++) for(let j=0;j<ny;j++) for(let k=0;k<nz;k++)
+    home.push([(i - (nx-1)/2)*A, (j - (ny-1)/2)*A - 0.6, (k - (nz-1)/2)*A]);
+  /* six threads, each a pair of rows of molecules, wandering across a box
+     much bigger than the crystal */
+  const TH = 6, per = n/TH;
+  for(let j=0;j<TH;j++){
+    const y0 = -2.1 + j*0.84, z0 = (j % 2 ? 0.7 : -0.7), ph = R()*6.3, x0 = -4 + R()*1.2;
+    for(let k=0;k<per;k++){
+      const u = Math.floor(k/2)/(per/2 - 1), side = k % 2 ? 1 : -1;
+      slot.push([x0 + 6.6*u, y0 + 0.35*Math.sin(6.3*u + ph) + side*0.2, z0 + 0.45*Math.cos(4.4*u + ph)]);
+    }
+  }
+  /* send each molecule to a nearby slot: sort both by x */
+  const hi = home.map((p,i)=>i).sort((a,b)=>home[a][0]-home[b][0] || home[b][1]-home[a][1]);
+  const si = slot.map((p,i)=>i).sort((a,b)=>slot[a][0]-slot[b][0]);
+  const go = new Array(n);
+  hi.forEach((h,k)=>{ go[h] = si[k]; });
+  /* the top of the crystal goes first */
+  const order = home.map((p,i)=>i).sort((a,b)=>home[b][1]-home[a][1]);
+  const start = new Array(n);
+  order.forEach((m,k)=>{ start[m] = 1.6 + 5.4*k/(n-1); });
+  return {n, A, home, slot, go, start, box0:[nx*A, ny*A, nz*A], box1:[9.4, 5.8, 3.0]};
+})();
+const MOL_DUR = 1.3, MOL_R = 0.17;
+function moleculeAt(i, t, out){
+  const h = MOL.home[i], s = MOL.slot[MOL.go[i]];
+  const u = ss(MOL.start[i], MOL.start[i] + MOL_DUR, t);
+  for(let a=0;a<3;a++) out[a] = lerp(h[a], s[a], u);
+  out[1] += 0.9*Math.sin(Math.PI*u);                 // up and over
+  const jig = 0.025;
+  for(let a=0;a<3;a++) out[a] += jig*Math.sin(9*(1 + 0.3*hash(i*3+a))*t + 6.3*hash(i*7+a));
+  return u;
+}
+const molSpread = t => { let s = 0; for(let i=0;i<MOL.n;i++) s += ss(MOL.start[i], MOL.start[i] + MOL_DUR, t); return s/MOL.n; };
+
+/* =========================================================================
+   THREE
+========================================================================= */
+const stage = document.getElementById('stage');
+const fadeEl = document.getElementById('fade');
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio||1));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x080b11);
+scene.fog = new THREE.Fog(0x080b11, 40, 90);
+const camera = new THREE.PerspectiveCamera(44, 1, 0.03, 200);
+
+scene.add(new THREE.HemisphereLight(0x9fb4d0, 0x0a0d13, 0.6));
+const keyL  = new THREE.DirectionalLight(0xffffff, 0.95); keyL.position.set(6,11,8); scene.add(keyL);
+const fillL = new THREE.DirectionalLight(0x9ec3ff, 0.40); fillL.position.set(-8,4,-6); scene.add(fillL);
+const rimL  = new THREE.DirectionalLight(0xffd9b0, 0.32); rimL.position.set(0,3,-10); scene.add(rimL);
+
+(function environment(){
+  const env = new THREE.Scene();
+  const box = new THREE.BoxGeometry(1,1,1);
+  env.add(new THREE.Mesh(new THREE.BoxGeometry(30,18,30),
+    new THREE.MeshBasicMaterial({color:0x1d2634, side:THREE.BackSide})));
+  const panel=(hex,gain,x,y,z,sx,sy,sz)=>{
+    const m=new THREE.Mesh(box,new THREE.MeshBasicMaterial({color:hex}));
+    m.material.color.multiplyScalar(gain);
+    m.position.set(x,y,z); m.scale.set(sx,sy,sz); env.add(m);
+  };
+  panel(0xffffff,1.1,  0, 8.4,  0, 14,0.1,14);
+  panel(0xbcd6ff,1.3,-11, 1.5,  0, 0.1,11,20);
+  panel(0xffd7b0,0.9, 11, 1.5,  2, 0.1,11,20);
+  panel(0x8fb0e0,0.5,  0, 0.0,-12, 22,11,0.1);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(env, 0.04).texture;
+  pmrem.dispose();
+})();
+
+const SPH = new THREE.SphereGeometry(1,20,14);
+const CYL = new THREE.CylinderGeometry(1,1,1,16);
+const BOX = new THREE.BoxGeometry(1,1,1);
+
+function linearise(root){
+  root.traverse(o=>{
+    if(!o.material) return;
+    (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{
+      if(!m || m.userData.__lin) return;
+      m.userData.__lin = true;
+      if(m.color)    m.color.convertSRGBToLinear();
+      if(m.emissive) m.emissive.convertSRGBToLinear();
+    });
+  });
+}
+function canvasTex(w, h, paint){
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  paint(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+}
+
+/* the bench: a pool of light fading into the dark */
+const bench = new THREE.Mesh(new THREE.CylinderGeometry(26,26,0.4,64),
+  new THREE.MeshStandardMaterial({color:0x4a515d, roughness:0.94, metalness:0, envMapIntensity:0.10,
+    map:canvasTex(512, 512, (x,S)=>{
+      x.fillStyle = '#000'; x.fillRect(0,0,S,S);
+      const g = x.createRadialGradient(S/2,S/2,0, S/2,S/2,S*0.5);
+      g.addColorStop(0.00,'rgba(255,255,255,1)');
+      g.addColorStop(0.16,'rgba(226,232,242,0.78)');
+      g.addColorStop(0.32,'rgba(140,152,172,0.24)');
+      g.addColorStop(0.44,'rgba(56,64,78,0.06)');
+      g.addColorStop(0.50,'rgba(0,0,0,0)');
+      x.fillStyle = g; x.fillRect(0,0,S,S);
+    })}));
+bench.position.y = -0.2; scene.add(bench);
+
+/* ------------------------------------------------------------------ labels */
+function roundRect(ctx, x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x+r, y); ctx.lineTo(x+w-r, y); ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+  ctx.lineTo(x+w, y+h-r); ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+  ctx.lineTo(x+r, y+h); ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+  ctx.lineTo(x, y+r); ctx.quadraticCurveTo(x, y, x+r, y);
+  ctx.closePath();
+}
+function makeLabel(text, opt){
+  opt = opt || {};
+  const size = opt.size || 54, pad = opt.bg ? 26 : 18;
+  const c = document.createElement('canvas'), ctx = c.getContext('2d');
+  const font = (opt.weight || 600)+' '+size+'px "Iowan Old Style", Charter, Georgia, serif';
+  ctx.font = font;
+  const w = Math.ceil(ctx.measureText(text).width) + pad*2, h = size + pad*2;
+  c.width = w; c.height = h;
+  if(opt.bg){
+    roundRect(ctx, 3, 3, w-6, h-6, (h-6)/2);
+    ctx.fillStyle = opt.bg; ctx.fill();
+    if(opt.border){ ctx.lineWidth = 4; ctx.strokeStyle = opt.border; ctx.stroke(); }
+  }
+  ctx.font = font; ctx.textAlign='center'; ctx.textBaseline='middle';
+  if(!opt.bg){ ctx.shadowColor = 'rgba(0,0,0,.9)'; ctx.shadowBlur = 14; }
+  ctx.fillStyle = opt.color || '#eef2f7';
+  ctx.fillText(text, w/2, h/2 + size*0.04);
+  const tex = new THREE.CanvasTexture(c); tex.anisotropy = 4;
+  tex.encoding = THREE.sRGBEncoding;
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({
+    map:tex, transparent:true, depthTest:false, depthWrite:false}));
+  spr.renderOrder = 30;
+  const scale = opt.scale || 0.3;
+  spr.scale.set(w/h*scale, scale, 1);
+  spr.userData.opt = opt; spr.userData.text = text;
+  return spr;
+}
+function leader(parent, a, b, col){
+  const g = new THREE.BufferGeometry().setFromPoints([a, b]);
+  const l = new THREE.Line(g, new THREE.LineBasicMaterial({
+    color:col || 0xb8c4d4, transparent:true, depthTest:false, depthWrite:false}));
+  l.renderOrder = 29;
+  parent.add(l);
+  return l;
+}
+
+/* ---------------------------------------------------------- the cue sheet */
+const CUES = [];
+function cue(ch, obj, t0, o){
+  o = o || {};
+  obj.traverse(m=>{ if(m.material){ m.material.transparent = true; if(m.userData.op == null) m.userData.op = m.material.opacity; }});
+  CUES.push({ch, obj, t0, t1:o.t1, rise:o.rise || 0, base:obj.position.clone()});
+  obj.visible = false;
+  return obj;
+}
+function setOpacity(obj, a){
+  obj.traverse(m=>{ if(m.material) m.material.opacity = a*(m.userData.op != null ? m.userData.op : 1); });
+}
+function runCues(ch, t){
+  for(const c of CUES){
+    if(c.ch !== ch){ c.obj.visible = false; continue; }
+    let a = ss(c.t0, c.t0 + 0.6, t);
+    if(c.t1 != null) a *= 1 - ss(c.t1, c.t1 + 0.5, t);
+    c.obj.visible = a > 0.002;
+    if(!c.obj.visible) continue;
+    setOpacity(c.obj, a);
+    c.obj.position.y = c.base.y + c.rise*ss(c.t0, c.t0 + 1.8, t);
+  }
+}
+const V = (x,y,z) => new THREE.Vector3(x,y,z||0);
+const lbl = (parent, text, pos, opt) => { const s = makeLabel(text, opt); s.position.copy(pos); parent.add(s); return s; };
+const DIM = '#b8c4d4';
+const PILL_GOLD = {bg:'rgba(255,210,122,0.95)', color:'#2a1b00', weight:700};
+const PILL_DARK = {bg:'rgba(10,14,21,0.82)', border:'rgba(147,162,182,0.45)'};
+const NOTE = {scale:0.2, color:'#8a97aa'};
+
+/* =========================================================================
+   THE KITCHEN SCALE
+========================================================================= */
+const PLAT_TOP = 0.42;
+const darkPlastic = new THREE.MeshStandardMaterial({color:0x2a2f38, roughness:0.55, envMapIntensity:0.3});
+const brushed = new THREE.MeshStandardMaterial({color:0xb7bec8, roughness:0.32, metalness:0.85, envMapIntensity:0.7});
+
+function buildScale(parent, x){
+  const g = new THREE.Group(); g.position.x = x; parent.add(g);
+  const body = new THREE.Mesh(BOX, darkPlastic);
+  body.scale.set(1.9, 0.36, 1.9); body.position.y = 0.18; g.add(body);
+  const plat = new THREE.Mesh(BOX, brushed);
+  plat.scale.set(1.7, 0.05, 1.7); plat.position.y = PLAT_TOP - 0.025; g.add(plat);
+  /* the display: a canvas on the front face, redrawn when the reading changes */
+  const c = document.createElement('canvas'); c.width = 512; c.height = 112;
+  const ctx = c.getContext('2d');
+  const tex = new THREE.CanvasTexture(c); tex.encoding = THREE.sRGBEncoding;
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.15, 0.25),
+    new THREE.MeshBasicMaterial({map:tex, toneMapped:false}));
+  screen.position.set(0, 0.18, 0.951); g.add(screen);
+  const sc = {g, plat, ctx, tex, shown:null};
+  setScreen(sc, '0 g');
+  return sc;
+}
+function setScreen(sc, text){
+  if(sc.shown === text) return;
+  sc.shown = text;
+  const x = sc.ctx;
+  x.fillStyle = '#0c1712'; x.fillRect(0,0,512,112);
+  x.font = '700 80px ui-monospace, "Consolas", "Menlo", monospace';
+  x.textAlign = 'right'; x.textBaseline = 'middle';
+  x.fillStyle = '#8dffb6';
+  x.fillText(text, 490, 60);
+  sc.tex.needsUpdate = true;
+}
+const fmtG  = g  => Math.max(0, Math.round(g)) + ' g';
+const fmtKg = kg => Math.max(0, kg).toFixed(2) + ' kg';
+
+/* =========================================================================
+   THE THINGS BEING WEIGHED
+========================================================================= */
+/* chapter groups: each chapter's props, shown only in that chapter */
+const G = [0,1,2,3,4,5].map(()=>{ const g = new THREE.Group(); scene.add(g); return g; });
+
+/* ---------- chapter 0: sugar and candy floss ---------- */
+const sugarScale = buildScale(G[0], 0);
+const HEAP = {x:0, z:0.45};
+const STICK = {x:0, z:-0.35, top:PLAT_TOP + 1.95};
+const FLOSS_R = Math.cbrt(3*FLOSS_V/(4*Math.PI))/UNIT_CM;   // the cloud's radius at full size, in units
+const FLOSS_C = V(STICK.x, PLAT_TOP + 1.7, STICK.z);
+
+const stand = new THREE.Mesh(CYL, darkPlastic);
+stand.scale.set(0.16, 0.14, 0.16); stand.position.set(STICK.x, PLAT_TOP + 0.07, STICK.z); G[0].add(stand);
+const stick = new THREE.Mesh(CYL, new THREE.MeshStandardMaterial({color:0xf3efe6, roughness:0.8, envMapIntensity:0.3}));
+stick.scale.set(0.025, STICK.top - PLAT_TOP - 0.1, 0.025);
+stick.position.set(STICK.x, (STICK.top + PLAT_TOP + 0.1)/2, STICK.z); G[0].add(stick);
+
+const cryMesh = new THREE.InstancedMesh(BOX, new THREE.MeshStandardMaterial({color:0xf6f3ec,
+  roughness:0.25, metalness:0, envMapIntensity:0.6}), N_CRY);
+cryMesh.frustumCulled = false; G[0].add(cryMesh);
+const CRY_S = 0.035;
+
+/* the floss: a lumpy cloud (displaced by direction, so the seams stay shut)
+   and some loops of thread, all scaled by the cube root of how much has been
+   spun — its volume grows in step with the sugar going in */
+const floss = new THREE.Group(); floss.position.copy(FLOSS_C); G[0].add(floss);
+function lumpy(radius, seed, op){
+  const geo = new THREE.IcosahedronGeometry(1, 4);
+  const p = geo.attributes.position, v = new THREE.Vector3();
+  for(let i=0;i<p.count;i++){
+    v.fromBufferAttribute(p, i).normalize();
+    const n = 1 + 0.08*Math.sin(5*v.x + seed) + 0.07*Math.sin(6*v.y + 2*seed) + 0.06*Math.sin(7*v.z + 3*seed)
+                + 0.04*Math.sin(13*(v.x + v.y) + seed);
+    p.setXYZ(i, v.x*radius*n, v.y*radius*n*0.92, v.z*radius*n);
+  }
+  geo.computeVertexNormals();
+  return new THREE.Mesh(geo, new THREE.MeshStandardMaterial({color:0xf7a8cf, roughness:0.95,
+    transparent:true, opacity:op, depthWrite:false, envMapIntensity:0.3}));
+}
+const flossOuter = lumpy(FLOSS_R, 1.3, 0.42); flossOuter.renderOrder = 5;
+const flossInner = lumpy(FLOSS_R*0.7, 2.1, 0.35); flossInner.renderOrder = 4;
+floss.add(flossInner, flossOuter);
+const threads = new THREE.Group(); floss.add(threads);
+(function(){
+  const R = rng(41);
+  for(let k=0;k<16;k++){
+    const pts = [], rad = FLOSS_R*(0.75 + 0.3*R()), tilt = R()*Math.PI, spin = R()*6.3;
+    for(let i=0;i<=64;i++){
+      const a = i/64*Math.PI*2, w = 1 + 0.06*Math.sin(5*a + k);
+      pts.push(new THREE.Vector3(Math.cos(a)*rad*w, Math.sin(a)*rad*w*Math.cos(tilt), Math.sin(a)*rad*w*Math.sin(tilt)));
+    }
+    const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+      new THREE.LineBasicMaterial({color:0xffd3e8, transparent:true, opacity:0.55}));
+    l.rotation.y = spin;
+    threads.add(l);
+  }
+})();
+
+const _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _v = new THREE.Vector3(), _s = new THREE.Vector3();
+function updateSugar(t){
+  const st = sugarState(t);
+  CRY.list.forEach((c, i)=>{
+    const hx = HEAP.x + c.x, hy = PLAT_TOP + c.y + CRY_S/2, hz = HEAP.z + c.z;
+    let x, y, z, s = CRY_S;
+    if(t < c.land - FALL){ s = 0; x = hx; y = hy; z = hz; }
+    else if(t < c.land){
+      /* falling from the spoon */
+      const u = (t - (c.land - FALL))/FALL;
+      x = lerp(HEAP.x, hx, u); z = lerp(HEAP.z, hz, u);
+      y = lerp(PLAT_TOP + 1.3, hy, u*u);
+    } else {
+      /* spiralling up the stick into the floss */
+      const u = ss(c.rise, c.rise + RISE, t);
+      const fx = FLOSS_C.x + Math.cos(c.ang)*FLOSS_R*0.6*c.fr, fz = FLOSS_C.z + Math.sin(c.ang)*FLOSS_R*0.6*c.fr;
+      const fy = FLOSS_C.y + (c.fy - 0.5)*FLOSS_R;
+      const a = c.ang + u*Math.PI*3, rr = 0.35*Math.sin(Math.PI*u);
+      x = lerp(hx, fx, u) + Math.cos(a)*rr;
+      z = lerp(hz, fz, u) + Math.sin(a)*rr;
+      y = lerp(hy, fy, u);
+      s = CRY_S*(1 - ss(0.7, 1, u));
+    }
+    _e.set(c.rx + (t > c.rise ? t*4 : 0), c.ry, 0);
+    _m4.compose(_v.set(x, y, z), _q.setFromEuler(_e), _s.set(s, s, s));
+    cryMesh.setMatrixAt(i, _m4);
+  });
+  cryMesh.instanceMatrix.needsUpdate = true;
+
+  const k = Math.cbrt(st.spun);
+  floss.visible = st.spun > 1e-4;
+  floss.scale.setScalar(Math.max(1e-3, k));
+  threads.rotation.y = 2.2*t*(1 - ss(SPIN1, SPIN1 + 1, t)) + 2.2*SPIN1*ss(SPIN1, SPIN1 + 1, t);
+  setScreen(sugarScale, fmtG(st.mass));
+  sugarScale.plat.position.y = PLAT_TOP - 0.025 - 0.006*st.landed;
+  return st;
+}
+
+cue(0, lbl(G[0], 'scale zeroed with the empty stick on it', V(0, -0.35, 1.3), NOTE), 0.3, {t1:POUR1 + 1});
+cue(0, lbl(G[0], SUGAR.mass + ' g of sugar', V(-1.75, PLAT_TOP + 0.35, 0.6), Object.assign({scale:0.3}, PILL_DARK)), POUR1 + 0.3);
+cue(0, lbl(G[0], 'spun into candy floss…', V(-2.2, PLAT_TOP + 1.7, 0), {scale:0.3}), SPIN0 + 0.2);
+cue(0, lbl(G[0], '…still ' + SUGAR.mass + ' g', V(-2.2, PLAT_TOP + 1.2, 0), Object.assign({scale:0.3}, PILL_DARK)), SPIN1 - 1.0);
+cue(0, lbl(G[0], 'about ' + grp(FIG.flossVolTimes) + ' times the volume', V(2.45, PLAT_TOP + 2.1, 0), {scale:0.3}), SPIN1 + 0.2);
+cue(0, lbl(G[0], 'density decreases', V(2.45, PLAT_TOP + 1.5, 0), Object.assign({scale:0.42}, PILL_GOLD)), SPIN1 + 1.0, {rise:0.12});
+
+/* ---------- chapter 2: cake and brownie ---------- */
+function crumbTex(base, hole, n, rMin, rMax, seed){
+  return canvasTex(256, 256, (x, S)=>{
+    x.fillStyle = base; x.fillRect(0,0,S,S);
+    const R = rng(seed);
+    for(let i=0;i<n;i++){
+      const cx = R()*S, cy = R()*S, r = rMin + (rMax - rMin)*R()*R();
+      x.fillStyle = hole;
+      x.beginPath(); x.ellipse(cx, cy, r, r*(0.6 + 0.4*R()), R()*3, 0, Math.PI*2); x.fill();
+    }
+  });
+}
+function crustTex(base, line, seed){
+  return canvasTex(256, 256, (x, S)=>{
+    x.fillStyle = base; x.fillRect(0,0,S,S);
+    const R = rng(seed);
+    x.strokeStyle = line; x.lineWidth = 2;
+    for(let i=0;i<40;i++){
+      x.beginPath(); let px = R()*S, py = R()*S; x.moveTo(px, py);
+      for(let k=0;k<4;k++){ px += (R()-0.5)*40; py += (R()-0.5)*40; x.lineTo(px, py); }
+      x.stroke();
+    }
+  });
+}
+function slice(crumb, crust, rough){
+  const side = new THREE.MeshStandardMaterial({map:crumb, roughness:0.9, envMapIntensity:0.25});
+  const top  = new THREE.MeshStandardMaterial({map:crust, roughness:rough, envMapIntensity:0.3});
+  const m = new THREE.Mesh(new THREE.BoxGeometry(SLICE.w/UNIT_CM, SLICE.h/UNIT_CM, SLICE.d/UNIT_CM),
+    [side, side, top, side, side, side]);
+  return m;
+}
+const CAKE_X = -1.25, BROWNIE_X = 1.25, CAKE_AT = 1.2, BROWNIE_AT = 2.4, DROP = 0.6, LIFT = 1.4;
+const cakeScale = buildScale(G[2], CAKE_X), brownieScale = buildScale(G[2], BROWNIE_X);
+/* lots of big holes in the sponge, a few small ones in the brownie */
+const cake = slice(crumbTex('#e9c27a', '#b9894a', 140, 2, 9, 3), crustTex('#b8783a', '#8f5526', 4), 0.85);
+const brownie = slice(crumbTex('#4a2a1a', '#2c180e', 18, 1, 3, 5), crustTex('#3a2014', '#5a3626', 6), 0.4);
+G[2].add(cake, brownie);
+cue(2, lbl(G[2], 'sponge cake', V(CAKE_X, PLAT_TOP + 1.4, 0), {scale:0.32, color:'#ffd99a'}), 0.4);
+cue(2, lbl(G[2], 'brownie', V(BROWNIE_X, PLAT_TOP + 1.4, 0), {scale:0.32, color:'#d9a07a'}), 0.4);
+cue(2, lbl(G[2], 'same size: '+SLICE.w+' × '+SLICE.d+' × '+SLICE.h+' cm = '+SLICE_V+' cm³', V(0, PLAT_TOP + 1.95, 0), {scale:0.24, color:DIM}), 0.8);
+cue(2, lbl(G[2], 'full of air bubbles', V(CAKE_X - 0.2, -0.3, 1.35), Object.assign({scale:0.22}, PILL_DARK)), BROWNIE_AT + 1.6);
+cue(2, lbl(G[2], 'fudgy — hardly any air', V(BROWNIE_X + 0.2, -0.3, 1.35), Object.assign({scale:0.22}, PILL_DARK)), BROWNIE_AT + 2.2);
+cue(2, lbl(G[2], 'less dense', V(CAKE_X, PLAT_TOP + 0.95, 0), Object.assign({scale:0.3}, PILL_GOLD)), BROWNIE_AT + 3.4);
+cue(2, lbl(G[2], 'more dense', V(BROWNIE_X, PLAT_TOP + 0.95, 0), Object.assign({scale:0.3}, PILL_DARK, {color:'#ffd27a'})), BROWNIE_AT + 3.8);
+
+/* ---------- chapters 3 and 4: cubes ---------- */
+const woodTex = canvasTex(256, 256, (x, S)=>{
+  x.fillStyle = '#d9b27c'; x.fillRect(0,0,S,S);
+  const R = rng(9);
+  for(let i=0;i<34;i++){
+    const y0 = R()*S;
+    x.strokeStyle = 'rgba(140,90,40,'+(0.2 + 0.35*R())+')'; x.lineWidth = 1 + 3*R();
+    x.beginPath(); x.moveTo(0, y0);
+    for(let px=0; px<=S; px+=16) x.lineTo(px, y0 + 6*Math.sin(px/40 + i));
+    x.stroke();
+  }
+});
+function cubeMat(k){
+  if(k === 'wood') return new THREE.MeshStandardMaterial({map:woodTex, roughness:0.8, envMapIntensity:0.3});
+  if(k === 'aluminium') return new THREE.MeshStandardMaterial({color:SOLIDS.aluminium.col, roughness:0.35, metalness:0.85, envMapIntensity:0.9});
+  return new THREE.MeshStandardMaterial({color:SOLIDS.iron.col, roughness:0.45, metalness:0.8, envMapIntensity:0.55});
+}
+const CUBE_X = [-2.4, 0, 2.4], CUBE_AT = [1.0, 1.9, 2.8];
+function buildCubes(gp, sideCm){
+  return SOLID_KEYS.map((k, i)=>{
+    const sc = buildScale(gp, CUBE_X[i]);
+    const s = sideCm(k)/UNIT_CM;
+    const mesh = new THREE.Mesh(BOX, cubeMat(k));
+    mesh.scale.setScalar(s);
+    gp.add(mesh);
+    return {k, sc, mesh, side:s};
+  });
+}
+const SAME_V = buildCubes(G[3], ()=>CUBE_CM);
+const SAME_MASS = buildCubes(G[4], sideOfKilo);
+const ALL_READ = CUBE_AT[2] + DROP + SETTLE;
+
+SOLID_KEYS.forEach((k, i)=>{
+  const col = k === 'wood' ? '#e8c28c' : k === 'aluminium' ? '#dfe5ec' : '#b8bcc4';
+  cue(3, lbl(G[3], SOLIDS[k].name, V(CUBE_X[i], -0.25, 1.35), {scale:0.28, color:col}), 0.4);
+  cue(3, lbl(G[3], grp(SOLIDS[k].rho)+' kg/m³', V(CUBE_X[i], PLAT_TOP + 1.55, 0), Object.assign({scale:0.3}, PILL_GOLD)), ALL_READ + 1.6 + 0.4*i, {rise:0.08});
+  cue(4, lbl(G[4], SOLIDS[k].name, V(CUBE_X[i], -0.25, 1.35), {scale:0.28, color:col}), 0.4);
+  cue(4, lbl(G[4], grp(volOfKilo(k))+' cm³', V(CUBE_X[i], PLAT_TOP + sideOfKilo(k)/UNIT_CM + 0.35, 0), Object.assign({scale:0.28}, PILL_DARK)), ALL_READ + 0.8 + 0.4*i);
+});
+cue(3, lbl(G[3], 'each cube: '+CUBE_CM+' cm × '+CUBE_CM+' cm × '+CUBE_CM+' cm', V(0, PLAT_TOP + 2.3, 0), {scale:0.26, color:DIM}), 0.6, {t1:ALL_READ - 0.2});
+cue(3, lbl(G[3], 'same volume, different mass', V(0, PLAT_TOP + 2.3, 0), Object.assign({scale:0.3}, PILL_DARK)), ALL_READ + 0.3);
+cue(3, lbl(G[3], 'density = mass ÷ volume', V(0, PLAT_TOP + 2.85, 0), Object.assign({scale:0.36}, PILL_GOLD)), ALL_READ + 1.2, {rise:0.08});
+cue(4, lbl(G[4], 'a kilogram of each', V(0, PLAT_TOP + 2.3, 0), {scale:0.28, color:DIM}), 0.6, {t1:ALL_READ + 1.8});
+cue(4, lbl(G[4], 'same mass — the denser it is, the smaller it is', V(0, PLAT_TOP + 2.3, 0), Object.assign({scale:0.3}, PILL_GOLD)), ALL_READ + 2.4, {rise:0.08});
+
+/* place a thing on a scale: it hangs above, drops at `at`, and the reading follows */
+function place(mesh, x, h, at, t){
+  const f = clamp((t - at)/DROP, 0, 1);              // falls like a dropped thing: slow, then fast
+  mesh.position.set(x, PLAT_TOP + h/2 + LIFT*(1 - f*f), 0);
+}
+
+/* ---------- chapter 5: the ladder ---------- */
+const LAD = {x0:-5, x1:5, y:1.1, d0:0, d1:4};        // log10 of kg/m³ along x
+const ladX = rho => lerp(LAD.x0, LAD.x1, (Math.log10(rho) - LAD.d0)/(LAD.d1 - LAD.d0));
+const LEVELS = [0.75, -0.75, 0.75, -0.75, 1.5, -1.5, 0.75, -0.75, 0.75];
+{
+  const bar = new THREE.Mesh(CYL, new THREE.MeshStandardMaterial({color:0x6c7a8c, roughness:0.5, envMapIntensity:0.3}));
+  bar.scale.set(0.035, LAD.x1 - LAD.x0, 0.035); bar.rotation.z = Math.PI/2; bar.position.y = LAD.y;
+  G[5].add(bar);
+  for(let d=LAD.d0; d<=LAD.d1; d++){
+    const tick = new THREE.Mesh(BOX, new THREE.MeshBasicMaterial({color:0x8a97aa}));
+    tick.scale.set(0.02, 0.22, 0.02); tick.position.set(ladX(Math.pow(10,d)), LAD.y, 0); G[5].add(tick);
+    cue(CH_LADDER, lbl(G[5], grp(Math.pow(10, d)), V(ladX(Math.pow(10,d)), LAD.y - 2.25, 0), {scale:0.22, color:'#8a97aa'}), 0.3);
+  }
+  cue(CH_LADDER, lbl(G[5], 'density in kg/m³ — each mark is ten times the last', V(0, LAD.y - 2.7, 0), NOTE), 0.3);
+  /* water gets a line up through the whole ladder */
+  const wl = new THREE.Mesh(BOX, new THREE.MeshBasicMaterial({color:0x5aa9ff, transparent:true, opacity:0.35}));
+  wl.scale.set(0.015, 3.6, 0.015); wl.position.set(ladX(WATER_RHO), LAD.y, -0.05); G[5].add(wl);
+  cue(CH_LADDER, wl, 0.6 + 0.55*5);
+}
+const LADDER_SORTED = LADDER.slice().sort((a,b)=>a.rho - b.rho);
+LADDER_SORTED.forEach((it, k)=>{
+  const x = ladX(it.rho), lv = LEVELS[k];
+  const g = new THREE.Group(); G[5].add(g);
+  const dot = new THREE.Mesh(SPH, new THREE.MeshStandardMaterial({color:it.col, roughness:0.5, envMapIntensity:0.4}));
+  dot.scale.setScalar(0.11); dot.position.set(x, LAD.y, 0); g.add(dot);
+  leader(g, V(x, LAD.y + Math.sign(lv)*0.12, 0), V(x, LAD.y + lv - Math.sign(lv)*0.2, 0), 0x8a97aa);
+  const txt = it.name + ' · ' + (it.rho < 10 ? sig(it.rho, 2) : grp(it.rho));
+  lbl(g, txt, V(x, LAD.y + lv, 0), Object.assign({scale:0.24}, PILL_DARK, {color: it.name === 'water' ? '#9ec3ff' : '#eef2f7'}));
+  cue(CH_LADDER, g, 0.6 + 0.55*k);
+});
+
+/* =========================================================================
+   THE MOLECULES  (chapter 1, at MICRO_Y)
+========================================================================= */
+const MICRO_Y = 400;
+const micro = new THREE.Group(); micro.position.y = MICRO_Y; scene.add(micro);
+const molMesh = new THREE.InstancedMesh(SPH, new THREE.MeshStandardMaterial({color:0xf1ede4,
+  roughness:0.4, envMapIntensity:0.5}), MOL.n);
+molMesh.frustumCulled = false; micro.add(molMesh);
+const molPos = new Float32Array(MOL.n*3);
+const volBox = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1,1,1)),
+  new THREE.LineBasicMaterial({color:0x9fb4cc, transparent:true, opacity:0.55}));
+micro.add(volBox);
+/* air between the threads: a few faint particles bouncing about */
+const N_AIR = 26;
+const airMesh = new THREE.InstancedMesh(SPH, new THREE.MeshStandardMaterial({color:0x9aa8b8, roughness:0.6,
+  transparent:true, opacity:0.0, depthWrite:false}), N_AIR);
+airMesh.frustumCulled = false; micro.add(airMesh);
+const AIR = (function(){
+  const R = rng(77), a = [];
+  for(let i=0;i<N_AIR;i++) a.push({p:[(R()*2-1)*4.4, (R()*2-1)*2.6, (R()*2-1)*1.3],
+                                   v:[(R()*2-1)*1.6, (R()*2-1)*1.6, (R()*2-1)*1.0]});
+  return a;
+})();
+function tri(u, h){
+  const L = 2*h, w = ((u + h) % (2*L) + 2*L) % (2*L);
+  return -h + (w < L ? w : 2*L - w);
+}
+const _p = [0,0,0];
+function updateMolecules(t){
+  const A = molMesh.instanceMatrix.array;
+  for(let i=0;i<MOL.n;i++){
+    moleculeAt(i, t, _p);
+    molPos.set(_p, i*3);
+    const o = i*16;
+    A[o]=MOL_R; A[o+1]=0; A[o+2]=0; A[o+3]=0; A[o+4]=0; A[o+5]=MOL_R; A[o+6]=0; A[o+7]=0;
+    A[o+8]=0; A[o+9]=0; A[o+10]=MOL_R; A[o+11]=0; A[o+12]=_p[0]; A[o+13]=_p[1]; A[o+14]=_p[2]; A[o+15]=1;
+  }
+  molMesh.instanceMatrix.needsUpdate = true;
+  const s = molSpread(t);
+  const b = MOL.box0.map((v,a)=>lerp(v + 0.3, MOL.box1[a], s));
+  volBox.scale.set(b[0], b[1], b[2]);
+  volBox.position.y = lerp(-0.6, 0, s);
+  const B = airMesh.instanceMatrix.array;
+  AIR.forEach((a, i)=>{
+    const o = i*16, r = 0.09;
+    const x = tri(a.p[0] + a.v[0]*t, b[0]/2 - 0.1), y = tri(a.p[1] + a.v[1]*t, b[1]/2 - 0.1) + volBox.position.y,
+          z = tri(a.p[2] + a.v[2]*t, b[2]/2 - 0.1);
+    B[o]=r; B[o+1]=0; B[o+2]=0; B[o+3]=0; B[o+4]=0; B[o+5]=r; B[o+6]=0; B[o+7]=0;
+    B[o+8]=0; B[o+9]=0; B[o+10]=r; B[o+11]=0; B[o+12]=x; B[o+13]=y; B[o+14]=z; B[o+15]=1;
+  });
+  airMesh.instanceMatrix.needsUpdate = true;
+  airMesh.material.opacity = 0.55*ss(0.3, 0.9, s);
+  return s;
+}
+cue(1, lbl(micro, 'zoomed in: sugar molecules in a crystal', V(0, 3.5, 0), {scale:0.3, color:DIM}), 1.6, {t1:5});
+cue(1, lbl(micro, 'melted and spun out into threads', V(0, 3.5, 0), {scale:0.3}), 5.5);
+cue(1, lbl(micro, 'the same molecules — the same mass', V(-2.6, -3.55, 0.6), Object.assign({scale:0.26}, PILL_DARK)), 7.4);
+cue(1, lbl(micro, '…spread through a much bigger volume', V(2.6, -3.55, 0.6), Object.assign({scale:0.26}, PILL_DARK)), 8.2);
+cue(1, lbl(micro, 'the gaps are full of air', V(5.4, 2.4, 0), {scale:0.26, color:'#b8c4d4'}), 8.8);
+cue(1, lbl(micro, 'density decreases', V(0, 2.9, 0), Object.assign({scale:0.42}, PILL_GOLD)), 9.6, {rise:0.12});
+cue(1, lbl(micro, 'not to scale: real threads are thousands of molecules thick, and real floss is '+FIG.flossAir+'% air', V(0, -4.1, 0.6), NOTE), 2.2);
+const sugarMicro = [molMesh, volBox, airMesh];
+
+/* =========================================================================
+   ATOMS  (chapters 5 and 6, also at MICRO_Y)
+
+   Relative masses as the textbook gives them; lattice constants and atomic
+   radii are data-book values, in ångströms (Å).
+========================================================================= */
+const ATOM = {
+  aluminium:{name:'aluminium', Ar:27,  kind:'fcc', a:4.05, r:1.43, col:SOLIDS.aluminium.col},
+  iron     :{name:'iron',      Ar:56,  kind:'bcc', a:2.87, r:1.26, col:SOLIDS.iron.col},
+  gold     :{name:'gold',      Ar:197, kind:'fcc', a:4.08, r:1.44, col:0xe8b33a}   // gold of pure-substances-vs-mixtures
+};
+const BASIS = {fcc:[[0,0,0],[0.5,0.5,0],[0.5,0,0.5],[0,0.5,0.5]], bcc:[[0,0,0],[0.5,0.5,0.5]]};
+
+/* n whole cells of a pattern filling a cube of side L, centred on the origin,
+   offset a quarter of a cell so no atom sits on a face of the box */
+function lattice(kind, n, L){
+  const a = L/n, out = [];
+  for(let i=0;i<n;i++) for(let j=0;j<n;j++) for(let k=0;k<n;k++) for(const b of BASIS[kind])
+    out.push((i + b[0] + 0.25)*a - L/2, (j + b[1] + 0.25)*a - L/2, (k + b[2] + 0.25)*a - L/2);
+  return new Float32Array(out);
+}
+
+/* ---------- chapter 5: why iron is denser than aluminium ---------- */
+/* Whole numbers of each pattern have to fill the same box. Five cells of
+   aluminium (5 × 4.05 Å) and seven of iron (7 × 2.87 Å) are within 1% of
+   each other, so both are drawn in a box of their average size. */
+const CELLS = {aluminium:5, iron:7};
+const BOX_A = (CELLS.aluminium*ATOM.aluminium.a + CELLS.iron*ATOM.iron.a)/2;      // Å
+const BOX_MISMATCH = Math.abs(CELLS.aluminium*ATOM.aluminium.a - CELLS.iron*ATOM.iron.a)/BOX_A;
+const ANG = 2.6/BOX_A;                                                             // units per Å
+const PACK = {};
+for(const k of ['aluminium','iron']){
+  const P = lattice(ATOM[k].kind, CELLS[k], BOX_A*ANG);
+  PACK[k] = {P, n:P.length/3, mass:P.length/3*ATOM[k].Ar};
+}
+FIG.massRatio   = PACK.iron.mass/PACK.aluminium.mass;
+FIG.arRatio     = ATOM.iron.Ar/ATOM.aluminium.Ar;
+FIG.countRatio  = PACK.iron.n/PACK.aluminium.n;
+FIG.rhoRatio    = SOLIDS.iron.rho/SOLIDS.aluminium.rho;
+
+const atomsG = new THREE.Group(); micro.add(atomsG);
+const PACK_X = {aluminium:-2.1, iron:2.1};
+const FILL0 = 1.8, FILL1 = 5.0;                       // atoms appear, bottom up, in this window
+const BAR0 = 8.6, BAR1 = 10.2;                        // and the mass bars grow in this one
+for(const k of ['aluminium','iron']){
+  const g = new THREE.Group(); g.position.x = PACK_X[k]; atomsG.add(g);
+  const pk = PACK[k];
+  pk.mesh = new THREE.InstancedMesh(SPH, new THREE.MeshStandardMaterial({color:ATOM[k].col,
+    roughness:0.35, metalness:0.6, envMapIntensity:0.7}), pk.n);
+  pk.mesh.frustumCulled = false; g.add(pk.mesh);
+  pk.r = ATOM[k].r*ANG*0.5;                            // drawn at half size, so you can see in
+  /* fill order: bottom layer first */
+  pk.order = Array.from({length:pk.n}, (_, i)=>i).sort((a,b)=>pk.P[a*3+1]-pk.P[b*3+1] || pk.P[a*3]-pk.P[b*3]);
+  pk.appear = new Float32Array(pk.n);
+  pk.order.forEach((m, r)=>{ pk.appear[m] = FILL0 + (FILL1 - FILL0)*r/(pk.n - 1); });
+  const L = BOX_A*ANG;
+  g.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(L, L, L)),
+    new THREE.LineBasicMaterial({color:0x9fb4cc, transparent:true, opacity:0.55})));
+  /* one atom on its own, above the box, at its true size relative to the other */
+  const one = new THREE.Mesh(SPH, pk.mesh.material.clone());     // its own, so fading it leaves the box alone
+  one.scale.setScalar(ATOM[k].r*0.24);
+  one.position.set(0, L/2 + 0.85, 0); g.add(one);
+  cue(5, one, 5.6);
+  cue(5, lbl(g, ATOM[k].name, V(0, L/2 + 1.55, 0), {scale:0.34, color: k === 'iron' ? '#c8ccd4' : '#e6ebf0'}), 0.5);
+  cue(5, lbl(g, 'relative mass of one atom: '+ATOM[k].Ar, V(0, L/2 + 0.32, 0.6), Object.assign({scale:0.22}, PILL_DARK)), 5.9 + (k === 'iron' ? 0.5 : 0));
+  pk.countLbl = cue(5, lbl(g, pk.n+' atoms', V(0, -L/2 - 0.35, 0.6), {scale:0.26}), FILL1 + 0.2);
+  /* the mass in the box, as a bar beside it */
+  const bar = new THREE.Mesh(BOX, new THREE.MeshStandardMaterial({color:0xffd27a, roughness:0.5,
+    emissive:new THREE.Color(0xffd27a).multiplyScalar(0.25)}));
+  bar.position.set((k === 'iron' ? 1 : -1)*(L/2 + 0.45), 0, 0); g.add(bar);
+  pk.bar = bar;
+  cue(5, lbl(g, 'mass: '+grp(pk.mass), V((k === 'iron' ? 1 : -1)*(L/2 + 0.45), -L/2 - 0.35, 0.6), {scale:0.24, color:'#ffd27a'}), BAR1);
+}
+cue(5, lbl(atomsG, 'zoomed in: the same volume of each metal', V(0, 3.45, 0), {scale:0.3, color:DIM}), 1.2, {t1:5.4});
+cue(5, lbl(atomsG, 'iron atoms are about twice as heavy…', V(0, -2.35, 0.6), Object.assign({scale:0.26}, PILL_DARK)), 6.6);
+cue(5, lbl(atomsG, '…and a little closer together', V(0, -2.85, 0.6), Object.assign({scale:0.26}, PILL_DARK)), 7.6);
+cue(5, lbl(atomsG, 'more mass in the same volume: denser', V(0, 3.45, 0), Object.assign({scale:0.36}, PILL_GOLD)), BAR1 + 0.6, {rise:0.08});
+cue(5, lbl(atomsG, 'atoms drawn at half size so you can see inside', V(0, -3.35, 0.6), NOTE), 2.0);
+
+function updateAtoms(t){
+  const mMax = PACK.iron.mass, L = BOX_A*ANG;
+  for(const k of ['aluminium','iron']){
+    const pk = PACK[k], A = pk.mesh.instanceMatrix.array;
+    for(let i=0;i<pk.n;i++){
+      const s = pk.r*ss(pk.appear[i], pk.appear[i] + 0.25, t), o = i*16;
+      const j = 0.006*Math.sin(11*(1 + 0.3*hash(i*3)) *t + 6.3*hash(i*5));
+      A[o]=s; A[o+1]=0; A[o+2]=0; A[o+3]=0; A[o+4]=0; A[o+5]=s; A[o+6]=0; A[o+7]=0;
+      A[o+8]=0; A[o+9]=0; A[o+10]=s; A[o+11]=0;
+      A[o+12]=pk.P[i*3] + j; A[o+13]=pk.P[i*3+1] + j; A[o+14]=pk.P[i*3+2]; A[o+15]=1;
+    }
+    pk.mesh.instanceMatrix.needsUpdate = true;
+    const h = Math.max(0.001, L*pk.mass/mMax*ss(BAR0, BAR1, t));
+    pk.bar.scale.set(0.22, h, 0.22);
+    pk.bar.position.y = -L/2 + h/2;
+    pk.bar.visible = t > BAR0;
+  }
+}
+
+/* ---------- chapter 6: solid, liquid and gas gold ---------- */
+/* Solid and liquid gold near the melting point; the gas at the boiling
+   point, from the ideal gas law: rho = p M / (R T). */
+const GOLD_RHO = {solid:19.3, liquid:17.3};                     // g/cm³
+const GOLD_GAS = {p:101325, M:0.19697, T:2856 + 273};           // Pa, kg/mol, K
+GOLD_RHO.gas = GOLD_GAS.p*GOLD_GAS.M/(8.314*GOLD_GAS.T)/1000;  // g/cm³
+const STATE_L = 3*ATOM.gold.a*0.2;                               // three cells of solid gold, 0.2 units per Å
+const STATE_N = {solid:4*27, liquid:Math.round(4*27*GOLD_RHO.liquid/GOLD_RHO.solid)};
+const GAS_DRAWN = 3;
+const GAS_EXPECT = STATE_N.solid*GOLD_RHO.gas/GOLD_RHO.solid;    // atoms a box this size really holds, on average
+FIG.gasOneIn = Math.round(1/GAS_EXPECT/10)*10;
+
+/* the liquid: the same atoms, jumbled and a little further apart — pushed
+   apart from random starting places until none is closer than the spacing */
+function relax(n, L, seed){
+  const R = rng(seed), P = new Float32Array(n*3);
+  const d = L/Math.cbrt(n), lim = L/2 - d/2;
+  for(let i=0;i<n*3;i++) P[i] = (R()*2-1)*lim;
+  for(let it=0; it<400; it++){
+    for(let i=0;i<n;i++) for(let j=i+1;j<n;j++){
+      const dx = P[j*3]-P[i*3], dy = P[j*3+1]-P[i*3+1], dz = P[j*3+2]-P[i*3+2];
+      const r2 = dx*dx+dy*dy+dz*dz;
+      if(r2 >= d*d) continue;
+      const r = Math.sqrt(r2) || 1e-6, push = (d - r)*0.25/r;
+      P[i*3] -= dx*push; P[i*3+1] -= dy*push; P[i*3+2] -= dz*push;
+      P[j*3] += dx*push; P[j*3+1] += dy*push; P[j*3+2] += dz*push;
+    }
+    for(let i=0;i<n*3;i++) P[i] = clamp(P[i], -lim, lim);
+  }
+  return P;
+}
+const STATE_P = {
+  solid : lattice('fcc', 3, STATE_L),
+  liquid: relax(STATE_N.liquid, STATE_L, 61),
+  gas   : (function(){
+    const R = rng(8), e = [];
+    for(let i=0;i<GAS_DRAWN;i++) e.push({p:[(R()*2-1), (R()*2-1), (R()*2-1)], v:[(R()*2-1)*2.2, (R()*2-1)*2.2, (R()*2-1)*2.2]});
+    return e;
+  })()
+};
+const STATE_X = {solid:-3.3, liquid:0, gas:3.3};
+const STATE_R = ATOM.gold.r*0.2*0.75;
+const statesG = new THREE.Group(); micro.add(statesG);
+const goldMat = new THREE.MeshStandardMaterial({color:ATOM.gold.col, roughness:0.3, metalness:0.7, envMapIntensity:0.8});
+const STATE_MESH = {};
+for(const s of ['solid','liquid','gas']){
+  const g = new THREE.Group(); g.position.x = STATE_X[s]; statesG.add(g);
+  const n = s === 'gas' ? GAS_DRAWN : STATE_N[s];
+  const m = new THREE.InstancedMesh(SPH, goldMat, n); m.frustumCulled = false; g.add(m);
+  STATE_MESH[s] = m;
+  g.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(STATE_L, STATE_L, STATE_L)),
+    new THREE.LineBasicMaterial({color:0x9fb4cc, transparent:true, opacity:0.55})));
+  const word = {solid:'solid gold', liquid:'liquid gold', gas:'gold gas'}[s];
+  cue(6, lbl(g, word, V(0, STATE_L/2 + 0.45, 0), {scale:0.32, color:'#f2cf7a'}), 0.5 + 0.4*['solid','liquid','gas'].indexOf(s));
+  cue(6, lbl(g, sig(GOLD_RHO[s], s === 'gas' ? 2 : 3)+' g/cm³', V(0, -STATE_L/2 - 0.4, 0.6), Object.assign({scale:0.28}, s === 'solid' ? PILL_GOLD : PILL_DARK)),
+      2.4 + 0.8*['solid','liquid','gas'].indexOf(s));
+}
+cue(6, lbl(statesG, 'packed tightly, in a regular pattern', V(STATE_X.solid, -STATE_L/2 - 1.0, 0.6), {scale:0.22, color:DIM}), 4.6);
+cue(6, lbl(statesG, 'still touching, but jumbled and a little further apart', V(STATE_X.liquid, -STATE_L/2 - 1.0, 0.6), {scale:0.22, color:DIM}), 5.4);
+cue(6, lbl(statesG, 'very far apart', V(STATE_X.gas, -STATE_L/2 - 1.0, 0.6), {scale:0.22, color:DIM}), 6.2);
+cue(6, lbl(statesG, 'the same atoms in every box — only how closely they are packed changes', V(0, STATE_L/2 + 1.15, 0), Object.assign({scale:0.26}, PILL_DARK)), 7.2);
+cue(6, lbl(statesG, 'gas drawn with '+GAS_DRAWN+' atoms — a box this size would really hold one only about 1 time in '+grp(FIG.gasOneIn), V(0, -STATE_L/2 - 1.55, 0.6), NOTE), 6.4);
+
+function updateStates(t){
+  const put = (mesh, i, x, y, z) => {
+    const A = mesh.instanceMatrix.array, o = i*16, r = STATE_R;
+    A[o]=r; A[o+1]=0; A[o+2]=0; A[o+3]=0; A[o+4]=0; A[o+5]=r; A[o+6]=0; A[o+7]=0;
+    A[o+8]=0; A[o+9]=0; A[o+10]=r; A[o+11]=0; A[o+12]=x; A[o+13]=y; A[o+14]=z; A[o+15]=1;
+  };
+  const S = STATE_P.solid;
+  for(let i=0;i<STATE_N.solid;i++){
+    const j = 0.02*Math.sin(10*(1 + 0.3*hash(i))*t + 6.3*hash(i+50));
+    put(STATE_MESH.solid, i, S[i*3] + j, S[i*3+1] + 0.7*j, S[i*3+2]);
+  }
+  const Lq = STATE_P.liquid, lim = STATE_L/2 - STATE_R;
+  for(let i=0;i<STATE_N.liquid;i++){
+    const w = [0,1,2].map(a=>0.05*Math.sin(7*(1 + 0.3*hash(i*3+a))*t + 6.3*hash(i*7+a))
+                          + 0.06*Math.sin(0.8*(1 + 0.4*hash(i*11+a))*t + 6.3*hash(i*13+a)));
+    put(STATE_MESH.liquid, i, clamp(Lq[i*3] + w[0], -lim, lim), clamp(Lq[i*3+1] + w[1], -lim, lim), clamp(Lq[i*3+2] + w[2], -lim, lim));
+  }
+  STATE_P.gas.forEach((e, i)=>put(STATE_MESH.gas, i,
+    tri(e.p[0] + e.v[0]*t, lim), tri(e.p[1] + e.v[1]*t, lim), tri(e.p[2] + e.v[2]*t, lim)));
+  for(const s of ['solid','liquid','gas']) STATE_MESH[s].instanceMatrix.needsUpdate = true;
+}
+
+/* =========================================================================
+   SINK OR FLOAT  (chapter 7, on the bench)
+
+   A solid floats in its own liquid only if it is less dense. Floating, the
+   fraction under the surface is (density of solid) ÷ (density of liquid) —
+   that is where the ice is drawn to settle.
+========================================================================= */
+const WAX = {solid:0.90, liquid:0.78};          // g/cm³, paraffin: typical values
+const ICE = 0.917, WATER0 = 0.9998;             // g/cm³: ice, and water at 0 °C
+const FLOAT_F = ICE/WATER0;                     // the fraction of the ice under water
+FIG.icePct = Math.round(FLOAT_F*100);
+const BEAK = {r:0.85, h:1.75, glass:0.04, liq:1.25};
+const FCUBE = 0.42;                             // the side of each cube
+const SURF = BEAK.glass + BEAK.liq;
+const WAX_AT = 1.2, ICE_AT = 2.6, SINK = 2.6;
+const BEAK_X = {wax:-1.5, water:1.5};
+const floatG = G[6] = new THREE.Group(); scene.add(floatG);
+function beaker(x, col, op){
+  const g = new THREE.Group(); g.position.x = x; floatG.add(g);
+  const glassM = new THREE.MeshStandardMaterial({color:0xcfe3f0, roughness:0.05, transparent:true, opacity:0.16,
+    depthWrite:false, side:THREE.DoubleSide, envMapIntensity:1.4});
+  const shell = new THREE.Mesh(new THREE.LatheGeometry([
+    new THREE.Vector2(0, 0), new THREE.Vector2(BEAK.r, 0), new THREE.Vector2(BEAK.r, BEAK.h),
+    new THREE.Vector2(BEAK.r - BEAK.glass, BEAK.h), new THREE.Vector2(BEAK.r - BEAK.glass, BEAK.glass),
+    new THREE.Vector2(0, BEAK.glass)], 64), glassM);
+  shell.renderOrder = 6; g.add(shell);
+  const liq = new THREE.Mesh(new THREE.CylinderGeometry(BEAK.r - BEAK.glass - 0.005, BEAK.r - BEAK.glass - 0.005, BEAK.liq, 64),
+    new THREE.MeshStandardMaterial({color:col, roughness:0.1, transparent:true, opacity:op, depthWrite:false, envMapIntensity:1.0}));
+  liq.position.y = BEAK.glass + BEAK.liq/2; liq.renderOrder = 2; g.add(liq);
+  const top = new THREE.Mesh(new THREE.CircleGeometry(BEAK.r - BEAK.glass - 0.005, 64),
+    new THREE.MeshStandardMaterial({color:col, roughness:0.05, transparent:true, opacity:op + 0.04,
+      depthWrite:false, side:THREE.DoubleSide, envMapIntensity:1.2}));
+  top.rotation.x = -Math.PI/2; top.position.y = SURF + 0.004; top.renderOrder = 3; g.add(top);
+  return g;
+}
+beaker(BEAK_X.wax, new THREE.Color(0.95, 0.88, 0.62), 0.32);
+beaker(BEAK_X.water, new THREE.Color(0.58, 0.72, 0.84), 0.20);
+const waxCube = new THREE.Mesh(BOX, new THREE.MeshStandardMaterial({color:0xf3ead2, roughness:0.7, envMapIntensity:0.3}));
+waxCube.scale.setScalar(FCUBE); floatG.add(waxCube);
+const iceCube = new THREE.Mesh(BOX, new THREE.MeshStandardMaterial({color:0xdff0fb, roughness:0.08,
+  transparent:true, opacity:0.62, depthWrite:false, envMapIntensity:1.3}));
+iceCube.scale.setScalar(FCUBE); iceCube.renderOrder = 4; floatG.add(iceCube);
+
+const G_FALL = 9, DROP_H = 1.3;
+const iceRest = SURF - FCUBE*(FLOAT_F - 0.5);                 // centre height, floating
+const waxRest = BEAK.glass + FCUBE/2;                          // centre height, on the bottom
+/* the centre of each cube at time t */
+function waxY(t){
+  const y0 = SURF + FCUBE/2 + DROP_H, fall = Math.sqrt(2*DROP_H/G_FALL);
+  const s = t - WAX_AT;
+  if(s < 0) return y0;
+  if(s < fall) return y0 - 0.5*G_FALL*s*s;
+  return lerp(SURF + FCUBE/2, waxRest, ss(0, SINK, s - fall));
+}
+function iceY(t){
+  const y0 = SURF + FCUBE/2 + DROP_H, fall = Math.sqrt(2*DROP_H/G_FALL);
+  const s = t - ICE_AT;
+  if(s < 0) return y0;
+  if(s < fall) return y0 - 0.5*G_FALL*s*s;
+  const u = s - fall, start = SURF + FCUBE/2;
+  return iceRest + (start - iceRest)*Math.exp(-2.2*u)*Math.cos(6*u);
+}
+function updateFloat(t){
+  waxCube.position.set(BEAK_X.wax, waxY(t), 0);
+  waxCube.rotation.y = 0.3;
+  iceCube.position.set(BEAK_X.water, iceY(t), 0);
+  iceCube.rotation.y = -0.4;
+}
+cue(7, lbl(floatG, 'melted wax', V(BEAK_X.wax, BEAK.h + 0.75, 0), {scale:0.3, color:'#f2e2a0'}), 0.4);
+cue(7, lbl(floatG, 'water', V(BEAK_X.water, BEAK.h + 0.75, 0), {scale:0.3, color:'#9ec3ff'}), 0.4);
+cue(7, lbl(floatG, 'solid wax sinks', V(BEAK_X.wax, -0.3, 1.1), Object.assign({scale:0.26}, PILL_DARK)), WAX_AT + 2.6);
+cue(7, lbl(floatG, 'ice floats', V(BEAK_X.water, -0.3, 1.1), Object.assign({scale:0.26}, PILL_GOLD)), ICE_AT + 2.4);
+cue(7, lbl(floatG, 'about '+FIG.icePct+'% of the ice is under water', V(BEAK_X.water + 0.3, SURF + 0.6, 1.0), {scale:0.2, color:DIM}), ICE_AT + 3.4);
+cue(7, lbl(floatG, 'like most substances: the solid is denser than its liquid', V(0, BEAK.h + 1.3, 0), {scale:0.24, color:DIM}), WAX_AT + 3.4, {t1:ICE_AT + 3.6});
+cue(7, lbl(floatG, 'water is unusual: ice is less dense than water', V(0, BEAK.h + 1.3, 0), Object.assign({scale:0.28}, PILL_GOLD)), ICE_AT + 4.2, {rise:0.06});
+
+linearise(scene);
+
+/* =========================================================================
+   THE CHAPTERS
+========================================================================= */
+const CAM = {
+  wide   : {dist:11,  az:0.5,  el:0.35, look:[0,1.4,0]},
+  sugar  : {dist:7.6, az:0.32, el:0.2,  look:[0,1.55,0]},
+  heap   : {dist:0.9, az:0.3,  el:0.35, look:[HEAP.x,PLAT_TOP + 0.05,HEAP.z]},
+  mIn    : {dist:4,   az:0.5,  el:0.3,  look:[0,MICRO_Y-0.6,0]},
+  mol    : {dist:13,  az:0.18, el:0.12, look:[0,MICRO_Y-0.2,0]},
+  cake   : {dist:6.2, az:0.22, el:0.36, look:[0,0.95,0.2]},
+  cubes  : {dist:8.8, az:0.14, el:0.3,  look:[0,1.0,0.2]},
+  ladder : {dist:11.5,az:0.0,  el:0.08, look:[0,0.9,0]},
+  cubeIn : {dist:0.9, az:0.1,  el:0.2,  look:[CUBE_X[1], PLAT_TOP + 0.35, 0]},
+  aIn    : {dist:4.5, az:0.45, el:0.3,  look:[0,MICRO_Y,0]},
+  atoms  : {dist:11.5,az:0.16, el:0.12, look:[0,MICRO_Y+0.3,0]},
+  states : {dist:11.5,az:0.08, el:0.1,  look:[0,MICRO_Y+0.1,0]},
+  float  : {dist:6.4, az:0.12, el:0.2,  look:[0,1.15,0.2]}
+};
+
+/* the scale readings that feed the cards: [name, colour, mass, volume, density, ready] */
+const fmtCm3 = v => sig(v, 3).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' cm³';
+const FOOD_CARD = (name, col, m, v) => card3(name, col, fmtG(m), fmtCm3(v), sig(m/v, 3)+' g/cm³');
+
+const CH = [
+  {
+    part:'Sugar into candy floss', len:12,
+    shots:[{world:'macro', from:CAM.wide, to:CAM.sugar, dur:3}],
+    group:0, cards:'floss',
+    title:'The same sugar, a much bigger volume',
+    text:'Pour <b>'+SUGAR.mass+' g</b> of sugar onto a kitchen scale. A candy-floss machine melts sugar and spins it out through tiny holes into threads thinner than a hair, which tangle into a fluffy cloud.<br><br>Watch the scale: the floss still has a mass of <b>'+SUGAR.mass+' g</b> — no sugar has been added or taken away. But it now takes up about <b>'+grp(FIG.flossVolTimes)+' times the volume</b>. The same mass spread through a bigger volume means a lower <b>density</b>.',
+    look:'The mass on the card never changes once the sugar is in. The volume climbs, and the density falls.',
+    scale:'The volume is of the sugar crystals themselves, not counting the air between the grains.',
+    terms:[['Mass','how much matter there is, measured in grams (g) or kilograms (kg).'],
+           ['Volume','how much space something takes up, measured in cm³ or m³.']],
+    key:[]
+  },
+  {
+    part:'Zoom in', len:13,
+    shots:[{world:'macro', from:CAM.sugar, to:CAM.heap, dur:1.4, until:1.4},
+           {world:'micro', from:CAM.mIn, to:CAM.mol, dur:2.2}],
+    group:0, groupT:()=>POUR1 + 0.8, micro:'sugar', cards:'zoom',
+    title:'Same particles, more space between them',
+    text:'In a sugar crystal the molecules are packed tightly together in a regular pattern. In the machine they are melted and flung out into long thin threads.<br><br>Not one molecule is lost, so the <b>mass stays the same</b>. But now there are big gaps between the threads, full of air, so the same molecules fill a much <b>bigger volume</b>. Candy floss is about <b>'+FIG.flossAir+'% air</b>.',
+    look:'The box shows the volume the sugar takes up. Same molecules inside it, just a much bigger box.',
+    scale:'Each ball is one sugar molecule. Real threads are thousands of molecules thick.',
+    terms:[['Density','how much mass is packed into a given volume. Spreading the same mass through more volume lowers it.']],
+    key:['sugar','air']
+  },
+  {
+    part:'Cake and brownie', len:10,
+    shots:[{world:'macro', from:CAM.wide, to:CAM.cake, dur:2.4}],
+    group:2, cards:'cake',
+    title:'Same size, different mass',
+    text:'Two slices cut to exactly the same size. The sponge cake has had air whisked into it, so it is full of bubbles; the fudgy brownie has hardly any.<br><br>The cake slice has a mass of <b>'+CAKE_M+' g</b>; the brownie, <b>'+BROWNIE_M+' g</b>. The same volume of brownie holds much more mass — the brownie is <b>denser</b>.',
+    look:'Same volume on both cards. Different masses, so different densities.',
+    scale:'Typical values — every recipe is different.',
+    terms:[],
+    key:[]
+  },
+  {
+    part:'Same volume', len:11,
+    shots:[{world:'macro', from:CAM.cake, to:CAM.cubes, dur:2.4}],
+    group:3, cards:'vol',
+    title:'Density = mass ÷ volume',
+    text:'Three cubes, each exactly '+CUBE_CM+' cm along every side, so each has a volume of '+grp(Math.pow(CUBE_CM,3))+' cm³ = '+CUBE_V_M3+' m³. On the scales they are very different: the iron has more than '+Math.floor(SOLIDS.iron.rho/SOLIDS.wood.rho)+' times the mass of the wood.<br><br>That is what <b>density</b> measures: how much mass there is in each cubic metre.',
+    formula:'density = mass ÷ volume<small>ρ = m / V &nbsp;·&nbsp; kg/m³ = kg ÷ m³ &nbsp;·&nbsp; 1 g/cm³ = 1000 kg/m³</small>',
+    look:'Divide each mass by '+CUBE_V_M3+' m³ and you get the density on its card.',
+    terms:[['Density (ρ)','the mass per unit volume of a material. Measured in kg/m³ or g/cm³.']],
+    key:[]
+  },
+  {
+    part:'Same mass', len:11,
+    shots:[{world:'macro', from:CAM.cubes, to:CAM.cubes, dur:0.1}],
+    group:4, cards:'mass',
+    title:'Same mass, different volume',
+    text:'Now cut a cube of each with a mass of exactly <b>'+SAME_M+' kg</b>. The scales all read the same — but the cubes are nothing like the same size.<br><br>The wood needs <b>'+grp(volOfKilo('wood'))+' cm³</b> to make a kilogram; the iron only <b>'+grp(volOfKilo('iron'))+' cm³</b>. The denser the material, the less space a kilogram of it takes up.',
+    formula:'volume = mass ÷ density',
+    look:'The densities on the cards are the same as last time. Density belongs to the material — it does not depend on how much of it you have.',
+    terms:[],
+    key:[]
+  },
+  {
+    part:'Heavier atoms', len:13,
+    shots:[{world:'macro', from:CAM.cubes, to:CAM.cubeIn, dur:1.4, until:1.4},
+           {world:'micro', from:CAM.aIn, to:CAM.atoms, dur:2.2}],
+    group:4, groupT:()=>99, micro:'atoms', cards:'atoms',
+    title:'Why is iron denser than aluminium?',
+    text:'Zoom right in to a box of each metal, both the same size. Every iron atom has a <b>relative mass of '+ATOM.iron.Ar+'</b>; every aluminium atom only <b>'+ATOM.aluminium.Ar+'</b>. Iron atoms are about <b>twice as heavy</b>.<br><br>They are also a little smaller and packed a little more closely, so more of them fit in the same box: <b>'+PACK.iron.n+'</b> against <b>'+PACK.aluminium.n+'</b>. Heavier atoms, more of them: the iron box holds about <b>'+FIG.massRatio.toFixed(1)+' times</b> the mass — which is why iron is about '+FIG.rhoRatio.toFixed(1)+' times as dense.',
+    look:'The density of a substance depends on how heavy its particles are, and how closely they are packed.',
+    scale:'Five rows of aluminium’s pattern and seven of iron’s fit the same box to within '+Math.ceil(BOX_MISMATCH*100)+'%. The bars compare relative masses.',
+    terms:[['Relative mass','how heavy one particle is compared with others. An iron atom is '+ATOM.iron.Ar+'; an aluminium atom '+ATOM.aluminium.Ar+'.']],
+    key:['al','fe']
+  },
+  {
+    part:'Solid, liquid, gas', len:11,
+    shots:[{world:'micro', from:CAM.atoms, to:CAM.states, dur:2.0}],
+    micro:'states', cards:'states',
+    title:'The same atoms, three densities',
+    text:'The same substance has a different density in each state, even though its particles are identical. Solid gold has a density of <b>'+sig(GOLD_RHO.solid,3)+' g/cm³</b>; liquid gold, <b>'+sig(GOLD_RHO.liquid,3)+' g/cm³</b>.<br><br>In the solid the atoms are packed tightly together. When it melts they can move about, and they end up a little further apart — so the same volume holds fewer of them, and less mass. In the gas they are very far apart, so gold gas is thousands of times less dense.',
+    look:'Count them: '+STATE_N.solid+' atoms in the solid box, '+STATE_N.liquid+' in the liquid. Most substances are like gold — densest as a solid, least dense as a gas.',
+    scale:'The gas is at gold’s boiling point, worked out from the ideal gas law. Atoms drawn smaller than they are.',
+    terms:[],
+    key:['au']
+  },
+  {
+    part:'Water is unusual', len:11,
+    shots:[{world:'macro', from:CAM.wide, to:CAM.float, dur:2.4}],
+    group:6, cards:'float',
+    title:'Why ice floats',
+    text:'For most substances the solid is denser than the liquid, so a lump of the solid <b>sinks</b> in its own liquid — drop solid wax into melted wax and it goes to the bottom.<br><br><b>Water is different.</b> Ice ('+ICE+' g/cm³) is less dense than liquid water ('+sig(WATER0,3)+' g/cm³), so ice <b>floats</b>. In ice the water molecules are held in an open pattern with more space between them than in the liquid. That is why ponds freeze from the top down, and the fish survive underneath.',
+    look:'About '+FIG.icePct+'% of the ice sits under the surface: ice is '+FIG.icePct+'% as dense as water.',
+    scale:'The wax values are typical for candle wax.',
+    terms:[],
+    key:[]
+  },
+  {
+    part:'Everything together', len:9,
+    shots:[{world:'macro', from:CAM.float, to:CAM.ladder, dur:2.4}],
+    group:5, cards:null,
+    title:'From air to iron',
+    text:'Everything in this story on one line, from the least dense to the most. Notice where water sits.'+
+      '<table class="sum"><tr><th>Material</th><th>kg/m³</th></tr>'+
+      LADDER.slice().sort((a,b)=>a.rho-b.rho).map(it=>'<tr><td>'+it.name+'</td><td>'+(it.rho < 10 ? sig(it.rho,2) : grp(it.rho))+'</td></tr>').join('')+
+      '</table>',
+    formula:'density = mass ÷ volume',
+    look:'Candy floss is closer to air than to sugar — it is mostly air.',
+    terms:[],
+    key:[]
+  }
+];
+
+/* the cards: one per thing being compared, worked out from the same numbers
+   the scales show. Most are mass, volume and density; the atom chapters
+   count particles instead. */
+const card3 = (name, col, mass, vol, rho) => ({name, col, fields:[['Mass',mass],['Volume',vol],['Density',rho,1]]});
+function cardsAt(ch, t){
+  const kind = CH[ch].cards;
+  if(kind === 'floss'){
+    const st = sugarState(t);
+    const ready = st.landed > 0;
+    return [card3('Sugar → candy floss', '#f7a8cf', fmtG(st.mass),
+                  ready ? fmtCm3(st.vol) : '—', ready && t > POUR1 ? sig(st.rho, 2)+' g/cm³' : '—')];
+  }
+  if(kind === 'zoom'){
+    return [FOOD_CARD('Sugar crystals', '#f1ede4', SUGAR.mass, SUGAR_V),
+            FOOD_CARD('Candy floss', '#f7a8cf', SUGAR.mass, FLOSS_V)];
+  }
+  if(kind === 'cake'){
+    return [[ 'Sponge cake', '#ffd99a', CAKE_M, CAKE_AT], ['Brownie', '#d9a07a', BROWNIE_M, BROWNIE_AT]].map(c=>{
+      const at = c[3] + DROP, r = readingAt(c[2], at, t);
+      return card3(c[0], c[1], fmtG(r), SLICE_V+' cm³', settledAt(at, t) ? sig(c[2]/SLICE_V, 2)+' g/cm³' : '—');
+    });
+  }
+  if(kind === 'vol' || kind === 'mass'){
+    return SOLID_KEYS.map((k, i)=>{
+      const m = kind === 'vol' ? massOfCube(k) : SAME_M;
+      const vcm = kind === 'vol' ? Math.pow(CUBE_CM, 3) : volOfKilo(k);
+      const at = CUBE_AT[i] + DROP, r = readingAt(m, at, t);
+      return card3(SOLIDS[k].name, k === 'wood' ? '#e8c28c' : k === 'aluminium' ? '#dfe5ec' : '#b8bcc4',
+                   fmtKg(r), kind === 'vol' ? CUBE_V_M3+' m³' : grp(vcm)+' cm³',
+                   settledAt(at, t) ? grp(m/(vcm*1e-6))+' kg/m³' : '—');
+    });
+  }
+  if(kind === 'atoms'){
+    return ['aluminium','iron'].map(k=>{
+      const pk = PACK[k], shown = pk.appear.reduce((n, a)=>n + (t >= a ? 1 : 0), 0);
+      return {name:ATOM[k].name, col: k === 'iron' ? '#c8ccd4' : '#e6ebf0', fields:[
+        ['Atoms in box', String(shown)],
+        ['Mass of one', t > 5.9 ? String(ATOM[k].Ar) : '—'],
+        ['Mass in box', t > BAR1 ? grp(pk.mass) : '—', 1]]};
+    });
+  }
+  if(kind === 'states'){
+    return ['solid','liquid','gas'].map((st, i)=>({name:st+' gold', col:'#f2cf7a', fields:[
+      ['Density', t > 2.4 + 0.8*i ? sig(GOLD_RHO[st], st === 'gas' ? 2 : 3)+' g/cm³' : '—', 1],
+      ['Atoms in box', st === 'gas' ? 'almost always 0' : String(STATE_N[st])]]}));
+  }
+  if(kind === 'float'){
+    return [['Wax', '#f2e2a0', WAX.solid, WAX.liquid, WAX_AT + 2.6], ['Water', '#9ec3ff', ICE, WATER0, ICE_AT + 2.4]].map(c=>({
+      name:c[0], col:c[1], fields:[
+        ['Solid', sig(c[2], 3)+' g/cm³'], ['Liquid', sig(c[3], 3)+' g/cm³'],
+        ['The solid…', t > c[4] ? (c[2] < c[3] ? 'floats' : 'sinks') : '—', 1]]}));
+  }
+  return [];
+}
+
+const KEY = {
+  al   :'<div><span class="dot" style="background:'+hexCss(ATOM.aluminium.col)+'"></span>aluminium atom</div>',
+  fe   :'<div><span class="dot" style="background:'+hexCss(ATOM.iron.col)+'"></span>iron atom</div>',
+  au   :'<div><span class="dot" style="background:'+hexCss(ATOM.gold.col)+'"></span>gold atom</div>',
+  sugar:'<div><span class="dot" style="background:#f1ede4"></span>sugar molecule</div>',
+  air  :'<div><span class="dot" style="background:#9aa8b8"></span>air</div>'
+};
+
+/* ------------------------------------------------------------- the camera */
+const FADE = 0.32;
+function shotAt(Ch, t){
+  let s0 = 0;
+  for(let i=0;i<Ch.shots.length;i++){
+    const sh = Ch.shots[i], end = sh.until != null ? sh.until : Infinity;
+    if(t < end || i === Ch.shots.length-1){
+      const u = ss(0, sh.dur, t - s0);
+      let fade = 1 - clamp((t - s0)/FADE, 0, 1);
+      if(isFinite(end)) fade = Math.max(fade, 1 - clamp((end - t)/FADE, 0, 1));
+      return {world:sh.world, cam:lerpCam(sh.from, sh.to, u), fade, index:i};
+    }
+    s0 = end;
+  }
+}
+function lerpCam(a, b, u){
+  return {
+    dist: Math.exp(lerp(Math.log(a.dist), Math.log(b.dist), u)),
+    az: lerp(a.az, b.az, u), el: lerp(a.el, b.el, u),
+    look:[lerp(a.look[0],b.look[0],u), lerp(a.look[1],b.look[1],u), lerp(a.look[2],b.look[2],u)]
+  };
+}
+function worldAt(ch, t){ return shotAt(CH[ch], t).world; }
+
+let dragAz = 0, dragEl = 0, zoomAdj = 0;
+function applyCamera(c){
+  const az = c.az + dragAz, el = clamp(c.el + dragEl, -0.4, 1.2);
+  const d = Math.max(0.4, c.dist*Math.exp(zoomAdj));
+  camera.position.set(
+    c.look[0] + d*Math.cos(el)*Math.sin(az),
+    c.look[1] + d*Math.sin(el),
+    c.look[2] + d*Math.cos(el)*Math.cos(az));
+  camera.lookAt(c.look[0], c.look[1], c.look[2]);
+}
+
+/* ---------------------------------------------------------------- a frame */
+let cur = 0, cardRefs = [];
+
+function frame(t){
+  const Ch = CH[cur];
+  const shot = shotAt(Ch, t);
+  applyCamera(shot.cam);
+  fadeEl.style.opacity = shot.fade.toFixed(3);
+
+  const inMacro = shot.world === 'macro';
+  micro.visible = !inMacro;
+  bench.visible = inMacro;
+  G.forEach((g, i)=>{ g.visible = inMacro && i === Ch.group; });
+
+  if(inMacro){
+    const tg = Ch.groupT ? Ch.groupT(t) : t;
+    if(Ch.group === 0) updateSugar(tg);
+    if(Ch.group === 6) updateFloat(t);
+    if(Ch.group === 2){
+      [[cake, CAKE_X, CAKE_AT, CAKE_M, cakeScale], [brownie, BROWNIE_X, BROWNIE_AT, BROWNIE_M, brownieScale]].forEach(s=>{
+        place(s[0], s[1], SLICE.h/UNIT_CM, s[2], t);
+        const r = readingAt(s[3], s[2] + DROP, t);
+        setScreen(s[4], fmtG(r));
+        s[4].plat.position.y = PLAT_TOP - 0.025 - 0.006*clamp(r/s[3], 0, 1.2);
+      });
+    }
+    if(Ch.group === 3 || Ch.group === 4){
+      const set = Ch.group === 3 ? SAME_V : SAME_MASS;
+      set.forEach((c, i)=>{
+        place(c.mesh, CUBE_X[i], c.side, CUBE_AT[i], tg);
+        const m = Ch.group === 3 ? massOfCube(c.k) : SAME_M;
+        const r = readingAt(m, CUBE_AT[i] + DROP, tg);
+        setScreen(c.sc, fmtKg(r));
+        c.sc.plat.position.y = PLAT_TOP - 0.025 - 0.008*clamp(r/m, 0, 1.2);
+      });
+    }
+  } else {
+    sugarMicro.forEach(o=>{ o.visible = Ch.micro === 'sugar'; });
+    atomsG.visible  = Ch.micro === 'atoms';
+    statesG.visible = Ch.micro === 'states';
+    if(Ch.micro === 'sugar')  updateMolecules(t);
+    if(Ch.micro === 'atoms')  updateAtoms(t);
+    if(Ch.micro === 'states') updateStates(t);
+  }
+
+  /* the cards */
+  const cards = cardsAt(cur, t);
+  cards.forEach((c, i)=>{
+    const r = cardRefs[i];
+    if(!r) return;
+    c.fields.forEach((f, k)=>{ if(r[k] && r[k].textContent !== f[1]) r[k].textContent = f[1]; });
+  });
+
+  runCues(cur, t);
+  renderer.render(scene, camera);
+}
+
+/* --------------------------------------------------------------- chapters */
+let chStart = null;
+function buildCards(i){
+  const box = document.getElementById('cards');
+  box.innerHTML = '';
+  const el = (tag, cls, text) => {
+    const e = document.createElement(tag);
+    if(cls) e.className = cls;
+    if(text) e.textContent = text;
+    return e;
+  };
+  cardRefs = cardsAt(i, 0).map(c=>{
+    const card = el('div', 'card'), who = el('div', 'who', c.name), nums = el('div', 'nums');
+    who.style.color = c.col;
+    const refs = c.fields.map(q=>{
+      const n = el('div', 'n'+(q[2] ? ' hot' : ''), q[0]), b = el('b', '', '—');
+      n.appendChild(b); nums.appendChild(n);
+      return b;
+    });
+    card.appendChild(who); card.appendChild(nums);
+    box.appendChild(card);
+    return refs;
+  });
+}
+function enterChapter(i){
+  cur = i; chStart = null;
+  dragAz = dragEl = zoomAdj = 0;
+  const Ch = CH[i];
+  document.getElementById('sStep').textContent = (i+1)+' / '+CH.length+' · '+Ch.part;
+  document.getElementById('sTitle').innerHTML = Ch.title;
+  document.getElementById('sText').innerHTML = Ch.text;
+  const fm = document.getElementById('sFormula');
+  fm.innerHTML = Ch.formula || ''; fm.hidden = !Ch.formula;
+  const lk = document.getElementById('sLook');
+  lk.textContent = Ch.look ? 'Watch for: '+Ch.look : ''; lk.hidden = !Ch.look;
+  const sc = document.getElementById('sScale');
+  sc.textContent = Ch.scale || ''; sc.hidden = !Ch.scale;
+  const tm = document.getElementById('sTerms');
+  tm.innerHTML = Ch.terms.length
+    ? '<div class="hd">Key words</div>' + Ch.terms.map(x=>'<dt>'+x[0]+'</dt><dd>'+x[1]+'</dd>').join('')
+    : '';
+  tm.hidden = !Ch.terms.length;
+  document.getElementById('key').innerHTML = Ch.key.map(k=>KEY[k]).join('');
+  document.getElementById('back').disabled = i === 0;
+  document.getElementById('next').disabled = i === CH.length-1;
+  document.querySelectorAll('#dots i').forEach((d,k)=>d.classList.toggle('on', k === i));
+  buildCards(i);
+}
+
+function animate(now){
+  requestAnimationFrame(animate);
+  if(chStart === null) chStart = now;
+  frame((now - chStart)/1000);
+}
+
+/* ------------------------------------------------------------------ wiring */
+const cv = renderer.domElement;
+cv.style.touchAction = 'none';
+cv.style.cursor = 'grab';
+let dragging = false, lastX = 0, lastY = 0;
+cv.addEventListener('pointerdown', e=>{
+  dragging = true; lastX = e.clientX; lastY = e.clientY;
+  cv.style.cursor = 'grabbing';
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove', e=>{
+  if(!dragging) return;
+  dragAz += (e.clientX - lastX)*0.006;
+  dragEl = clamp(dragEl + (e.clientY - lastY)*0.004, -0.5, 1.0);
+  lastX = e.clientX; lastY = e.clientY;
+});
+['pointerup','pointercancel'].forEach(ev=>
+  cv.addEventListener(ev, ()=>{ dragging = false; cv.style.cursor = 'grab'; }));
+cv.addEventListener('wheel', e=>{
+  e.preventDefault();
+  zoomAdj = clamp(zoomAdj + e.deltaY*0.001, -0.9, 0.9);
+}, {passive:false});
+
+const dotsEl = document.getElementById('dots');
+CH.forEach((c,i)=>{
+  const d = document.createElement('i');
+  d.title = c.title;
+  d.addEventListener('click', ()=>enterChapter(i));
+  dotsEl.appendChild(d);
+});
+document.getElementById('next').addEventListener('click', ()=>{ if(cur < CH.length-1) enterChapter(cur+1); });
+document.getElementById('back').addEventListener('click', ()=>{ if(cur > 0) enterChapter(cur-1); });
+document.getElementById('replay').addEventListener('click', ()=>enterChapter(cur));
+window.addEventListener('keydown', e=>{
+  if(e.key === 'ArrowRight' && cur < CH.length-1) enterChapter(cur+1);
+  if(e.key === 'ArrowLeft'  && cur > 0) enterChapter(cur-1);
+});
+
+function resize(){
+  const w = stage.clientWidth || window.innerWidth;
+  const h = stage.clientHeight || window.innerHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w/h;
+  camera.fov = (w/h < 1.1) ? 62 : 44;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+resize();
+
+enterChapter(0);
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

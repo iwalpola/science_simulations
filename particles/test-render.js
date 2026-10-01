@@ -1202,6 +1202,468 @@ function convectionStory(THREE){
   console.log(`      ${S.dyeState.live} puffs live, ${S.dyeState.nearWall} low down by the wall`);
 }
 
+/* ===========================================================================
+   CONDUCTION — the 3D story
+
+   Render path for all six chapters, and then what the narration claims:
+
+     - the pins drop exactly when the heat equation says the wax reaches its
+       melting point, nearest first; every copper pin drops inside the
+       chapter and no glass pin does
+     - every figure a caption quotes comes out of MAT
+     - in the glass the heat creeps up from the flame side: the bottom is
+       always at least as hot as the top, and the top starts cold
+     - a kick up the chain is causal: nothing swings before the one below
+       has swung far enough to touch it
+     - chapter 4's two fronts differ by the real ratio of diffusivities
+     - free electrons never pass through an ion, and the followed ones hit
+       the ion they were aimed at, and only then does it light up
+     - copper and electrons are the colours they are everywhere else
+=========================================================================== */
+function conductionStory(THREE){
+  section('CONDUCTION  conduction.html  (render path)');
+  const html = read('conduction.html');
+  const numbers = [];
+  const dom = makeDom(600, 400, numbers);
+  dom.querySelectorAll = () => [];
+  stubRenderer(THREE, dom, numbers);
+
+  const expose = ['frame','enterChapter','CH','camera','renderer','worldAt',
+    'MAT','T_ROOM','T_HOT','T_WAX','UNIT_M','SPEEDUP','ROD','PINS','RODS','rodTemp','meltSeconds',
+    'FIG','fmtTime','clockLbl','ROD_HEAT0','ROD_MAX','rodClock',
+    'SLAB','SLAB_B','slabFrac','SLAB_HEAT0','CHAIN','chainSwing','pulseStart','PULSE_TAU','PULSE0','PULSE_P',
+    'slabMesh','waterMesh','glassMesh','ionMesh','elMesh','trMesh','ionPos','elPos','slabPos',
+    'CU','R_ION','R_EL','TR_R','TRACERS','trState','ionKick','TR_FLY','TR_P','CH5_T',
+    'CU_D','GL_D','pieceFrac','PIECE','COL','EL','N_EL'].join(',');
+  const js = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+  const win = {addEventListener(){}, removeEventListener(){},
+               innerWidth:1280, innerHeight:720, devicePixelRatio:1};
+  let S = null;
+  try {
+    S = new Function(
+      'THREE','document','window','performance','requestAnimationFrame','navigator',
+      js + '\nreturn {' + expose + '};'
+    )(THREE, dom, win, {now(){ return 0; }}, () => 0, {userAgent:'node'});
+  } catch(e){
+    chk(false, 'the scene threw while loading: ' + e.message);
+    console.log((e.stack || '').split('\n').slice(0, 4).join('\n'));
+    return;
+  }
+  chk(true, 'the scene loads');
+
+  const finiteArr = a => { for(let i=0;i<a.length;i++) if(!isFinite(a[i])) return false; return true; };
+  const meshes = [S.slabMesh, S.waterMesh, S.glassMesh, S.ionMesh, S.elMesh, S.trMesh,
+                  S.RODS.copper.sleeve, S.RODS.glass.sleeve];
+
+  /* ---------- every chapter, every frame; electrons against ions as we go ---------- */
+  section('    every chapter');
+  const gap = S.R_ION + S.R_EL, gapTr = S.R_ION + S.TR_R;
+  let closest = Infinity, closestTr = Infinity;
+  for(let c=0;c<S.CH.length;c++){
+    S.enterChapter(c);
+    const before = S.renderer.__renders;
+    let bad = 0, t = 0;
+    try {
+      for(t=0; t<=S.CH[c].len + 4; t+=1/30){
+        S.frame(t);
+        const p = S.camera.position;
+        if(!isFinite(p.x) || !isFinite(p.y) || !isFinite(p.z)) bad++;
+        for(const m of meshes){
+          if(!finiteArr(m.instanceMatrix.array)) bad++;
+          if(m.instanceColor && !finiteArr(m.instanceColor.array)) bad++;
+        }
+        if(S.worldAt(c, t) === 'micro' && (c === 4 || c === 5)){
+          for(let e=0;e<S.N_EL;e++) for(let m=0;m<S.CU.n;m++){
+            const d = Math.hypot(S.elPos[e*3]-S.ionPos[m*3], S.elPos[e*3+1]-S.ionPos[m*3+1], S.elPos[e*3+2]-S.ionPos[m*3+2]);
+            if(d < closest) closest = d;
+          }
+          if(c === 5) S.TRACERS.forEach((tr, i)=>{
+            const st = S.trState[i];
+            if(!st.visible) return;
+            for(let m=0;m<S.CU.n;m++){
+              if(m === tr.ion) continue;            // that one it is meant to hit
+              const d = Math.hypot(st.p[0]-S.ionPos[m*3], st.p[1]-S.ionPos[m*3+1], st.p[2]-S.ionPos[m*3+2]);
+              if(d < closestTr) closestTr = d;
+            }
+          });
+        }
+      }
+    } catch(e){
+      chk(false, `chapter ${c} ("${S.CH[c].title}") threw at t=${t.toFixed(2)}: ${e.message}`);
+      console.log('      ' + (e.stack || '').split('\n').slice(1, 3).join('\n      '));
+      return;
+    }
+    chk(S.renderer.__renders > before, `chapter ${c} drew nothing`);
+    chk(bad === 0, `chapter ${c}: ${bad} non-finite camera positions, instance matrices or colours`);
+  }
+  chk(true, `all ${S.CH.length} chapters run to the end without throwing`);
+  chk(numbers.every(n=>isFinite(n[1])), 'a non-finite number reached a 2D canvas');
+  chk(closest >= gap - 1e-6, `a free electron passed through an ion: centres ${closest.toFixed(3)} apart, need ${gap.toFixed(3)}`);
+  chk(closestTr >= gapTr - 1e-6, `a followed electron passed through an ion on its way: ${closestTr.toFixed(3)} apart, need ${gapTr.toFixed(3)}`);
+  console.log(`      closest electron–ion approach ${closest.toFixed(3)} (touching at ${gap.toFixed(3)})`);
+
+  /* ---------- worlds ---------- */
+  section('    the camera goes where the story says');
+  chk(S.worldAt(0, 5) === 'macro', 'chapter 0 should be at the pan');
+  chk(S.worldAt(1, 0.5) === 'macro' && S.worldAt(1, 5) === 'micro', 'chapter 1 should zoom from the pan into the glass');
+  chk(S.worldAt(2, 5) === 'micro', 'chapter 2 should be in the glass');
+  chk(S.worldAt(3, 5) === 'macro', 'chapter 3 should be at the rods');
+  chk(S.worldAt(4, 0.5) === 'macro' && S.worldAt(4, 5) === 'micro', 'chapter 4 should zoom from the rods into them');
+  chk(S.worldAt(5, 5) === 'micro', 'chapter 5 should be inside the copper');
+
+  /* ---------- the numbers ---------- */
+  section('    the numbers come out of MAT');
+  for(const m of Object.values(S.MAT))
+    chk(Math.abs(m.alpha - m.k/(m.rho*m.c)) < 1e-15, `${m.name}: alpha is not k/(rho c)`);
+  chk(S.MAT.copper.alpha > 100*S.MAT.glass.alpha, 'copper should conduct far faster than glass');
+  const lastS = (S.PINS[S.PINS.length-1] - S.ROD.hot)*S.UNIT_M, firstS = (S.PINS[0] - S.ROD.hot)*S.UNIT_M;
+  chk(S.FIG.lastCopper === Math.round(S.meltSeconds(lastS, S.MAT.copper.alpha)), 'FIG.lastCopper is not the last pin\'s melt time');
+  chk(S.FIG.firstGlassMin === Math.floor(S.meltSeconds(firstS, S.MAT.glass.alpha)/60), 'FIG.firstGlassMin is not the first glass pin\'s melt time');
+  chk(S.FIG.kRatio === Math.round(S.MAT.copper.k/S.MAT.glass.k/100)*100, 'FIG.kRatio is not from MAT');
+  const rodsCh = S.CH[3];
+  const plain = s => (s || '').replace(/<[^>]+>/g, '');
+  chk(plain(rodsCh.text).includes('about ' + S.FIG.lastCopper + ' seconds'), 'chapter 3 quotes a different copper time');
+  chk(plain(rodsCh.text).includes('more than ' + S.FIG.firstGlassMin + ' minutes'), 'chapter 3 quotes a different glass time');
+  chk(rodsCh.terms.some(x=>x[1].includes('about ' + S.FIG.kRatio + ' times')), 'chapter 3 quotes a different conductivity ratio');
+  chk(rodsCh.scale.includes('×' + S.SPEEDUP), 'chapter 3 does not say how much time is sped up');
+  chk(Math.abs(S.GL_D/S.CU_D - S.MAT.glass.alpha/S.MAT.copper.alpha) < 1e-12, 'chapter 4 does not use the real ratio of diffusivities');
+  console.log(`      copper α ${S.MAT.copper.alpha.toExponential(3)}, glass α ${S.MAT.glass.alpha.toExponential(3)} m²/s (×${(S.MAT.copper.alpha/S.MAT.glass.alpha).toFixed(0)})`);
+  console.log(`      last copper pin ${S.FIG.lastCopper} s; nearest glass pin ${S.FIG.firstGlassMin}+ min; k ratio ${S.FIG.kRatio}`);
+
+  /* ---------- the pins ---------- */
+  section('    the pins');
+  const len3 = S.CH[3].len;
+  for(const mat of ['copper','glass']){
+    const pins = S.RODS[mat].pins;
+    for(let i=0;i<pins.length;i++){
+      const p = pins[i];
+      if(i) chk(p.drop > pins[i-1].drop, `${mat}: pin ${i} drops before the one nearer the flame`);
+      if(isFinite(p.drop) && p.drop < 1e6){
+        const T = S.rodTemp(p.r, p.drop, mat);
+        chk(Math.abs(T - S.T_WAX) < 0.2, `${mat}: pin ${i} drops when the rod there is ${T.toFixed(2)} °C, not ${S.T_WAX}`);
+        chk(S.rodTemp(p.r, p.drop - 0.05, mat) < S.T_WAX, `${mat}: pin ${i} is already past melting before it drops`);
+      }
+    }
+  }
+  chk(S.RODS.copper.pins.every(p=>p.drop < len3 - 1), 'a copper pin has not dropped by the end of chapter 3');
+  chk(S.RODS.copper.pins.every(p=>p.drop < S.rodClock(1e9)), 'a copper pin drops after the clock has stopped');
+  chk(S.RODS.glass.pins.every(p=>p.drop > S.rodClock(1e9) + 1), 'a glass pin drops before the clock stops — however long the chapter is left up');
+  S.enterChapter(3); S.frame(len3);
+  const rest = -S.ROD.y + 0.012;
+  chk(S.RODS.copper.pins.every(p=>Math.abs(p.pin.position.y - rest) < 1e-9), 'a dropped copper pin is not lying on the hob');
+  chk(S.RODS.glass.pins.every(p=>p.pin.position.y === p.hang), 'a glass pin has moved');
+  chk(S.clockLbl.userData.text === S.fmtTime((len3 - S.ROD_HEAT0)*S.SPEEDUP), `the clock reads "${S.clockLbl.userData.text}"`);
+  S.frame(600);
+  chk(S.clockLbl.userData.text === S.fmtTime(S.ROD_MAX), `left up for ten minutes the clock reads "${S.clockLbl.userData.text}"`);
+  chk(S.RODS.glass.pins.every(p=>p.pin.position.y === p.hang), 'left up for ten minutes, a glass pin drops');
+  console.log(`      copper pins drop at ${S.RODS.copper.pins.map(p=>p.drop.toFixed(1)).join(', ')} s of chapter time`);
+
+  /* ---------- the glass bottom ---------- */
+  section('    heat creeps up through the glass');
+  const ys = [-S.SLAB.Ly/2, -S.SLAB.Ly/4, 0, S.SLAB.Ly/4, S.SLAB.Ly/2];
+  let order = true;
+  for(let t=S.SLAB_HEAT0; t<S.SLAB_HEAT0 + 20; t+=0.25)
+    for(let i=1;i<ys.length;i++) if(S.slabFrac(ys[i], t) > S.slabFrac(ys[i-1], t) + 1e-12) order = false;
+  chk(order, 'somewhere higher up the glass is hotter than lower down');
+  chk(S.slabFrac(S.SLAB.Ly/2, S.SLAB_HEAT0 + 0.5) < 0.01, 'the top of the glass is hot almost as soon as the flame starts');
+  chk(S.slabFrac(S.SLAB.Ly/2, S.SLAB_HEAT0 + 8) > 0.3, 'the heat has not reached the top of the glass by the end of chapter 1');
+  chk(S.slabFrac(0, S.SLAB_HEAT0 - 0.1) === 0, 'the glass warms before the flame starts');
+
+  /* ---------- the chain ---------- */
+  section('    passing it on');
+  const P = S.SLAB_B.P;
+  chk(S.CHAIN.length >= 4, `the chain is only ${S.CHAIN.length} particles long`);
+  for(let j=1;j<S.CHAIN.length;j++)
+    chk(P[S.CHAIN[j]*3+1] > P[S.CHAIN[j-1]*3+1], `chain link ${j} is not above link ${j-1}`);
+  /* no link moves before the one below it has reached it */
+  let causal = true;
+  for(let t=0; t<S.PULSE0 + 3*S.PULSE_P; t+=0.005){
+    for(let j=1;j<S.CHAIN.length;j++){
+      if(S.chainSwing(j, t) <= 0) continue;
+      const k = Math.floor((t - S.PULSE0 - j*S.PULSE_TAU/2)/S.PULSE_P);
+      const touch = S.pulseStart(k, j-1) + S.PULSE_TAU/2;
+      if(t < touch - 1e-9) causal = false;
+    }
+  }
+  chk(causal, 'a link in the chain swings before the one below it has touched it');
+  const peak = j => { let best = 0, at = 0;
+    for(let t=S.PULSE0; t<S.PULSE0 + S.PULSE_P; t+=0.002){ const s = S.chainSwing(j, t); if(s > best){ best = s; at = t; } }
+    return {best, at}; };
+  for(let j=1;j<S.CHAIN.length;j++){
+    const a = peak(j-1), b = peak(j);
+    chk(b.best < a.best, `the kick grows going up the chain at link ${j}`);
+    chk(b.at > a.at, `link ${j} peaks before link ${j-1}`);
+  }
+
+  /* ---------- the two rods, inside ---------- */
+  section('    inside the rods');
+  S.enterChapter(4); S.frame(S.CH[4].len);
+  const tEnd = S.CH[4].len;
+  const cuMid = S.pieceFrac(0, tEnd, S.CU_D), glNear = S.pieceFrac(-S.PIECE.Lx/2 + 2, tEnd, S.GL_D);
+  chk(cuMid > 0.3, `the copper's front has not reached the middle (${cuMid.toFixed(2)})`);
+  chk(glNear < 0.05, `the glass has warmed 2 units in already (${glNear.toFixed(3)}) — faster than it should`);
+
+  /* ---------- the followed electrons ---------- */
+  section('    free electrons');
+  for(const tr of S.TRACERS){
+    const m = tr.ion;
+    const d = Math.hypot(tr.hit[0]-S.CU.P[m*3], tr.hit[1]-S.CU.P[m*3+1], tr.hit[2]-S.CU.P[m*3+2]);
+    chk(Math.abs(d - 0.3) < 1e-6, `a followed electron stops ${d.toFixed(3)} from its ion, not beside it`);
+    chk(tr.hit[0] > 1.5, 'a followed electron hits an ion near the hot end, not far down the rod');
+    chk(S.pieceFrac(S.CU.P[m*3], S.CH5_T, S.CU_D) < S.pieceFrac(tr.start[0], S.CH5_T, S.CU_D) - 0.3,
+        'a followed electron carries energy to somewhere no colder than where it started');
+    chk(S.ionKick(m, tr.off + S.TR_FLY - 0.01) === 0, 'an ion lights up before its electron arrives');
+    chk(S.ionKick(m, tr.off + S.TR_FLY + 0.01) > 0.9, 'an ion does not light up when its electron arrives');
+  }
+
+  /* ---------- palette ---------- */
+  section('    palette');
+  chk(S.COL.electron === 0xffe070, 'electrons are not 0xffe070');
+  const wire = fs.readFileSync(path.join(__dirname, '..', 'electricity', 'wire-resistance.html'), 'utf8');
+  const wm = wire.match(/ion\s*:\s*(0x[0-9a-f]{6})/i);
+  chk(!!wm && parseInt(wm[1], 16) === S.COL.ion, `copper ions are ${S.COL.ion.toString(16)}, the wire scene has ${wm && wm[1]}`);
+}
+
+/* ===========================================================================
+   DENSITY — the 3D story
+
+   Render path for every chapter, and then that the story's arithmetic holds:
+
+     - every volume, mass and cube side comes out of the density tables, and
+       the things on screen are drawn at the size those numbers say
+     - spinning the sugar never changes its mass: the scale reads the same
+       from the moment the sugar is in to the end
+     - every card's density is its mass ÷ its volume, the same-volume and
+       same-mass chapters agree on each material's density, and each scale
+       settles on the mass the table gives
+     - every figure a caption quotes is one of those numbers
+     - the molecules end up spread through a much bigger volume, without
+       overlapping
+=========================================================================== */
+function densityStory(THREE){
+  section('DENSITY  density.html  (render path)');
+  const html = read('density.html');
+  const numbers = [];
+  const dom = makeDom(600, 400, numbers);
+  dom.querySelectorAll = () => [];
+  stubRenderer(THREE, dom, numbers);
+
+  const expose = ['frame','enterChapter','CH','camera','renderer','worldAt','cardsAt',
+    'SUGAR','SUGAR_V','FLOSS_V','FLOSS_RHO','FLOSS_R','UNIT_CM','CAKE_M','BROWNIE_M','CAKE_RHO','BROWNIE_RHO',
+    'SLICE','SLICE_V','SOLIDS','SOLID_KEYS','massOfCube','volOfKilo','sideOfKilo','SAME_V','SAME_MASS','SAME_M',
+    'CUBE_CM','CUBE_V_M3','PLAT_TOP','sugarState','sugarScale','POUR1','FALL','SPIN0','SPIN1','readingAt',
+    'FIG','LADDER','ladX','MOL','MOL_R','molPos','molMesh','cryMesh','cake','brownie','cakeScale','brownieScale',
+    'fmtG','fmtKg','grp','sig','AIR_RHO','WATER_RHO','CH_LADDER',
+    'ATOM','PACK','CELLS','BOX_A','BOX_MISMATCH','FILL1','BAR1','GOLD_RHO','STATE_N','STATE_P','STATE_L','STATE_MESH','GAS_EXPECT',
+    'WAX','ICE','WATER0','FLOAT_F','FCUBE','SURF','BEAK','iceCube','waxCube','updateFloat'].join(',');
+  const js = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+  const win = {addEventListener(){}, removeEventListener(){},
+               innerWidth:1280, innerHeight:720, devicePixelRatio:1};
+  let S = null;
+  try {
+    S = new Function(
+      'THREE','document','window','performance','requestAnimationFrame','navigator',
+      js + '\nreturn {' + expose + '};'
+    )(THREE, dom, win, {now(){ return 0; }}, () => 0, {userAgent:'node'});
+  } catch(e){
+    chk(false, 'the scene threw while loading: ' + e.message);
+    console.log((e.stack || '').split('\n').slice(0, 4).join('\n'));
+    return;
+  }
+  chk(true, 'the scene loads');
+  const finiteArr = a => { for(let i=0;i<a.length;i++) if(!isFinite(a[i])) return false; return true; };
+  const near = (a, b, tol) => Math.abs(a - b) <= (tol || 1e-9)*Math.max(1, Math.abs(b));
+  const plain = s => (s || '').replace(/<[^>]+>/g, '');
+
+  /* ---------- every chapter ---------- */
+  section('    every chapter');
+  for(let c=0;c<S.CH.length;c++){
+    S.enterChapter(c);
+    const before = S.renderer.__renders;
+    let bad = 0, t = 0;
+    try {
+      for(t=0; t<=S.CH[c].len + 4; t+=1/30){
+        S.frame(t);
+        const p = S.camera.position;
+        if(!isFinite(p.x) || !isFinite(p.y) || !isFinite(p.z)) bad++;
+        for(const m of [S.molMesh, S.cryMesh]) if(!finiteArr(m.instanceMatrix.array)) bad++;
+        for(const card of S.cardsAt(c, t))
+          for(const f of card.fields) if(/NaN|Infinity|undefined/.test(f[1])) bad++;
+      }
+    } catch(e){
+      chk(false, `chapter ${c} ("${S.CH[c].title}") threw at t=${t.toFixed(2)}: ${e.message}`);
+      console.log('      ' + (e.stack || '').split('\n').slice(1, 3).join('\n      '));
+      return;
+    }
+    chk(S.renderer.__renders > before, `chapter ${c} drew nothing`);
+    chk(bad === 0, `chapter ${c}: ${bad} non-finite camera positions, instances or card values`);
+  }
+  chk(true, `all ${S.CH.length} chapters run to the end without throwing`);
+  chk(S.worldAt(1, 0.5) === 'macro' && S.worldAt(1, 5) === 'micro', 'chapter 1 should zoom from the sugar into its molecules');
+  [0,2,3,4,7,S.CH_LADDER].forEach(c=>chk(S.worldAt(c, 5) === 'macro', `chapter ${c} should be on the bench`));
+  [5,6].forEach(c=>chk(S.worldAt(c, 5) === 'micro', `chapter ${c} should be among the atoms`));
+  chk(S.CH[S.CH_LADDER].part === 'Everything together' && S.CH_LADDER === S.CH.length - 1, 'CH_LADDER does not point at the last chapter, the ladder');
+
+  /* ---------- the numbers ---------- */
+  section('    the numbers come out of the tables');
+  chk(near(S.SUGAR_V, S.SUGAR.mass/S.SUGAR.rho), 'the sugar volume is not mass ÷ density');
+  chk(near(S.FLOSS_RHO, S.SUGAR.mass/S.FLOSS_V), 'the floss density is not mass ÷ volume');
+  chk(S.SLICE_V === S.SLICE.w*S.SLICE.d*S.SLICE.h, 'the slice volume is not w × d × h');
+  chk(S.CAKE_M === Math.round(S.CAKE_RHO*S.SLICE_V) && S.BROWNIE_M === Math.round(S.BROWNIE_RHO*S.SLICE_V), 'a slice mass is not density × volume');
+  for(const k of S.SOLID_KEYS){
+    chk(near(S.massOfCube(k), S.SOLIDS[k].rho*S.CUBE_V_M3), `${k}: cube mass is not ρ × V`);
+    chk(near(S.volOfKilo(k)*1e-6*S.SOLIDS[k].rho, S.SAME_M), `${k}: a kilogram's volume is not m ÷ ρ`);
+    chk(near(Math.pow(S.sideOfKilo(k), 3), S.volOfKilo(k), 1e-9), `${k}: the side does not cube to the volume`);
+  }
+  chk(S.CUBE_V_M3 === 0.001, `the cube volume is ${S.CUBE_V_M3} m³, which will print badly`);
+
+  /* drawn at real size: one unit is UNIT_CM centimetres */
+  const cubeErr = [];
+  S.SAME_V.forEach(c=>{ if(!near(c.mesh.scale.x*S.UNIT_CM, S.CUBE_CM, 1e-9)) cubeErr.push(c.k); });
+  S.SAME_MASS.forEach(c=>{ if(!near(c.mesh.scale.x*S.UNIT_CM, S.sideOfKilo(c.k), 1e-9)) cubeErr.push(c.k); });
+  chk(cubeErr.length === 0, `cubes drawn at the wrong size: ${cubeErr.join(', ')}`);
+  const g = S.cake.geometry.parameters;
+  chk(near(g.width*g.height*g.depth*Math.pow(S.UNIT_CM,3), S.SLICE_V, 1e-9), 'the slices are not drawn at their volume');
+  chk(near(4/3*Math.PI*Math.pow(S.FLOSS_R*S.UNIT_CM, 3), S.FLOSS_V, 1e-9), 'the floss cloud is not drawn at its volume');
+
+  /* ---------- the sugar ---------- */
+  section('    spinning does not change the mass');
+  let constant = true, rising = true, lastV = 0;
+  S.enterChapter(0);
+  for(let t=S.POUR1 + S.FALL + 0.01; t<S.CH[0].len + 4; t+=0.05){
+    const st = S.sugarState(t);
+    if(st.mass !== S.SUGAR.mass) constant = false;
+    if(st.vol < lastV - 1e-9) rising = false;
+    lastV = st.vol;
+    S.frame(t);
+    if(S.sugarScale.shown !== S.fmtG(S.SUGAR.mass)) constant = false;
+  }
+  chk(constant, 'the scale reading changes while the sugar is spun');
+  chk(rising, 'the volume shrinks somewhere while the sugar is spun');
+  const end = S.sugarState(S.CH[0].len);
+  chk(end.spun === 1 && near(end.vol, S.FLOSS_V) && near(end.rho, S.FLOSS_RHO), 'by the end the sugar is not all floss');
+  chk(S.sugarState(0).mass === 0, 'there is sugar on the scale before it is poured');
+
+  /* ---------- the cards and scales ---------- */
+  section('    the cards and the scales');
+  const parse = s => parseFloat(String(s).replace(/,/g, ''));
+  const F = (card, label) => { const f = card.fields.find(x=>x[0] === label); return f ? f[1] : undefined; };
+  S.enterChapter(3); S.frame(S.CH[3].len);
+  const std = cs => cs.map(c=>({name:c.name, mass:F(c,'Mass'), vol:F(c,'Volume'), rho:F(c,'Density')}));
+  const c3 = std(S.cardsAt(3, S.CH[3].len)), c4 = std(S.cardsAt(4, S.CH[4].len));
+  S.SOLID_KEYS.forEach((k, i)=>{
+    chk(parse(c3[i].rho) === S.SOLIDS[k].rho, `${k}: same-volume card says ${c3[i].rho}`);
+    chk(c3[i].rho === c4[i].rho, `${k}: the density changed between the same-volume and same-mass chapters (${c3[i].rho} vs ${c4[i].rho})`);
+    chk(near(parse(c3[i].mass), S.massOfCube(k), 0.01), `${k}: the scale settles on ${c3[i].mass}`);
+    chk(c4[i].mass === S.fmtKg(S.SAME_M), `${k}: a kilogram reads ${c4[i].mass}`);
+    chk(S.SAME_V[i].sc.shown === S.fmtKg(S.massOfCube(k)), `${k}: the scale display reads ${S.SAME_V[i].sc.shown}`);
+    chk(near(S.SAME_V[i].mesh.position.y - S.SAME_V[i].side/2, S.PLAT_TOP), `${k}: the cube is not sitting on the scale`);
+  });
+  for(let i=1;i<3;i++) chk(S.volOfKilo(S.SOLID_KEYS[i]) < S.volOfKilo(S.SOLID_KEYS[i-1]), 'a denser kilogram is not smaller');
+  const c2 = std(S.cardsAt(2, S.CH[2].len));
+  chk(parse(c2[0].rho) === S.CAKE_RHO && parse(c2[1].rho) === S.BROWNIE_RHO, `the cake cards say ${c2[0].rho} and ${c2[1].rho}`);
+  chk(c2[0].mass === S.fmtG(S.CAKE_M) && c2[1].mass === S.fmtG(S.BROWNIE_M), 'a slice scale settles on the wrong mass');
+  const c1 = std(S.cardsAt(1, 0));
+  chk(c1[0].mass === c1[1].mass, 'the crystal and the floss should have the same mass');
+  for(const card of c1.concat(c2)){
+    const m = parse(card.mass), v = parse(card.vol), r = parse(card.rho);
+    chk(Math.abs(m/v - r)/r < 0.02, `${card.name}: ${card.mass} ÷ ${card.vol} is not ${card.rho}`);
+  }
+
+  /* ---------- captions ---------- */
+  section('    the captions quote the numbers');
+  const txt = i => plain(S.CH[i].text);
+  chk(txt(0).includes('about ' + S.grp(S.FIG.flossVolTimes) + ' times the volume'), 'chapter 0 quotes a different volume ratio');
+  chk(near(S.FIG.flossVolTimes, Number((S.FLOSS_V/S.SUGAR_V).toPrecision(1))), 'FIG.flossVolTimes is not from the tables');
+  chk(txt(1).includes(S.FIG.flossAir + '% air') && S.FIG.flossAir === ((1 - S.FLOSS_RHO/S.SUGAR.rho)*100).toFixed(1), 'chapter 1 quotes a different air fraction');
+  chk(txt(2).includes(S.CAKE_M + ' g') && txt(2).includes(S.BROWNIE_M + ' g'), 'chapter 2 quotes different slice masses');
+  const ratio = S.SOLIDS.iron.rho/S.SOLIDS.wood.rho, fl = Math.floor(ratio);
+  chk(txt(3).includes('more than ' + fl + ' times') && ratio > fl, 'chapter 3\'s "more than N times" is not true');
+  chk(txt(4).includes(S.grp(S.volOfKilo('wood')) + ' cm³') && txt(4).includes(S.grp(S.volOfKilo('iron')) + ' cm³'), 'chapter 4 quotes different volumes');
+
+  /* ---------- the ladder ---------- */
+  section('    the ladder');
+  const sorted = S.LADDER.slice().sort((a,b)=>a.rho - b.rho);
+  for(let i=1;i<sorted.length;i++) chk(S.ladX(sorted[i].rho) > S.ladX(sorted[i-1].rho), `${sorted[i].name} is not to the right of ${sorted[i-1].name}`);
+  const rows = (S.CH[S.CH_LADDER].text.match(/<tr><td>([^<]+)<\/td>/g) || []).map(r=>r.replace(/<[^>]+>/g, ''));
+  chk(rows.join('|') === sorted.map(it=>it.name).join('|'), 'the summary table is not in order of density');
+  const fl2 = S.LADDER.find(x=>x.name === 'candy floss');
+  chk(Math.abs(Math.log10(fl2.rho) - Math.log10(S.AIR_RHO)) < Math.abs(Math.log10(fl2.rho) - Math.log10(S.SUGAR.rho*1000)),
+      'the caption says floss is closer to air than to sugar — on the ladder it is not');
+
+  /* ---------- the molecules ---------- */
+  section('    the molecules');
+  S.enterChapter(1);
+  const box = P => { const lo = [1e9,1e9,1e9], hi = [-1e9,-1e9,-1e9];
+    for(let i=0;i<S.MOL.n;i++) for(let a=0;a<3;a++){ lo[a] = Math.min(lo[a], P[i*3+a]); hi[a] = Math.max(hi[a], P[i*3+a]); }
+    return (hi[0]-lo[0])*(hi[1]-lo[1])*(hi[2]-lo[2]); };
+  S.frame(1.6); const v0 = box(S.molPos);            // in the micro world, as the first molecule leaves
+  S.frame(S.CH[1].len); const v1 = box(S.molPos);
+  chk(v1 > 5*v0, `the molecules only spread to ${(v1/v0).toFixed(1)}× the volume`);
+  let minD = Infinity;
+  for(let i=0;i<S.MOL.n;i++) for(let j=i+1;j<S.MOL.n;j++)
+    minD = Math.min(minD, Math.hypot(S.molPos[i*3]-S.molPos[j*3], S.molPos[i*3+1]-S.molPos[j*3+1], S.molPos[i*3+2]-S.molPos[j*3+2]));
+  chk(minD > 1.8*S.MOL_R, `two molecules in the threads overlap (${minD.toFixed(3)} apart)`);
+  console.log(`      the molecules spread through ${(v1/v0).toFixed(1)}× the volume; closest pair ${minD.toFixed(2)}`);
+  console.log(`      floss ${S.sig(S.FLOSS_RHO,2)} g/cm³ (${S.FIG.flossAir}% air); cake ${S.CAKE_M} g, brownie ${S.BROWNIE_M} g; kilo cubes ${S.SOLID_KEYS.map(k=>S.sideOfKilo(k).toFixed(1)+' cm').join(', ')}`);
+
+  /* ---------- heavier atoms ---------- */
+  section('    why iron is denser than aluminium');
+  const per = {fcc:4, bcc:2};
+  for(const k of ['aluminium','iron']){
+    const pk = S.PACK[k];
+    chk(pk.n === per[S.ATOM[k].kind]*Math.pow(S.CELLS[k], 3), `${k}: ${pk.n} atoms is not whole cells of its pattern`);
+    chk(pk.mesh.count === pk.n, `${k}: ${pk.mesh.count} atoms drawn, ${pk.n} counted`);
+    chk(pk.mass === pk.n*S.ATOM[k].Ar, `${k}: the mass in the box is not atoms × relative mass`);
+    const L = pk.mesh.parent.children.find(o=>o.isLineSegments).geometry;
+    let out = 0;
+    for(let i=0;i<pk.n*3;i++) if(Math.abs(pk.P[i]) > 1.3 + 1e-9) out++;
+    chk(out === 0, `${k}: ${out} atom coordinates outside the box`);
+  }
+  chk(S.BOX_MISMATCH < 0.01, `the two patterns do not fit the same box: ${(S.BOX_MISMATCH*100).toFixed(1)}% apart`);
+  chk(S.ATOM.iron.Ar > S.ATOM.aluminium.Ar && S.ATOM.iron.r < S.ATOM.aluminium.r, 'iron atoms should be heavier and smaller');
+  chk(Math.abs(S.FIG.massRatio/S.FIG.rhoRatio - 1) < 0.03,
+      `mass in the boxes is ×${S.FIG.massRatio.toFixed(2)}, but iron is ×${S.FIG.rhoRatio.toFixed(2)} as dense as aluminium`);
+  chk(near(S.FIG.massRatio, S.FIG.arRatio*S.FIG.countRatio, 1e-12), 'mass ratio is not (mass of one) × (how many)');
+  const t5 = plain(S.CH[5].text);
+  chk(t5.includes(S.PACK.iron.n + ' against ' + S.PACK.aluminium.n), 'chapter 5 quotes different atom counts');
+  chk(t5.includes(S.FIG.massRatio.toFixed(1) + ' times') && t5.includes(S.FIG.rhoRatio.toFixed(1) + ' times'), 'chapter 5 quotes different ratios');
+  S.enterChapter(5); S.frame(S.CH[5].len);
+  const c5 = S.cardsAt(5, S.CH[5].len);
+  chk(c5.every((c, i)=>F(c,'Atoms in box') === String(S.PACK[['aluminium','iron'][i]].n)), 'the cards do not count every atom by the end');
+  chk(F(c5[1],'Mass in box') === S.grp(S.PACK.iron.mass), 'the iron card shows a different mass');
+  chk(S.cardsAt(5, 1).every(c=>F(c,'Atoms in box') === '0'), 'atoms are counted before any appear');
+  console.log(`      ${S.PACK.aluminium.n} Al × ${S.ATOM.aluminium.Ar} vs ${S.PACK.iron.n} Fe × ${S.ATOM.iron.Ar}: mass ×${S.FIG.massRatio.toFixed(2)}, density ×${S.FIG.rhoRatio.toFixed(2)}`);
+
+  /* ---------- states ---------- */
+  section('    solid, liquid, gas');
+  chk(S.GOLD_RHO.solid > S.GOLD_RHO.liquid && S.GOLD_RHO.liquid > 1000*S.GOLD_RHO.gas, 'gold should be densest solid, then liquid, then far less as gas');
+  chk(S.STATE_N.solid === 108 && S.STATE_N.liquid === Math.round(108*S.GOLD_RHO.liquid/S.GOLD_RHO.solid), 'the liquid box does not hold the atoms the densities say');
+  chk(S.STATE_MESH.solid.count === S.STATE_N.solid && S.STATE_MESH.liquid.count === S.STATE_N.liquid, 'the drawn gold does not match the counts');
+  chk(near(S.GOLD_RHO.gas, 101325*0.19697/(8.314*(2856+273))/1000, 1e-9), 'the gas density is not pV = nRT at the boiling point');
+  chk(S.GAS_EXPECT < 0.05, 'the gas box should really be nearly always empty');
+  chk(plain(S.CH[6].text).includes(S.sig(S.GOLD_RHO.solid,3) + ' g/cm³') && plain(S.CH[6].text).includes(S.sig(S.GOLD_RHO.liquid,3) + ' g/cm³'), 'chapter 6 quotes different densities');
+  const liq = S.STATE_P.liquid, d0 = S.STATE_L/Math.cbrt(S.STATE_N.liquid);
+  let liqMin = Infinity;
+  for(let i=0;i<S.STATE_N.liquid;i++) for(let j=i+1;j<S.STATE_N.liquid;j++)
+    liqMin = Math.min(liqMin, Math.hypot(liq[i*3]-liq[j*3], liq[i*3+1]-liq[j*3+1], liq[i*3+2]-liq[j*3+2]));
+  chk(liqMin > 0.7*d0, `two liquid gold atoms are piled on each other (${liqMin.toFixed(3)} apart)`);
+
+  /* ---------- sink or float ---------- */
+  section('    sink or float');
+  chk(S.WAX.solid > S.WAX.liquid, 'solid wax should be denser than melted wax');
+  chk(S.ICE < S.WATER0, 'ice should be less dense than water');
+  chk(near(S.FLOAT_F, S.ICE/S.WATER0, 1e-12), 'the floating fraction is not ρ(ice) ÷ ρ(water)');
+  S.enterChapter(7); S.updateFloat(60);
+  const under = (S.SURF - (S.iceCube.position.y - S.FCUBE/2))/S.FCUBE;
+  chk(Math.abs(under - S.FLOAT_F) < 0.005, `the ice settles ${(under*100).toFixed(1)}% under, should be ${(S.FLOAT_F*100).toFixed(1)}%`);
+  chk(near(S.waxCube.position.y, S.BEAK.glass + S.FCUBE/2), 'the wax does not end on the bottom of its beaker');
+  const c7 = S.cardsAt(7, 60);
+  chk(F(c7[0],'The solid…') === 'sinks' && F(c7[1],'The solid…') === 'floats', 'the cards say the wrong thing sinks');
+  chk(plain(S.CH[7].look).includes(S.FIG.icePct + '%'), 'chapter 7 quotes a different floating fraction');
+  console.log(`      ice ${S.ICE} / water ${S.WATER0}: ${(under*100).toFixed(1)}% under the surface`);
+}
+
 /* =========================================================================== */
 (async function main(){
   const url = threeUrlOf(read('melting-snowman.html'));
@@ -1229,6 +1691,8 @@ function convectionStory(THREE){
     particleTypesStory(THREE);
     pureStory(THREE);
     convectionStory(THREE);
+    conductionStory(THREE);
+    densityStory(THREE);
     console.log('\n' + (fails ? `${fails} of ${checks} checks FAILED`
                                : `all ${checks} checks pass`));
     if(fails) process.exitCode = 1;

@@ -1,0 +1,1626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conduction — the 3D story</title>
+<style>
+  :root{
+    --ink:#eef2f7;
+    --dim:#93a2b6;
+    --panel:rgba(10,14,21,.78);
+    --line:rgba(147,162,182,.22);
+    --side:360px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;background:#080b11;color:var(--ink);overflow:hidden;
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+
+  #stage{position:fixed;top:0;right:0;bottom:0;left:var(--side);}
+  canvas{display:block;}
+  #fade{position:fixed;top:0;right:0;bottom:0;left:var(--side);background:#080b11;
+    opacity:0;pointer-events:none;z-index:2;}
+
+  #side{
+    position:fixed;top:0;left:0;bottom:0;width:var(--side);
+    background:var(--panel);backdrop-filter:blur(16px);
+    border-right:1px solid var(--line);
+    padding:20px 22px 16px;
+    display:flex;flex-direction:column;gap:14px;
+    overflow-y:auto;
+  }
+  #side h1{
+    margin:0;
+    font-family:"Iowan Old Style","Charter","Palatino Linotype",Georgia,serif;
+    font-weight:600;font-size:19px;letter-spacing:.2px;line-height:1.25;
+  }
+  #side .byline{margin:4px 0 0;font-size:12px;line-height:1.5;color:var(--dim);}
+  #side a{color:var(--dim);text-decoration:none;font-size:12px;
+    border-bottom:1px solid rgba(147,162,182,.3);}
+  #side a:hover{color:var(--ink);}
+  .links{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;}
+
+  .story{flex:1;min-height:0;}
+  .story .step{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:700;}
+  .story h2{
+    margin:3px 0 0;font-family:"Iowan Old Style","Charter",Georgia,serif;
+    font-size:17px;font-weight:600;letter-spacing:.2px;
+  }
+  .story p{margin:8px 0 0;font-size:13.5px;line-height:1.62;color:#cbd5e1;}
+  .story p b{color:#ffd9a0;font-weight:600;}
+  .story .look{
+    margin-top:10px;font-size:12.5px;line-height:1.5;color:#a9c7ee;
+    border-left:2px solid rgba(127,176,255,.45);padding-left:10px;
+  }
+  .story .scale{
+    margin-top:10px;font-size:12px;line-height:1.5;color:#c9b8e0;
+    border-left:2px solid rgba(190,150,240,.45);padding-left:10px;
+  }
+  .terms{
+    margin:12px 0 0;padding:10px 12px;
+    background:rgba(255,217,160,.05);border:1px solid rgba(255,217,160,.18);border-radius:10px;
+  }
+  .terms .hd{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#d9b98a;font-weight:700;margin-bottom:6px;}
+  .terms dt{font-size:12.5px;font-weight:700;color:#ffd9a0;}
+  .terms dd{margin:1px 0 7px;font-size:12.5px;line-height:1.5;color:#cbd5e1;}
+  .terms dd:last-child{margin-bottom:0;}
+
+  .nav{
+    position:fixed;left:var(--side);right:0;bottom:20px;z-index:5;
+    margin:0 auto;width:fit-content;max-width:calc(100% - var(--side) - 32px);
+    display:flex;align-items:center;gap:8px;flex-wrap:nowrap;justify-content:center;
+    background:var(--panel);backdrop-filter:blur(16px);
+    border:1px solid var(--line);border-radius:999px;
+    padding:9px 12px;white-space:nowrap;
+  }
+  .nav button{
+    font:inherit;font-size:12.5px;font-weight:500;color:var(--dim);
+    background:rgba(255,255,255,.05);border:1px solid var(--line);
+    border-radius:999px;padding:7px 14px;cursor:pointer;
+    transition:background .15s ease,color .15s ease,opacity .15s ease;
+  }
+  .nav button:hover:not(:disabled){background:rgba(255,255,255,.12);color:var(--ink);}
+  .nav button:disabled{opacity:.32;cursor:default;}
+  .nav button.primary{background:rgba(127,176,255,.2);color:#dce9ff;border-color:rgba(127,176,255,.35);}
+  .dots{display:flex;gap:6px;padding:0 4px;}
+  .dots i{
+    width:7px;height:7px;border-radius:50%;background:rgba(147,162,182,.3);
+    cursor:pointer;transition:background .2s ease,transform .2s ease;
+  }
+  .dots i.on{background:var(--ink);transform:scale(1.25);}
+
+  #key{
+    position:fixed;top:18px;right:20px;z-index:5;
+    background:var(--panel);backdrop-filter:blur(16px);
+    border:1px solid var(--line);border-radius:12px;
+    padding:11px 14px;
+    font-size:11.5px;line-height:1.75;color:var(--dim);
+  }
+  #key div{display:flex;align-items:center;gap:8px;}
+  .dot{width:11px;height:11px;border-radius:50%;flex:none;
+    box-shadow:inset -2px -2px 3px rgba(0,0,0,.45);}
+  .sq{width:11px;height:11px;border-radius:2px;flex:none;}
+  .grad{width:22px;height:6px;border-radius:3px;flex:none;}
+
+  .hint{
+    position:fixed;right:20px;bottom:20px;z-index:3;
+    font-size:11px;color:#5a687d;pointer-events:none;
+  }
+
+  @media (max-width:860px){
+    :root{--side:0px;}
+    #stage,#fade{left:0;bottom:44vh;}
+    #side{
+      top:auto;left:0;right:0;bottom:0;width:auto;height:44vh;
+      border-right:none;border-top:1px solid var(--line);
+      padding:14px 16px;gap:11px;
+    }
+    #side h1{font-size:16px;}
+    #side .byline{display:none;}
+    .nav{
+      left:0;right:0;bottom:44vh;
+      width:auto;max-width:none;margin:0;
+      border-radius:0;border-width:1px 0 0;
+      flex-wrap:wrap;white-space:normal;justify-content:center;
+    }
+    #key{top:14px;right:14px;padding:8px 10px;font-size:11px;line-height:1.6;}
+    .hint{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<div id="stage"></div>
+<div id="fade"></div>
+
+<div id="side">
+  <div>
+    <h1>Conduction</h1>
+    <p class="byline">How energy gets through a solid — and why metals do it so much faster</p>
+    <div class="links">
+      <a href="./index.html">← Particle model</a>
+      <a href="./convection.html">Convection</a>
+      <a href="../index.html">All simulations</a>
+    </div>
+  </div>
+
+  <div class="story">
+    <div class="step" id="sStep"></div>
+    <h2 id="sTitle"></h2>
+    <p id="sText"></p>
+    <div class="look" id="sLook"></div>
+    <div class="scale" id="sScale"></div>
+    <dl class="terms" id="sTerms"></dl>
+  </div>
+</div>
+
+<!-- outside #side: its backdrop-filter would otherwise pin fixed children to the column -->
+<div class="nav">
+  <button id="back">← Back</button>
+  <button id="next" class="primary">Next →</button>
+  <button id="replay">Replay</button>
+  <div class="dots" id="dots"></div>
+</div>
+
+<div id="key"></div>
+
+<div class="hint">drag to orbit · scroll to zoom</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ===========================================================================
+   CONDUCTION — the 3D story
+
+   The same glass pan on the same gas ring as convection.html, and six
+   chapters:
+
+     0  the pan          — the flame only ever touches the solid glass bottom
+     1  into the glass   — particles in fixed places; the ones by the flame
+                           vibrate harder, and it creeps up layer by layer
+     2  pass it on       — one chain picked out: each kick is a collision
+                           with the particle above
+     3  two rods         — copper and glass across the ring, drawing pins
+                           stuck on with wax; the copper's drop, the glass's
+                           do not
+     4  inside the rods  — the same heating, side by side: the copper's front
+                           races, the glass's barely moves
+     5  free electrons   — why: electrons pick energy up at the hot end and
+                           carry it a long way before they hit an ion
+
+   TWO WORLDS. The kitchen is at the origin; the particles are parked at
+   MICRO_Y. The camera teleports between them behind a fade.
+
+   EVERYTHING IS A PURE FUNCTION OF THE CHAPTER'S OWN CLOCK t. Temperatures
+   are the closed-form solution of the heat equation for a bar whose end is
+   suddenly held hot:
+
+       T(x, t) = T0 + (Th - T0) erfc( x / (2 sqrt(alpha t)) )
+
+   which is also what places the pins: a pin drops at the moment T at its
+   distance reaches the melting point of the wax, found by inverting erfc.
+   alpha = k / (rho c) for each material comes out of MAT, so the copper
+   timings, the glass timings and the difference between the two rods in
+   chapter 4 are all worked out from data-book values.
+
+   It ignores the energy a rod loses to the air. For copper over a couple of
+   minutes that hardly matters; for glass it is the whole story (in practice
+   the pins never drop at all), and the caption says so.
+=========================================================================== */
+
+/* ------------------------------------------------------------ the numbers */
+const MAT = {
+  copper:{name:'copper', k:401, rho:8960, c:385},   // W/m K, kg/m³, J/kg °C
+  glass :{name:'glass',  k:1.0, rho:2500, c:840}
+};
+for(const m of Object.values(MAT)) m.alpha = m.k/(m.rho*m.c);   // thermal diffusivity, m²/s
+
+const T_ROOM = 20, T_HOT = 300;        // °C: the room, and the end held in the flame
+const T_WAX  = 60;                     // °C: the wax lets go
+const UNIT_M = 0.1;                    // one scene unit is 10 cm (the pan is 31 cm across)
+const SPEEDUP = 6;                     // the rod chapter runs six times faster than life
+
+/* ----------------------------------------------------------------- helpers */
+const clamp = (v,a,b) => v<a?a:(v>b?b:v);
+const lerp  = (a,b,u) => a + (b-a)*u;
+const ss = (a,b,x) => { const u = clamp((x-a)/(b-a),0,1); return u*u*(3-2*u); };
+const hexCss = n => '#'+n.toString(16).padStart(6,'0');
+
+function rng(seed){
+  let a = seed >>> 0;
+  return function(){
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function hash(i){
+  let x = Math.imul(i|0, 0x9E3779B1);
+  x ^= x >>> 16; x = Math.imul(x, 0x85EBCA6B);
+  x ^= x >>> 13; x = Math.imul(x, 0xC2B2AE35);
+  x ^= x >>> 16;
+  return (x >>> 0)/4294967296;
+}
+
+/* erfc to about 1e-7 (Numerical Recipes, erfcc) */
+function erfc(x){
+  const z = Math.abs(x), t = 1/(1 + 0.5*z);
+  const r = t*Math.exp(-z*z - 1.26551223 + t*(1.00002368 + t*(0.37409196 + t*(0.09678418 +
+            t*(-0.18628806 + t*(0.27886807 + t*(-1.13520398 + t*(1.48851587 +
+            t*(-0.82215223 + t*0.17087277)))))))));
+  return x >= 0 ? r : 2 - r;
+}
+/* erfc is decreasing, so bisection is enough */
+function erfcinv(f){
+  let lo = -6, hi = 6;
+  for(let i=0;i<80;i++){ const m = (lo+hi)/2; if(erfc(m) > f) lo = m; else hi = m; }
+  return (lo+hi)/2;
+}
+
+/* how hot, as a fraction from room (0) to the held end (1), at distance x
+   from the heated end after time t, when the diffusivity is D. Any units, as
+   long as they agree. */
+function heatFrac(x, t, D){
+  if(x <= 0) return 1;
+  if(t <= 0) return 0;
+  return erfc(x/(2*Math.sqrt(D*t)));
+}
+
+/* =========================================================================
+   THE RODS  (no three.js in here — the tests run it)
+========================================================================= */
+const ROD = {r0:0.1, r1:3.0, hot:0.55, y:0.54, rad:0.06};   // along the rod, from the middle of the ring
+const PINS = [0.85, 1.25, 1.65, 2.05, 2.45];                 // where the pins are stuck on
+const WAX_F = (T_WAX - T_ROOM)/(T_HOT - T_ROOM);             // the fraction at which the wax melts
+const ROD_HEAT0 = 1.2;                                       // chapter time at which the flame lights
+/* The experiment clock stops at ROD_MAX real seconds, however long the
+   chapter is left on screen: long after the last copper pin, long before the
+   model would let a glass pin go (and in real life it never would). */
+const ROD_MAX = 150;
+const rodClock = t => Math.min(t, ROD_HEAT0 + ROD_MAX/SPEEDUP);
+
+/* real seconds for the wax at distance s (metres) past the flame to melt */
+function meltSeconds(s, alpha){
+  if(s <= 0) return 0;
+  const z = erfcinv(WAX_F);
+  return s*s/(4*alpha*z*z);
+}
+/* the same, in chapter time */
+const pinDropAt = (r, mat) => ROD_HEAT0 + meltSeconds((r - ROD.hot)*UNIT_M, MAT[mat].alpha)/SPEEDUP;
+/* the rod's temperature in °C at r, at chapter time t */
+function rodTemp(r, t, mat){
+  const real = (t - ROD_HEAT0)*SPEEDUP;
+  return T_ROOM + (T_HOT - T_ROOM)*heatFrac((r - ROD.hot)*UNIT_M, real, MAT[mat].alpha);
+}
+
+const fmtTime = s => {
+  s = Math.max(0, Math.floor(s));
+  return Math.floor(s/60) + ':' + String(s % 60).padStart(2,'0');
+};
+
+/* the figures the captions quote, worked out rather than typed */
+const FIG = {
+  lastCopper: Math.round(meltSeconds((PINS[PINS.length-1] - ROD.hot)*UNIT_M, MAT.copper.alpha)),
+  firstGlassMin: Math.floor(meltSeconds((PINS[0] - ROD.hot)*UNIT_M, MAT.glass.alpha)/60),
+  kRatio: Math.round(MAT.copper.k/MAT.glass.k/100)*100,
+  alphaRatio: MAT.copper.alpha/MAT.glass.alpha
+};
+
+/* =========================================================================
+   THE PARTICLES  (no three.js here either)
+========================================================================= */
+const MICRO_Y = 400;
+
+/* n particles dropped at random into an Lx by Ly by Lz box, then pushed apart
+   until nobody is closer than the average spacing: a solid with no pattern,
+   which is what glass is. Done once, from a fixed seed. */
+function relax(n, Lx, Ly, Lz, seed){
+  const R = rng(seed), P = new Float32Array(n*3);
+  const d = Math.cbrt(Lx*Ly*Lz/n);
+  const lim = [Lx/2 - d/2, Ly/2 - d/2, Lz/2 - d/2];
+  for(let i=0;i<n;i++) for(let a=0;a<3;a++) P[i*3+a] = (R()*2-1)*lim[a];
+  for(let it=0; it<500; it++){
+    for(let i=0;i<n;i++) for(let j=i+1;j<n;j++){
+      const dx = P[j*3]-P[i*3], dy = P[j*3+1]-P[i*3+1], dz = P[j*3+2]-P[i*3+2];
+      const r2 = dx*dx+dy*dy+dz*dz;
+      if(r2 >= d*d) continue;
+      const r = Math.sqrt(r2) || 1e-6, push = (d - r)*0.25/r;
+      P[i*3] -= dx*push; P[i*3+1] -= dy*push; P[i*3+2] -= dz*push;
+      P[j*3] += dx*push; P[j*3+1] += dy*push; P[j*3+2] += dz*push;
+    }
+    for(let i=0;i<n;i++) for(let a=0;a<3;a++) P[i*3+a] = clamp(P[i*3+a], -lim[a], lim[a]);
+  }
+  return {n, P, d};
+}
+
+/* neighbours: every pair closer than f times the spacing */
+function bondsOf(B, f){
+  const out = [], lim = B.d*f;
+  for(let i=0;i<B.n;i++) for(let j=i+1;j<B.n;j++){
+    const dx = B.P[j*3]-B.P[i*3], dy = B.P[j*3+1]-B.P[i*3+1], dz = B.P[j*3+2]-B.P[i*3+2];
+    if(dx*dx+dy*dy+dz*dz < lim*lim) out.push(i, j);
+  }
+  return out;
+}
+
+/* per-particle vibration: three phases and three rates, fixed by index */
+function vibTable(n, off){
+  const J = new Float32Array(n*6);
+  for(let i=0;i<n;i++) for(let k=0;k<3;k++){
+    J[i*6+k]   = hash(off + i*9 + k)*6.283;
+    J[i*6+3+k] = 0.8 + 0.5*hash(off + i*9 + 3 + k);
+  }
+  return J;
+}
+/* A particle in a solid vibrates about a fixed place. Hotter means a bigger
+   swing at much the same rate — so it moves faster. zk limits the swing
+   across the rod, where the free electrons have to get past. */
+const VIB_W = 11;
+function vibrate(home, J, i, amp, t, out, zk){
+  for(let a=0;a<3;a++)
+    out[a] = home[i*3+a] + amp*(a === 2 && zk != null ? zk : 1)*Math.sin(VIB_W*J[i*6+3+a]*t + J[i*6+a]);
+  return out;
+}
+
+/* ---------- the glass bottom of the pan ---------- */
+const SLAB = {Lx:6.2, Ly:3.1, Lz:1.24, R:0.2};
+const SLAB_B = relax(100, SLAB.Lx, SLAB.Ly, SLAB.Lz, 7);
+const SLAB_BONDS = bondsOf(SLAB_B, 1.3);
+const SLAB_J = vibTable(SLAB_B.n, 100);
+const SLAB_D = 0.7;                    // display diffusivity: the front crosses the slab in ~8 s
+const SLAB_HEAT0 = 2.5;                // chapter 1: when the flame starts heating the bottom
+const AMP0 = 0.025, AMP1 = 0.13;       // swing at room temperature, and right by the flame
+
+/* how hot a particle at height y (slab-centred) is, chapter 1's clock */
+const slabFrac = (y, t) => heatFrac(y + SLAB.Ly/2, t - SLAB_HEAT0, SLAB_D);
+
+/* the chain picked out in chapter 2: start at the bottom, near the middle and
+   near the front, and keep stepping to the nearest particle above */
+const CHAIN = (function(){
+  const P = SLAB_B.P, n = SLAB_B.n, d = SLAB_B.d;
+  let best = -1, bs = Infinity;
+  for(let i=0;i<n;i++){
+    const s = P[i*3+1] + 2*Math.abs(P[i*3]) - 1.2*P[i*3+2];
+    if(s < bs){ bs = s; best = i; }
+  }
+  const chain = [best];
+  for(;;){
+    const c = chain[chain.length-1];
+    let nx = -1, nd = Infinity;
+    for(let j=0;j<n;j++){
+      const dy = P[j*3+1] - P[c*3+1];
+      if(dy < 0.25*d) continue;
+      const dist = Math.hypot(P[j*3]-P[c*3], dy, P[j*3+2]-P[c*3+2]);
+      if(dist > 1.5*d) continue;
+      const score = dist + 1.2*Math.abs(P[j*3]) - 0.6*P[j*3+2];
+      if(score < nd){ nd = score; nx = j; }
+    }
+    if(nx < 0) break;
+    chain.push(nx);
+  }
+  return chain;
+})();
+
+/* A kick travels up the chain. Particle j swings towards particle j+1 for
+   PULSE_TAU seconds; halfway through, at the top of its swing, it touches
+   j+1 — and that is the moment j+1 starts its own swing. So each link starts
+   PULSE_TAU/2 after the one below, and nothing ever moves before it is hit. */
+const PULSE0 = 2.0, PULSE_P = 2.4, PULSE_TAU = 0.5, PULSE_B = 0.2, PULSE_DECAY = 0.8;
+const pulseStart = (k, j) => PULSE0 + k*PULSE_P + j*PULSE_TAU/2;
+
+/* the swing of chain link j at time t (0 when not being kicked), and the
+   latest pulse that reached it */
+function chainSwing(j, t){
+  const k = Math.floor((t - PULSE0 - j*PULSE_TAU/2)/PULSE_P);
+  if(k < 0) return 0;
+  const s = t - pulseStart(k, j);
+  if(s < 0 || s > PULSE_TAU) return 0;
+  return PULSE_B*Math.pow(PULSE_DECAY, j)*Math.sin(Math.PI*s/PULSE_TAU);
+}
+
+/* ---------- inside the two rods ---------- */
+const PIECE = {Lx:12, Ly:2.4, Lz:1.2};
+const GLASS_B = relax(145, PIECE.Lx, PIECE.Ly, PIECE.Lz, 31);
+const GLASS_BONDS = bondsOf(GLASS_B, 1.3);
+const GLASS_J = vibTable(GLASS_B.n, 3000);
+
+/* Copper is a face-centred cubic lattice, 10 cells by 2 by 1, offset a
+   quarter of a cell from each face (the same arrangement as the wire in
+   electricity/wire-resistance.html). Every ion sits in one of two layers,
+   at z = -0.3 or +0.3. The free electrons fly in the three planes between
+   and outside those layers, so they never pass through an ion — the gap to
+   the nearest layer is bigger than an ion and an electron together, even at
+   the widest cross-rod swing. */
+const LAT_A = 1.2, R_ION = 0.17, R_EL = 0.065;
+const CU = (function(){
+  const F = [[0,0,0],[0.5,0.5,0],[0.5,0,0.5],[0,0.5,0.5]];
+  const nx = 10, ny = 2, nz = 1, P = [];
+  for(let i=0;i<nx;i++) for(let j=0;j<ny;j++) for(let k=0;k<nz;k++) for(const b of F)
+    P.push(-PIECE.Lx/2 + (i + b[0] + 0.25)*LAT_A,
+           -PIECE.Ly/2 + (j + b[1] + 0.25)*LAT_A,
+           -PIECE.Lz/2 + (k + b[2] + 0.25)*LAT_A);
+  return {n:P.length/3, P:new Float32Array(P)};
+})();
+const CU_J = vibTable(CU.n, 7000);
+const EL_PLANES = [-0.6, 0, 0.6];
+const CU_AMP0 = 0.02, CU_AMP1 = 0.09, CU_ZK = 0.5;   // the cross-rod swing is capped at 0.045
+
+const N_EL = 36, EL_SPEED = 2.3;
+const EL = (function(){
+  const R = rng(99), e = [];
+  for(let i=0;i<N_EL;i++){
+    const a = R()*Math.PI*2;
+    e.push({z:EL_PLANES[i % 3],
+            x0:(R()*2-1)*5.8, y0:(R()*2-1)*1.0,
+            vx:Math.cos(a)*EL_SPEED*(0.8 + 0.4*R()), vy:Math.sin(a)*EL_SPEED*0.5});
+  }
+  return e;
+})();
+const EL_X = PIECE.Lx/2 - 0.12, EL_Y = PIECE.Ly/2 - 0.12;
+
+/* a straight line folded back into [-h, h]: a ball bouncing between walls */
+function tri(u, h){
+  const L = 2*h, w = ((u + h) % (2*L) + 2*L) % (2*L);
+  return -h + (w < L ? w : 2*L - w);
+}
+function electronAt(e, t, out){
+  out[0] = tri(e.x0 + e.vx*t, EL_X);
+  out[1] = tri(e.y0 + e.vy*t, EL_Y);
+  out[2] = e.z;
+  return out;
+}
+
+/* display diffusivities for chapter 4: copper's front crosses its piece in
+   about nine seconds; glass's is copper's divided by the real ratio */
+const CU_D = 5.2;
+const GL_D = CU_D/FIG.alphaRatio;
+const ROD_MICRO_HEAT0 = 1.5;
+const pieceFrac = (x, t, D) => heatFrac(x + PIECE.Lx/2, t - ROD_MICRO_HEAT0, D);
+
+/* chapter 5 holds the copper as it was a few seconds into chapter 4 */
+const CH5_T = ROD_MICRO_HEAT0 + 3;
+
+/* the energy an electron carries: the average of how hot the rod was where
+   it has been over the last second — so a hot electron stays hot for a while
+   after it has left the hot end */
+const _e = [0,0,0];
+function electronHeat(e, t, fieldT){
+  let s = 0;
+  for(let k=0;k<5;k++){
+    const tb = t - k*0.3;
+    electronAt(e, tb, _e);
+    s += pieceFrac(_e[0], fieldT(tb), CU_D);
+  }
+  return s/5;
+}
+
+/* ---------- chapter 5: three electrons followed ---------- */
+/* Each leaves the hot end, flies straight to an ion far down the rod, hits
+   it, and comes back more slowly having given most of its energy away. */
+const TR_P = 4.2, TR_FLY = 1.5;
+const TRACERS = [
+  {off:0.6, y:-0.55, z:0,    ion:null},
+  {off:2.0, y: 0.35, z:0.6,  ion:null},
+  {off:3.4, y: 0.0,  z:-0.6, ion:null}
+];
+(function aimTracers(){
+  /* each aims at an ion in the right-hand third, next to its plane */
+  const used = new Set();
+  TRACERS.forEach((tr, i)=>{
+    let best = -1, bs = Infinity;
+    for(let m=0;m<CU.n;m++){
+      if(used.has(m)) continue;
+      const x = CU.P[m*3], y = CU.P[m*3+1], z = CU.P[m*3+2];
+      if(Math.abs(Math.abs(z - tr.z) - 0.3) > 1e-6) continue;
+      const s = Math.abs(x - (2.2 + i*1.1)) + Math.abs(y - tr.y);
+      if(s < bs){ bs = s; best = m; }
+    }
+    used.add(best);
+    tr.ion = best;
+    tr.start = [-5.5, tr.y, tr.z];
+    /* the point in the electron's plane right beside the ion: contact */
+    tr.hit = [CU.P[best*3], CU.P[best*3+1], tr.z];
+    tr.back = [CU.P[best*3] - 2.2, clamp(tr.y + 0.5, -1.0, 1.0), tr.z];
+  });
+})();
+/* where tracer i is, how much energy it has (1 = fresh from the hot end), and
+   the time since its last hit, or -1 */
+function tracerAt(tr, t, out){
+  const c = t - tr.off;
+  if(c < 0){ out.visible = false; return out; }
+  const s = c % TR_P;
+  out.visible = true;
+  if(s < TR_FLY){
+    const u = s/TR_FLY;
+    for(let a=0;a<3;a++) out.p[a] = lerp(tr.start[a], tr.hit[a], u);
+    out.energy = 1; out.since = -1;
+  } else {
+    const u = ss(0, TR_P - TR_FLY, s - TR_FLY);
+    for(let a=0;a<3;a++) out.p[a] = lerp(tr.hit[a], tr.back[a], u);
+    out.energy = 0.2; out.since = s - TR_FLY;
+  }
+  out.fadeIn  = ss(0, 0.25, s);
+  out.fadeOut = 1 - ss(TR_P - 0.4, TR_P, s);
+  return out;
+}
+/* how much extra an ion is swinging because a tracer has just hit it */
+function ionKick(m, t){
+  let k = 0;
+  for(const tr of TRACERS){
+    if(tr.ion !== m) continue;
+    const c = t - tr.off - TR_FLY;
+    if(c < 0) continue;
+    const s = c % TR_P;
+    k = Math.max(k, Math.exp(-s/0.7));
+  }
+  return k;
+}
+
+/* =========================================================================
+   THREE
+========================================================================= */
+const stage = document.getElementById('stage');
+const fadeEl = document.getElementById('fade');
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio||1));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x080b11);
+scene.fog = new THREE.Fog(0x080b11, 40, 90);
+const camera = new THREE.PerspectiveCamera(44, 1, 0.03, 200);
+
+scene.add(new THREE.HemisphereLight(0x9fb4d0, 0x0a0d13, 0.6));
+const keyL  = new THREE.DirectionalLight(0xffffff, 0.95); keyL.position.set(6,11,8); scene.add(keyL);
+const fillL = new THREE.DirectionalLight(0x9ec3ff, 0.40); fillL.position.set(-8,4,-6); scene.add(fillL);
+const rimL  = new THREE.DirectionalLight(0xffd9b0, 0.32); rimL.position.set(0,3,-10); scene.add(rimL);
+
+(function environment(){
+  const env = new THREE.Scene();
+  const box = new THREE.BoxGeometry(1,1,1);
+  env.add(new THREE.Mesh(new THREE.BoxGeometry(30,18,30),
+    new THREE.MeshBasicMaterial({color:0x1d2634, side:THREE.BackSide})));
+  const panel=(hex,gain,x,y,z,sx,sy,sz)=>{
+    const m=new THREE.Mesh(box,new THREE.MeshBasicMaterial({color:hex}));
+    m.material.color.multiplyScalar(gain);
+    m.position.set(x,y,z); m.scale.set(sx,sy,sz); env.add(m);
+  };
+  panel(0xffffff,1.1,  0, 8.4,  0, 14,0.1,14);
+  panel(0xbcd6ff,1.3,-11, 1.5,  0, 0.1,11,20);
+  panel(0xffd7b0,0.9, 11, 1.5,  2, 0.1,11,20);
+  panel(0x8fb0e0,0.5,  0, 0.0,-12, 22,11,0.1);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(env, 0.04).texture;
+  pmrem.dispose();
+})();
+
+const SPH  = new THREE.SphereGeometry(1,20,14);
+const SPH_LO = new THREE.SphereGeometry(1,12,8);
+const CYL  = new THREE.CylinderGeometry(1,1,1,16);
+const CONE = new THREE.ConeGeometry(1,1,20);
+const BOX  = new THREE.BoxGeometry(1,1,1);
+
+function linearise(root){
+  root.traverse(o=>{
+    if(!o.material) return;
+    (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{
+      if(!m || m.userData.__lin) return;
+      m.userData.__lin = true;
+      if(m.color)    m.color.convertSRGBToLinear();
+      if(m.emissive) m.emissive.convertSRGBToLinear();
+    });
+  });
+}
+const lin = hex => new THREE.Color(hex).convertSRGBToLinear();
+
+function falloffMap(stops){
+  const S = 512, c = document.createElement('canvas');
+  c.width = c.height = S;
+  const x = c.getContext('2d');
+  x.fillStyle = '#000'; x.fillRect(0,0,S,S);
+  const g = x.createRadialGradient(S/2,S/2,0, S/2,S/2,S*0.5);
+  stops.forEach(s=>g.addColorStop(s[0], s[1]));
+  x.fillStyle = g; x.fillRect(0,0,S,S);
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+}
+/* a soft round spot, for flashes and electron haloes */
+const spotTex = (function(){
+  const S = 128, c = document.createElement('canvas');
+  c.width = c.height = S;
+  const x = c.getContext('2d');
+  const g = x.createRadialGradient(S/2,S/2,0, S/2,S/2,S/2);
+  g.addColorStop(0,'rgba(255,255,255,1)');
+  g.addColorStop(0.35,'rgba(255,255,255,0.55)');
+  g.addColorStop(1,'rgba(255,255,255,0)');
+  x.fillStyle = g; x.fillRect(0,0,S,S);
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+})();
+
+/* ------------------------------------------------------------------ labels */
+function roundRect(ctx, x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x+r, y); ctx.lineTo(x+w-r, y); ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+  ctx.lineTo(x+w, y+h-r); ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+  ctx.lineTo(x+r, y+h); ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+  ctx.lineTo(x, y+r); ctx.quadraticCurveTo(x, y, x+r, y);
+  ctx.closePath();
+}
+function makeLabel(text, opt){
+  opt = opt || {};
+  const size = opt.size || 54, pad = opt.bg ? 26 : 18;
+  const c = document.createElement('canvas'), ctx = c.getContext('2d');
+  const font = (opt.weight || 600)+' '+size+'px "Iowan Old Style", Charter, Georgia, serif';
+  ctx.font = font;
+  const w = Math.ceil(ctx.measureText(text).width) + pad*2, h = size + pad*2;
+  c.width = w; c.height = h;
+  if(opt.bg){
+    roundRect(ctx, 3, 3, w-6, h-6, (h-6)/2);
+    ctx.fillStyle = opt.bg; ctx.fill();
+    if(opt.border){ ctx.lineWidth = 4; ctx.strokeStyle = opt.border; ctx.stroke(); }
+  }
+  ctx.font = font; ctx.textAlign='center'; ctx.textBaseline='middle';
+  if(!opt.bg){ ctx.shadowColor = 'rgba(0,0,0,.9)'; ctx.shadowBlur = 14; }
+  ctx.fillStyle = opt.color || '#eef2f7';
+  ctx.fillText(text, w/2, h/2 + size*0.04);
+  const tex = new THREE.CanvasTexture(c); tex.anisotropy = 4;
+  tex.encoding = THREE.sRGBEncoding;
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({
+    map:tex, transparent:true, depthTest:false, depthWrite:false}));
+  spr.renderOrder = 30;
+  const scale = opt.scale || 0.3;
+  spr.scale.set(w/h*scale, scale, 1);
+  spr.userData.opt = opt; spr.userData.text = text;
+  return spr;
+}
+function setLabel(spr, text){
+  const fresh = makeLabel(text, spr.userData.opt);
+  if(spr.material.map) spr.material.map.dispose();
+  spr.material.map = fresh.material.map;
+  spr.material.needsUpdate = true;
+  spr.scale.copy(fresh.scale); spr.userData.text = text;
+  fresh.material.dispose();
+}
+function leader(parent, a, b, col){
+  const g = new THREE.BufferGeometry().setFromPoints([a, b]);
+  const l = new THREE.Line(g, new THREE.LineBasicMaterial({
+    color:col || 0xb8c4d4, transparent:true, depthTest:false, depthWrite:false}));
+  l.renderOrder = 29;
+  parent.add(l);
+  return l;
+}
+function makeArrow(len, col, rad){
+  rad = rad || 0.06;
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({color:col, roughness:0.4, transparent:true,
+    emissive:new THREE.Color(col).multiplyScalar(0.45)});
+  const head = Math.min(len*0.4, rad*4.2);
+  const shaft = new THREE.Mesh(CYL, mat);
+  shaft.scale.set(rad, len-head, rad); shaft.position.y = (len-head)/2;
+  const tip = new THREE.Mesh(CONE, mat);
+  tip.scale.set(rad*2.6, head, rad*2.6); tip.position.y = len - head/2;
+  g.add(shaft, tip);
+  return g;
+}
+
+/* ---------------------------------------------------------- the cue sheet */
+const CUES = [];
+function cue(ch, obj, t0, o){
+  o = o || {};
+  obj.traverse(m=>{ if(m.material){ m.material.transparent = true; if(m.userData.op == null) m.userData.op = m.material.opacity; }});
+  CUES.push({ch, obj, t0, t1:o.t1, rise:o.rise || 0, base:obj.position.clone()});
+  obj.visible = false;
+  return obj;
+}
+function setOpacity(obj, a){
+  obj.traverse(m=>{ if(m.material) m.material.opacity = a*(m.userData.op != null ? m.userData.op : 1); });
+}
+function runCues(ch, t){
+  for(const c of CUES){
+    if(c.ch !== ch){ c.obj.visible = false; continue; }
+    let a = ss(c.t0, c.t0 + 0.6, t);
+    if(c.t1 != null) a *= 1 - ss(c.t1, c.t1 + 0.5, t);
+    c.obj.visible = a > 0.002;
+    if(!c.obj.visible) continue;
+    setOpacity(c.obj, a);
+    c.obj.position.y = c.base.y + c.rise*ss(c.t0, c.t0 + 1.8, t);
+  }
+}
+
+/* colours */
+const COL = {
+  flame  : 0x3f7dff,
+  flameIn: 0x9fe8ff,
+  warm   : 0xff8a3c,
+  energy : 0xffae2b,
+  cold   : 0x5f9cff,     // a particle at room temperature
+  hot    : 0xff7a3c,     // ...and by the flame
+  glassP : 0x8fb4e0,     // a glass particle, cold
+  water  : 0x5aa9ff,     // a water particle, cold — as in convection.html
+  waterH : 0xff8a5c,
+  ion    : 0xc8763c,     // copper, the same as everywhere else in this repo
+  ionHot : 0xff8f4a,
+  electron:0xffe070,     // electrons, everywhere in this repo
+  copper : 0xc8763c,
+  wax    : 0xf2e6c8
+};
+
+/* =========================================================================
+   THE KITCHEN  (the macro world, at the origin)
+========================================================================= */
+const macro = new THREE.Group(); scene.add(macro);
+
+const worktop = new THREE.Mesh(new THREE.CylinderGeometry(16,16,0.4,64),
+  new THREE.MeshStandardMaterial({color:0x4a515d, roughness:0.94, metalness:0, envMapIntensity:0.10,
+    map:falloffMap([[0,'rgba(255,255,255,1)'],[0.16,'rgba(226,232,242,0.7)'],
+                    [0.32,'rgba(140,152,172,0.2)'],[0.44,'rgba(56,64,78,0.05)'],[0.5,'rgba(0,0,0,0)']])}));
+worktop.position.y = -0.33; macro.add(worktop);
+
+const tileMap = (function(){
+  const S = 1024, c = document.createElement('canvas');
+  c.width = c.height = S;
+  const x = c.getContext('2d');
+  x.fillStyle = '#0b0d11'; x.fillRect(0,0,S,S);
+  const g = x.createRadialGradient(S/2,S*0.62,0, S/2,S*0.62,S*0.62);
+  g.addColorStop(0.00,'rgba(222,228,236,1)');
+  g.addColorStop(0.45,'rgba(190,198,210,0.85)');
+  g.addColorStop(0.80,'rgba(70,78,92,0.35)');
+  g.addColorStop(1.00,'rgba(11,13,17,0)');
+  x.fillStyle = g; x.fillRect(0,0,S,S);
+  x.strokeStyle = 'rgba(40,46,56,0.35)'; x.lineWidth = 4;
+  const n = 9;
+  for(let i=1;i<n;i++){
+    x.beginPath(); x.moveTo(i*S/n,0); x.lineTo(i*S/n,S); x.stroke();
+    x.beginPath(); x.moveTo(0,i*S/n); x.lineTo(S,i*S/n); x.stroke();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+})();
+const wall = new THREE.Mesh(new THREE.PlaneGeometry(9.5, 7.5),
+  new THREE.MeshStandardMaterial({color:0xffffff, map:tileMap, roughness:0.7, envMapIntensity:0.2}));
+wall.position.set(0, 2.9, -2.35); macro.add(wall);
+
+const hob = new THREE.Mesh(BOX, new THREE.MeshStandardMaterial({
+  color:0x14171c, roughness:0.45, metalness:0.1, envMapIntensity:0.25}));
+hob.scale.set(6.4, 0.12, 4.3); hob.position.y = -0.06; macro.add(hob);
+
+const steel = new THREE.MeshStandardMaterial({color:0x8a9099, roughness:0.35, metalness:0.8, envMapIntensity:0.55});
+const iron  = new THREE.MeshStandardMaterial({color:0x23262b, roughness:0.6,  metalness:0.5, envMapIntensity:0.4});
+const ringBase = new THREE.Mesh(CYL, steel);
+ringBase.scale.set(0.62, 0.08, 0.62); ringBase.position.y = 0.04; macro.add(ringBase);
+const cap = new THREE.Mesh(CYL, iron);
+cap.scale.set(0.42, 0.1, 0.42); cap.position.y = 0.13; macro.add(cap);
+
+/* the pan support. Two of its arms point along the rods, so in chapter 3 the
+   rods can rest on them. */
+const ROD_ANG = {copper:20*Math.PI/180, glass:160*Math.PI/180};
+[ROD_ANG.copper, ROD_ANG.glass, 235*Math.PI/180, 305*Math.PI/180].forEach(a=>{
+  const arm = new THREE.Mesh(BOX, iron);
+  arm.scale.set(1.25, 0.07, 0.08);
+  arm.position.set(Math.cos(a)*1.35, 0.445, Math.sin(a)*1.35);
+  arm.rotation.y = -a;
+  macro.add(arm);
+  const leg = new THREE.Mesh(CYL, iron);
+  leg.scale.set(0.05, 0.41, 0.05);
+  leg.position.set(Math.cos(a)*1.9, 0.205, Math.sin(a)*1.9);
+  macro.add(leg);
+});
+
+const JETS = [];
+(function flames(){
+  const N = 18, up = new THREE.Vector3(0,1,0);
+  for(let i=0;i<N;i++){
+    const a = i/N*Math.PI*2;
+    const dir = new THREE.Vector3(Math.cos(a)*Math.sin(0.55), Math.cos(0.55), Math.sin(a)*Math.sin(0.55));
+    const q = new THREE.Quaternion().setFromUnitVectors(up, dir);
+    const base = new THREE.Vector3(Math.cos(a)*0.44, 0.19, Math.sin(a)*0.44);
+    const mk = (col, rad, op) => {
+      const m = new THREE.Mesh(CONE, new THREE.MeshBasicMaterial({color:col, transparent:true, opacity:0,
+        blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide}));
+      m.quaternion.copy(q); m.userData.op = op; m.userData.rad = rad;
+      macro.add(m);
+      return m;
+    };
+    JETS.push({outer:mk(COL.flame, 0.055, 0.6), inner:mk(COL.flameIn, 0.028, 0.8), base, dir, i});
+  }
+})();
+const flameLight = new THREE.PointLight(0x6f9cff, 0, 3.2);
+flameLight.position.set(0, 0.32, 0); macro.add(flameLight);
+
+function updateFlame(lit, t){
+  for(const j of JETS){
+    const flick = 0.85 + 0.1*Math.sin(t*23 + j.i*1.7) + 0.05*Math.sin(t*37 + j.i*0.9);
+    [[j.outer, 0.24], [j.inner, 0.12]].forEach(p=>{
+      const m = p[0], h = p[1]*flick*(0.3 + 0.7*lit);
+      m.scale.set(m.userData.rad, h, m.userData.rad);
+      m.position.copy(j.base).addScaledVector(j.dir, h/2);
+      m.material.opacity = lit*m.userData.op*flick;
+      m.visible = lit > 0.001;
+    });
+  }
+  flameLight.intensity = 1.5*lit;
+}
+
+/* ------------------------------------------------------------- the pan */
+const POT = {R:1.55, yb:0.53, H:1.3};
+const PAN_BOTTOM = 0.48, PAN_TOP = 2.23;
+const panGrp = new THREE.Group(); macro.add(panGrp);
+const glass = new THREE.MeshStandardMaterial({color:0xcfe3f0, roughness:0.05, metalness:0,
+  transparent:true, opacity:0.16, depthWrite:false, side:THREE.DoubleSide, envMapIntensity:1.4});
+const pan = new THREE.Mesh(new THREE.LatheGeometry([
+  new THREE.Vector2(0,    PAN_BOTTOM),
+  new THREE.Vector2(1.53, PAN_BOTTOM),
+  new THREE.Vector2(1.60, PAN_BOTTOM+0.06),
+  new THREE.Vector2(1.60, PAN_TOP),
+  new THREE.Vector2(POT.R,PAN_TOP),
+  new THREE.Vector2(POT.R,POT.yb+0.07),
+  new THREE.Vector2(POT.R-0.06,POT.yb),
+  new THREE.Vector2(0,    POT.yb)
+], 72), glass);
+pan.renderOrder = 6;
+panGrp.add(pan);
+const rim = new THREE.Mesh(new THREE.TorusGeometry(1.575, 0.028, 8, 72),
+  new THREE.MeshStandardMaterial({color:0xdfeaf5, roughness:0.1, transparent:true, opacity:0.45,
+    depthWrite:false, envMapIntensity:1.4}));
+rim.rotation.x = Math.PI/2; rim.position.y = PAN_TOP; panGrp.add(rim);
+const handle = new THREE.Mesh(CYL, new THREE.MeshStandardMaterial({color:0x1c1f24, roughness:0.55, envMapIntensity:0.3}));
+handle.scale.set(0.09, 2.0, 0.09);
+handle.rotation.z = Math.PI/2 - 0.08;
+handle.position.set(2.55, 2.02, 0);
+const handleArm = new THREE.Group(); handleArm.add(handle);
+handleArm.rotation.y = 0.55; panGrp.add(handleArm);
+
+const water = new THREE.Mesh(new THREE.CylinderGeometry(POT.R-0.01, POT.R-0.01, POT.H, 72),
+  new THREE.MeshStandardMaterial({color:new THREE.Color(0.58,0.72,0.84), roughness:0.1,
+    transparent:true, opacity:0.20, depthWrite:false, envMapIntensity:1.0}));
+water.position.y = POT.yb + POT.H/2; water.renderOrder = 2;
+panGrp.add(water);
+const surface = new THREE.Mesh(new THREE.CircleGeometry(POT.R-0.01, 72),
+  new THREE.MeshStandardMaterial({color:new THREE.Color(0.62,0.76,0.88), roughness:0.05,
+    transparent:true, opacity:0.22, depthWrite:false, side:THREE.DoubleSide, envMapIntensity:1.2}));
+surface.rotation.x = -Math.PI/2;
+surface.position.y = POT.yb + POT.H + 0.004;
+surface.renderOrder = 3;
+panGrp.add(surface);
+
+/* the bottom warming: a disc inside the thickness of the glass floor that
+   turns orange as the flame heats it */
+const bottomGlow = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.036, 64),
+  new THREE.MeshBasicMaterial({color:COL.warm, transparent:true, opacity:0, depthWrite:false}));
+bottomGlow.position.y = (PAN_BOTTOM + POT.yb)/2;
+bottomGlow.renderOrder = 5;
+panGrp.add(bottomGlow);
+
+/* --------------------------------------------------------------- the rods */
+/* A rod lies along its own +x, from ROD.r0 to ROD.r1, in a group turned to
+   point along one of the support arms. Over it lies a sleeve of short
+   segments, each lit from inside by how hot the rod is there — the view a
+   thermal camera would give. Pins hang underneath on blobs of wax. */
+const rodGrp = new THREE.Group(); macro.add(rodGrp);
+const RODS = {};
+const HEAT_RAMP = [[0,0x000000],[0.25,0x5a0a00],[0.55,0xd8400a],[0.8,0xff9a1a],[1,0xffe27a]];
+const _hc = new THREE.Color(), _hc2 = new THREE.Color();
+function heatColour(f, out){
+  f = clamp(f, 0, 1);
+  for(let i=1;i<HEAT_RAMP.length;i++){
+    if(f <= HEAT_RAMP[i][0]){
+      const a = HEAT_RAMP[i-1], b = HEAT_RAMP[i];
+      _hc.set(a[1]); _hc2.set(b[1]);
+      return out.copy(_hc).lerp(_hc2, (f - a[0])/(b[0] - a[0])).convertSRGBToLinear();
+    }
+  }
+  return out.set(HEAT_RAMP[HEAT_RAMP.length-1][1]).convertSRGBToLinear();
+}
+const SEGS = 48;
+function buildRod(mat){
+  const g = new THREE.Group();
+  g.rotation.y = -ROD_ANG[mat];
+  g.position.y = ROD.y;
+  rodGrp.add(g);
+  const len = ROD.r1 - ROD.r0;
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(ROD.rad, ROD.rad, len, 24),
+    mat === 'copper'
+      ? new THREE.MeshStandardMaterial({color:COL.copper, roughness:0.3, metalness:0.9, envMapIntensity:0.9})
+      : new THREE.MeshStandardMaterial({color:0xd8e8f2, roughness:0.05, transparent:true, opacity:0.45,
+          depthWrite:false, envMapIntensity:1.4}));
+  body.rotation.z = Math.PI/2; body.position.x = (ROD.r0 + ROD.r1)/2;
+  g.add(body);
+
+  const sleeve = new THREE.InstancedMesh(new THREE.CylinderGeometry(1,1,1,16,1,true),
+    new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, blending:THREE.AdditiveBlending,
+      depthWrite:false}), SEGS);
+  sleeve.frustumCulled = false; sleeve.renderOrder = 7;
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1), Math.PI/2);
+  const seg = len/SEGS, black = new THREE.Color(0,0,0);
+  for(let i=0;i<SEGS;i++){
+    m4.compose(new THREE.Vector3(ROD.r0 + (i+0.5)*seg, 0, 0), q, new THREE.Vector3(ROD.rad*1.12, seg*1.02, ROD.rad*1.12));
+    sleeve.setMatrixAt(i, m4);
+    sleeve.setColorAt(i, black);
+  }
+  g.add(sleeve);
+
+  /* a small ceramic block under the far end */
+  const block = new THREE.Mesh(BOX, new THREE.MeshStandardMaterial({color:0xb9b0a2, roughness:0.9, envMapIntensity:0.3}));
+  block.scale.set(0.26, ROD.y - ROD.rad, 0.3);
+  block.position.set(ROD.r1 - 0.18, -(ROD.y + ROD.rad)/2 + 0.0, 0);
+  block.position.y = -ROD.y + (ROD.y - ROD.rad)/2;
+  g.add(block);
+
+  const pins = PINS.map(r=>{
+    const wax = new THREE.Mesh(SPH, new THREE.MeshStandardMaterial({color:COL.wax, roughness:0.6,
+      transparent:true, envMapIntensity:0.3}));
+    wax.scale.set(0.055, 0.035, 0.055);
+    wax.position.set(r, -ROD.rad - 0.02, 0);
+    g.add(wax);
+    const pin = new THREE.Group();
+    const head = new THREE.Mesh(CYL, steel);
+    head.scale.set(0.045, 0.012, 0.045); head.position.y = 0.075;
+    const needle = new THREE.Mesh(CYL, steel);
+    needle.scale.set(0.007, 0.15, 0.007);
+    pin.add(head, needle);
+    const hang = -ROD.rad - 0.04 - 0.075;
+    pin.position.set(r, hang, 0);
+    g.add(pin);
+    return {r, wax, pin, hang, drop:pinDropAt(r, mat)};
+  });
+  RODS[mat] = {g, sleeve, pins, mat};
+}
+buildRod('copper');
+buildRod('glass');
+
+/* a pin that has let go falls, and lies on the hob. The hob top is y = 0,
+   which in the rod's own frame is -ROD.y. */
+const G_FALL = 9;
+function placePin(p, t){
+  const s = t - p.drop;
+  if(s <= 0){ p.pin.position.y = p.hang; p.pin.rotation.set(0,0,0); return; }
+  const rest = -ROD.y + 0.012;
+  const land = Math.sqrt(2*(p.hang - rest)/G_FALL);
+  if(s < land){
+    p.pin.position.y = p.hang - 0.5*G_FALL*s*s;
+    p.pin.rotation.set(0, 0, 0.6*s/land);
+  } else {
+    p.pin.position.y = rest;
+    p.pin.rotation.set(0, 0, Math.PI/2);
+  }
+}
+const _c = new THREE.Color();
+function updateRods(t, show){
+  rodGrp.visible = show;
+  if(!show) return;
+  for(const mat of ['copper','glass']){
+    const R = RODS[mat], seg = (ROD.r1 - ROD.r0)/SEGS;
+    for(let i=0;i<SEGS;i++){
+      const f = (rodTemp(ROD.r0 + (i+0.5)*seg, t, mat) - T_ROOM)/(T_HOT - T_ROOM);
+      R.sleeve.setColorAt(i, heatColour(f, _c));
+    }
+    R.sleeve.instanceColor.needsUpdate = true;
+    for(const p of R.pins){
+      placePin(p, t);
+      /* the wax softens over the last moments before it lets go */
+      const melt = ss(p.drop - 0.5, p.drop, t);
+      p.wax.scale.set(0.055*(1 - 0.5*melt), 0.035*(1 - 0.6*melt), 0.055*(1 - 0.5*melt));
+      p.wax.material.opacity = 1 - 0.6*melt;
+    }
+  }
+}
+
+/* =========================================================================
+   THE PARTICLES  (the micro world, at MICRO_Y)
+========================================================================= */
+const micro = new THREE.Group(); micro.position.y = MICRO_Y; scene.add(micro);
+
+function instanced(n, rad, col, geo){
+  const mat = new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.35, metalness:0.1});
+  const m = new THREE.InstancedMesh(geo || SPH, mat, n);
+  m.frustumCulled = false;
+  m.userData.rad = rad;
+  const c = lin(col);
+  for(let i=0;i<n;i++) m.setColorAt(i, c);
+  return m;
+}
+function setInst(mesh, i, p, r){
+  const A = mesh.instanceMatrix.array, o = i*16;
+  A[o]=r; A[o+1]=0; A[o+2]=0; A[o+3]=0;
+  A[o+4]=0; A[o+5]=r; A[o+6]=0; A[o+7]=0;
+  A[o+8]=0; A[o+9]=0; A[o+10]=r; A[o+11]=0;
+  A[o+12]=p[0]; A[o+13]=p[1]; A[o+14]=p[2]; A[o+15]=1;
+}
+function bondLines(bonds, col, op){
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(bonds.length*3), 3));
+  const l = new THREE.LineSegments(g, new THREE.LineBasicMaterial({color:col, transparent:true, opacity:op}));
+  l.frustumCulled = false;
+  return l;
+}
+function updateBonds(lines, bonds, pos){
+  const A = lines.geometry.attributes.position.array;
+  for(let k=0;k<bonds.length;k++){
+    const i = bonds[k];
+    A[k*3] = pos[i*3]; A[k*3+1] = pos[i*3+1]; A[k*3+2] = pos[i*3+2];
+  }
+  lines.geometry.attributes.position.needsUpdate = true;
+}
+/* a strip of heat under or beside a piece, with small arrows of energy */
+function heaterStrip(w, d, vertical){
+  const g = new THREE.Group();
+  const plate = new THREE.Mesh(BOX, new THREE.MeshStandardMaterial({color:COL.warm, roughness:0.5,
+    emissive:new THREE.Color(COL.warm).multiplyScalar(0.7)}));
+  plate.scale.set(vertical ? 0.08 : w, vertical ? w : 0.08, d);
+  g.add(plate);
+  const arrows = [];
+  for(let i=0;i<5;i++){
+    const a = makeArrow(0.32, COL.energy, 0.035);
+    const u = (i - 2)/2*w*0.38;
+    if(vertical){ a.rotation.z = -Math.PI/2; a.position.set(0.05, u, d/2 + 0.1); }
+    else        { a.position.set(u, 0.05, d/2 + 0.1); }
+    g.add(a); arrows.push(a);
+  }
+  linearise(g);
+  g.userData = {plate, arrows, vertical};
+  return g;
+}
+function runHeater(h, on, t){
+  h.visible = on > 0.01;
+  if(!h.visible) return;
+  h.userData.plate.material.emissive.set(COL.warm).convertSRGBToLinear().multiplyScalar(0.25 + 0.7*on);
+  h.userData.arrows.forEach((a, i)=>{
+    const f = ((t*0.9 + i*0.37) % 1 + 1) % 1;
+    if(h.userData.vertical) a.position.x = 0.05 + 0.3*f; else a.position.y = 0.05 + 0.3*f;
+    a.traverse(m=>{ if(m.material) m.material.opacity = on*Math.sin(Math.PI*f); });
+  });
+}
+const _pp = [0,0,0];
+const C = {cold:lin(COL.glassP), hot:lin(COL.hot), water:lin(COL.water), waterH:lin(COL.waterH),
+           ion:lin(COL.ion), ionHot:lin(COL.ionHot), dim:lin(0x39424f), white:lin(0xfff2d0)};
+
+/* ---------- the glass bottom of the pan (chapters 1 and 2) ---------- */
+const slab = new THREE.Group(); micro.add(slab);
+const slabMesh = instanced(SLAB_B.n, SLAB.R, COL.glassP); slab.add(slabMesh);
+const slabPos = new Float32Array(SLAB_B.n*3);
+const slabBonds = bondLines(SLAB_BONDS, 0x8fa3bd, 0.35); slab.add(slabBonds);
+const slabHeat = heaterStrip(SLAB.Lx*0.95, SLAB.Lz, false);
+slabHeat.position.y = -SLAB.Ly/2 - 0.45; slab.add(slabHeat);
+
+/* water resting on top of the glass */
+const WATER_B = relax(28, SLAB.Lx*0.94, 1.1, SLAB.Lz, 5);
+const WATER_J = vibTable(WATER_B.n, 9000);
+const waterMesh = instanced(WATER_B.n, 0.19, COL.water); slab.add(waterMesh);
+const WATER_Y = SLAB.Ly/2 + 0.2 + 0.55;
+/* the water warms when the top of the glass does, a little later */
+const waterFrac = t => 0.8*slabFrac(SLAB.Ly/2 - 0.3, t - 0.8);
+
+/* collision flashes for the chain */
+const flashes = [];
+for(let i=0;i<CHAIN.length;i++){
+  const f = new THREE.Sprite(new THREE.SpriteMaterial({map:spotTex, color:COL.energy, transparent:true,
+    blending:THREE.AdditiveBlending, depthWrite:false, depthTest:false}));
+  f.renderOrder = 25; f.scale.setScalar(0.5); f.visible = false;
+  slab.add(f); flashes.push(f);
+}
+
+const CHAIN_AT = new Map(CHAIN.map((m,j)=>[m,j]));
+function updateSlab(ch, t){
+  /* chapter 2 holds the glass as it was late in chapter 1 */
+  const tf = ch === 1 ? t : SLAB_HEAT0 + 8;
+  const P = SLAB_B.P, chainAt = CHAIN_AT;
+  for(let i=0;i<SLAB_B.n;i++){
+    const f = slabFrac(P[i*3+1], tf);
+    vibrate(P, SLAB_J, i, lerp(AMP0, AMP1, f), t, _pp);
+    let col = _c.copy(C.cold).lerp(C.hot, f);
+    if(ch === 2){
+      const j = chainAt.get(i);
+      if(j === undefined){
+        col.lerp(C.dim, 0.7);
+      } else {
+        /* a chain link swings towards the next one when it is kicked */
+        const sw = chainSwing(j, t);
+        const nx = CHAIN[j+1];
+        let ux = 0, uy = 1, uz = 0;
+        if(nx !== undefined){
+          ux = P[nx*3]-P[i*3]; uy = P[nx*3+1]-P[i*3+1]; uz = P[nx*3+2]-P[i*3+2];
+          const l = Math.hypot(ux,uy,uz); ux/=l; uy/=l; uz/=l;
+        }
+        _pp[0] += ux*sw; _pp[1] += uy*sw; _pp[2] += uz*sw;
+        col.lerp(C.white, clamp(sw/(PULSE_B*0.6), 0, 1)*0.8);
+      }
+    }
+    slabPos[i*3] = _pp[0]; slabPos[i*3+1] = _pp[1]; slabPos[i*3+2] = _pp[2];
+    setInst(slabMesh, i, _pp, SLAB.R);
+    slabMesh.setColorAt(i, col);
+  }
+  slabMesh.instanceMatrix.needsUpdate = true;
+  slabMesh.instanceColor.needsUpdate = true;
+  updateBonds(slabBonds, SLAB_BONDS, slabPos);
+  slabBonds.material.opacity = ch === 2 ? 0.14 : 0.35;
+
+  /* the flashes: where link j touches link j+1 */
+  flashes.forEach((fl, j)=>{
+    fl.visible = false;
+    if(ch !== 2 || j >= CHAIN.length-1) return;
+    const k = Math.floor((t - PULSE0 - j*PULSE_TAU/2)/PULSE_P);
+    if(k < 0) return;
+    const s = t - pulseStart(k, j) - PULSE_TAU/2;
+    if(s < 0 || s > 0.35) return;
+    const a = CHAIN[j], b = CHAIN[j+1];
+    fl.position.set((slabPos[a*3]+slabPos[b*3])/2, (slabPos[a*3+1]+slabPos[b*3+1])/2, (slabPos[a*3+2]+slabPos[b*3+2])/2);
+    fl.material.opacity = (1 - s/0.35)*Math.pow(PULSE_DECAY, j);
+    fl.scale.setScalar(0.35 + 0.5*s);
+    fl.visible = true;
+  });
+
+  /* the water on top */
+  const wf = waterFrac(tf);
+  const wc = _c.copy(C.water).lerp(C.waterH, wf);
+  if(ch === 2) wc.lerp(C.dim, 0.6);
+  for(let i=0;i<WATER_B.n;i++){
+    const B = WATER_B.P, J = WATER_J;
+    for(let a=0;a<3;a++){
+      _pp[a] = B[i*3+a] + (0.06 + 0.06*wf)*Math.sin(6*J[i*6+3+a]*t + J[i*6+a])
+                        + 0.12*Math.sin(0.9*J[i*6+3+((a+1)%3)]*t + J[i*6+((a+2)%3)]);
+    }
+    _pp[1] += WATER_Y;
+    setInst(waterMesh, i, _pp, 0.19);
+    waterMesh.setColorAt(i, wc);
+  }
+  waterMesh.instanceMatrix.needsUpdate = true;
+  waterMesh.instanceColor.needsUpdate = true;
+
+  runHeater(slabHeat, ch === 1 ? ss(SLAB_HEAT0 - 0.4, SLAB_HEAT0, t) : 1, t);
+}
+
+/* ---------- inside the two rods (chapters 4 and 5) ---------- */
+const GLASS_PIECE_Y = 1.6, CU_PIECE_Y = -1.7;
+const glassPiece = new THREE.Group(); glassPiece.position.y = GLASS_PIECE_Y; micro.add(glassPiece);
+const glassMesh = instanced(GLASS_B.n, SLAB.R, COL.glassP); glassPiece.add(glassMesh);
+const glassPos = new Float32Array(GLASS_B.n*3);
+const glassBondL = bondLines(GLASS_BONDS, 0x8fa3bd, 0.35); glassPiece.add(glassBondL);
+const glassHeat = heaterStrip(PIECE.Ly, PIECE.Lz, true);
+glassHeat.position.x = -PIECE.Lx/2 - 0.45; glassPiece.add(glassHeat);
+
+const cuPiece = new THREE.Group(); cuPiece.position.y = CU_PIECE_Y; micro.add(cuPiece);
+const ionMesh = instanced(CU.n, R_ION, COL.ion); cuPiece.add(ionMesh);
+const ionPos = new Float32Array(CU.n*3);
+const cuHeat = heaterStrip(PIECE.Ly, PIECE.Lz, true);
+cuHeat.position.x = -PIECE.Lx/2 - 0.45; cuPiece.add(cuHeat);
+/* the electrons: always 0xffe070, with an orange halo for the energy they carry */
+const elMesh = new THREE.InstancedMesh(SPH_LO, new THREE.MeshStandardMaterial({color:COL.electron,
+  emissive:new THREE.Color(COL.electron).multiplyScalar(0.5), roughness:0.3}), N_EL);
+elMesh.frustumCulled = false; cuPiece.add(elMesh);
+const elPos = new Float32Array(N_EL*3);
+const halos = EL.map(()=>{
+  const h = new THREE.Sprite(new THREE.SpriteMaterial({map:spotTex, color:COL.energy, transparent:true,
+    blending:THREE.AdditiveBlending, depthWrite:false}));
+  h.renderOrder = 12; cuPiece.add(h);
+  return h;
+});
+/* the three followed in chapter 5: bigger, with a halo and a trail */
+const trMesh = new THREE.InstancedMesh(SPH_LO, elMesh.material, TRACERS.length);
+trMesh.frustumCulled = false; cuPiece.add(trMesh);
+const trHalos = TRACERS.map(()=>{
+  const h = new THREE.Sprite(new THREE.SpriteMaterial({map:spotTex, color:COL.energy, transparent:true,
+    blending:THREE.AdditiveBlending, depthWrite:false}));
+  h.renderOrder = 13; cuPiece.add(h);
+  return h;
+});
+const trHits = TRACERS.map(()=>{
+  const h = new THREE.Sprite(new THREE.SpriteMaterial({map:spotTex, color:0xffd9a0, transparent:true,
+    blending:THREE.AdditiveBlending, depthWrite:false, depthTest:false}));
+  h.renderOrder = 26; cuPiece.add(h);
+  return h;
+});
+const TR_R = R_EL*1.3;   // a little bigger than the rest, still clear of the ion layers
+const trState = TRACERS.map(()=>({p:[0,0,0], visible:false, energy:0, since:-1, fadeIn:0, fadeOut:0}));
+linearise(elMesh);
+
+function updateGlassPiece(t, tf){
+  const P = GLASS_B.P;
+  for(let i=0;i<GLASS_B.n;i++){
+    const f = pieceFrac(P[i*3], tf, GL_D);
+    vibrate(P, GLASS_J, i, lerp(AMP0, AMP1, f), t, _pp);
+    glassPos[i*3] = _pp[0]; glassPos[i*3+1] = _pp[1]; glassPos[i*3+2] = _pp[2];
+    setInst(glassMesh, i, _pp, SLAB.R);
+    glassMesh.setColorAt(i, _c.copy(C.cold).lerp(C.hot, f));
+  }
+  glassMesh.instanceMatrix.needsUpdate = true;
+  glassMesh.instanceColor.needsUpdate = true;
+  updateBonds(glassBondL, GLASS_BONDS, glassPos);
+}
+
+function updateCopper(ch, t, fieldT){
+  const tf = fieldT(t);
+  for(let m=0;m<CU.n;m++){
+    const f = pieceFrac(CU.P[m*3], tf, CU_D);
+    const kick = ch === 5 ? ionKick(m, t) : 0;
+    vibrate(CU.P, CU_J, m, lerp(CU_AMP0, CU_AMP1, Math.max(f, kick)), t, _pp, CU_ZK);
+    ionPos[m*3] = _pp[0]; ionPos[m*3+1] = _pp[1]; ionPos[m*3+2] = _pp[2];
+    setInst(ionMesh, m, _pp, R_ION);
+    const col = _c.copy(C.ion).lerp(C.ionHot, Math.max(f, kick));
+    if(kick > 0) col.lerp(C.white, 0.6*kick);
+    ionMesh.setColorAt(m, col);
+  }
+  ionMesh.instanceMatrix.needsUpdate = true;
+  ionMesh.instanceColor.needsUpdate = true;
+
+  const dimBg = ch === 5 ? 0.35 : 1;
+  EL.forEach((e, i)=>{
+    electronAt(e, t, _pp);
+    elPos[i*3] = _pp[0]; elPos[i*3+1] = _pp[1]; elPos[i*3+2] = _pp[2];
+    setInst(elMesh, i, _pp, R_EL);
+    const h = electronHeat(e, t, fieldT);
+    halos[i].position.set(_pp[0], _pp[1], _pp[2]);
+    halos[i].scale.setScalar(0.25 + 0.35*h);
+    halos[i].material.opacity = (0.08 + 0.75*h)*dimBg;
+  });
+  elMesh.instanceMatrix.needsUpdate = true;
+
+  trMesh.visible = ch === 5;
+  TRACERS.forEach((tr, i)=>{
+    const s = tracerAt(tr, t, trState[i]);
+    const on = ch === 5 && s.visible;
+    trHalos[i].visible = on; trHits[i].visible = false;
+    setInst(trMesh, i, on ? s.p : [0, -99, 0], on ? TR_R : 0.0001);
+    if(!on) return;
+    const a = s.fadeIn*s.fadeOut;
+    trHalos[i].position.set(s.p[0], s.p[1], s.p[2]);
+    trHalos[i].scale.setScalar(0.35 + 0.5*s.energy);
+    trHalos[i].material.opacity = a*(0.2 + 0.8*s.energy);
+    if(s.since >= 0 && s.since < 0.45){
+      const m = tr.ion;
+      trHits[i].visible = true;
+      trHits[i].position.set((tr.hit[0] + ionPos[m*3])/2, (tr.hit[1] + ionPos[m*3+1])/2, (tr.hit[2] + ionPos[m*3+2])/2);
+      trHits[i].scale.setScalar(0.4 + 0.9*s.since);
+      trHits[i].material.opacity = 1 - s.since/0.45;
+    }
+  });
+  trMesh.instanceMatrix.needsUpdate = true;
+}
+
+/* =========================================================================
+   LABELS
+========================================================================= */
+const V = (x,y,z) => new THREE.Vector3(x,y,z||0);
+const lbl = (parent, text, pos, opt) => { const s = makeLabel(text, opt); s.position.copy(pos); parent.add(s); return s; };
+const DIM = '#b8c4d4';
+const PILL_GOLD = {bg:'rgba(255,210,122,0.95)', color:'#2a1b00', weight:700};
+const PILL_DARK = {bg:'rgba(10,14,21,0.82)', border:'rgba(147,162,182,0.45)'};
+const NOTE = {scale:0.2, color:'#8a97aa'};
+
+/* chapter 0 — the pan */
+cue(0, lbl(macro, 'water', V(2.6, 1.55, 0.3), {scale:0.28, color:'#9ec3ff'}), 0.8);
+cue(0, lbl(macro, 'gas flame', V(1.9, 0.12, 1.55), {scale:0.26, color:'#9fc4ff'}), 1.6);
+{
+  const g = new THREE.Group(); macro.add(g);
+  lbl(g, 'the solid glass bottom of the pan', V(-2.1, -0.05, 1.7), {scale:0.26, color:'#dfeaf5'});
+  leader(g, V(-1.3, 0.05, 1.55), V(-0.7, (PAN_BOTTOM + POT.yb)/2, 0.9), 0xdfeaf5);
+  cue(0, g, 2.8);
+}
+cue(0, lbl(macro, 'the flame never touches the water', V(0, 2.75, 0), Object.assign({scale:0.27}, PILL_DARK)), 4.6, {rise:0.1});
+
+/* chapter 1 — into the glass */
+cue(1, lbl(slab, 'zoomed in: the glass bottom of the pan', V(0, 3.35, 0), {scale:0.3, color:DIM}), 1.7, {t1:5.5});
+cue(1, lbl(slab, 'water', V(-3.9, WATER_Y, 0), {scale:0.3, color:'#9ec3ff'}), 1.9);
+cue(1, lbl(slab, 'glass', V(-3.9, 0, 0), {scale:0.3, color:'#bcd0e8'}), 1.9);
+cue(1, lbl(slab, 'hot gas from the flame', V(0, -SLAB.Ly/2 - 1.05, 0.7), {scale:0.28, color:hexCss(COL.energy)}), SLAB_HEAT0 - 0.2);
+cue(1, lbl(slab, 'particles held in place — they can only vibrate', V(0, -3.05, 0.7), {scale:0.24, color:DIM}), 1.2);
+cue(1, lbl(slab, 'vibrating faster', V(4.35, -1.1, 0), Object.assign({scale:0.28}, PILL_DARK, {color:'#ffb08a'})), SLAB_HEAT0 + 1.2);
+cue(1, lbl(slab, 'passed on upward', V(4.35, 0.2, 0), Object.assign({scale:0.28}, PILL_DARK)), SLAB_HEAT0 + 3.4);
+{
+  const a = makeArrow(1.3, COL.energy, 0.05); a.position.set(4.35, -0.85, 0); linearise(a); slab.add(a);
+  cue(1, a, SLAB_HEAT0 + 3.4);
+}
+cue(1, lbl(slab, 'the water touching the glass is heated', V(0, WATER_Y + 1.0, 0), Object.assign({scale:0.3}, PILL_GOLD)), SLAB_HEAT0 + 7.5, {rise:0.1});
+cue(1, lbl(slab, 'glass has no neat pattern · vibrations exaggerated', V(0, -3.45, 0.7), NOTE), 2.2);
+
+/* chapter 2 — pass it on */
+cue(2, lbl(slab, 'follow one chain of particles', V(0, 3.35, 0), {scale:0.3, color:DIM}), 0.6);
+cue(2, lbl(slab, 'kicked by the flame: vibrates harder', V(-3.3, -1.95, 0.7), Object.assign({scale:0.24}, PILL_DARK, {color:'#ffb08a'})), PULSE0 + 0.2);
+cue(2, lbl(slab, 'bumps into the one above…', V(3.6, -0.55, 0.7), Object.assign({scale:0.24}, PILL_DARK)), PULSE0 + 0.5);
+cue(2, lbl(slab, '…which passes it on', V(3.6, 0.7, 0.7), Object.assign({scale:0.24}, PILL_DARK)), PULSE0 + PULSE_P + 0.6);
+cue(2, lbl(slab, 'each flash is a collision', V(0, -3.05, 0.7), {scale:0.24, color:hexCss(COL.energy)}), PULSE0 + 1.0);
+cue(2, lbl(slab, 'the kick gets smaller — some goes sideways to other neighbours', V(0, -3.45, 0.7), NOTE), PULSE0 + 2*PULSE_P);
+
+/* chapter 3 — the rods */
+const clockLbl = cue(3, lbl(macro, '0:00', V(0, 2.2, 0), Object.assign({scale:0.34}, PILL_DARK)), 0.4);
+cue(3, lbl(macro, 'time sped up ×'+SPEEDUP, V(0, 1.8, 0), {scale:0.2, color:'#8a97aa'}), 0.4);
+{
+  const at = (mat, r, y) => V(Math.cos(ROD_ANG[mat])*r, y, Math.sin(ROD_ANG[mat])*r);
+  cue(3, lbl(macro, 'copper', at('copper', 2.4, 1.05), {scale:0.32, color:hexCss(COL.copper)}), 0.8);
+  cue(3, lbl(macro, 'glass',  at('glass',  2.4, 1.05), {scale:0.32, color:'#cfe3f0'}), 0.8);
+  cue(3, lbl(macro, 'drawing pins, stuck on with wax', at('glass', 2.2, 0.12).add(V(0,0,0.9)), {scale:0.22, color:DIM}), 1.6, {t1:ROD_HEAT0 + 4});
+  cue(3, lbl(macro, 'the wax melts at '+T_WAX+' °C and the pin drops', at('copper', 2.0, 0.12).add(V(0,0,0.9)), {scale:0.22, color:DIM}), ROD_HEAT0 + 2);
+}
+cue(3, lbl(macro, 'colour shows how hot — like a thermal camera', V(0, -0.45, 2.0), NOTE), 1.0);
+cue(3, lbl(macro, 'copper is a much better conductor', V(0, 2.75, 0), Object.assign({scale:0.3}, PILL_GOLD)),
+    ROD_HEAT0 + FIG.lastCopper/SPEEDUP + 0.8, {rise:0.08});
+
+/* chapter 4 — inside the rods */
+cue(4, lbl(glassPiece, 'glass', V(-PIECE.Lx/2 + 0.2, PIECE.Ly/2 + 0.45, 0), {scale:0.34, color:'#cfe3f0'}), 0.4);
+cue(4, lbl(cuPiece, 'copper', V(-PIECE.Lx/2 + 0.3, PIECE.Ly/2 + 0.45, 0), {scale:0.34, color:hexCss(COL.copper)}), 0.4);
+cue(4, lbl(glassPiece, 'vibrations only — passed from neighbour to neighbour', V(1.3, PIECE.Ly/2 + 0.45, 0), Object.assign({scale:0.24}, PILL_DARK)), 2.5);
+cue(4, lbl(cuPiece, 'free electrons carry energy along the metal', V(1.3, PIECE.Ly/2 + 0.45, 0), Object.assign({scale:0.24}, PILL_DARK, {color:'#ffe9a0'})), 3.5);
+cue(4, lbl(micro, 'both heated at the left for the same time', V(0, GLASS_PIECE_Y + PIECE.Ly/2 + 1.25, 0), {scale:0.26, color:DIM}), 5.5);
+cue(4, lbl(micro, 'time sped up · the difference between them is the real one', V(0, CU_PIECE_Y - PIECE.Ly/2 - 0.55, 0.6), NOTE), 1.5);
+
+/* chapter 5 — free electrons */
+cue(5, lbl(cuPiece, 'free electrons gain energy at the hot end', V(-3.2, PIECE.Ly/2 + 0.5, 0), Object.assign({scale:0.24}, PILL_DARK, {color:'#ffe9a0'})), 1.0);
+cue(5, lbl(cuPiece, '…travel a long way through the metal…', V(0.4, -PIECE.Ly/2 - 0.5, 0.6), Object.assign({scale:0.24}, PILL_DARK)), TRACERS[0].off + 0.8);
+cue(5, lbl(cuPiece, '…and hit an ion, which vibrates harder', V(3.3, PIECE.Ly/2 + 0.5, 0), Object.assign({scale:0.24}, PILL_DARK, {color:'#ffb08a'})), TRACERS[0].off + TR_FLY + 0.2);
+cue(5, lbl(cuPiece, 'energy carried far faster than neighbour to neighbour', V(0, -PIECE.Ly/2 - 1.1, 0.6), Object.assign({scale:0.28}, PILL_GOLD)), 8.5, {rise:0.06});
+
+linearise(macro);
+linearise(micro);
+
+/* =========================================================================
+   THE CHAPTERS
+========================================================================= */
+const CAM = {
+  wide   : {dist:13,  az:0.55, el:0.36, look:[0,1.2,0]},
+  hob    : {dist:7.6, az:0.3,  el:0.16, look:[0,0.9,0]},
+  bottom : {dist:0.9, az:0.3,  el:0.04, look:[0,(PAN_BOTTOM + POT.yb)/2,0]},
+  rods   : {dist:7.2, az:0.0,  el:0.42, look:[0,0.55,0.5]},
+  sIn    : {dist:3.6, az:0.5,  el:0.2,  look:[0,MICRO_Y,0]},
+  slab   : {dist:11.8,az:0.22, el:0.1,  look:[0.3,MICRO_Y+0.2,0]},
+  chain  : {dist:10.5,az:0.12, el:0.06, look:[0.2,MICRO_Y,0]},
+  rIn    : {dist:5,   az:0.4,  el:0.3,  look:[-5,MICRO_Y,0]},
+  pieces : {dist:16,  az:0.12, el:0.1,  look:[0,MICRO_Y,0]},
+  copper : {dist:11.5,az:0.18, el:0.14, look:[0,MICRO_Y+CU_PIECE_Y-0.2,0]}
+};
+
+const CH = [
+  {
+    part:'On the hob', len:8,
+    shots:[{world:'macro', from:CAM.wide, to:CAM.hob, dur:3.2}],
+    flame:t=>ss(1.0, 1.6, t), pan:true, bottom:t=>0.55*ss(2.5, 7, t),
+    title:'The flame only heats the bottom of the pan',
+    text:'A glass pan of water sits on a gas ring. The flame never touches the water — it only heats the underside of the pan\'s <b>glass bottom</b>, a solid a few millimetres thick.<br><br>For the water to warm up, energy has to get <b>through that solid</b>, from the hot side to the cold side. How a solid does that is called <b>conduction</b>.',
+    look:'The bottom of the pan turns orange first. The glass itself does not move anywhere.',
+    terms:[['Conduction','the transfer of energy through a material by its particles passing it on to their neighbours. The material itself does not move.']],
+    key:['flame','warm']
+  },
+  {
+    part:'Into the glass', len:14,
+    shots:[{world:'macro', from:CAM.hob, to:CAM.bottom, dur:1.4, until:1.4},
+           {world:'micro', from:CAM.sIn, to:CAM.slab, dur:2.0}],
+    flame:()=>1, pan:true, bottom:()=>0.55,
+    micro:'slab',
+    title:'Particles near the flame vibrate faster',
+    text:'In a solid the particles are held in <b>fixed positions</b>, joined to the particles around them. They cannot move about — they can only <b>vibrate</b>.<br><br>The particles next to the flame gain energy and vibrate <b>faster</b>. They knock into the particles above them, which start vibrating faster too — and so on, layer by layer, until the particles at the top are vibrating hard and the <b>water touching them</b> is heated.',
+    look:'The colour creeps upward: bottom first, top last. Nothing moves upward except the vibration.',
+    scale:'Glass is a solid whose particles are not in a neat pattern, so they look jumbled. The vibrations are exaggerated.',
+    terms:[['Vibrate','move backwards and forwards about a fixed place. Hotter particles vibrate faster.']],
+    key:['pCold','pHot','water','energy']
+  },
+  {
+    part:'Pass it on', len:12,
+    shots:[{world:'micro', from:CAM.slab, to:CAM.chain, dur:1.8}],
+    micro:'slab',
+    title:'Each particle passes it to the next',
+    text:'Follow one chain. The particle at the bottom is kicked by energy from the flame and swings harder. It <b>collides</b> with the particle above it and passes on some of its energy. That one bumps into the next, and so on.<br><br>Each particle only ever touches its <b>neighbours</b>, yet energy travels all the way through the glass.',
+    look:'Each flash is a collision. The kick gets smaller as it goes up — some of it is passed sideways to other neighbours.',
+    terms:[['Thermal insulator','a material that conducts energy slowly — like glass, plastic, wood and air.']],
+    key:['pHot','flash']
+  },
+  {
+    part:'Along a rod', len:18,
+    shots:[{world:'macro', from:CAM.hob, to:CAM.rods, dur:2.6}],
+    flame:t=>ss(ROD_HEAT0 - 0.4, ROD_HEAT0, t), pan:false, rods:true,
+    title:'A race along two rods',
+    text:'Now take the pan away. Two rods the same size, one <b>copper</b> and one <b>glass</b>, rest across the flame. Drawing pins are stuck underneath with wax. When energy conducted along a rod reaches a pin, the wax melts and the pin drops.<br><br>On the copper rod the pins drop one after another — the last after about <b>'+FIG.lastCopper+' seconds</b>. On the glass rod even the nearest pin would need more than <b>'+FIG.firstGlassMin+' minutes</b> — and in practice it never drops, because the glass loses energy to the air faster than it passes it along.',
+    look:'Copper is a <b>metal</b>. Metals are the best conductors there are.',
+    scale:'Worked out from the heat equation with real values for copper and glass, ignoring energy lost to the air. Time is sped up ×'+SPEEDUP+', and the clock stops at '+fmtTime(ROD_MAX)+'.',
+    terms:[['Thermal conductivity','how well a material conducts energy. Copper\'s is about '+FIG.kRatio+' times glass\'s.'],
+           ['Thermal conductor','a material that conducts energy quickly — metals especially.']],
+    key:['flame','heat']
+  },
+  {
+    part:'Inside the rods', len:12,
+    shots:[{world:'macro', from:CAM.rods, to:{dist:0.9, az:0, el:0.1, look:[Math.cos(ROD_ANG.copper)*0.7,ROD.y,Math.sin(ROD_ANG.copper)*0.7]}, dur:1.4, until:1.4},
+           {world:'micro', from:CAM.rIn, to:CAM.pieces, dur:2.2}],
+    flame:()=>1, pan:false, rods:true, rodT:()=>ROD_HEAT0 + 6,
+    micro:'pieces',
+    title:'Why is the metal so much faster?',
+    text:'Both rods pass vibrations from particle to particle, as the glass in the pan did. But a metal has something extra: <b>free electrons</b> — electrons that are not held by any one atom, and can move through the whole metal.<br><br>They pick up energy at the hot end and <b>carry it along the rod</b>, far faster than vibrations can be passed from neighbour to neighbour.',
+    look:'Both pieces are heated at the left for the same time. The colour races along the copper; in the glass it has hardly moved.',
+    scale:'Time is sped up, but how far each has got compared with the other is worked out from real copper and glass.',
+    terms:[['Free electrons','electrons in a metal that are not held by any one atom (also called delocalised electrons).']],
+    key:['glass','ion','electron','heatE']
+  },
+  {
+    part:'Free electrons', len:14,
+    shots:[{world:'micro', from:CAM.pieces, to:CAM.copper, dur:2.0}],
+    micro:'copper',
+    title:'Free electrons carry the energy',
+    text:'Near the hot end, free electrons gain energy and move faster. They travel a long way through the metal before they <b>collide with an ion</b> — and when they do, they pass their energy on and that ion vibrates harder.<br><br>So energy is carried along the metal far faster than it could be passed from neighbour to neighbour. That is why <b>metals are good thermal conductors</b> — and the same free electrons are why metals conduct electricity.',
+    look:'Follow the three bright electrons: from the hot end, straight down the rod, a flash, and a cold ion lights up.',
+    terms:[['Ion','in a metal, an atom that has lost its outer electrons to the sea of free electrons, leaving it positively charged.']],
+    key:['ion','electron','heatE']
+  }
+];
+
+const KEY = {
+  flame   :'<div><span class="dot" style="background:'+hexCss(COL.flame)+'"></span>gas flame</div>',
+  warm    :'<div><span class="sq" style="background:'+hexCss(COL.warm)+'"></span>hot glass</div>',
+  pCold   :'<div><span class="dot" style="background:'+hexCss(COL.glassP)+'"></span>glass particle, cool</div>',
+  pHot    :'<div><span class="dot" style="background:'+hexCss(COL.hot)+'"></span>glass particle, hot</div>',
+  water   :'<div><span class="dot" style="background:'+hexCss(COL.water)+'"></span>water particle</div>',
+  energy  :'<div><span class="sq" style="background:'+hexCss(COL.energy)+'"></span>energy from the flame</div>',
+  flash   :'<div><span class="dot" style="background:'+hexCss(COL.energy)+'"></span>a collision</div>',
+  heat    :'<div><span class="grad" style="background:linear-gradient(90deg,#5a0a00,#d8400a,#ff9a1a,#ffe27a)"></span>how hot the rod is</div>',
+  glass   :'<div><span class="dot" style="background:'+hexCss(COL.glassP)+'"></span>glass particle (blue → orange: cool → hot)</div>',
+  ion     :'<div><span class="dot" style="background:'+hexCss(COL.ion)+'"></span>copper ion</div>',
+  electron:'<div><span class="dot" style="background:'+hexCss(COL.electron)+'"></span>free electron</div>',
+  heatE   :'<div><span class="dot" style="background:'+hexCss(COL.energy)+';opacity:.6"></span>glow: energy it is carrying</div>'
+};
+
+/* ------------------------------------------------------------- the camera */
+const FADE = 0.32;
+function shotAt(Ch, t){
+  let s0 = 0;
+  for(let i=0;i<Ch.shots.length;i++){
+    const sh = Ch.shots[i], end = sh.until != null ? sh.until : Infinity;
+    if(t < end || i === Ch.shots.length-1){
+      const u = ss(0, sh.dur, t - s0);
+      let fade = 1 - clamp((t - s0)/FADE, 0, 1);
+      if(isFinite(end)) fade = Math.max(fade, 1 - clamp((end - t)/FADE, 0, 1));
+      return {world:sh.world, cam:lerpCam(sh.from, sh.to, u), fade, index:i};
+    }
+    s0 = end;
+  }
+}
+function lerpCam(a, b, u){
+  return {
+    dist: Math.exp(lerp(Math.log(a.dist), Math.log(b.dist), u)),
+    az: lerp(a.az, b.az, u), el: lerp(a.el, b.el, u),
+    look:[lerp(a.look[0],b.look[0],u), lerp(a.look[1],b.look[1],u), lerp(a.look[2],b.look[2],u)]
+  };
+}
+function worldAt(ch, t){ return shotAt(CH[ch], t).world; }
+
+let dragAz = 0, dragEl = 0, zoomAdj = 0;
+function applyCamera(c){
+  const az = c.az + dragAz, el = clamp(c.el + dragEl, -0.4, 1.2);
+  const d = Math.max(0.4, c.dist*Math.exp(zoomAdj));
+  camera.position.set(
+    c.look[0] + d*Math.cos(el)*Math.sin(az),
+    c.look[1] + d*Math.sin(el),
+    c.look[2] + d*Math.cos(el)*Math.cos(az));
+  camera.lookAt(c.look[0], c.look[1], c.look[2]);
+}
+
+/* ---------------------------------------------------------------- a frame */
+let cur = 0, shownClock = null;
+
+function frame(t){
+  const Ch = CH[cur];
+  const shot = shotAt(Ch, t);
+  applyCamera(shot.cam);
+  fadeEl.style.opacity = shot.fade.toFixed(3);
+
+  const inMacro = shot.world === 'macro';
+  macro.visible = inMacro;
+  micro.visible = !inMacro;
+
+  if(inMacro){
+    updateFlame(Ch.flame ? Ch.flame(t) : 0, t);
+    panGrp.visible = !!Ch.pan;
+    bottomGlow.material.opacity = Ch.bottom ? Ch.bottom(t) : 0;
+    updateRods(Ch.rodT ? Ch.rodT(t) : rodClock(t), !!Ch.rods);
+    if(cur === 3){
+      const txt = fmtTime((rodClock(t) - ROD_HEAT0)*SPEEDUP);
+      if(txt !== shownClock){ shownClock = txt; setLabel(clockLbl, txt); }
+    }
+  }
+
+  slab.visible = Ch.micro === 'slab';
+  glassPiece.visible = Ch.micro === 'pieces';
+  cuPiece.visible = Ch.micro === 'pieces' || Ch.micro === 'copper';
+
+  if(!inMacro){
+    if(Ch.micro === 'slab') updateSlab(cur, t);
+    if(Ch.micro === 'pieces'){
+      updateGlassPiece(t, t);
+      updateCopper(4, t, x => x);
+    }
+    if(Ch.micro === 'copper') updateCopper(5, t, () => CH5_T);
+    runHeater(glassHeat, ss(ROD_MICRO_HEAT0 - 0.4, ROD_MICRO_HEAT0, t), t);
+    runHeater(cuHeat, Ch.micro === 'copper' ? 1 : ss(ROD_MICRO_HEAT0 - 0.4, ROD_MICRO_HEAT0, t), t);
+  }
+
+  runCues(cur, t);
+  renderer.render(scene, camera);
+}
+
+/* --------------------------------------------------------------- chapters */
+let chStart = null;
+function enterChapter(i){
+  cur = i; chStart = null; shownClock = null;
+  dragAz = dragEl = zoomAdj = 0;
+  const Ch = CH[i];
+  document.getElementById('sStep').textContent = (i+1)+' / '+CH.length+' · '+Ch.part;
+  document.getElementById('sTitle').innerHTML = Ch.title;
+  document.getElementById('sText').innerHTML = Ch.text;
+  const lk = document.getElementById('sLook');
+  lk.innerHTML = Ch.look ? 'Watch for: '+Ch.look : ''; lk.hidden = !Ch.look;
+  const sc = document.getElementById('sScale');
+  sc.textContent = Ch.scale || ''; sc.hidden = !Ch.scale;
+  const tm = document.getElementById('sTerms');
+  tm.innerHTML = Ch.terms.length
+    ? '<div class="hd">Key words</div>' + Ch.terms.map(x=>'<dt>'+x[0]+'</dt><dd>'+x[1]+'</dd>').join('')
+    : '';
+  tm.hidden = !Ch.terms.length;
+  document.getElementById('key').innerHTML = Ch.key.map(k=>KEY[k]).join('');
+  document.getElementById('back').disabled = i === 0;
+  document.getElementById('next').disabled = i === CH.length-1;
+  document.querySelectorAll('#dots i').forEach((d,k)=>d.classList.toggle('on', k === i));
+}
+
+function animate(now){
+  requestAnimationFrame(animate);
+  if(chStart === null) chStart = now;
+  frame((now - chStart)/1000);
+}
+
+/* ------------------------------------------------------------------ wiring */
+const cv = renderer.domElement;
+cv.style.touchAction = 'none';
+cv.style.cursor = 'grab';
+let dragging = false, lastX = 0, lastY = 0;
+cv.addEventListener('pointerdown', e=>{
+  dragging = true; lastX = e.clientX; lastY = e.clientY;
+  cv.style.cursor = 'grabbing';
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove', e=>{
+  if(!dragging) return;
+  dragAz += (e.clientX - lastX)*0.006;
+  dragEl = clamp(dragEl + (e.clientY - lastY)*0.004, -0.5, 1.0);
+  lastX = e.clientX; lastY = e.clientY;
+});
+['pointerup','pointercancel'].forEach(ev=>
+  cv.addEventListener(ev, ()=>{ dragging = false; cv.style.cursor = 'grab'; }));
+cv.addEventListener('wheel', e=>{
+  e.preventDefault();
+  zoomAdj = clamp(zoomAdj + e.deltaY*0.001, -0.9, 0.9);
+}, {passive:false});
+
+const dotsEl = document.getElementById('dots');
+CH.forEach((c,i)=>{
+  const d = document.createElement('i');
+  d.title = c.title;
+  d.addEventListener('click', ()=>enterChapter(i));
+  dotsEl.appendChild(d);
+});
+document.getElementById('next').addEventListener('click', ()=>{ if(cur < CH.length-1) enterChapter(cur+1); });
+document.getElementById('back').addEventListener('click', ()=>{ if(cur > 0) enterChapter(cur-1); });
+document.getElementById('replay').addEventListener('click', ()=>enterChapter(cur));
+window.addEventListener('keydown', e=>{
+  if(e.key === 'ArrowRight' && cur < CH.length-1) enterChapter(cur+1);
+  if(e.key === 'ArrowLeft'  && cur > 0) enterChapter(cur-1);
+});
+
+function resize(){
+  const w = stage.clientWidth || window.innerWidth;
+  const h = stage.clientHeight || window.innerHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w/h;
+  camera.fov = (w/h < 1.1) ? 62 : 44;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+resize();
+
+enterChapter(0);
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>
