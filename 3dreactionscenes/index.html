@@ -6,10 +6,10 @@
 <title>3D reaction scenes</title>
 <style>
   :root{
-    --paper:#f5f0e6; --ink:#1f2a2c; --dim:#4f5a5c; --faint:#6b7274; --line:#d9d1c0; --accent:#d9593d; --teal:#2f6f6b;
+    --paper:#f5f0e6; --surface:#fffdf9; --ink:#1f2a2c; --dim:#3f484a; --faint:#555e60; --line:#d9d1c0; --accent:#d9593d; --teal:#2f6f6b;
   }
   @media (prefers-color-scheme: dark){
-    :root{ --paper:#14191a; --ink:#ece7da; --dim:#b3bbb7; --faint:#8f9895; --line:#2c3535; --accent:#ec7a5e; --teal:#5fb0a9; }
+    :root{ --paper:#14191a; --surface:#1f2829; --ink:#ece7da; --dim:#c2cac6; --faint:#a3aca8; --line:#2c3535; --accent:#ec7a5e; --teal:#5fb0a9; }
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   body{
@@ -35,14 +35,14 @@
   }
   .family > p{font-size:13px;color:var(--faint);margin-bottom:14px;}
 
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:0;border-top:1px solid var(--line);}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px;}
 
   .card{
     display:block;text-decoration:none;color:inherit;position:relative;
-    padding:20px 22px 20px 0;border-bottom:1px solid var(--line);
-    transition:padding .25s ease;
+    padding:20px 22px;background:var(--surface);border:1px solid var(--line);border-radius:14px;
+    box-shadow:0 1px 2px rgba(31,42,44,.05);transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease;
   }
-  a.card:hover{padding-left:12px;}
+  a.card:hover{transform:translateY(-3px);box-shadow:0 8px 22px rgba(31,42,44,.12);border-color:var(--accent);}
   a.card:hover h3{color:var(--accent);}
   a.card:focus-visible{outline:2px solid var(--accent);outline-offset:3px;}
   .card.todo{opacity:.52;}

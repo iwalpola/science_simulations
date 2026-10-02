@@ -6,17 +6,17 @@
 <title>Chemsheets Help Pages</title>
 <style>
 :root{
-  --bg:#f5f0e6; --card:transparent; --ink:#1f2a2c; --muted:#6b7274; --line:#d9d1c0;
+  --bg:#f5f0e6; --card:#fffdf9; --ink:#1f2a2c; --muted:#4a5254; --line:#d9d1c0;
   --chem:#2f6f6b; --chem-soft:transparent; --stage:#fbf8f1;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --bg:#14191a; --card:transparent; --ink:#ece7da; --muted:#8f9895; --line:#2c3535;
+    --bg:#14191a; --card:#1f2829; --ink:#ece7da; --muted:#b3bbb7; --line:#2c3535;
     --chem:#5fb0a9; --chem-soft:transparent; --stage:#1a2122;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#14191a; --card:transparent; --ink:#ece7da; --muted:#8f9895; --line:#2c3535;
+  --bg:#14191a; --card:#1f2829; --ink:#ece7da; --muted:#b3bbb7; --line:#2c3535;
   --chem:#5fb0a9; --chem-soft:transparent; --stage:#1a2122;
 }
 *{box-sizing:border-box}
@@ -26,10 +26,10 @@ main{max-width:860px;margin:0 auto;padding:0 20px 70px}
 h1{font-family:Georgia,"Iowan Old Style",serif;font-weight:400;font-size:clamp(2rem,5vw,3rem);letter-spacing:-1px;margin:44px 0 10px;line-height:1.1}
 .lede{color:var(--muted);margin:0 0 22px}
 sup,sub{line-height:0}
-.grid{display:grid;gap:0;border-top:1px solid var(--line)}
+.grid{display:grid;gap:16px}
 a.item{display:block;text-decoration:none;color:inherit;background:var(--card);
-  border-bottom:1px solid var(--line);padding:20px 0;transition:padding .25s}
-a.item:hover{padding-left:12px}
+  border:1px solid var(--line);border-radius:14px;padding:20px 22px;box-shadow:0 1px 2px rgba(31,42,44,.05);transition:transform .2s,box-shadow .2s,border-color .2s}
+a.item:hover{transform:translateY(-3px);box-shadow:0 8px 22px rgba(31,42,44,.12);border-color:#d9593d}
 a.item:hover .t{color:#d9593d}
 a.item:focus-visible{outline:3px solid var(--chem);outline-offset:2px}
 .code{display:inline-block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
