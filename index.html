@@ -3,268 +3,129 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Science Simulations by Mr. Walpola</title>
+    <title>Science Simulations</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --paper: #f5f0e6; --ink: #1f2a2c; --muted: #6b7274; --line: #d9d1c0;
+            --card: #fbf8f1; --accent: #d9593d; --teal: #2f6f6b; --gold: #c9962b;
         }
-
+        @media (prefers-color-scheme: dark) {
+            :root { --paper: #14191a; --ink: #ece7da; --muted: #8f9895; --line: #2c3535; --card: #1a2122; --accent: #ec7a5e; --teal: #5fb0a9; --gold: #e0b252; }
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            color: #333;
+            font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+            background: var(--paper); color: var(--ink); min-height: 100vh;
         }
+        a { color: inherit; }
 
         /* ── Header ── */
-        .header {
-            padding: 32px 40px 24px;
-            text-align: center;
-        }
-
+        .header { max-width: 1100px; margin: 0 auto; padding: 64px 40px 28px; position: relative; }
+        .header svg { position: absolute; right: 40px; top: 30px; width: 260px; height: 160px; opacity: 0.9; }
         .header h1 {
-            font-size: 2rem;
-            color: #fff;
-            font-weight: 700;
-            letter-spacing: -0.5px;
+            font-family: Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+            font-size: clamp(2.4rem, 6vw, 4rem); font-weight: 400; letter-spacing: -1.5px; line-height: 1.05;
         }
+        .header h1 em { font-style: italic; color: var(--accent); }
+        .header .byline { color: var(--muted); font-size: 1rem; margin-top: 14px; max-width: 30em; line-height: 1.5; }
 
-        .header .byline {
-            color: rgba(255,255,255,0.75);
-            font-size: 0.95rem;
-            margin-top: 4px;
-        }
-
-        /* ── Controls bar ── */
-        .controls {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            align-items: center;
-            justify-content: center;
-            padding: 0 40px 28px;
-        }
-
+        /* ── Controls ── */
+        .controls { max-width: 1100px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 40px 28px; }
         .filter-btn {
-            background: rgba(255,255,255,0.15);
-            color: #fff;
-            border: 1.5px solid rgba(255,255,255,0.35);
-            padding: 7px 18px;
-            border-radius: 999px;
-            font-size: 0.875rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background 0.2s, border-color 0.2s;
+            background: none; color: var(--muted); border: 1px solid var(--line); padding: 6px 16px;
+            border-radius: 999px; font: inherit; font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
         }
-
-        .filter-btn:hover {
-            background: rgba(255,255,255,0.28);
-        }
-
-        .filter-btn.active {
-            background: #fff;
-            color: #764ba2;
-            border-color: #fff;
-        }
-
-        .search-wrap {
-            position: relative;
-        }
-
-        .search-wrap svg {
-            position: absolute;
-            left: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            opacity: 0.5;
-            pointer-events: none;
-        }
-
+        .filter-btn:hover { color: var(--ink); border-color: var(--ink); }
+        .filter-btn.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+        .search-wrap { position: relative; margin-left: auto; }
+        .search-wrap svg { position: absolute; left: 4px; top: 50%; transform: translateY(-50%); opacity: 0.5; pointer-events: none; }
         .search-input {
-            background: rgba(255,255,255,0.15);
-            border: 1.5px solid rgba(255,255,255,0.35);
-            color: #fff;
-            padding: 7px 14px 7px 36px;
-            border-radius: 999px;
-            font-size: 0.875rem;
-            outline: none;
-            width: 200px;
-            transition: background 0.2s, border-color 0.2s;
+            background: none; border: none; border-bottom: 1px solid var(--line); color: var(--ink);
+            padding: 6px 8px 6px 26px; font: inherit; font-size: 0.9rem; outline: none; width: 220px; transition: border-color 0.2s;
         }
-
-        .search-input::placeholder { color: rgba(255,255,255,0.6); }
-
-        .search-input:focus {
-            background: rgba(255,255,255,0.25);
-            border-color: rgba(255,255,255,0.7);
-        }
+        .search-input::placeholder { color: var(--muted); }
+        .search-input:focus { border-color: var(--accent); }
 
         /* ── Grid ── */
         .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-            padding: 0 40px 40px;
-            max-width: 1200px;
-            margin: 0 auto;
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 0;
+            max-width: 1100px; margin: 0 auto 56px; padding: 0 40px; counter-reset: card;
+            border-top: 1px solid var(--line);
         }
 
         /* ── Card ── */
         .card {
-            background: #fff;
-            border-radius: 16px;
-            padding: 28px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.12);
-            transition: transform 0.2s, box-shadow 0.2s;
+            counter-increment: card; position: relative; display: flex; flex-direction: column; gap: 10px;
+            padding: 28px 24px 26px 0; border-bottom: 1px solid var(--line);
+            background: none; transition: padding 0.25s;
         }
-
-        .card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+        .card::before {
+            content: counter(card, decimal-leading-zero); font-family: Georgia, serif; font-style: italic;
+            font-size: 0.85rem; color: var(--muted);
         }
-
-        .card.hidden {
-            display: none;
-        }
-
-        .card-icon {
-            font-size: 2.2rem;
-            line-height: 1;
-        }
-
-        .card-header {
-            display: flex;
-            align-items: flex-start;
-            gap: 14px;
-        }
-
-        .card-meta {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .card-title {
-            font-size: 1.05rem;
-            font-weight: 700;
-            color: #1a202c;
-            line-height: 1.3;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 2px 10px;
-            border-radius: 999px;
-            font-size: 0.72rem;
-            font-weight: 600;
-            letter-spacing: 0.4px;
-            text-transform: uppercase;
-            width: fit-content;
-        }
-
-        .badge-physics   { background: #ebf4ff; color: #2b6cb0; }
-        .badge-chemistry { background: #f0fff4; color: #276749; }
-        .badge-tool      { background: #faf5ff; color: #6b21a8; }
-        .badge-biology   { background: #fff0f6; color: #97266d; }
-
-        .card-description {
-            font-size: 0.875rem;
-            color: #4a5568;
-            line-height: 1.6;
-            flex: 1;
-        }
-
+        .card:hover { padding-left: 12px; }
+        .card.hidden { display: none; }
+        .card-header { display: block; }
+        .card-meta { display: flex; flex-direction: column; gap: 8px; }
+        .card-title { font-family: Georgia, 'Iowan Old Style', serif; font-size: 1.45rem; font-weight: 400; line-height: 1.2; }
+        .badges { display: flex; gap: 12px; flex-wrap: wrap; }
+        .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 0.68rem; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+        .badge::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+        .badge-physics::before { background: var(--accent); }
+        .badge-chemistry::before { background: var(--teal); }
+        .badge-biology::before { background: var(--gold); }
+        .card-description { font-size: 0.92rem; color: var(--muted); line-height: 1.55; flex: 1; }
         .launch-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #fff;
-            text-decoration: none;
-            padding: 10px 22px;
-            border-radius: 999px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            margin-top: 4px;
-            align-self: flex-start;
-            transition: filter 0.2s, box-shadow 0.2s;
-            box-shadow: 0 3px 10px rgba(102,126,234,0.35);
+            align-self: flex-start; text-decoration: none; font-size: 0.88rem; font-weight: 600; color: var(--ink);
+            border-bottom: 1.5px solid var(--accent); padding-bottom: 2px; transition: color 0.2s, letter-spacing 0.2s;
         }
+        .launch-btn:hover { color: var(--accent); letter-spacing: 0.4px; }
+        .launch-group { display: flex; flex-wrap: wrap; gap: 16px; }
+        .launch-btn-alt { border-bottom-color: var(--line); }
 
-        .launch-btn:hover {
-            filter: brightness(1.1);
-            box-shadow: 0 5px 16px rgba(102,126,234,0.5);
-        }
-
-        /* two ways into the same topic — a guided story and a sandbox */
-        .launch-group {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 4px;
-        }
-
-        .launch-group .launch-btn { margin-top: 0; }
-
-        .launch-btn-alt {
-            background: #fff;
-            color: #5a3d8a;
-            border: 1.5px solid #d6cbea;
-            box-shadow: none;
-        }
-
-        .launch-btn-alt:hover {
-            filter: none;
-            background: #faf5ff;
-            box-shadow: 0 3px 10px rgba(102,126,234,0.2);
-        }
-
-        /* ── Empty state ── */
-        .empty-state {
-            display: none;
-            grid-column: 1 / -1;
-            text-align: center;
-            color: rgba(255,255,255,0.7);
-            padding: 60px 0;
-            font-size: 1rem;
-        }
+        /* ── Search results ── */
+        .results { display: none; max-width: 1100px; margin: 0 auto 56px; padding: 0 40px; border-top: 1px solid var(--line); }
+        .results.show { display: block; }
+        .result { display: block; padding: 18px 0; border-bottom: 1px solid var(--line); text-decoration: none; transition: padding 0.2s; }
+        .result:hover { padding-left: 10px; }
+        .result-title { font-family: Georgia, serif; font-size: 1.2rem; }
+        .result:hover .result-title { color: var(--accent); }
+        .result-section { font-size: 0.68rem; letter-spacing: 1px; text-transform: uppercase; color: var(--teal); margin-left: 12px; }
+        .result-desc { font-size: 0.88rem; color: var(--muted); line-height: 1.5; margin-top: 4px; max-width: 60em; }
+        .empty-state { color: var(--muted); padding: 40px 0; font-family: Georgia, serif; font-style: italic; }
 
         /* ── Footer ── */
-        .footer {
-            text-align: center;
-            padding: 0 40px 40px;
-            color: rgba(255,255,255,0.6);
-            font-size: 0.85rem;
-        }
+        .footer { max-width: 1100px; margin: 0 auto; padding: 24px 40px 48px; display: flex; gap: 24px; flex-wrap: wrap; color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--line); }
+        .footer a { text-decoration: none; border-bottom: 1px solid var(--line); }
+        .footer a:hover { color: var(--accent); border-color: var(--accent); }
 
-        .footer a {
-            color: rgba(255,255,255,0.8);
-            text-decoration: none;
-        }
-
-        .footer a:hover { color: #fff; }
-
-        /* ── Responsive ── */
-        @media (max-width: 600px) {
-            .header { padding: 24px 20px 16px; }
-            .header h1 { font-size: 1.6rem; }
-            .controls { padding: 0 20px 20px; }
-            .grid { padding: 0 20px 32px; gap: 14px; }
-            .footer { padding: 0 20px 32px; }
+        @media (max-width: 700px) {
+            .header { padding: 40px 20px 20px; }
+            .header svg { position: static; width: 180px; height: 110px; margin-bottom: 8px; }
+            .controls, .grid, .results, .footer { padding-left: 20px; padding-right: 20px; }
+            .search-wrap { margin-left: 0; width: 100%; }
+            .search-input { width: 100%; }
         }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <h1>🔬 Science Simulations</h1>
-        <p class="byline">by Mr. Walpola</p>
-    </div>
+    <header class="header">
+        <svg viewBox="0 0 260 160" fill="none" stroke-linecap="round" aria-hidden="true">
+            <g stroke="var(--line)" stroke-width="1.2">
+                <ellipse cx="130" cy="80" rx="118" ry="44" transform="rotate(-18 130 80)"/>
+                <ellipse cx="130" cy="80" rx="118" ry="44" transform="rotate(32 130 80)"/>
+                <ellipse cx="130" cy="80" rx="118" ry="44" transform="rotate(82 130 80)"/>
+            </g>
+            <path d="M6 118 Q 32 90 58 118 T 110 118 T 162 118 T 214 118 T 254 118" stroke="var(--teal)" stroke-width="1.6"/>
+            <circle cx="130" cy="80" r="9" fill="var(--accent)"/>
+            <circle cx="233" cy="53" r="4.5" fill="var(--gold)"/>
+            <circle cx="40" cy="42" r="4" fill="var(--teal)"/>
+            <circle cx="196" cy="132" r="3.5" fill="var(--ink)"/>
+        </svg>
+        <h1>Science <em>simulations</em></h1>
+        <p class="byline">Interactive GCSE physics, chemistry and biology, made to be shown on a projector.</p>
+    </header>
 
     <div class="controls">
         <button class="filter-btn active" data-filter="all">All</button>
@@ -272,7 +133,7 @@
         <button class="filter-btn" data-filter="chemistry">Chemistry</button>
         <button class="filter-btn" data-filter="biology">Biology</button>
         <div class="search-wrap">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
             <input class="search-input" type="text" placeholder="Search…" id="searchInput">
@@ -283,10 +144,11 @@
 
         <div class="card" data-category="physics" data-keywords="voltage current resistance circuit quiz battery bulb wire electron">
             <div class="card-header">
-                <div class="card-icon">⚡</div>
                 <div class="card-meta">
                     <div class="card-title">Electricity</div>
+                    <div class="badges">
                     <span class="badge badge-physics">Physics</span>
+                    </div>
                 </div>
             </div>
             <p class="card-description">Voltage, energy and charge, current and resistance in a wire, and a circuit quiz generator.</p>
@@ -295,10 +157,11 @@
 
         <div class="card" data-category="physics" data-keywords="ultrasound ultrasonic ndt crack echo bat sonar pulse">
             <div class="card-header">
-                <div class="card-icon">📡</div>
                 <div class="card-meta">
                     <div class="card-title">Waves</div>
+                    <div class="badges">
                     <span class="badge badge-physics">Physics</span>
+                    </div>
                 </div>
             </div>
             <p class="card-description">Ultrasonic testing and bat echolocation: pulse-echo timing.</p>
@@ -307,11 +170,12 @@
 
         <div class="card" data-category="physics chemistry" data-keywords="energy resources power station endothermic exothermic heating curve bond energy">
             <div class="card-header">
-                <div class="card-icon">🔋</div>
                 <div class="card-meta">
                     <div class="card-title">Energy</div>
+                    <div class="badges">
                     <span class="badge badge-physics">Physics</span>
                     <span class="badge badge-chemistry">Chemistry</span>
+                    </div>
                 </div>
             </div>
             <p class="card-description">Energy resources, and endothermic and exothermic change in physical and chemical processes.</p>
@@ -320,12 +184,13 @@
 
         <div class="card" data-category="physics chemistry biology">
             <div class="card-header">
-                <div class="card-icon">⚛️</div>
                 <div class="card-meta">
                     <div class="card-title">Particle Model</div>
+                    <div class="badges">
                     <span class="badge badge-physics">Physics</span>
                     <span class="badge badge-chemistry">Chemistry</span>
                     <span class="badge badge-biology">Biology</span>
+                    </div>
                 </div>
             </div>
             <p class="card-description">Thirteen guided 3D stories: density, conduction, convection, melting, Brownian motion, diffusion, acid strength and more.</p>
@@ -334,10 +199,11 @@
 
         <div class="card" data-category="chemistry">
             <div class="card-header">
-                <div class="card-icon">🧪</div>
                 <div class="card-meta">
                     <div class="card-title">Chemical Reactions</div>
+                    <div class="badges">
                     <span class="badge badge-chemistry">Chemistry</span>
+                    </div>
                 </div>
             </div>
             <p class="card-description">Fifteen 3D scenes, one per GCSE reaction type.</p>
@@ -346,10 +212,11 @@
 
         <div class="card" data-category="chemistry">
             <div class="card-header">
-                <div class="card-icon">⚗️</div>
                 <div class="card-meta">
                     <div class="card-title">Reaction Builder</div>
+                    <div class="badges">
                     <span class="badge badge-chemistry">Chemistry</span>
+                    </div>
                 </div>
             </div>
             <p class="card-description">Drop species on the reactant side and model the products.</p>
@@ -358,10 +225,11 @@
 
         <div class="card" data-category="chemistry">
             <div class="card-header">
-                <div class="card-icon">🧮</div>
                 <div class="card-meta">
                     <div class="card-title">Chemsheets Calculation Help</div>
+                    <div class="badges">
                     <span class="badge badge-chemistry">Chemistry</span>
+                    </div>
                 </div>
             </div>
             <p class="card-description">Worked answers for the moles, Mr, percentage by mass and Avogadro worksheets.</p>
@@ -370,10 +238,11 @@
 
         <div class="card" data-category="biology">
             <div class="card-header">
-                <div class="card-icon">🧬</div>
                 <div class="card-meta">
                     <div class="card-title">Cell Biology</div>
+                    <div class="badges">
                     <span class="badge badge-biology">Biology</span>
+                    </div>
                 </div>
             </div>
             <p class="card-description">Labelled models of animal, plant and specialised cells.</p>
@@ -381,47 +250,117 @@
         </div>
 
 
-        <div class="empty-state" id="emptyState">
-            No simulations match your search.
-        </div>
     </div>
 
-    <div class="footer">
-        <p>More simulations coming soon! &nbsp;·&nbsp;
-            <a href="https://github.com/iwalpola/science_simulations">View on GitHub</a>
-        </p>
-    </div>
+    <div class="results" id="results"></div>
+
+    <footer class="footer">
+        <a href="./about.html">About the author</a>
+        <a href="https://github.com/iwalpola/science_simulations">View on GitHub</a>
+    </footer>
 
     <script>
+        /* Every simulation in every sub-index, so search reaches inside the
+           category folders. When you add, move or rename a sim, update this
+           list (see AGENTS.md). u = path from the repo root, c = filter
+           categories, s = the folder it lives in, k = extra search words. */
+    const SIMS = [
+        {"t": "Circuit Quiz Teacher Tool", "u": "electricity/circuit_quiz_teacher_tool.html", "s": "Electricity", "c": ["physics"], "d": "Randomised voltage and current questions, with adjustable circuit type and difficulty."},
+        {"t": "Current, Collisions & Resistance", "u": "electricity/wire-resistance.html", "s": "Electricity", "c": ["physics"], "d": "A guided 3D story from a lit circuit into the copper itself: electron drift, collisions, and why resistance rises with temperature."},
+        {"t": "Voltage, Energy & Charge", "u": "electricity/voltage_energy_charge.html", "s": "Electricity", "c": ["physics"], "d": "How energy is added to a charge in a battery and released through a bulb."},
+        {"t": "Bat Echolocation", "u": "waves/pulse_echo.html", "s": "Waves", "c": ["physics"], "d": "Pulse-echo distance measurement from the bat's end of it."},
+        {"t": "Ultrasonic Non-Destructive Testing", "u": "waves/ultrasonicv2.html", "s": "Waves", "c": ["physics"], "d": "Slide a probe across a steel beam and watch the oscilloscope respond to hidden cracks. Pulse Trace mode slows the pulse down."},
+        {"t": "Ultrasonic Non-Destructive Testing (original version)", "u": "waves/ultrasonic_ndt.html", "s": "Waves", "c": ["physics"], "d": "Slide a probe across a steel beam and watch the oscilloscope respond to hidden cracks. Pulse Trace mode slows the pulse down."},
+        {"t": "Endothermic & Exothermic: Physical Change", "u": "energy/energy-physical-change.html", "s": "Energy", "c": ["physics", "chemistry"], "d": "Heat or cool a beaker of ice and watch thermal energy blocks flow, with a heating curve calculated from real specific heat capacities."},
+        {"t": "Endothermic & Exothermic: Reactions", "u": "energy/energy-chemical-change.html", "s": "Energy", "c": ["chemistry"], "d": "Energy blocks into and out of bonds, added up on a reaction profile. Every figure comes from the bond energy table."},
+        {"t": "Energy Resources", "u": "energy/energy-resources.html", "s": "Energy", "c": ["physics"], "d": "A guided 3D story from coal to the plug socket, tracking the energy store at every stage, compared with wind, hydro, solar and geothermal."},
+        {"t": "Atom, Molecule, Compound, Mixture", "u": "particles/atoms-molecules-compounds-mixtures-3d-story.html", "s": "Particle Model", "c": ["chemistry"], "k": "atom molecule compound mixture element periodic table pure substance bond particle model 3d story argon oxygen water hydrogen air fixed ratio separate", "d": "A guided 3D story through five boxes of gas — argon, oxygen, steam, a hydrogen–oxygen mixture and air. Follow a single atom, then a molecule, and watch the tag over each box work out element, compound or mixture from what is inside. Fly over to a 3D periodic table to find each element's square — and see why water doesn't have one."},
+        {"t": "Brownian Motion", "u": "particles/brownian-motion.html", "s": "Particle Model", "c": ["chemistry"], "k": "brownian motion particles pollen water molecules microscope kinetic theory diffusion particle model", "d": "Follow pollen from a flower onto a drop of water, then look down the microscope and watch it jitter. Turn the water molecules visible to see what has been pushing it all along. Change the grain size and the temperature to see what each does."},
+        {"t": "Concentration vs Acid Strength", "u": "particles/acid-strength-3d-story.html", "s": "Particle Model", "c": ["chemistry"], "k": "acid strength concentration weak strong dissociation ph indicator equilibrium ka particle model 3d story nitric carbonic hno3 h2co3 nitrate hydrogencarbonate", "d": "Nitric acid against carbonic acid. Watch the acid split into ions — completely for the strong one, barely at all for the weak one. Take the guided 3D story first, where concentration is held equal so strength is the only thing left to see; then open the 2D sandbox and turn both knobs yourself."},
+        {"t": "Concentration vs Acid Strength (2D sandbox)", "u": "particles/acid-strength-vs-concentration.html", "s": "Particle Model", "c": ["chemistry"], "k": "acid strength concentration weak strong dissociation ph indicator equilibrium ka particle model 3d story nitric carbonic hno3 h2co3 nitrate hydrogencarbonate", "d": "Nitric acid against carbonic acid. Watch the acid split into ions — completely for the strong one, barely at all for the weak one. Take the guided 3D story first, where concentration is held equal so strength is the only thing left to see; then open the 2D sandbox and turn both knobs yourself."},
+        {"t": "Concentration vs Alkali Strength", "u": "particles/alkali-strength-3d-story.html", "s": "Particle Model", "c": ["chemistry"], "k": "alkali base strength concentration weak strong ionise ionisation ph indicator equilibrium kb particle model 3d story sodium hydroxide naoh ammonia nh3 ammonium nh4 oh", "d": "Sodium hydroxide against ammonia. Watch every Na⁺ and OH⁻ drift apart in the strong alkali, while ammonia has to borrow an H⁺ from water to make any OH⁻ at all — and nearly always gives it back. Take the guided 3D story first, then open the 2D sandbox and turn both knobs yourself."},
+        {"t": "Concentration vs Alkali Strength (2D sandbox)", "u": "particles/alkali-strength-vs-concentration.html", "s": "Particle Model", "c": ["chemistry"], "k": "alkali base strength concentration weak strong ionise ionisation ph indicator equilibrium kb particle model 3d story sodium hydroxide naoh ammonia nh3 ammonium nh4 oh", "d": "Sodium hydroxide against ammonia. Watch every Na⁺ and OH⁻ drift apart in the strong alkali, while ammonia has to borrow an H⁺ from water to make any OH⁻ at all — and nearly always gives it back. Take the guided 3D story first, then open the 2D sandbox and turn both knobs yourself."},
+        {"t": "Conduction", "u": "particles/conduction.html", "s": "Particle Model", "c": ["physics"], "k": "conduction thermal conductor insulator vibrate vibration particles collide solid glass pan metal rod copper free electrons delocalised ions drawing pins wax energy transfer heat 3d story", "d": "Zoom into the glass bottom of a pan on the hob and watch the particles by the flame vibrate harder, collide with the ones above and pass it on. Then race energy along a copper rod and a glass rod with pins stuck on in wax, and go inside the copper to see the free electrons that make metals so much faster."},
+        {"t": "Convection", "u": "particles/convection.html", "s": "Particle Model", "c": ["physics"], "k": "convection current density hot water rises cold sinks heating pan stove hob flame potassium permanganate dye particles expand fluid energy transfer 3d story", "d": "A pan of water on a gas hob, with a crystal of purple dye on the bottom. Zoom in to watch the heated particles speed up and spread apart until the density decreases, compare a box of hot water with a box of cold, then come back out to see the dye trace the convection current round the pan."},
+        {"t": "Density", "u": "particles/density.html", "s": "Particle Model", "c": ["physics"], "k": "density mass volume kg/m3 g/cm3 candy floss sugar cake brownie air bubbles cubes wood aluminium iron scale weigh same rho relative atoms states solid liquid gas gold ice floats wax particle model 3d story", "d": "Spin 20 g of sugar into candy floss on a kitchen scale: the mass never changes, but the volume grows four hundred times. Zoom in to see why, weigh a slice of cake against a brownie the same size, then put the definition to work with cubes of wood, aluminium and iron — first the same volume, then the same mass. Finally, go inside the metals to see why iron's heavier atoms make it denser, compare solid, liquid and gas gold, and find out why ice floats when solid wax sinks."},
+        {"t": "Diffusion, Osmosis & Active Transport", "u": "particles/diffusion-osmosis-active-transport-3d-story.html", "s": "Particle Model", "c": ["biology"], "k": "diffusion osmosis active transport membrane partially permeable carrier protein concentration gradient surface area temperature thickness water solute dilute concentrated mineral ions root hair energy respiration particle model 3d story", "d": "A guided 3D story of particles crossing a membrane. Watch diffusion run from high to low concentration, then race tanks side by side to test concentration difference, surface area, membrane thickness and temperature. Finish with osmosis through a partially permeable membrane, and carrier proteins using energy to pump ions the other way."},
+        {"t": "Energy vs Temperature", "u": "particles/energy-vs-temperature-3d-story.html", "s": "Particle Model", "c": ["physics"], "k": "energy temperature thermal store heat particles vibrate kinetic average speed equilibrium thermometer specific capacity spark swimming pool celsius joules 3d story", "d": "A guided 3D story of the difference between the two. Watch energy arrive dot by dot and set the particles vibrating, then see why a swimming pool and a beaker at the same temperature hold wildly different amounts of energy — and why a 1200 °C spark holds almost none. Ends with energy flowing from hot to cold until the two reach equilibrium."},
+        {"t": "Foams & Aerosols", "u": "particles/foams-and-aerosols.html", "s": "Particle Model", "c": ["chemistry"], "k": "foam aerosol colloid mixture solid liquid sponge shaving smoke soot diesel mist spray droplet bubble states of matter particle model suspended", "d": "Four chapters on a scrubbable timeline, each starting at something you can see and ending inside its particles — a bath sponge, a heap of shaving foam, diesel smoke and a spray of mist. See why a foam is gas trapped inside something, an aerosol is the same thing turned inside out, and how solid, liquid and gas particles move differently in each."},
+        {"t": "Giant Covalent Structures", "u": "particles/giant-covalent.html", "s": "Particle Model", "c": ["chemistry"], "k": "giant covalent structures diamond graphite carbon lattice bonding electrons sp3 sp2 crystal", "d": "Rotate diamond and graphite in 3D and watch their electrons behave completely differently — locked into bonds in diamond, versus free to roam the sheet in graphite — and see why that difference explains conductivity and hardness."},
+        {"t": "Melting", "u": "particles/melting-snowman.html", "s": "Particle Model", "c": ["physics"], "k": "melting snowman states of matter particle model latent heat energy transfer radiation conduction heating curve solid liquid ice", "d": "Watch a snowman melt, and see where the energy comes from — mostly from the air, not the sunshine, because snow throws most of the light back. Then go inside the ice to watch the molecules break out of their pattern, while a heating curve tracks them and holds dead flat at 0 °C through the whole melt. Change the weather to change how long it takes."},
+        {"t": "Pure Substance or Mixture?", "u": "particles/pure-substances-vs-mixtures-3d-story.html", "s": "Particle Model", "c": ["chemistry"], "k": "pure substance mixture impure purity orange juice tap water distilled gold carat karat alloy element compound particle model 3d story", "d": "A guided 3D story through five samples — orange juice, tap water, distilled water, 24 carat gold and 20 carat gold. Start at each object, then zoom in to its particles and see why a \"100% pure\" juice is a mixture to a chemist, while distilled water is a pure substance."},
+        {"t": "Acid + metal carbonate", "u": "3dreactionscenes/acid-metal-carbonate.html", "s": "Chemical Reactions", "c": ["chemistry"], "d": "CaCO₃ + 2HCl → CaCl₂ + H₂O + CO₂ — 11 pairs · watch the carbonate straighten into CO₂"},
+        {"t": "Acid + metal hydroxide", "u": "3dreactionscenes/acid-metal-hydroxide.html", "s": "Chemical Reactions", "c": ["chemistry"], "d": "HCl + NaOH → NaCl + H₂O — 9 pairs × 3 indicators · including none at all"},
+        {"t": "Acid + metal oxide", "u": "3dreactionscenes/acid-metal-oxide.html", "s": "Chemical Reactions", "c": ["chemistry"], "d": "CuO + H₂SO₄ → CuSO₄ + H₂O — 4 metal oxides × 3 acids"},
+        {"t": "Combustion", "u": "3dreactionscenes/combustion.html", "s": "Chemical Reactions", "c": ["chemistry"], "d": "CH₄ + 2O₂ → CO₂ + 2H₂O — 4 fuels × air supply · where the heat actually comes from"},
+        {"t": "Electrolysis, aqueous", "u": "3dreactionscenes/electrolysis-aqueous.html", "s": "Chemical Reactions", "c": ["chemistry"], "d": "2NaCl + 2H₂O → 2NaOH + H₂ + Cl₂ — 4 solutions · four ions arrive, two are turned away"},
+        {"t": "Electrolysis, molten", "u": "3dreactionscenes/electrolysis-molten.html", "s": "Chemical Reactions", "c": ["chemistry"], "d": "PbBr₂ → Pb + Br₂ — 3 salts · why it has to be molten, and where the electrons go"},
+        {"t": "Halogen displacement", "u": "3dreactionscenes/halogen-displacement.html", "s": "Chemical Reactions", "c": ["chemistry"], "d": "Cl₂ + 2KBr → 2KCl + Br₂ — Any 2 of 3 halogens · a molecule becomes ions, and ions a molecule"},
+        {"t": "Metal + acid", "u": "3dreactionscenes/metal-acid.html", "s": "Chemical Reactions", "c": ["chemistry"], "d": "Mg + 2HCl → MgCl₂ + H₂ — 3 metals × 2 acids · electrons you can count"},
+        {"t": "Metal + halogen", "u": "3dreactionscenes/metal-halogen.html", "s": "Chemical Reactions", "c": ["chemistry"], "d": "2Na + Cl₂ → 2NaCl — 3 metals × 3 halogens · one spare, one gap"},
+        {"t": "Metal + oxygen", "u": "3dreactionscenes/metal-oxygen.html", "s": "Chemical Reactions", "c": ["chemistry"], "d": "2Mg + O₂ → 2MgO — 4 metals · an ionic lattice built from scratch"},
+        {"t": "Metal + water", "u": "3dreactionscenes/metal-water.html", "s": "Chemical Reactions", "c": ["chemistry"], "d": "2Na + 2H₂O → 2NaOH + H₂ — Li, Na, K · why the trend down group 1 exists"},
+        {"t": "Metal displacement", "u": "3dreactionscenes/metal-displacement.html", "s": "Chemical Reactions", "c": ["chemistry"], "d": "Zn + CuSO₄ → ZnSO₄ + Cu — Any 2 of 4 metals · pick the wrong way round and watch nothing happen"},
+        {"t": "Metal oxide + carbon", "u": "3dreactionscenes/metal-oxide-carbon.html", "s": "Chemical Reactions", "c": ["chemistry"], "d": "2CuO + C → 2Cu + CO₂ — 4 oxides · carbon can only reduce the ones below it"},
+        {"t": "The blast furnace", "u": "3dreactionscenes/blast-furnace.html", "s": "Chemical Reactions", "c": ["chemistry"], "d": "2Fe₂O₃ + 3C → 4Fe + 3CO₂ — 2 ores × limestone on or off · three steps, and the camera climbs with the gas"},
+        {"t": "Thermal decomposition", "u": "3dreactionscenes/thermal-decomposition.html", "s": "Chemical Reactions", "c": ["chemistry"], "d": "CaCO₃ → CaO + CO₂ — 5 carbonates · one of them refuses to break down"},
+        {"t": "Copper oxide and sulfuric acid", "u": "reactionbuilder/copper-oxide-reaction.html", "s": "Reaction Builder", "c": ["chemistry"], "k": "copper sulfate", "d": "Copper oxide reacting with sulfuric acid."},
+        {"t": "Reaction Builder", "u": "reactionbuilder/reaction-builder.html", "s": "Reaction Builder", "c": ["chemistry"], "k": "chemical atoms molecules gcse rearrange species", "d": "Drop species on the reactant side and model the products to see how atoms rearrange."},
+        {"t": "Moles", "u": "chemsheet_help/moles.html", "s": "Chemsheets Help", "c": ["chemistry"], "k": "GCSE 1092", "d": "Mr first, then a ratio you cross-multiply. The same two rows answer \"find the moles\", \"find the mass\" and \"find the Mr\", so there is no formula to pick between. Includes unit conversions and significant figures."},
+        {"t": "Percentage by mass", "u": "chemsheet_help/percentage_by_mass.html", "s": "Chemsheets Help", "c": ["chemistry"], "k": "GCSE 1413", "d": "The compound's mass drawn as a bar split into one slice per element, so you can see the answer before you calculate it. Covers brackets, hydrates, and writing a formula from a name."},
+        {"t": "Relative formula mass", "u": "chemsheet_help/relative_formula_mass.html", "s": "Chemsheets Help", "c": ["chemistry"], "k": "GCSE 1411", "d": "How to read the periodic table — which of the two numbers is the mass — how to tell a balancing number from part of a formula, and how to lay out an Mr so you don't lose track. Includes a box where you can type any formula and see the working."},
+        {"t": "The Avogadro constant", "u": "chemsheet_help/avogadros_constant.html", "s": "Chemsheets Help", "c": ["chemistry"], "k": "GCSE 1091", "d": "A mole is a pack size. Every question is shown twice — once as shopping, once as the worksheet — with an animation of each, because the arithmetic is identical both times."},
+        {"t": "Generic Animal Cell", "u": "cell_biology/generic_animal_cell.html", "s": "Cell Biology", "c": ["biology"], "d": "A labelled 3D model of a generic animal cell — rotate it to explore the nucleus, mitochondria, and other organelles."},
+        {"t": "Generic Plant Cell", "u": "cell_biology/generic_plant_cell.html", "s": "Cell Biology", "c": ["biology"], "d": "A labelled 3D model of a generic plant cell, highlighting the cell wall, chloroplasts, and vacuole alongside the shared organelles."},
+        {"t": "Muscle Fibre Bundle", "u": "cell_biology/muscle_cells.html", "s": "Cell Biology", "c": ["biology"], "d": "Watch a bundle of muscle fibres contract and relax, illustrating how specialised structure supports muscle function."},
+        {"t": "Neuron", "u": "cell_biology/neuron.html", "s": "Cell Biology", "c": ["biology"], "d": "A 3D fractal model of a neuron, showing how its branching dendrites and long axon suit it to carrying electrical signals."},
+        {"t": "Phloem Sieve Tube", "u": "cell_biology/phloem.html", "s": "Cell Biology", "c": ["biology"], "d": "A 3D phloem sieve tube translocating sucrose through its sieve plates, alongside the companion cell that loads it."},
+        {"t": "Red Blood Cell", "u": "cell_biology/red_blood_cell.html", "s": "Cell Biology", "c": ["biology"], "d": "A 3D biconcave red blood cell with a cutaway to its haemoglobin, loading oxygen in the lungs and releasing it in the tissues."},
+        {"t": "Root Hair Cell", "u": "cell_biology/root_hair.html", "s": "Cell Biology", "c": ["biology"], "d": "A 3D root hair cell drawing in water and mineral ions, showing how its long projection and dense mitochondria adapt it for absorption."},
+        {"t": "Sperm Cell", "u": "cell_biology/sperm.html", "s": "Cell Biology", "c": ["biology"], "d": "A 3D swim simulation of a sperm cell, showing how its streamlined head, midpiece, and flagellum adapt it for movement."},
+        {"t": "Xylem Vessel", "u": "cell_biology/xylem.html", "s": "Cell Biology", "c": ["biology"], "d": "A 3D xylem vessel carrying the transpiration stream upward, showing how lignin spirals and lost end walls adapt it for transporting water."}
+    ];
+
         const filterBtns = document.querySelectorAll('.filter-btn');
         const cards = document.querySelectorAll('.card');
         const searchInput = document.getElementById('searchInput');
-        const emptyState = document.getElementById('emptyState');
+        const grid = document.getElementById('grid');
+        const results = document.getElementById('results');
 
         let activeFilter = 'all';
 
+        function esc(s) {
+            return s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+        }
+
         function applyFilters() {
             const query = searchInput.value.trim().toLowerCase();
-            let visibleCount = 0;
+            const words = query.split(/\s+/).filter(Boolean);
 
+            if (words.length) {
+                // searching: list matching sims from every sub-index
+                const hits = SIMS.filter(s => {
+                    const hay = (s.t + ' ' + s.s + ' ' + s.d + ' ' + (s.k || '')).toLowerCase();
+                    const okFilter = activeFilter === 'all' || s.c.includes(activeFilter);
+                    return okFilter && words.every(w => hay.includes(w));
+                });
+                grid.style.display = 'none';
+                results.classList.add('show');
+                results.innerHTML = hits.map(s =>
+                    '<a class="result" href="./' + s.u + '"><div><span class="result-title">' + esc(s.t) +
+                    '</span><span class="result-section">' + esc(s.s) + '</span></div><div class="result-desc">' +
+                    esc(s.d) + '</div></a>').join('') ||
+                    '<div class="empty-state" style="display:block">No simulations match your search.</div>';
+                return;
+            }
+
+            // not searching: the category cards, filtered by subject
+            results.classList.remove('show');
+            grid.style.display = '';
             cards.forEach(card => {
                 const categories = (card.dataset.category || '').split(' ');
-                const keywords = card.dataset.keywords || '';
-                const title = card.querySelector('.card-title').textContent.toLowerCase();
-                const desc = card.querySelector('.card-description').textContent.toLowerCase();
-
-                const matchesFilter = activeFilter === 'all' || categories.includes(activeFilter);
-                const matchesSearch = !query || title.includes(query) || desc.includes(query) || keywords.includes(query);
-
-                if (matchesFilter && matchesSearch) {
-                    card.classList.remove('hidden');
-                    visibleCount++;
-                } else {
-                    card.classList.add('hidden');
-                }
+                card.classList.toggle('hidden', !(activeFilter === 'all' || categories.includes(activeFilter)));
             });
-
-            emptyState.style.display = visibleCount === 0 ? 'block' : 'none';
         }
 
         filterBtns.forEach(btn => {

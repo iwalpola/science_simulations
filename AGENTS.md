@@ -18,6 +18,33 @@ tools/                      one-off colour-migration scripts (animcolour.mjs, co
 
 ---
 
+## The catalogue and its search list
+
+`index.html` shows one card per category folder (`electricity/`, `waves/`,
+`energy/`, `particles/`, `3dreactionscenes/`, `reactionbuilder/`,
+`chemsheet_help/`, `cell_biology/`). Each folder has its own `index.html` that
+lists its sims. A sim lives in the one folder that fits best; other folders link
+to it with a relative `../` path rather than holding a copy.
+
+**The main page search covers every sim, not just the cards.** It reads the
+`SIMS` array at the top of the `<script>` in the root `index.html`; when the
+search box is non-empty it hides the cards and lists matching sims from that
+array. The array is hand-maintained, so whenever you add, move, rename or remove
+a simulation you must:
+
+1. update that folder's `index.html` (and the `../` cross-links in any other
+   index that should point to it);
+2. add, edit or delete its entry in `SIMS` in the root `index.html` — `t` title,
+   `u` path from the repo root, `s` the folder's section name, `c` the
+   filter categories (`physics` / `chemistry` / `biology`), `d` description,
+   optional `k` extra search words;
+3. add a new category folder as a card in the root grid too.
+
+An entry whose `u` no longer exists is a dead search result, so check that every
+`u` resolves to a file.
+
+---
+
 ## Tests — run these before and after any change
 
 ```bash
