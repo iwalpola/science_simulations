@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Science Simulations by Mr. Walpola</title>
+    <title>Energy Simulations by Mr. Walpola</title>
     <style>
         * {
             margin: 0;
@@ -36,6 +36,17 @@
             font-size: 0.95rem;
             margin-top: 4px;
         }
+
+        .header .back {
+            display: inline-block;
+            margin-top: 14px;
+            color: rgba(255,255,255,0.85);
+            font-size: 0.85rem;
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255,255,255,0.4);
+        }
+
+        .header .back:hover { color: #fff; }
 
         /* ── Controls bar ── */
         .controls {
@@ -257,184 +268,126 @@
             .grid { padding: 0 20px 32px; gap: 14px; }
             .footer { padding: 0 20px 32px; }
         }
-    </style>
+    
+        .section-label { grid-column: 1 / -1; color: rgba(255,255,255,0.8); font-size: 0.8rem; font-weight: 600; letter-spacing: 0.6px; text-transform: uppercase; padding-top: 8px; }
+</style>
 </head>
 <body>
 
     <div class="header">
-        <h1>🔬 Science Simulations</h1>
+        <h1>🔋 Energy</h1>
         <p class="byline">by Mr. Walpola</p>
+        <a class="back" href="../index.html">← All simulations</a>
     </div>
 
-    <div class="controls">
-        <button class="filter-btn active" data-filter="all">All</button>
-        <button class="filter-btn" data-filter="physics">Physics</button>
-        <button class="filter-btn" data-filter="chemistry">Chemistry</button>
-        <button class="filter-btn" data-filter="biology">Biology</button>
-        <div class="search-wrap">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-            <input class="search-input" type="text" placeholder="Search…" id="searchInput">
-        </div>
-    </div>
+    <div class="grid">
 
-    <div class="grid" id="grid">
+        <div class="section-label">In this folder</div>
 
-        <div class="card" data-category="physics" data-keywords="voltage current resistance circuit quiz battery bulb wire electron">
-            <div class="card-header">
-                <div class="card-icon">⚡</div>
-                <div class="card-meta">
-                    <div class="card-title">Electricity</div>
-                    <span class="badge badge-physics">Physics</span>
-                </div>
-            </div>
-            <p class="card-description">Voltage, energy and charge, current and resistance in a wire, and a circuit quiz generator.</p>
-            <a href="./electricity/index.html" class="launch-btn">Browse →</a>
-        </div>
-
-        <div class="card" data-category="physics" data-keywords="ultrasound ultrasonic ndt crack echo bat sonar pulse">
-            <div class="card-header">
-                <div class="card-icon">📡</div>
-                <div class="card-meta">
-                    <div class="card-title">Waves</div>
-                    <span class="badge badge-physics">Physics</span>
-                </div>
-            </div>
-            <p class="card-description">Ultrasonic testing and bat echolocation: pulse-echo timing.</p>
-            <a href="./waves/index.html" class="launch-btn">Browse →</a>
-        </div>
-
-        <div class="card" data-category="physics chemistry" data-keywords="energy resources power station endothermic exothermic heating curve bond energy">
+        <div class="card" data-category="physics">
             <div class="card-header">
                 <div class="card-icon">🔋</div>
                 <div class="card-meta">
-                    <div class="card-title">Energy</div>
+                    <div class="card-title">Energy Resources</div>
+                    <span class="badge badge-physics">Physics</span>
+                </div>
+            </div>
+            <p class="card-description">A guided 3D story from coal to the plug socket, tracking the energy store at every stage, compared with wind, hydro, solar and geothermal.</p>
+            <a href="energy-resources.html" class="launch-btn">3D story →</a>
+        </div>
+
+        <div class="card" data-category="physics chemistry">
+            <div class="card-header">
+                <div class="card-icon">🌡️</div>
+                <div class="card-meta">
+                    <div class="card-title">Endothermic &amp; Exothermic: Physical Change</div>
                     <span class="badge badge-physics">Physics</span>
                     <span class="badge badge-chemistry">Chemistry</span>
                 </div>
             </div>
-            <p class="card-description">Energy resources, and endothermic and exothermic change in physical and chemical processes.</p>
-            <a href="./energy/index.html" class="launch-btn">Browse →</a>
+            <p class="card-description">Heat or cool a beaker of ice and watch thermal energy blocks flow, with a heating curve calculated from real specific heat capacities.</p>
+            <a href="energy-physical-change.html" class="launch-btn">Launch →</a>
         </div>
 
-        <div class="card" data-category="physics chemistry biology">
+        <div class="card" data-category="chemistry">
             <div class="card-header">
-                <div class="card-icon">⚛️</div>
+                <div class="card-icon">🔥</div>
                 <div class="card-meta">
-                    <div class="card-title">Particle Model</div>
+                    <div class="card-title">Endothermic &amp; Exothermic: Reactions</div>
+                    <span class="badge badge-chemistry">Chemistry</span>
+                </div>
+            </div>
+            <p class="card-description">Energy blocks into and out of bonds, added up on a reaction profile. Every figure comes from the bond energy table.</p>
+            <a href="energy-chemical-change.html" class="launch-btn">Launch →</a>
+        </div>
+
+        <div class="section-label">Also relevant</div>
+
+        <div class="card" data-category="physics">
+            <div class="card-header">
+                <div class="card-icon">🌡️</div>
+                <div class="card-meta">
+                    <div class="card-title">Energy vs Temperature</div>
                     <span class="badge badge-physics">Physics</span>
-                    <span class="badge badge-chemistry">Chemistry</span>
-                    <span class="badge badge-biology">Biology</span>
                 </div>
             </div>
-            <p class="card-description">Thirteen guided 3D stories: density, conduction, convection, melting, Brownian motion, diffusion, acid strength and more.</p>
-            <a href="./particles/index.html" class="launch-btn">Browse →</a>
+            <p class="card-description">Why adding the same energy raises different materials by different amounts.</p>
+            <a href="../particles/energy-vs-temperature-3d-story.html" class="launch-btn">3D story →</a>
         </div>
 
-        <div class="card" data-category="chemistry">
+        <div class="card" data-category="physics">
             <div class="card-header">
-                <div class="card-icon">🧪</div>
+                <div class="card-icon">♨️</div>
                 <div class="card-meta">
-                    <div class="card-title">Chemical Reactions</div>
-                    <span class="badge badge-chemistry">Chemistry</span>
+                    <div class="card-title">Convection</div>
+                    <span class="badge badge-physics">Physics</span>
                 </div>
             </div>
-            <p class="card-description">Fifteen 3D scenes, one per GCSE reaction type.</p>
-            <a href="./3dreactionscenes/index.html" class="launch-btn">Browse →</a>
+            <p class="card-description">Energy transfer by convection currents.</p>
+            <a href="../particles/convection.html" class="launch-btn">3D story →</a>
         </div>
 
-        <div class="card" data-category="chemistry">
+        <div class="card" data-category="physics">
             <div class="card-header">
-                <div class="card-icon">⚗️</div>
+                <div class="card-icon">🥄</div>
                 <div class="card-meta">
-                    <div class="card-title">Reaction Builder</div>
-                    <span class="badge badge-chemistry">Chemistry</span>
+                    <div class="card-title">Conduction</div>
+                    <span class="badge badge-physics">Physics</span>
                 </div>
             </div>
-            <p class="card-description">Drop species on the reactant side and model the products.</p>
-            <a href="./reactionbuilder/reaction-builder.html" class="launch-btn">Launch →</a>
+            <p class="card-description">Energy transfer by conduction.</p>
+            <a href="../particles/conduction.html" class="launch-btn">3D story →</a>
         </div>
 
-        <div class="card" data-category="chemistry">
+        <div class="card" data-category="physics">
             <div class="card-header">
-                <div class="card-icon">🧮</div>
+                <div class="card-icon">⛄</div>
                 <div class="card-meta">
-                    <div class="card-title">Chemsheets Calculation Help</div>
-                    <span class="badge badge-chemistry">Chemistry</span>
+                    <div class="card-title">Melting</div>
+                    <span class="badge badge-physics">Physics</span>
                 </div>
             </div>
-            <p class="card-description">Worked answers for the moles, Mr, percentage by mass and Avogadro worksheets.</p>
-            <a href="./chemsheet_help/index.html" class="launch-btn">Browse →</a>
+            <p class="card-description">Where the energy to melt a snowman comes from, and a heating curve that holds flat at 0 °C.</p>
+            <a href="../particles/melting-snowman.html" class="launch-btn">3D story →</a>
         </div>
 
-        <div class="card" data-category="biology">
+        <div class="card" data-category="physics">
             <div class="card-header">
-                <div class="card-icon">🧬</div>
+                <div class="card-icon">⚡</div>
                 <div class="card-meta">
-                    <div class="card-title">Cell Biology</div>
-                    <span class="badge badge-biology">Biology</span>
+                    <div class="card-title">Voltage, Energy &amp; Charge</div>
+                    <span class="badge badge-physics">Physics</span>
                 </div>
             </div>
-            <p class="card-description">Labelled models of animal, plant and specialised cells.</p>
-            <a href="./cell_biology/index.html" class="launch-btn">Browse →</a>
+            <p class="card-description">Energy transferred by charge round a circuit.</p>
+            <a href="../electricity/voltage_energy_charge.html" class="launch-btn">Launch →</a>
         </div>
 
-
-        <div class="empty-state" id="emptyState">
-            No simulations match your search.
-        </div>
     </div>
 
     <div class="footer">
-        <p>More simulations coming soon! &nbsp;·&nbsp;
-            <a href="https://github.com/iwalpola/science_simulations">View on GitHub</a>
-        </p>
+        <p><a href="https://github.com/iwalpola/science_simulations">View on GitHub</a></p>
     </div>
-
-    <script>
-        const filterBtns = document.querySelectorAll('.filter-btn');
-        const cards = document.querySelectorAll('.card');
-        const searchInput = document.getElementById('searchInput');
-        const emptyState = document.getElementById('emptyState');
-
-        let activeFilter = 'all';
-
-        function applyFilters() {
-            const query = searchInput.value.trim().toLowerCase();
-            let visibleCount = 0;
-
-            cards.forEach(card => {
-                const categories = (card.dataset.category || '').split(' ');
-                const keywords = card.dataset.keywords || '';
-                const title = card.querySelector('.card-title').textContent.toLowerCase();
-                const desc = card.querySelector('.card-description').textContent.toLowerCase();
-
-                const matchesFilter = activeFilter === 'all' || categories.includes(activeFilter);
-                const matchesSearch = !query || title.includes(query) || desc.includes(query) || keywords.includes(query);
-
-                if (matchesFilter && matchesSearch) {
-                    card.classList.remove('hidden');
-                    visibleCount++;
-                } else {
-                    card.classList.add('hidden');
-                }
-            });
-
-            emptyState.style.display = visibleCount === 0 ? 'block' : 'none';
-        }
-
-        filterBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                filterBtns.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                activeFilter = btn.dataset.filter;
-                applyFilters();
-            });
-        });
-
-        searchInput.addEventListener('input', applyFilters);
-    </script>
 
 </body>
 </html>

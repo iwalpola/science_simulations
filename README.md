@@ -19,10 +19,10 @@ Open `index.html` for the searchable catalogue, or go straight to one:
 
 | | |
 |---|---|
-| **[Circuit Energy Flow](voltage_energy_charge.html)** | Voltage, energy and charge made visible — follow the energy round a circuit rather than just the current. |
-| **[Circuit Diagram Teacher Tool](circuit_quiz_teacher_tool.html)** | Build circuit diagrams on the board and quiz a class on them. |
-| **[Ultrasonic NDT Explorer](ultrasonicv2.html)** | Slide a probe across a steel beam and watch the oscilloscope respond to hidden cracks. Pulse Trace mode gives a slow-motion view of the pulse travelling through the material. |
-| **[Bat Echolocation](pulse_echo.html)** | Pulse-echo timing, from the bat's end of it. |
+| **[Circuit Energy Flow](electricity/voltage_energy_charge.html)** | Voltage, energy and charge made visible — follow the energy round a circuit rather than just the current. |
+| **[Circuit Diagram Teacher Tool](electricity/circuit_quiz_teacher_tool.html)** | Build circuit diagrams on the board and quiz a class on them. |
+| **[Ultrasonic NDT Explorer](waves/ultrasonicv2.html)** | Slide a probe across a steel beam and watch the oscilloscope respond to hidden cracks. Pulse Trace mode gives a slow-motion view of the pulse travelling through the material. |
+| **[Bat Echolocation](waves/pulse_echo.html)** | Pulse-echo timing, from the bat's end of it. |
 | **[Melting](particles/melting-snowman.html)** | A snowman melts. Where the energy comes from (mostly the air, not the sunshine — snow throws most of the light back), then inside the ice to watch molecules break out of their pattern, with a heating curve that holds dead flat at 0 °C through the whole melt. Change the weather to change how long it takes. |
 | **[Endothermic & Exothermic: Physical Change](energy/energy-physical-change.html)** | Heat a beaker of ice over a flame, or pack it in ice to cool it down, and watch orange thermal energy blocks travel in or out. Two thermometers, a zoomed-in particle view, and a heating curve calculated from the real specific heat capacities — so the plateaux land at 0 °C and 100 °C on their own, and the boiling one really is 6.8 times the melting one. |
 
