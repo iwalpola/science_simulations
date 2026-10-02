@@ -6,36 +6,37 @@
 <title>Chemsheets Help Pages</title>
 <style>
 :root{
-  --bg:#f6f4ef; --card:#ffffff; --ink:#1f2430; --muted:#5d6675; --line:#e2ddd2;
-  --chem:#2861d4; --chem-soft:#e6eefc; --stage:#fbfaf7;
+  --bg:#f5f0e6; --card:transparent; --ink:#1f2a2c; --muted:#6b7274; --line:#d9d1c0;
+  --chem:#2f6f6b; --chem-soft:transparent; --stage:#fbf8f1;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --bg:#121418; --card:#1b1f26; --ink:#e7eaf0; --muted:#9ba4b3; --line:#2c323c;
-    --chem:#7ea6f7; --chem-soft:#1a2740; --stage:#161a20;
+    --bg:#14191a; --card:transparent; --ink:#ece7da; --muted:#8f9895; --line:#2c3535;
+    --chem:#5fb0a9; --chem-soft:transparent; --stage:#1a2122;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#121418; --card:#1b1f26; --ink:#e7eaf0; --muted:#9ba4b3; --line:#2c323c;
-  --chem:#7ea6f7; --chem-soft:#1a2740; --stage:#161a20;
+  --bg:#14191a; --card:transparent; --ink:#ece7da; --muted:#8f9895; --line:#2c3535;
+  --chem:#5fb0a9; --chem-soft:transparent; --stage:#1a2122;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);
-  font-family:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;font-size:17px;line-height:1.55}
-main{max-width:860px;margin:0 auto;padding:0 16px 70px}
-h1{font-size:clamp(26px,5vw,36px);margin:30px 0 6px;line-height:1.15}
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:17px;line-height:1.55}
+main{max-width:860px;margin:0 auto;padding:0 20px 70px}
+h1{font-family:Georgia,"Iowan Old Style",serif;font-weight:400;font-size:clamp(2rem,5vw,3rem);letter-spacing:-1px;margin:44px 0 10px;line-height:1.1}
 .lede{color:var(--muted);margin:0 0 22px}
 sup,sub{line-height:0}
-.grid{display:grid;gap:14px}
+.grid{display:grid;gap:0;border-top:1px solid var(--line)}
 a.item{display:block;text-decoration:none;color:inherit;background:var(--card);
-  border:1px solid var(--line);border-radius:14px;padding:16px 18px}
-a.item:hover{border-color:var(--chem)}
+  border-bottom:1px solid var(--line);padding:20px 0;transition:padding .25s}
+a.item:hover{padding-left:12px}
+a.item:hover .t{color:#d9593d}
 a.item:focus-visible{outline:3px solid var(--chem);outline-offset:2px}
-.code{display:inline-block;font-size:13px;font-weight:700;letter-spacing:.04em;
-  background:var(--chem-soft);color:var(--chem);border-radius:99px;padding:1px 10px;margin-bottom:5px}
-.t{font-size:21px;font-weight:700;margin:2px 0 4px}
+.code{display:inline-block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--chem);margin-bottom:5px}
+.t{font-family:Georgia,"Iowan Old Style",serif;font-size:1.45rem;font-weight:400;margin:2px 0 4px}
 .d{color:var(--muted);font-size:16px;margin:0}
-.order{background:var(--stage);border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin:24px 0 0}
+.order{background:var(--stage);border:1px solid var(--line);border-radius:4px;padding:14px 18px;margin:24px 0 0}
 .order p{margin:6px 0}
 footer{color:var(--muted);font-size:14px;margin-top:34px}
 </style>
@@ -76,7 +77,7 @@ footer{color:var(--muted);font-size:14px;margin-top:34px}
 <p>Percentage by mass and moles can be done in either order. The Avogadro constant page explains <i>why</i> a mole is the size it is — useful alongside the moles page, but not needed to do the calculations.</p>
 </div>
 
-<footer>Worksheets © www.CHEMSHEETS.co.uk. These are help pages, not the worksheets themselves. <a href="../index.html" style="color:var(--chem)">← all simulations</a></footer>
+<footer>Worksheets © www.CHEMSHEETS.co.uk. These are help pages, not the worksheets themselves. <a href="../index.html" style="color:var(--chem)">← All simulations</a></footer>
 </main>
 </body>
 </html>
