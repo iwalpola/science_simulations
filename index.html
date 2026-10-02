@@ -3,279 +3,129 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Science Simulations by Mr. Walpola</title>
+    <title>Science Simulations</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --paper: #f5f0e6; --ink: #1f2a2c; --muted: #6b7274; --line: #d9d1c0;
+            --card: #fbf8f1; --accent: #d9593d; --teal: #2f6f6b; --gold: #c9962b;
         }
-
+        @media (prefers-color-scheme: dark) {
+            :root { --paper: #14191a; --ink: #ece7da; --muted: #8f9895; --line: #2c3535; --card: #1a2122; --accent: #ec7a5e; --teal: #5fb0a9; --gold: #e0b252; }
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            color: #333;
+            font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+            background: var(--paper); color: var(--ink); min-height: 100vh;
         }
+        a { color: inherit; }
 
         /* ── Header ── */
-        .header {
-            padding: 32px 40px 24px;
-            text-align: center;
-        }
-
+        .header { max-width: 1100px; margin: 0 auto; padding: 64px 40px 28px; position: relative; }
+        .header svg { position: absolute; right: 40px; top: 30px; width: 260px; height: 160px; opacity: 0.9; }
         .header h1 {
-            font-size: 2rem;
-            color: #fff;
-            font-weight: 700;
-            letter-spacing: -0.5px;
+            font-family: Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+            font-size: clamp(2.4rem, 6vw, 4rem); font-weight: 400; letter-spacing: -1.5px; line-height: 1.05;
         }
+        .header h1 em { font-style: italic; color: var(--accent); }
+        .header .byline { color: var(--muted); font-size: 1rem; margin-top: 14px; max-width: 30em; line-height: 1.5; }
 
-        .header .byline {
-            color: rgba(255,255,255,0.75);
-            font-size: 0.95rem;
-            margin-top: 4px;
-        }
-
-        /* ── Controls bar ── */
-        .controls {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            align-items: center;
-            justify-content: center;
-            padding: 0 40px 28px;
-        }
-
+        /* ── Controls ── */
+        .controls { max-width: 1100px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 40px 28px; }
         .filter-btn {
-            background: rgba(255,255,255,0.15);
-            color: #fff;
-            border: 1.5px solid rgba(255,255,255,0.35);
-            padding: 7px 18px;
-            border-radius: 999px;
-            font-size: 0.875rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background 0.2s, border-color 0.2s;
+            background: none; color: var(--muted); border: 1px solid var(--line); padding: 6px 16px;
+            border-radius: 999px; font: inherit; font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
         }
-
-        .filter-btn:hover {
-            background: rgba(255,255,255,0.28);
-        }
-
-        .filter-btn.active {
-            background: #fff;
-            color: #764ba2;
-            border-color: #fff;
-        }
-
-        .search-wrap {
-            position: relative;
-        }
-
-        .search-wrap svg {
-            position: absolute;
-            left: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            opacity: 0.5;
-            pointer-events: none;
-        }
-
+        .filter-btn:hover { color: var(--ink); border-color: var(--ink); }
+        .filter-btn.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+        .search-wrap { position: relative; margin-left: auto; }
+        .search-wrap svg { position: absolute; left: 4px; top: 50%; transform: translateY(-50%); opacity: 0.5; pointer-events: none; }
         .search-input {
-            background: rgba(255,255,255,0.15);
-            border: 1.5px solid rgba(255,255,255,0.35);
-            color: #fff;
-            padding: 7px 14px 7px 36px;
-            border-radius: 999px;
-            font-size: 0.875rem;
-            outline: none;
-            width: 200px;
-            transition: background 0.2s, border-color 0.2s;
+            background: none; border: none; border-bottom: 1px solid var(--line); color: var(--ink);
+            padding: 6px 8px 6px 26px; font: inherit; font-size: 0.9rem; outline: none; width: 220px; transition: border-color 0.2s;
         }
-
-        .search-input::placeholder { color: rgba(255,255,255,0.6); }
-
-        .search-input:focus {
-            background: rgba(255,255,255,0.25);
-            border-color: rgba(255,255,255,0.7);
-        }
+        .search-input::placeholder { color: var(--muted); }
+        .search-input:focus { border-color: var(--accent); }
 
         /* ── Grid ── */
         .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-            padding: 0 40px 40px;
-            max-width: 1200px;
-            margin: 0 auto;
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 0;
+            max-width: 1100px; margin: 0 auto 56px; padding: 0 40px; counter-reset: card;
+            border-top: 1px solid var(--line);
         }
 
         /* ── Card ── */
         .card {
-            background: #fff;
-            border-radius: 16px;
-            padding: 28px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.12);
-            transition: transform 0.2s, box-shadow 0.2s;
+            counter-increment: card; position: relative; display: flex; flex-direction: column; gap: 10px;
+            padding: 28px 24px 26px 0; border-bottom: 1px solid var(--line);
+            background: none; transition: padding 0.25s;
         }
-
-        .card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+        .card::before {
+            content: counter(card, decimal-leading-zero); font-family: Georgia, serif; font-style: italic;
+            font-size: 0.85rem; color: var(--muted);
         }
-
-        .card.hidden {
-            display: none;
-        }
-
-        .card-icon {
-            font-size: 2.2rem;
-            line-height: 1;
-        }
-
-        .card-header {
-            display: flex;
-            align-items: flex-start;
-            gap: 14px;
-        }
-
-        .card-meta {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .card-title {
-            font-size: 1.05rem;
-            font-weight: 700;
-            color: #1a202c;
-            line-height: 1.3;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 2px 10px;
-            border-radius: 999px;
-            font-size: 0.72rem;
-            font-weight: 600;
-            letter-spacing: 0.4px;
-            text-transform: uppercase;
-            width: fit-content;
-        }
-
-        .badge-physics   { background: #ebf4ff; color: #2b6cb0; }
-        .badge-chemistry { background: #f0fff4; color: #276749; }
-        .badge-tool      { background: #faf5ff; color: #6b21a8; }
-        .badge-biology   { background: #fff0f6; color: #97266d; }
-
-        .card-description {
-            font-size: 0.875rem;
-            color: #4a5568;
-            line-height: 1.6;
-            flex: 1;
-        }
-
+        .card:hover { padding-left: 12px; }
+        .card.hidden { display: none; }
+        .card-header { display: block; }
+        .card-meta { display: flex; flex-direction: column; gap: 8px; }
+        .card-title { font-family: Georgia, 'Iowan Old Style', serif; font-size: 1.45rem; font-weight: 400; line-height: 1.2; }
+        .badges { display: flex; gap: 12px; flex-wrap: wrap; }
+        .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 0.68rem; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+        .badge::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+        .badge-physics::before { background: var(--accent); }
+        .badge-chemistry::before { background: var(--teal); }
+        .badge-biology::before { background: var(--gold); }
+        .card-description { font-size: 0.92rem; color: var(--muted); line-height: 1.55; flex: 1; }
         .launch-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #fff;
-            text-decoration: none;
-            padding: 10px 22px;
-            border-radius: 999px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            margin-top: 4px;
-            align-self: flex-start;
-            transition: filter 0.2s, box-shadow 0.2s;
-            box-shadow: 0 3px 10px rgba(102,126,234,0.35);
+            align-self: flex-start; text-decoration: none; font-size: 0.88rem; font-weight: 600; color: var(--ink);
+            border-bottom: 1.5px solid var(--accent); padding-bottom: 2px; transition: color 0.2s, letter-spacing 0.2s;
         }
+        .launch-btn:hover { color: var(--accent); letter-spacing: 0.4px; }
+        .launch-group { display: flex; flex-wrap: wrap; gap: 16px; }
+        .launch-btn-alt { border-bottom-color: var(--line); }
 
-        .launch-btn:hover {
-            filter: brightness(1.1);
-            box-shadow: 0 5px 16px rgba(102,126,234,0.5);
-        }
-
-        /* two ways into the same topic — a guided story and a sandbox */
-        .launch-group {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 4px;
-        }
-
-        .launch-group .launch-btn { margin-top: 0; }
-
-        .launch-btn-alt {
-            background: #fff;
-            color: #5a3d8a;
-            border: 1.5px solid #d6cbea;
-            box-shadow: none;
-        }
-
-        .launch-btn-alt:hover {
-            filter: none;
-            background: #faf5ff;
-            box-shadow: 0 3px 10px rgba(102,126,234,0.2);
-        }
-
-        /* ── Empty state ── */
-        .empty-state {
-            display: none;
-            grid-column: 1 / -1;
-            text-align: center;
-            color: rgba(255,255,255,0.7);
-            padding: 60px 0;
-            font-size: 1rem;
-        }
+        /* ── Search results ── */
+        .results { display: none; max-width: 1100px; margin: 0 auto 56px; padding: 0 40px; border-top: 1px solid var(--line); }
+        .results.show { display: block; }
+        .result { display: block; padding: 18px 0; border-bottom: 1px solid var(--line); text-decoration: none; transition: padding 0.2s; }
+        .result:hover { padding-left: 10px; }
+        .result-title { font-family: Georgia, serif; font-size: 1.2rem; }
+        .result:hover .result-title { color: var(--accent); }
+        .result-section { font-size: 0.68rem; letter-spacing: 1px; text-transform: uppercase; color: var(--teal); margin-left: 12px; }
+        .result-desc { font-size: 0.88rem; color: var(--muted); line-height: 1.5; margin-top: 4px; max-width: 60em; }
+        .empty-state { color: var(--muted); padding: 40px 0; font-family: Georgia, serif; font-style: italic; }
 
         /* ── Footer ── */
-        .footer {
-            text-align: center;
-            padding: 0 40px 40px;
-            color: rgba(255,255,255,0.6);
-            font-size: 0.85rem;
-        }
+        .footer { max-width: 1100px; margin: 0 auto; padding: 24px 40px 48px; display: flex; gap: 24px; flex-wrap: wrap; color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--line); }
+        .footer a { text-decoration: none; border-bottom: 1px solid var(--line); }
+        .footer a:hover { color: var(--accent); border-color: var(--accent); }
 
-        .footer a {
-            color: rgba(255,255,255,0.8);
-            text-decoration: none;
-        }
-
-        .footer a:hover { color: #fff; }
-
-
-        /* ── Search results (every sim in every sub-index) ── */
-        .results { display: none; max-width: 1200px; margin: 0 auto; padding: 0 40px 40px; flex-direction: column; gap: 10px; }
-        .results.show { display: flex; }
-        .result { background: #fff; border-radius: 12px; padding: 14px 20px; text-decoration: none; color: inherit; box-shadow: 0 2px 10px rgba(0,0,0,0.1); transition: transform 0.15s; }
-        .result:hover { transform: translateY(-2px); }
-        .result-title { font-weight: 700; color: #1a202c; }
-        .result-section { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; color: #764ba2; margin-left: 10px; }
-        .result-desc { font-size: 0.85rem; color: #4a5568; line-height: 1.5; margin-top: 4px; }
-        @media (max-width: 600px) { .results { padding: 0 20px 32px; } }
-
-        /* ── Responsive ── */
-        @media (max-width: 600px) {
-            .header { padding: 24px 20px 16px; }
-            .header h1 { font-size: 1.6rem; }
-            .controls { padding: 0 20px 20px; }
-            .grid { padding: 0 20px 32px; gap: 14px; }
-            .footer { padding: 0 20px 32px; }
+        @media (max-width: 700px) {
+            .header { padding: 40px 20px 20px; }
+            .header svg { position: static; width: 180px; height: 110px; margin-bottom: 8px; }
+            .controls, .grid, .results, .footer { padding-left: 20px; padding-right: 20px; }
+            .search-wrap { margin-left: 0; width: 100%; }
+            .search-input { width: 100%; }
         }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <h1>🔬 Science Simulations</h1>
-        <p class="byline">by Mr. Walpola</p>
-    </div>
+    <header class="header">
+        <svg viewBox="0 0 260 160" fill="none" stroke-linecap="round" aria-hidden="true">
+            <g stroke="var(--line)" stroke-width="1.2">
+                <ellipse cx="130" cy="80" rx="118" ry="44" transform="rotate(-18 130 80)"/>
+                <ellipse cx="130" cy="80" rx="118" ry="44" transform="rotate(32 130 80)"/>
+                <ellipse cx="130" cy="80" rx="118" ry="44" transform="rotate(82 130 80)"/>
+            </g>
+            <path d="M6 118 Q 32 90 58 118 T 110 118 T 162 118 T 214 118 T 254 118" stroke="var(--teal)" stroke-width="1.6"/>
+            <circle cx="130" cy="80" r="9" fill="var(--accent)"/>
+            <circle cx="233" cy="53" r="4.5" fill="var(--gold)"/>
+            <circle cx="40" cy="42" r="4" fill="var(--teal)"/>
+            <circle cx="196" cy="132" r="3.5" fill="var(--ink)"/>
+        </svg>
+        <h1>Science <em>simulations</em></h1>
+        <p class="byline">Interactive GCSE physics, chemistry and biology, made to be shown on a projector.</p>
+    </header>
 
     <div class="controls">
         <button class="filter-btn active" data-filter="all">All</button>
@@ -283,7 +133,7 @@
         <button class="filter-btn" data-filter="chemistry">Chemistry</button>
         <button class="filter-btn" data-filter="biology">Biology</button>
         <div class="search-wrap">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
             <input class="search-input" type="text" placeholder="Search…" id="searchInput">
@@ -294,10 +144,11 @@
 
         <div class="card" data-category="physics" data-keywords="voltage current resistance circuit quiz battery bulb wire electron">
             <div class="card-header">
-                <div class="card-icon">⚡</div>
                 <div class="card-meta">
                     <div class="card-title">Electricity</div>
+                    <div class="badges">
                     <span class="badge badge-physics">Physics</span>
+                    </div>
                 </div>
             </div>
             <p class="card-description">Voltage, energy and charge, current and resistance in a wire, and a circuit quiz generator.</p>
@@ -306,10 +157,11 @@
 
         <div class="card" data-category="physics" data-keywords="ultrasound ultrasonic ndt crack echo bat sonar pulse">
             <div class="card-header">
-                <div class="card-icon">📡</div>
                 <div class="card-meta">
                     <div class="card-title">Waves</div>
+                    <div class="badges">
                     <span class="badge badge-physics">Physics</span>
+                    </div>
                 </div>
             </div>
             <p class="card-description">Ultrasonic testing and bat echolocation: pulse-echo timing.</p>
@@ -318,11 +170,12 @@
 
         <div class="card" data-category="physics chemistry" data-keywords="energy resources power station endothermic exothermic heating curve bond energy">
             <div class="card-header">
-                <div class="card-icon">🔋</div>
                 <div class="card-meta">
                     <div class="card-title">Energy</div>
+                    <div class="badges">
                     <span class="badge badge-physics">Physics</span>
                     <span class="badge badge-chemistry">Chemistry</span>
+                    </div>
                 </div>
             </div>
             <p class="card-description">Energy resources, and endothermic and exothermic change in physical and chemical processes.</p>
@@ -331,12 +184,13 @@
 
         <div class="card" data-category="physics chemistry biology">
             <div class="card-header">
-                <div class="card-icon">⚛️</div>
                 <div class="card-meta">
                     <div class="card-title">Particle Model</div>
+                    <div class="badges">
                     <span class="badge badge-physics">Physics</span>
                     <span class="badge badge-chemistry">Chemistry</span>
                     <span class="badge badge-biology">Biology</span>
+                    </div>
                 </div>
             </div>
             <p class="card-description">Thirteen guided 3D stories: density, conduction, convection, melting, Brownian motion, diffusion, acid strength and more.</p>
@@ -345,10 +199,11 @@
 
         <div class="card" data-category="chemistry">
             <div class="card-header">
-                <div class="card-icon">🧪</div>
                 <div class="card-meta">
                     <div class="card-title">Chemical Reactions</div>
+                    <div class="badges">
                     <span class="badge badge-chemistry">Chemistry</span>
+                    </div>
                 </div>
             </div>
             <p class="card-description">Fifteen 3D scenes, one per GCSE reaction type.</p>
@@ -357,10 +212,11 @@
 
         <div class="card" data-category="chemistry">
             <div class="card-header">
-                <div class="card-icon">⚗️</div>
                 <div class="card-meta">
                     <div class="card-title">Reaction Builder</div>
+                    <div class="badges">
                     <span class="badge badge-chemistry">Chemistry</span>
+                    </div>
                 </div>
             </div>
             <p class="card-description">Drop species on the reactant side and model the products.</p>
@@ -369,10 +225,11 @@
 
         <div class="card" data-category="chemistry">
             <div class="card-header">
-                <div class="card-icon">🧮</div>
                 <div class="card-meta">
                     <div class="card-title">Chemsheets Calculation Help</div>
+                    <div class="badges">
                     <span class="badge badge-chemistry">Chemistry</span>
+                    </div>
                 </div>
             </div>
             <p class="card-description">Worked answers for the moles, Mr, percentage by mass and Avogadro worksheets.</p>
@@ -381,10 +238,11 @@
 
         <div class="card" data-category="biology">
             <div class="card-header">
-                <div class="card-icon">🧬</div>
                 <div class="card-meta">
                     <div class="card-title">Cell Biology</div>
+                    <div class="badges">
                     <span class="badge badge-biology">Biology</span>
+                    </div>
                 </div>
             </div>
             <p class="card-description">Labelled models of animal, plant and specialised cells.</p>
@@ -396,11 +254,10 @@
 
     <div class="results" id="results"></div>
 
-    <div class="footer">
-        <p>More simulations coming soon! &nbsp;·&nbsp;
-            <a href="https://github.com/iwalpola/science_simulations">View on GitHub</a>
-        </p>
-    </div>
+    <footer class="footer">
+        <a href="./about.html">About the author</a>
+        <a href="https://github.com/iwalpola/science_simulations">View on GitHub</a>
+    </footer>
 
     <script>
         /* Every simulation in every sub-index, so search reaches inside the
