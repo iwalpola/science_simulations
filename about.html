@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About the author · Science Simulations</title>
+    <style>
+        :root {
+            --paper: #f5f0e6; --ink: #1f2a2c; --muted: #6b7274; --line: #d9d1c0;
+            --card: #fbf8f1; --accent: #d9593d; --teal: #2f6f6b; --gold: #c9962b;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root { --paper: #14191a; --ink: #ece7da; --muted: #8f9895; --line: #2c3535; --card: #1a2122; --accent: #ec7a5e; --teal: #5fb0a9; --gold: #e0b252; }
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+            background: var(--paper); color: var(--ink); min-height: 100vh;
+        }
+        a { color: inherit; }
+
+        /* ── Header ── */
+        .header { max-width: 1100px; margin: 0 auto; padding: 64px 40px 28px; position: relative; }
+        .header svg { position: absolute; right: 40px; top: 30px; width: 260px; height: 160px; opacity: 0.9; }
+        .header h1 {
+            font-family: Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+            font-size: clamp(2.4rem, 6vw, 4rem); font-weight: 400; letter-spacing: -1.5px; line-height: 1.05;
+        }
+        .header h1 em { font-style: italic; color: var(--accent); }
+        .header .byline { color: var(--muted); font-size: 1rem; margin-top: 14px; max-width: 30em; line-height: 1.5; }
+
+        /* ── Controls ── */
+        .controls { max-width: 1100px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 40px 28px; }
+        .filter-btn {
+            background: none; color: var(--muted); border: 1px solid var(--line); padding: 6px 16px;
+            border-radius: 999px; font: inherit; font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
+        }
+        .filter-btn:hover { color: var(--ink); border-color: var(--ink); }
+        .filter-btn.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+        .search-wrap { position: relative; margin-left: auto; }
+        .search-wrap svg { position: absolute; left: 4px; top: 50%; transform: translateY(-50%); opacity: 0.5; pointer-events: none; }
+        .search-input {
+            background: none; border: none; border-bottom: 1px solid var(--line); color: var(--ink);
+            padding: 6px 8px 6px 26px; font: inherit; font-size: 0.9rem; outline: none; width: 220px; transition: border-color 0.2s;
+        }
+        .search-input::placeholder { color: var(--muted); }
+        .search-input:focus { border-color: var(--accent); }
+
+        /* ── Grid ── */
+        .grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 0;
+            max-width: 1100px; margin: 0 auto 56px; padding: 0 40px; counter-reset: card;
+            border-top: 1px solid var(--line);
+        }
+
+        /* ── Card ── */
+        .card {
+            counter-increment: card; position: relative; display: flex; flex-direction: column; gap: 10px;
+            padding: 28px 24px 26px 0; border-bottom: 1px solid var(--line);
+            background: none; transition: padding 0.25s;
+        }
+        .card::before {
+            content: counter(card, decimal-leading-zero); font-family: Georgia, serif; font-style: italic;
+            font-size: 0.85rem; color: var(--muted);
+        }
+        .card:hover { padding-left: 12px; }
+        .card.hidden { display: none; }
+        .card-header { display: block; }
+        .card-meta { display: flex; flex-direction: column; gap: 8px; }
+        .card-title { font-family: Georgia, 'Iowan Old Style', serif; font-size: 1.45rem; font-weight: 400; line-height: 1.2; }
+        .badges { display: flex; gap: 12px; flex-wrap: wrap; }
+        .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 0.68rem; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+        .badge::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+        .badge-physics::before { background: var(--accent); }
+        .badge-chemistry::before { background: var(--teal); }
+        .badge-biology::before { background: var(--gold); }
+        .card-description { font-size: 0.92rem; color: var(--muted); line-height: 1.55; flex: 1; }
+        .launch-btn {
+            align-self: flex-start; text-decoration: none; font-size: 0.88rem; font-weight: 600; color: var(--ink);
+            border-bottom: 1.5px solid var(--accent); padding-bottom: 2px; transition: color 0.2s, letter-spacing 0.2s;
+        }
+        .launch-btn:hover { color: var(--accent); letter-spacing: 0.4px; }
+        .launch-group { display: flex; flex-wrap: wrap; gap: 16px; }
+        .launch-btn-alt { border-bottom-color: var(--line); }
+
+        /* ── Search results ── */
+        .results { display: none; max-width: 1100px; margin: 0 auto 56px; padding: 0 40px; border-top: 1px solid var(--line); }
+        .results.show { display: block; }
+        .result { display: block; padding: 18px 0; border-bottom: 1px solid var(--line); text-decoration: none; transition: padding 0.2s; }
+        .result:hover { padding-left: 10px; }
+        .result-title { font-family: Georgia, serif; font-size: 1.2rem; }
+        .result:hover .result-title { color: var(--accent); }
+        .result-section { font-size: 0.68rem; letter-spacing: 1px; text-transform: uppercase; color: var(--teal); margin-left: 12px; }
+        .result-desc { font-size: 0.88rem; color: var(--muted); line-height: 1.5; margin-top: 4px; max-width: 60em; }
+        .empty-state { color: var(--muted); padding: 40px 0; font-family: Georgia, serif; font-style: italic; }
+
+        /* ── Footer ── */
+        .footer { max-width: 1100px; margin: 0 auto; padding: 24px 40px 48px; display: flex; gap: 24px; flex-wrap: wrap; color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--line); }
+        .footer a { text-decoration: none; border-bottom: 1px solid var(--line); }
+        .footer a:hover { color: var(--accent); border-color: var(--accent); }
+
+        @media (max-width: 700px) {
+            .header { padding: 40px 20px 20px; }
+            .header svg { position: static; width: 180px; height: 110px; margin-bottom: 8px; }
+            .controls, .grid, .results, .footer { padding-left: 20px; padding-right: 20px; }
+            .search-wrap { margin-left: 0; width: 100%; }
+            .search-input { width: 100%; }
+        }
+    </style>
+    <style>
+        .about { max-width: 680px; margin: 0 auto; padding: 0 40px 56px; }
+        .about p { font-size: 1.08rem; line-height: 1.75; margin-bottom: 1.2em; }
+        .about .lede { font-family: Georgia, 'Iowan Old Style', serif; font-size: 1.5rem; line-height: 1.45; }
+        .back { display: inline-block; margin-top: 18px; color: var(--muted); font-size: 0.85rem; text-decoration: none; border-bottom: 1px solid var(--line); }
+        .back:hover { color: var(--accent); border-color: var(--accent); }
+        .timeline { list-style: none; border-top: 1px solid var(--line); margin: 28px 0 32px; }
+        .timeline li { display: flex; gap: 24px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+        .timeline .when { font-family: Georgia, serif; font-style: italic; color: var(--muted); min-width: 7em; }
+        .contact a { color: var(--ink); border-bottom: 1.5px solid var(--accent); text-decoration: none; font-weight: 600; }
+        .contact a:hover { color: var(--accent); }
+        @media (max-width: 700px) { .about { padding: 0 20px 40px; } .timeline li { flex-direction: column; gap: 2px; } }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <h1>Isuru <em>Walpola</em></h1>
+        <p class="byline">Science teacher</p>
+        <a class="back" href="./index.html">← All simulations</a>
+    </header>
+
+    <main class="about">
+        <p class="lede">I teach science, and I build the simulations I wish I had on the board when explaining an idea for the third time.</p>
+
+        <ul class="timeline">
+            <li><span class="when">6 years</span><span>Science teacher at Colombo International School, Sri Lanka</span></li>
+            <li><span class="when">Now</span><span>Science teacher at a school in Buckinghamshire, UK</span></li>
+        </ul>
+
+        <p>My background is in mechanical engineering, and I have always been a maker and an electronics enthusiast who likes learning how to code better. That mix is where these pages come from: each one is a single HTML file you can open from a memory stick, shown on a projector, and built so the physics on screen is calculated rather than drawn to look about right.</p>
+
+        <p class="contact">Questions, corrections or ideas for a new simulation are welcome. The easiest way to reach me is through <a href="https://github.com/iwalpola">GitHub</a>, or by opening an issue on the <a href="https://github.com/iwalpola/science_simulations/issues">simulations repository</a>.</p>
+    </main>
+
+    <footer class="footer">
+        <a href="./index.html">All simulations</a>
+        <a href="https://github.com/iwalpola/science_simulations">View on GitHub</a>
+    </footer>
+
+</body>
+</html>
