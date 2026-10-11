@@ -13,6 +13,7 @@ reactionbuilder/            drag-and-drop reaction builder (+ test.js)
 particles/                  particle-theory scenes (Brownian motion, melting)
 energy/                     energy stores and transfers (+ test-energy-scenes.js)
 electricity/                conduction and resistance (+ test-wire.js)
+human_anatomy/reflex-arc/   2D reflex arc story over a baked 3D model (+ bake-backdrop.js, test-reflex-arc.js)
 tools/                      one-off colour-migration scripts (animcolour.mjs, colourfix.mjs)
 ```
 
@@ -27,6 +28,7 @@ cd particles        && node test-render.js      # runs the scenes headlessly
 cd energy           && node test-energy-scenes.js  # ~530 checks, incl. headless render
 cd reactionbuilder  && node test.js             # needs: npm install jsdom
 cd electricity      && node test-wire.js        # model + render path
+cd human_anatomy/reflex-arc && node test-reflex-arc.js  # choreography + headless render
 ```
 
 They read the HTML as text, pull out the species tables, captions, camera
@@ -115,6 +117,40 @@ stage coordinates and never in pixels**. `resize()` is the only place that
 knows about `innerWidth`, and it *measures* the bar and the legend with
 `offsetHeight` rather than assuming a height — change their padding and the
 stage still fits.
+
+---
+
+## The reflex arc is a 2D story over a BAKED 3D model
+
+`human_anatomy/reflex-arc/scene.html` is plain 2D canvas, like the energy
+scenes, and everything in the section above about the stage, the bar and
+"everything is a pure function of t" applies to it. What is different is the
+backdrop: the skeleton, nerves and brain come from the Z-Anatomy "Neurology"
+model (`scene.gltf` + `scene.bin`, 84 MB, CC-BY-SA-4.0).
+
+- **The page never loads the model.** It is far too big to ship to a
+  classroom, and a page that `fetch()`es a `.gltf` cannot be opened off disk.
+  `bake-backdrop.js` rasterises it once, side on, in plain node (a z-buffer,
+  no three.js, no GPU), into a handful of small transparent PNGs and writes
+  them into `scene.html` as data URIs between the `BAKED:BEGIN`/`BAKED:END`
+  markers, along with the landmarks the page lays its drawing on (elbow pivot,
+  fingertip, wrist, shoulder, the line of the spinal canal, the brain). Never
+  edit that block by hand; re-run the bake. `--debug` also writes PNGs you can
+  look at, including a composite with the landmarks marked. The model files
+  are gitignored, so a fresh clone cannot re-bake: download the glTF from the
+  Sketchfab link in `license.txt` into the folder first.
+- **The model's labels are unusable.** Sketchfab's export merged every part
+  sharing a material and renamed the lot `Object_N`; one "mesh" can hold
+  pieces of both arms and the face. Only the material names (tissue type)
+  survive. So the page names nothing in the model: the neurones, spinal cord,
+  biceps and body outline are DRAWN IN, and the page says so on screen. Do not
+  label a part of the backdrop as a specific nerve.
+- **The forearm is its own layer**, cut at the elbow, so the page can swing it
+  when the biceps contracts. Bones go whole by where their middle is (so the
+  point of the elbow moves with the ulna); nerve tubes are cut at the pivot.
+- **The licence travels with the picture.** The baked images are a derivative
+  of a CC-BY-SA model, so they carry that licence, unlike the rest of the repo
+  (MIT). The credit is on screen and in the page head; keep both.
 
 ---
 

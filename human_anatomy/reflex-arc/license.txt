@@ -1,0 +1,11 @@
+Model Information:
+* title:	Neurology
+* source:	https://sketchfab.com/3d-models/neurology-3bfe9ac6efd84555a311f8ea50dd174d
+* author:	Z-Anatomy (https://sketchfab.com/Z-Anatomy)
+
+Model License:
+* license type:	CC-BY-SA-4.0 (http://creativecommons.org/licenses/by-sa/4.0/)
+* requirements:	Author must be credited. Modified versions must have the same license. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Neurology" (https://sketchfab.com/3d-models/neurology-3bfe9ac6efd84555a311f8ea50dd174d) by Z-Anatomy (https://sketchfab.com/Z-Anatomy) licensed under CC-BY-SA-4.0 (http://creativecommons.org/licenses/by-sa/4.0/)

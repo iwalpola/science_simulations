@@ -5,3 +5,10 @@ electricity/.three-cache/
 
 # only ever a dev-time dependency, for reactionbuilder/test.js
 node_modules/
+
+# The Z-Anatomy model behind the reflex arc (84 MB). Only bake-backdrop.js
+# reads it; scene.html carries the baked images, so the site never needs it.
+# license.txt stays tracked: it is the attribution for those images.
+human_anatomy/reflex-arc/scene.gltf
+human_anatomy/reflex-arc/scene.bin
+human_anatomy/reflex-arc/debug-*.png

@@ -87,6 +87,7 @@ cd particles        && node test-particles.js   # ~3,200 checks
 cd particles        && node test-render.js      # runs the scenes headlessly
 cd energy           && node test-energy-scenes.js  # ~530 checks, incl. headless render
 cd reactionbuilder  && node test.js             # needs: npm install jsdom
+cd human_anatomy/reflex-arc && node test-reflex-arc.js
 ```
 
 They read the HTML as text and run the physics under Node, checking for
