@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Human Anatomy Simulations</title>
+    <style>
+        :root {
+            --paper: #f5f0e6; --ink: #1f2a2c; --muted: #6b7274; --line: #d9d1c0;
+            --card: #fbf8f1; --surface: #fffdf9; --soft: #444d4f; --accent: #d9593d; --teal: #2f6f6b; --gold: #c9962b;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root { --paper: #14191a; --ink: #ece7da; --muted: #8f9895; --line: #2c3535; --card: #1a2122; --surface: #1f2829; --soft: #c2cac6; --accent: #ec7a5e; --teal: #5fb0a9; --gold: #e0b252; }
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+            background: var(--paper); color: var(--ink); min-height: 100vh;
+        }
+        a { color: inherit; }
+
+        /* ── Header ── */
+        .header { max-width: 1100px; margin: 0 auto; padding: 48px 40px 24px; }
+        .header h1 {
+            font-family: Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+            font-size: clamp(2.4rem, 6vw, 4rem); font-weight: 400; letter-spacing: -1.5px; line-height: 1.05;
+        }
+        .header h1 em { font-style: italic; color: var(--accent); }
+        .header .byline { color: var(--muted); font-size: 1rem; margin-top: 14px; max-width: 30em; line-height: 1.5; }
+
+        /* ── Controls ── */
+        .controls { max-width: 1100px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 40px 28px; }
+        .filter-btn {
+            background: var(--surface); color: var(--soft); border: 1px solid var(--line); padding: 7px 18px;
+            border-radius: 999px; font: inherit; font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
+        }
+        .filter-btn:hover { color: var(--ink); border-color: var(--ink); }
+        .filter-btn.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+        .search-wrap { position: relative; margin-left: auto; }
+        .search-wrap svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); opacity: 0.5; pointer-events: none; }
+        .search-input {
+            background: var(--surface); border: 1px solid var(--line); color: var(--ink); border-radius: 999px;
+            padding: 8px 16px 8px 36px; font: inherit; font-size: 0.9rem; outline: none; width: 220px; transition: border-color 0.2s;
+        }
+        .search-input::placeholder { color: var(--muted); }
+        .search-input:focus { border-color: var(--accent); }
+
+        /* ── Grid ── */
+        .grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px;
+            max-width: 1100px; margin: 0 auto 56px; padding: 0 40px; counter-reset: card;
+        }
+
+        /* ── Card ── */
+        .card {
+            counter-increment: card; position: relative; display: flex; flex-direction: column; gap: 10px;
+            padding: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+            box-shadow: 0 1px 2px rgba(31,42,44,0.05); transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+        }
+        .card::before {
+            content: counter(card, decimal-leading-zero); font-family: Georgia, serif; font-style: italic;
+            font-size: 0.85rem; color: var(--muted);
+        }
+        .card:hover { transform: translateY(-3px); box-shadow: 0 8px 22px rgba(31,42,44,0.12); border-color: var(--accent); }
+        .card.hidden { display: none; }
+        .card-header { display: block; }
+        .card-meta { display: flex; flex-direction: column; gap: 8px; }
+        .card-title { font-family: Georgia, 'Iowan Old Style', serif; font-size: 1.45rem; font-weight: 400; line-height: 1.2; }
+        .badges { display: flex; gap: 12px; flex-wrap: wrap; }
+        .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 0.68rem; letter-spacing: 1px; text-transform: uppercase; color: var(--soft); }
+        .badge::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+        .badge-physics::before { background: var(--accent); }
+        .badge-chemistry::before { background: var(--teal); }
+        .badge-biology::before { background: var(--gold); }
+        .card-description { font-size: 0.92rem; color: var(--soft); line-height: 1.55; flex: 1; }
+        .launch-btn {
+            align-self: flex-start; text-decoration: none; font-size: 0.88rem; font-weight: 600; color: var(--ink);
+            border-bottom: 1.5px solid var(--accent); padding-bottom: 2px; transition: color 0.2s, letter-spacing 0.2s;
+        }
+        .launch-btn:hover { color: var(--accent); letter-spacing: 0.4px; }
+        .launch-group { display: flex; flex-wrap: wrap; gap: 16px; }
+        .launch-btn-alt { border-bottom-color: var(--line); }
+
+
+        .header .back { display: inline-block; margin-top: 18px; color: var(--muted); font-size: 0.85rem; text-decoration: none; border-bottom: 1px solid var(--line); }
+        .header .back:hover { color: var(--accent); border-color: var(--accent); }
+        .section-label { grid-column: 1 / -1; color: var(--muted); font-family: Georgia, serif; font-style: italic; font-size: 1.05rem; padding: 28px 0 0; }
+
+        .empty-state { display: none; grid-column: 1 / -1; color: var(--muted); padding: 40px 0; font-family: Georgia, serif; font-style: italic; }
+
+        /* ── Footer ── */
+        .footer { max-width: 1100px; margin: 0 auto; padding: 24px 40px 48px; display: flex; gap: 24px; flex-wrap: wrap; color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--line); }
+        .footer a { text-decoration: none; border-bottom: 1px solid var(--line); }
+        .footer a:hover { color: var(--accent); border-color: var(--accent); }
+
+        @media (max-width: 700px) {
+            .header { padding: 40px 20px 20px; }
+                .controls, .grid, .footer { padding-left: 20px; padding-right: 20px; }
+            .search-wrap { margin-left: 0; width: 100%; }
+            .search-input { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <h1>Human <em>Anatomy</em></h1>
+        <p class="byline">The body's systems at work, set against a real anatomical model.</p>
+        <a class="back" href="../index.html">← All simulations</a>
+    </header>
+
+    <div class="grid">
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-meta">
+                    <div class="card-title">The Reflex Arc</div>
+                    <div class="badges"><span class="badge badge-biology">Human Anatomy</span></div>
+                </div>
+            </div>
+            <p class="card-description">
+                Fingertips touch a hot plate and the hand jerks away. Follow the impulse from a receptor in the skin, along a sensory neurone nearly a metre long, across two synapses in the spinal cord and back down a motor neurone to the biceps — set against a real anatomical skeleton and nervous system. Then race the reflex against the message to the brain.
+            </p>
+            <a href="./reflex-arc/scene.html" class="launch-btn">
+                Launch →
+            </a>
+        </div>
+
+    </div>
+
+    <footer class="footer">
+        <a href="../index.html">All simulations</a>
+        <a href="https://github.com/iwalpola/science_simulations">View on GitHub</a>
+    </footer>
+
+</body>
+</html>

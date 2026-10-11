@@ -23,7 +23,7 @@ tools/                      one-off colour-migration scripts (animcolour.mjs, co
 
 `index.html` shows one card per category folder (`electricity/`, `waves/`,
 `energy/`, `particles/`, `3dreactionscenes/`, `reactionbuilder/`,
-`chemsheet_help/`, `cell_biology/`). Each folder has its own `index.html` that
+`chemsheet_help/`, `cell_biology/`, `human_anatomy/`). Each folder has its own `index.html` that
 lists its sims. A sim lives in the one folder that fits best; other folders link
 to it with a relative `../` path rather than holding a copy.
 
