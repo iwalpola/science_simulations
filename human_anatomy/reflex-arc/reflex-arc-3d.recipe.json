@@ -1,0 +1,36 @@
+{
+  "_about": "Everything the 3D reflex arc story shows: a skeleton to stand the story in (lightly decimated, it is context), the left arm in more detail, the spinal cord with its left roots and ganglia, the left brachial plexus whose curves the impulse travels along, the biceps that answers, and a brain for the message that arrives late. Build: node tools/anatomy/zanatomy.js build human_anatomy/reflex-arc/reflex-arc-3d.recipe.json, then pack it into the page with node tools/anatomy/zanatomy-pack.js.",
+  "out": "reflex-arc-3d.glb",
+  "budget_kb": 6000,
+  "decimate": 0.3,
+  "include": [
+    {"collection": "Bones of upper limb", "side": "l", "decimate": 0.3},
+    {"collection": "Bones of upper limb", "side": "r", "decimate": 0.1},
+    {"match": "^Scapula\\.[lr]$", "decimate": 0.1},
+    {"collection": "Bones of vertebral column", "decimate": 0.18},
+    {"collection": "Bones of thorax", "decimate": 0.07},
+    {"collection": "Bones of cranium", "decimate": 0.06},
+    {"collection": "Extracranial bones of head", "decimate": 0.12},
+    {"collection": "Bones of pelvic girdle", "decimate": 0.25},
+    {"match": "^(Roots|Superior trunk|Middle trunk|Inferior trunk|(Anterior|Posterior) division of (superior|middle|inferior) trunk|Posterior cord) of brachial plexus\\.l$", "decimate": 0.4},
+    {"match": "^(Median|Ulnar|Radial|Musculocutaneous|Axillary) nerve\\.l$", "decimate": 0.3},
+    {"match": "^(Common|Proper) palmar digital branches of median nerve\\.l$", "decimate": 0.3},
+    {"match": "^(Superficial|Deep) branch of (radial|ulnar) nerve\\.l$", "decimate": 0.25},
+    {"name": "Posterior root of spinal nerve.l", "decimate": 0.4},
+    {"name": "Anterior root of spinal nerve.l", "decimate": 0.4},
+    {"name": "Spinal ganglion.l", "decimate": 0.3},
+    {"name": "White matter of spinal cord", "decimate": 0.2},
+    {"name": "Anterior horn of spinal cord", "decimate": 0.2},
+    {"name": "Posterior horn of spinal cord", "decimate": 0.15},
+    {"name": "Long head of biceps brachii.l", "decimate": 0.5},
+    {"name": "Short head of biceps brachii.l", "decimate": 0.5},
+    {"name": "White matter of telencephalon.l", "decimate": 0.045},
+    {"name": "White matter of telencephalon.r", "decimate": 0.045},
+    {"collection": "Cerebellum", "decimate": 0.03},
+    {"match": "^(Pons|Midbrain|Medulla oblongata)\\.[lr]$", "decimate": 0.15}
+  ],
+  "exclude": [
+    {"match": "^(Hyoid|Auditory ossicles|Malleus|Incus|Stapes)"},
+    {"match": "^Sinus of "}
+  ]
+}

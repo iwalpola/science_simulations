@@ -12,3 +12,8 @@ node_modules/
 human_anatomy/reflex-arc/scene.gltf
 human_anatomy/reflex-arc/scene.bin
 human_anatomy/reflex-arc/debug-*.png
+
+# .glb files built from Z-Anatomy recipes (tools/anatomy). Rebuild with
+# node tools/anatomy/zanatomy.js build <recipe>; the recipe and its
+# .manifest.json are committed, the binary is not.
+*.glb

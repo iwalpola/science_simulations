@@ -15,6 +15,7 @@ energy/                     energy stores and transfers (+ test-energy-scenes.js
 electricity/                conduction and resistance (+ test-wire.js)
 human_anatomy/reflex-arc/   2D reflex arc story over a baked 3D model (+ bake-backdrop.js, test-reflex-arc.js)
 tools/                      one-off colour-migration scripts (animcolour.mjs, colourfix.mjs)
+tools/anatomy/              build .glb files of named body parts from Z-Anatomy (see its README.md)
 ```
 
 ---
@@ -56,6 +57,8 @@ cd energy           && node test-energy-scenes.js  # ~530 checks, incl. headless
 cd reactionbuilder  && node test.js             # needs: npm install jsdom
 cd electricity      && node test-wire.js        # model + render path
 cd human_anatomy/reflex-arc && node test-reflex-arc.js  # choreography + headless render
+cd human_anatomy/reflex-arc && node test-reflex-arc-3d.js  # 3D story: routes, the arc, every frame, labels in view
+node tools/anatomy/test-anatomy.js              # anatomy catalogue, recipes, licence, built .glb files
 ```
 
 They read the HTML as text, pull out the species tables, captions, camera
@@ -147,6 +150,32 @@ stage still fits.
 
 ---
 
+## Real anatomy: build it from Z-Anatomy, do not draw it
+
+When a scene needs real anatomy, get it from `tools/anatomy/` — read its
+`README.md` first. In short: search `tools/anatomy/catalogue.json` (or
+`node tools/anatomy/zanatomy.js find <words>`) for the exact part names,
+write a `*.recipe.json` next to the scene, and
+`node tools/anatomy/zanatomy.js build` it into a `.glb` whose nodes carry
+those names. Blender and the 307 MB source live outside the repo
+(`zanatomy.js setup`). Three rules that are easy to break:
+
+- **Licence.** The output is CC BY-SA: credit Z-Anatomy on screen. The kidney
+  and inner ear are non-commercial and the build refuses them; do not work
+  round `licence-rules.json`.
+- **Names.** three.js rewrites node names on load; read
+  `object.userData.part`, never `object.name`.
+- **Size.** A page must still be one file that opens off disk, so a `.glb`
+  goes in inline and must be small: set `budget_kb`, decimate, include only
+  what the camera sees — or bake it to images for a 2D story. For a three.js
+  page, `node tools/anatomy/zanatomy-pack.js <glb> <page>` writes a compact
+  16-bit form between `ANATOMY:BEGIN`/`END` markers (about half the bytes of
+  the .glb, no loader needed); `reflex-arc-3d.html` is the worked example —
+  landmarks found in the geometry, routes found by searching the nerves'
+  centrelines, and a test that projects every label through the camera.
+
+---
+
 ## The reflex arc is a 2D story over a BAKED 3D model
 
 `human_anatomy/reflex-arc/scene.html` is plain 2D canvas, like the energy
@@ -171,7 +200,10 @@ model (`scene.gltf` + `scene.bin`, 84 MB, CC-BY-SA-4.0).
   pieces of both arms and the face. Only the material names (tissue type)
   survive. So the page names nothing in the model: the neurones, spinal cord,
   biceps and body outline are DRAWN IN, and the page says so on screen. Do not
-  label a part of the backdrop as a specific nerve.
+  label a part of the backdrop as a specific nerve. A labelled build of the
+  same body now exists (`parts.recipe.json`, via `tools/anatomy/`, same
+  coordinates): moving the bake onto it is how the drawn neurones could follow
+  the real median and musculocutaneous nerves.
 - **The forearm is its own layer**, cut at the elbow, so the page can swing it
   when the biceps contracts. Bones go whole by where their middle is (so the
   point of the elbow moves with the ulna); nerve tubes are cut at the pivot.

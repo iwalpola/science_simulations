@@ -1,0 +1,19 @@
+{
+  "_about": "The anatomy behind the reflex arc story: the left arm (the side the story is drawn from), the spine, the spinal cord with its roots and ganglion, the nerves the impulse travels, and the biceps. Build with: node tools/anatomy/zanatomy.js build human_anatomy/reflex-arc/parts.recipe.json",
+  "out": "parts.glb",
+  "budget_kb": 4000,
+  "decimate": 0.5,
+  "include": [
+    {"collection": "Bones of upper limb", "side": "l"},
+    {"collection": "Bones of vertebral column"},
+    {"name": "Long head of biceps brachii.l"},
+    {"name": "Short head of biceps brachii.l"},
+    {"collection": "Brachial plexus", "side": "l", "system": "Nervous system & Sense organs"},
+    {"name": "White matter of spinal cord"},
+    {"name": "Anterior horn of spinal cord"},
+    {"name": "Posterior horn of spinal cord"},
+    {"name": "Posterior root of spinal nerve.l"},
+    {"name": "Anterior root of spinal nerve.l"},
+    {"name": "Spinal ganglion.l"}
+  ]
+}

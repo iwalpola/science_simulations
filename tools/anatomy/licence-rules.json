@@ -1,0 +1,30 @@
+{
+  "_about": "Read by zanatomy_export.py (which refuses blocked parts) and test-anatomy.js (which checks every recipe and every built manifest). Patterns are matched, case-insensitively, against an object's name, its parent group and every collection path it is in. The file records no per-object provenance, so these are deliberately broad: a false block costs one line in a recipe's allow_nc list; a false pass puts non-commercial material on a public site.",
+  "attribution": "Anatomy: Z-Anatomy (Gauthier Kervyn, Marcin Zielinski), CC BY-SA 4.0, https://github.com/Z-Anatomy/Models-of-human-anatomy; derived from BodyParts3D, The Database Center for Life Science, CC BY-SA 2.1 Japan.",
+  "licence": "CC BY-SA 4.0",
+  "block": [
+    {
+      "id": "kidney",
+      "pattern": "kidney|nephron|renal (cortex|medulla|pyramid|papilla|column|sinus|pelvis|capsule|calyx|calices)|major calyx|minor calyx",
+      "source": "Kidney, by Lissie Cowley",
+      "licence": "CC BY-NC 4.0",
+      "why": "non-commercial: incompatible with publishing under CC BY-SA"
+    },
+    {
+      "id": "inner-ear",
+      "pattern": "cochlea(?!r (nucleus|nuclei|nerve|root|part of vestibulocochlear))|semicircular (canal|duct)|vestibule of (inner|internal) ear|(bony|osseous|membranous) labyrinth|utricle|saccule|spiral organ|endolymph|perilymph|membranous ampulla|osseous ampulla",
+      "source": "Anatomy of the Inner Ear, University of Dundee School of Medicine",
+      "licence": "CC BY-NC-SA 4.0",
+      "why": "non-commercial: incompatible with publishing under CC BY-SA"
+    }
+  ],
+  "warn": [
+    {
+      "id": "brain-surface",
+      "pattern": "gyrus|gyri|sulcus|sulci|lobe of (cerebrum|brain)|white matter of telencephalon|cerebral cortex",
+      "source": "Brainder and White matter, University of Washington",
+      "licence": "not stated",
+      "why": "Z-Anatomy lists these as used 'as reference/included and adapted' without a licence; fine for a classroom, worth checking before anything wider"
+    }
+  ]
+}
