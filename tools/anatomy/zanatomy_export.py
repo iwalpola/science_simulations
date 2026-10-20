@@ -18,6 +18,10 @@
       {"name": "Median nerve.l", "decimate": 1.0, "tissue": "nerve"},
       {"collection": "Brachial plexus", "system": "Nervous system & Sense organs"}
                                               system: only parts of that system
+      {"collection": "Systemic veins", "as": "centreline"}
+                                              no mesh: a node with the curve's
+                                              centreline and a radius at each of
+                                              its points; the page builds the tube
     ],
     "exclude": [ ...same selectors... ],
     "kinds": ["part"],                        default: muscle origin/insertion
@@ -194,6 +198,40 @@ def centrelines(src):
         out.append([[round(v.x, 4), round(v.z, 4), round(-v.y, 4)] for v in w])
     return out or None
 
+# --- radii along a centreline ------------------------------------------------
+# For a part exported "as": "centreline", the tube itself is not shipped: a
+# page rebuilds it from the centreline and these radii, which is a few hundred
+# bytes where the mesh would be tens of kilobytes. Each point of the
+# centreline gets the median distance to it of the tube's vertices that are
+# nearer it than any other point, so a vessel that tapers keeps its taper.
+from mathutils.kdtree import KDTree
+
+def radii(me, cl):
+    pts = [p for spline in cl for p in spline]
+    kd = KDTree(len(pts))
+    for i, p in enumerate(pts):
+        kd.insert(p, i)
+    kd.balance()
+    near = [[] for _ in pts]
+    for v in me.vertices:
+        q = (v.co.x, v.co.z, -v.co.y)              # glTF's y up, like the centreline
+        co, i, d = kd.find(q)
+        near[i].append(d)
+    med = [sorted(ds)[len(ds) // 2] if ds else None for ds in near]
+    out, k = [], 0
+    for spline in cl:
+        rs = med[k:k + len(spline)]
+        k += len(spline)
+        known = [i for i, r in enumerate(rs) if r is not None]
+        if not known:
+            rs = [0.001] * len(rs)
+        else:
+            for i in range(len(rs)):             # a point no vertex was nearest: its nearest neighbour's
+                if rs[i] is None:
+                    rs[i] = rs[min(known, key=lambda j: abs(j - i))]
+        out.append([round(r, 5) for r in rs])
+    return out
+
 # --- build: evaluate, bake the world transform, decimate --------------------
 # Rename the sources out of the way so each export node can take the exact
 # anatomical name. The .blend is never saved, so this touches nothing.
@@ -214,6 +252,28 @@ for n in sorted(chosen):
         continue
     mw = src.matrix_world.copy()
     me.transform(mw)
+    if sel.get('as') == 'centreline':
+        # no mesh: a node carrying the centreline and its radii (see radii())
+        cl = centrelines(src)
+        if not cl:
+            fail('"%s" has no centreline -- only curves, and parts bent along one, can be exported "as": "centreline"' % n)
+        rad = radii(me, cl)
+        tris0 = sum(len(p.vertices) - 2 for p in me.polygons)
+        bpy.data.meshes.remove(me)
+        o = bpy.data.objects.new(n, None)
+        if o.name != n:
+            fail('could not give the export node the exact name "%s" (got "%s")' % (n, o.name))
+        out_coll.objects.link(o)
+        o['part'] = n
+        o['side'] = c['side']
+        o['system'] = c['system'] or ''
+        if c['parent']:
+            o['group'] = c['parent']
+        o['lineage'] = json.dumps(lineage(src))
+        o['centreline'] = json.dumps(cl, separators=(',', ':'))
+        o['radius'] = json.dumps(rad, separators=(',', ':'))
+        built.append((o, c, tris0, 0.0, []))
+        continue
     if mw.determinant() < 0:
         me.flip_normals()               # a mirrored .l part would otherwise be inside out
     xs = [v.co.x for v in me.vertices]
@@ -268,6 +328,16 @@ bpy.ops.export_scene.gltf(
 dg = bpy.context.evaluated_depsgraph_get()
 parts, tot_v, tot_t = [], 0, 0
 for o, c, tris0, ratio, tissues in built:
+    if o.type == 'EMPTY':
+        cl = json.loads(o['centreline'])
+        zup = [(p[0], -p[2], p[1]) for s in cl for p in s]
+        bbox = [[round(min(p[i] for p in zup), 4) for i in range(3)], [round(max(p[i] for p in zup), 4) for i in range(3)]]
+        rs = [r for s in json.loads(o['radius']) for r in s]
+        parts.append({'name': o.name, 'side': c['side'], 'system': c['system'], 'group': c['parent'],
+                      'as': 'centreline', 'tris_source': tris0, 'points': len(zup),
+                      'radius_mm': [round(min(rs) * 1000, 2), round(max(rs) * 1000, 2)], 'verts': 0, 'tris': 0,
+                      'bbox_model_zup': bbox})
+        continue
     em = o.evaluated_get(dg).to_mesh()
     em.calc_loop_triangles()
     v, t = len(em.vertices), len(em.loop_triangles)

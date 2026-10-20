@@ -55,6 +55,13 @@ node tools/anatomy/test-anatomy.js                checks; no Blender needed
 - **`kinds`** defaults to `["part"]`. Muscle origin and insertion patches
   (`.ol`, `.el`, `.e3l`...) hang off the *bones* in the tree, so selecting
   bones would otherwise drag them in. An exact `name` always gets through.
+- **`"as": "centreline"`** on a selector of curves (vessels, nerves): no
+  mesh is built, only a node carrying the curve's centreline and a radius at
+  every point of it, measured from the evaluated tube (so a tapering vessel
+  keeps its taper). The page rebuilds the tube. Every vessel in the atlas
+  this way costs about 300 KB in a page; as meshes it is 3 million
+  triangles. Later selectors override earlier ones, so ask for a collection
+  as centrelines first and then for the few parts you want as meshes.
 - **`decimate`** is the fraction of triangles kept, per recipe or per
   selector. The arm at 0.5 is about 2.7 MB; keep `budget_kb` honest — the
   build fails over it.
@@ -82,12 +89,29 @@ node tools/anatomy/test-anatomy.js                checks; no Blender needed
   positions in one box round the body, 16-bit indices, no normals (the page
   recomputes them): about half the bytes, decoded synchronously, no loader.
   Never edit that block by hand; rebuild and re-pack.
+  Centrelines are THINNED (a point goes where the line past it misses it by
+  under 0.25 mm), so join curves by distance to a line, not to its nearest
+  point. A part built as a centreline has `v = 0, i = 0` and `n` (points per
+  spline); its points and radii follow in the binary data — see the packer's
+  header for the layout and `heart.html`'s `unpack()` for reading it.
 - Size is still the constraint: decimate hard, include only what is seen.
   The reflex arc's 246 parts pack to 0.9 MB (1.2 MB as base64). For a 2D
   story, bake to images instead, as `human_anatomy/reflex-arc/bake-backdrop.js` does.
 - The atlas has **no lateral or medial cord** of the brachial plexus: the
   median and musculocutaneous nerves start ~1.5 cm short of the divisions.
   Joining nerve ends within 2 cm bridges it; 1.5 cm finds no route.
+- **Blood vessels are curves too**, and meet end to end the same way — but a
+  branch starts on its parent's *wall*, so join an end to the vessel whose
+  surface it is nearest (distance to the centreline minus that vessel's
+  radius, measured from its mesh). Joined by plain distance, the left common
+  carotid hangs off the brachiocephalic trunk instead of the 12 mm-wide aortic
+  arch. `human_anatomy/heart/heart.html` searches the arteries and veins that
+  way to every limb and lobe of the lungs.
+- **The heart's chambers are hollow walls** with a hole wherever blood goes in
+  or out: those boundary loops are the valve rings. The atlas has **no
+  anterior leaflet** on either atrioventricular valve (the mitral's posterior
+  leaflet is also filed under the right valve), and only one of the left
+  ventricle's two papillary muscles.
 
 ## How the source file is organised (so you do not have to rediscover it)
 

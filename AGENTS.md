@@ -14,6 +14,7 @@ particles/                  particle-theory scenes (Brownian motion, melting)
 energy/                     energy stores and transfers (+ test-energy-scenes.js)
 electricity/                conduction and resistance (+ test-wire.js)
 human_anatomy/reflex-arc/   2D reflex arc story over a baked 3D model (+ bake-backdrop.js, test-reflex-arc.js)
+human_anatomy/heart/        heart, valves and double circulation, 3D over the Z-Anatomy heart (+ test-heart.js)
 tools/                      one-off colour-migration scripts (animcolour.mjs, colourfix.mjs)
 tools/anatomy/              build .glb files of named body parts from Z-Anatomy (see its README.md)
 ```
@@ -58,6 +59,7 @@ cd reactionbuilder  && node test.js             # needs: npm install jsdom
 cd electricity      && node test-wire.js        # model + render path
 cd human_anatomy/reflex-arc && node test-reflex-arc.js  # choreography + headless render
 cd human_anatomy/reflex-arc && node test-reflex-arc-3d.js  # 3D story: routes, the arc, every frame, labels in view
+cd human_anatomy/heart      && node test-heart.js        # the cut, valves, one-way flow, vessel routes, every frame
 node tools/anatomy/test-anatomy.js              # anatomy catalogue, recipes, licence, built .glb files
 ```
 
@@ -170,7 +172,8 @@ those names. Blender and the 307 MB source live outside the repo
   what the camera sees — or bake it to images for a 2D story. For a three.js
   page, `node tools/anatomy/zanatomy-pack.js <glb> <page>` writes a compact
   16-bit form between `ANATOMY:BEGIN`/`END` markers (about half the bytes of
-  the .glb, no loader needed); `reflex-arc-3d.html` is the worked example —
+  the .glb, no loader needed); `reflex-arc-3d.html` is the worked example
+  (`heart/heart.html` is the second, for vessels and a cut organ) —
   landmarks found in the geometry, routes found by searching the nerves'
   centrelines, and a test that projects every label through the camera.
 
@@ -210,6 +213,78 @@ model (`scene.gltf` + `scene.bin`, 84 MB, CC-BY-SA-4.0).
 - **The licence travels with the picture.** The baked images are a derivative
   of a CC-BY-SA model, so they carry that licence, unlike the rest of the repo
   (MIT). The credit is on screen and in the page head; keep both.
+
+---
+
+## The heart: a real heart, cut, with valves and blood that obey the beat
+
+`human_anatomy/heart/heart.html` is a three.js story like `reflex-arc-3d.html`
+(same panel, nav, cue sheet and packed `ANATOMY` block), built from
+`heart.recipe.json`. Everything about where things are is found in the
+geometry when the page loads, and `test-heart.js` checks it is anatomy:
+
+- **The valve rings are holes in the chamber meshes.** The chambers are
+  hollow walls with an opening wherever blood goes in or out; a ring between
+  atrium and ventricle is the opening the two meshes share, a semilunar ring
+  the opening its cusps sit in. Ring centre, axis (pointing downstream) and
+  radius come from those loops.
+- **The cuts.** The chambers, valves and the trip through the heart use a
+  FRONTAL cut (parallel to the chest, seen from the front), at the average
+  depth of the four cavities; the test checks that depth opens all four
+  more evenly than 5 mm either side. The user chose this over the plane
+  through the apex and both AV rings, which opens every chamber through
+  its middle but lies nearly horizontal in the body and has to be looked at
+  from above. The cost, said on screen: the heart lies tilted, so a frontal
+  cut only just opens the left atrium (back) and right ventricle (front).
+  The walls chapter uses a SHORT-AXIS cut across both ventricles (thick
+  ring, thin crescent), where both free walls can be measured.
+  Each is a three.js clipping plane (`renderer.localClippingEnabled`).
+  Each part that can be cut is drawn three times over ONE geometry: its
+  outside, clipped; its back faces, flat and pale, which read as the cut
+  surface of a solid wall; and a ghost of the cut-away half. Only the heart
+  and the great vessels (`GREAT`) are cut and beat — widen that set and the
+  lungs' own vessels clutter the cut view.
+- **The beat** is one smooth squeeze field round the four cavity centres,
+  applied to every part near the heart, so meshes that meet (the septum)
+  move together and never tear.
+- **Valves.** The atlas models the semilunar cusps SHUT and the AV leaflets
+  hanging OPEN; each leaflet is a blend of an open and a shut pose. Where an
+  AV leaflet's sheet ends and its tendons begin is found by where the arc it
+  covers thins out. Opening a cusp by pushing vertices straight out to the
+  wall turns the triangles at its tip into chords right across the opening
+  — draw the tip towards the middle of its own cusp instead.
+- **The atlas lacks the anterior leaflet of both AV valves.** Flaps are drawn
+  into whatever arc of the ring no leaflet covers, and the page says so. The
+  test checks the gap lands where those leaflets belong (the mitral one faces
+  the aortic valve) and that each valve, shut, covers its ring.
+- **Blood through the heart is a closed form of the beat count.** Flow in
+  and out of the ventricles is tabulated over one beat (`FLOWTAB`); cell `k`
+  is wherever that puts it, so it moves only while the valve ahead is open.
+  The test sweeps cells through many beats and asserts none crosses a shut
+  valve or goes backwards. Do not add per-frame integration.
+- **Every vessel in the atlas** (about 630) comes `"as": "centreline"`: a
+  centreline and a radius at each point, packed in binary, from which the
+  page builds the tubes, merged into four meshes. As meshes they would be
+  3 million triangles. Only the heart's own parts and the great vessels
+  where they join it are meshes.
+- **Routes round the body are searched**, as the nerves are in the reflex
+  arc — but a branch starts on its parent's WALL, so ends are joined by
+  distance to the parent's LINE (centrelines are thinned; the nearest point
+  can be centimetres off) minus the parent's radius. Joined to centreline
+  points, the left common carotid hangs off the brachiocephalic trunk (the
+  arch is 12 mm wide). Six named routes are searched on the main vessels and
+  tested as anatomy; then the whole arterial and venous trees are searched
+  once each (heap Dijkstra, `treeFrom`) and every reachable artery tip is
+  paired with a vein tip beside it — about 50 loops through the body and 25
+  through the lungs. Capillaries are not in the atlas; they are drawn
+  between an artery's last tip and the vein beside it.
+- **Blood cells are dots inside their vessel**: `cellSize` caps each at a
+  share of the picture AND at three quarters of the vessel's radius there.
+- **Colour follows the blood, not the name**: the pulmonary artery is blue.
+  The page says real blood is always red.
+- **Inside the muscle or not**: ray parity fails on these meshes (the right
+  ventricle is open along the septum). The test uses the nearest vertex's
+  normal and ignores vertices on an open edge.
 
 ---
 

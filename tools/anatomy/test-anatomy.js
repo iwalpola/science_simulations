@@ -116,18 +116,24 @@ function recipes() {
     chk(typeof R.out === 'string' && R.out.endsWith('.glb'), rel + ': "out" must name a .glb');
     chk(R.budget_kb > 0, rel + ': give it a budget_kb, so a build cannot quietly balloon');
     const kinds = new Set(R.kinds || ['part']), allow = new Set(R.allow_nc || []);
-    const reach = new Set();
+    /* what the exporter will build: each part goes by the LAST selector that
+       reaches it, then the excludes are taken out */
+    const reach = new Map();
     (R.include || []).forEach(sel => {
       const hits = selectFrom(sel);
       if (hits === null) { chk(false, rel + ': selector needs name, match or collection: ' + JSON.stringify(sel)); return; }
       const kept = hits.filter(p => kinds.has(p.kind) || sel.name);
       chk(kept.length > 0, rel + ': matches nothing in the catalogue: ' + JSON.stringify(sel));
-      kept.forEach(p => reach.add(p.name));
+      if (sel.as !== undefined) chk(sel.as === 'centreline', rel + ': "as" can only be "centreline": ' + JSON.stringify(sel));
+      kept.forEach(p => reach.set(p.name, sel));
     });
-    [...reach].forEach(n => {
+    (R.exclude || []).forEach(sel => (selectFrom(sel) || []).forEach(p => reach.delete(p.name)));
+    for (const [n, sel] of reach) {
       const p = BY.get(n);
       if (p.blocked && !allow.has(n)) chk(false, rel + ': reaches ' + n + ', which is blocked (' + p.blocked + ')');
-    });
+      /* only a curve has a centreline to be exported as */
+      if (sel.as === 'centreline' && p.type !== 'CURVE') chk(false, rel + ': asks for ' + n + ' as a centreline, but it is not a curve');
+    }
   });
 }
 
@@ -167,7 +173,7 @@ function builds() {
     const g = readGlb(glbFile);
     chk(g.bytes === M.totals.bytes, rel + ': the .glb is not the one this manifest describes (rebuilt separately?)');
     if (R.budget_kb) chk(g.bytes <= R.budget_kb * 1024, rel + ': ' + (g.bytes / 1024).toFixed(0) + ' KB is over the budget of ' + R.budget_kb + ' KB');
-    const nodes = g.json.nodes.filter(n => n.mesh !== undefined);
+    const nodes = g.json.nodes.filter(n => n.mesh !== undefined || (n.extras && n.extras.centreline));
     const want = M.parts.map(p => p.name).sort().join('\n'), got = nodes.map(n => n.name).sort().join('\n');
     chk(want === got, rel + ': the .glb nodes are not the manifest parts');
     let inside = [], bad = 0;
@@ -180,6 +186,15 @@ function builds() {
       /* three.js sanitises node names on load, so this is the only place a
          page can read the real one from (object.userData.part) */
       chk(n.extras && n.extras.part === n.name, rel + ': ' + n.name + ' does not carry its exact name in extras.part');
+      /* built "as": "centreline": no mesh, but a centreline with a radius at
+         every point, all finite and plausible for a body part */
+      if (n.mesh === undefined) {
+        const cl = JSON.parse(n.extras.centreline), rad = n.extras.radius ? JSON.parse(n.extras.radius) : null;
+        chk(!!rad && rad.length === cl.length && rad.every((r, i) => r.length === cl[i].length), rel + ': ' + n.name + ' has no radius for every centreline point');
+        if (rad) for (const r of rad.flat()) if (!(r > 0 && r < 0.03)) { chk(false, rel + ': ' + n.name + ' has a radius of ' + r + ' m'); break; }
+        for (const p of cl.flat()) if (!p.every(Number.isFinite)) { bad++; break; }
+        return;
+      }
       /* outward-facing: the normals, weighted by area, point away from the
          part's own centre */
       let flux = 0;
@@ -204,8 +219,9 @@ function builds() {
     chk(bad === 0, rel + ': ' + bad + ' non-finite vertex coordinates');
     /* a handful of open tubes and thin sheets can come out marginal; a whole
        side coming out inside out cannot */
-    const left = nodes.filter(n => /l$/.test(n.name)), leftIn = inside.filter(n => /l$/.test(n));
-    chk(inside.length <= Math.max(2, nodes.length * 0.05), rel + ': ' + inside.length + ' parts face inwards: ' + inside.slice(0, 6).join(', '));
+    const meshed = nodes.filter(n => n.mesh !== undefined);
+    const left = meshed.filter(n => /l$/.test(n.name)), leftIn = inside.filter(n => /l$/.test(n));
+    chk(inside.length <= Math.max(2, meshed.length * 0.05), rel + ': ' + inside.length + ' parts face inwards: ' + inside.slice(0, 6).join(', '));
     chk(!left.length || leftIn.length < left.length * 0.5, rel + ': most left (mirrored) parts face inwards: normals not flipped after mirroring');
     console.log('    ' + rel + ': ' + nodes.length + ' parts, ' + (g.bytes / 1024).toFixed(0) + ' KB, ' + inside.length + ' facing inwards');
   });

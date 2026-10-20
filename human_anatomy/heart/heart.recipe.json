@@ -1,0 +1,38 @@
+{
+  "_about": "Everything the heart story shows. The heart itself in detail, as meshes: its four chambers (hollow walls, so a cut shows the cavities and how thick each wall is), every valve leaflet the atlas has, the papillary muscles the AV valves hang from, and the coronary arteries; and the great vessels where they join it, which are cut and beat with it. Every other blood vessel in the atlas -- every systemic artery and vein, the pulmonary vessels and the cardiac veins, about 650 of them -- comes as a centreline with a radius at each point, and the page builds the tubes: the meshes would be 3 million triangles. They meet end to end, so the page can search them for the routes blood takes round the body. Lungs, trachea and a heavily decimated skeleton are context, shown as ghosts. Later selectors override earlier ones, so the broad collections come first. Build: node tools/anatomy/zanatomy.js build human_anatomy/heart/heart.recipe.json, then pack it into the page with node tools/anatomy/zanatomy-pack.js human_anatomy/heart/heart.glb human_anatomy/heart/heart.html.",
+  "out": "heart.glb",
+  "budget_kb": 8000,
+  "decimate": 0.2,
+  "include": [
+    {"collection": "Bones of thorax", "decimate": 0.025},
+    {"collection": "Bones of vertebral column", "decimate": 0.045},
+    {"collection": "Bones of cranium", "decimate": 0.022},
+    {"collection": "Extracranial bones of head", "decimate": 0.04},
+    {"collection": "Bones of pelvic girdle", "decimate": 0.12},
+    {"collection": "Bones of upper limb", "decimate": 0.03},
+    {"collection": "Bones of lower limb", "decimate": 0.035},
+    {"match": "^(Superior|Middle|Inferior) lobe of (left|right) lung$", "decimate": 0.1},
+    {"name": "Trachea", "decimate": 0.25},
+
+    {"collection": "Systemic arteries", "as": "centreline"},
+    {"collection": "Systemic veins", "as": "centreline"},
+    {"collection": "Pulmonary arteries", "as": "centreline"},
+    {"collection": "Pulmonary veins", "as": "centreline"},
+    {"collection": "Cardiac veins", "as": "centreline"},
+
+    {"match": "^(Left|Right) (atrium|ventricle)$", "decimate": 0.36},
+    {"collection": "Valvular complex of heart", "decimate": 0.5},
+    {"match": "papillary muscle of (left|right) ventricle$", "decimate": 0.5},
+    {"collection": "Arteries of heart", "decimate": 0.12},
+
+    {"match": "^(Pulmonary trunk|Bifurcation of pulmonary trunk|Left pulmonary artery|Right pulmonary artery)$", "decimate": 0.6},
+    {"match": "^(Left|Right) (superior|inferior) pulmonary vein$", "decimate": 0.6},
+    {"match": "^(Ascending aorta|Aortic arch|Superior vena cava|Inferior vena cava \\(thoracic part\\))$", "decimate": 0.6}
+  ],
+  "exclude": [
+    {"match": "^(Hyoid|Auditory ossicles|Malleus|Incus|Stapes)"},
+    {"match": "^Sinus of "},
+    {"match": "^(Anterior communicating artery|Basilar venous plexus|Cavernous sinus\\.[lr])$"},
+    {"match": "^Intrarenal (arteries|veins) of (left|right) kidney$"}
+  ]
+}
