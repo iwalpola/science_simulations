@@ -15,6 +15,7 @@ energy/                     energy stores and transfers (+ test-energy-scenes.js
 electricity/                conduction and resistance (+ test-wire.js)
 human_anatomy/reflex-arc/   2D reflex arc story over a baked 3D model (+ bake-backdrop.js, test-reflex-arc.js)
 human_anatomy/heart/        heart, valves and double circulation, 3D over the Z-Anatomy heart (+ test-heart.js)
+genetics/                   cell → chromosome → DNA → gene → base, a three.js story (+ test-genetics.js)
 tools/                      one-off colour-migration scripts (animcolour.mjs, colourfix.mjs)
 tools/anatomy/              build .glb files of named body parts from Z-Anatomy (see its README.md)
 ```
@@ -25,7 +26,7 @@ tools/anatomy/              build .glb files of named body parts from Z-Anatomy 
 
 `index.html` shows one card per category folder (`electricity/`, `waves/`,
 `energy/`, `particles/`, `3dreactionscenes/`, `reactionbuilder/`,
-`chemsheet_help/`, `cell_biology/`, `human_anatomy/`). Each folder has its own `index.html` that
+`chemsheet_help/`, `cell_biology/`, `human_anatomy/`, `genetics/`). Each folder has its own `index.html` that
 lists its sims. A sim lives in the one folder that fits best; other folders link
 to it with a relative `../` path rather than holding a copy.
 
@@ -60,6 +61,7 @@ cd electricity      && node test-wire.js        # model + render path
 cd human_anatomy/reflex-arc && node test-reflex-arc.js  # choreography + headless render
 cd human_anatomy/reflex-arc && node test-reflex-arc-3d.js  # 3D story: routes, the arc, every frame, labels in view
 cd human_anatomy/heart      && node test-heart.js        # the cut, valves, one-way flow, vessel routes, every frame
+cd genetics         && node test-genetics.js   # pairs, band position, base pairing, flat ladder, quoted figures, every frame
 node tools/anatomy/test-anatomy.js              # anatomy catalogue, recipes, licence, built .glb files
 ```
 

@@ -2,6 +2,7 @@
 # scenes headlessly. Not part of the site — the pages load it from the CDN.
 particles/.three-cache/
 electricity/.three-cache/
+genetics/.three-cache/
 
 # only ever a dev-time dependency, for reactionbuilder/test.js
 node_modules/

@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>From cell to DNA — genetics words in 3D</title>
+<style>
+  :root{
+    --ink:#eef2f7;
+    --dim:#93a2b6;
+    --panel:rgba(10,14,21,.78);
+    --line:rgba(147,162,182,.22);
+    --side:360px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;background:#080b11;color:var(--ink);overflow:hidden;
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  #stage{position:fixed;top:0;right:0;bottom:0;left:var(--side);}
+  canvas{display:block;}
+  #overlay{position:fixed;top:0;right:0;bottom:0;left:var(--side);pointer-events:none;z-index:1;overflow:hidden;}
+  #overlay svg{position:absolute;left:0;top:0;width:100%;height:100%;}
+  #fade{position:fixed;top:0;right:0;bottom:0;left:var(--side);background:#080b11;
+    opacity:0;pointer-events:none;z-index:2;}
+
+  .lab{position:absolute;left:0;top:0;white-space:nowrap;opacity:0;
+    font-size:16px;font-weight:650;letter-spacing:.2px;color:#f3f6fb;
+    text-shadow:0 1px 6px rgba(0,0,0,.95),0 0 2px rgba(0,0,0,.9);}
+  .lab .sub{display:block;font-size:12.5px;font-weight:450;color:#b9c5d6;margin-top:1px;}
+  .lab.num{font-size:12px;font-weight:600;color:#aebbd0;}
+  .lab.big{font-family:"Iowan Old Style","Charter",Georgia,serif;font-size:24px;font-weight:600;text-align:center;}
+  .lab.gold{color:#ffd277;}
+
+  #side{
+    position:fixed;top:0;left:0;bottom:0;width:var(--side);
+    background:var(--panel);backdrop-filter:blur(16px);
+    border-right:1px solid var(--line);
+    padding:20px 22px 16px;
+    display:flex;flex-direction:column;gap:14px;
+    overflow-y:auto;
+  }
+  #side h1{
+    margin:0;
+    font-family:"Iowan Old Style","Charter","Palatino Linotype",Georgia,serif;
+    font-weight:600;font-size:19px;letter-spacing:.2px;line-height:1.25;
+  }
+  #side .byline{margin:4px 0 0;font-size:12px;line-height:1.5;color:var(--dim);}
+  #side a{color:var(--dim);text-decoration:none;font-size:12px;
+    border-bottom:1px solid rgba(147,162,182,.3);}
+  #side a:hover{color:var(--ink);}
+  .links{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;}
+  .story{flex:1;min-height:0;}
+  .story .step{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:700;}
+  .story h2{
+    margin:3px 0 0;font-family:"Iowan Old Style","Charter",Georgia,serif;
+    font-size:17px;font-weight:600;letter-spacing:.2px;
+  }
+  .story p{margin:8px 0 0;font-size:13.5px;line-height:1.62;color:#cbd5e1;}
+  .story p b{color:#ffd9a0;font-weight:600;}
+  .story .look{
+    margin-top:10px;font-size:12.5px;line-height:1.5;color:#a9c7ee;
+    border-left:2px solid rgba(127,176,255,.45);padding-left:10px;
+  }
+  .story .look b{color:#d6e6ff;font-weight:600;}
+  .story .scale{
+    margin-top:10px;font-size:12px;line-height:1.5;color:#c9b8e0;
+    border-left:2px solid rgba(190,150,240,.45);padding-left:10px;
+  }
+  .terms{
+    margin:12px 0 0;padding:10px 12px;
+    background:rgba(255,217,160,.05);border:1px solid rgba(255,217,160,.18);border-radius:10px;
+  }
+  .terms .hd{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#d9b98a;font-weight:700;margin-bottom:6px;}
+  .terms dt{font-size:12.5px;font-weight:700;color:#ffd9a0;}
+  .terms dd{margin:1px 0 7px;font-size:12.5px;line-height:1.5;color:#cbd5e1;}
+  .terms dd:last-child{margin-bottom:0;}
+  .credit{font-size:10.5px;line-height:1.5;color:#6c7a8e;}
+
+  .nav{
+    position:fixed;left:var(--side);right:0;bottom:20px;z-index:5;
+    margin:0 auto;width:fit-content;max-width:calc(100% - var(--side) - 32px);
+    display:flex;align-items:center;gap:8px;flex-wrap:nowrap;justify-content:center;
+    background:var(--panel);backdrop-filter:blur(16px);
+    border:1px solid var(--line);border-radius:999px;
+    padding:9px 12px;white-space:nowrap;
+  }
+  .nav button{
+    font:inherit;font-size:12.5px;font-weight:500;color:var(--dim);
+    background:rgba(255,255,255,.05);border:1px solid var(--line);
+    border-radius:999px;padding:7px 14px;cursor:pointer;
+    transition:background .15s ease,color .15s ease,opacity .15s ease;
+  }
+  .nav button:hover:not(:disabled){background:rgba(255,255,255,.12);color:var(--ink);}
+  .nav button:disabled{opacity:.32;cursor:default;}
+  .nav button.primary{background:rgba(127,176,255,.2);color:#dce9ff;border-color:rgba(127,176,255,.35);}
+  .dots{display:flex;gap:6px;padding:0 4px;}
+  .dots i{
+    width:7px;height:7px;border-radius:50%;background:rgba(147,162,182,.3);
+    cursor:pointer;transition:background .2s ease,transform .2s ease;
+  }
+  .dots i.on{background:var(--ink);transform:scale(1.25);}
+  #key{
+    position:fixed;top:18px;right:20px;z-index:5;
+    background:var(--panel);backdrop-filter:blur(16px);
+    border:1px solid var(--line);border-radius:12px;
+    padding:11px 14px;
+    font-size:11.5px;line-height:1.75;color:var(--dim);
+  }
+  #key:empty{display:none;}
+  #key div{display:flex;align-items:center;gap:8px;}
+  #key b{color:var(--ink);font-weight:700;min-width:12px;}
+  .dot{width:11px;height:11px;border-radius:50%;flex:none;
+    box-shadow:inset -2px -2px 3px rgba(0,0,0,.45);}
+  .sq{width:11px;height:11px;border-radius:2px;flex:none;}
+  .hint{
+    position:fixed;right:20px;bottom:20px;z-index:3;
+    font-size:11px;color:#5a687d;pointer-events:none;
+  }
+  @media (max-width:860px){
+    :root{--side:0px;}
+    #stage,#overlay,#fade{left:0;bottom:44vh;}
+    #side{
+      top:auto;left:0;right:0;bottom:0;width:auto;height:44vh;
+      border-right:none;border-top:1px solid var(--line);
+      padding:14px 16px;gap:11px;
+    }
+    #side h1{font-size:16px;}
+    #side .byline{display:none;}
+    .nav{
+      left:0;right:0;bottom:44vh;
+      width:auto;max-width:none;margin:0;
+      border-radius:0;border-width:1px 0 0;
+      flex-wrap:wrap;white-space:normal;justify-content:center;
+    }
+    #key{top:14px;right:14px;padding:8px 10px;font-size:11px;line-height:1.6;}
+    .lab{font-size:13px;}
+    .lab .sub{font-size:11px;}
+    .lab.big{font-size:18px;}
+    .hint{display:none;}
+  }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="overlay"><svg id="lines"></svg><div id="labels"></div></div>
+<div id="fade"></div>
+<div id="side">
+  <div>
+    <h1>From cell to DNA</h1>
+    <p class="byline">Cell, nucleus, chromosome, DNA, gene, base, genome. Start with a whole cell and zoom in until you reach the letters of the genetic code.</p>
+    <div class="links">
+      <a href="./index.html">← Genetics</a>
+      <a href="../index.html">All simulations</a>
+    </div>
+  </div>
+  <div class="story">
+    <div class="step" id="sStep"></div>
+    <h2 id="sTitle"></h2>
+    <p id="sText"></p>
+    <div class="look" id="sLook"></div>
+    <div class="scale" id="sScale"></div>
+    <dl class="terms" id="sTerms"></dl>
+  </div>
+  <div class="credit">Chromosome lengths and centromere positions: human reference genome GRCh38, rounded.
+    Everything here is drawn, not photographed: real chromosomes and DNA are not these colours.</div>
+</div>
+<!-- outside #side: its backdrop-filter would otherwise pin fixed children to the column -->
+<div class="nav">
+  <button id="back">← Back</button>
+  <button id="next" class="primary">Next →</button>
+  <button id="replay">Replay</button>
+  <div class="dots" id="dots"></div>
+</div>
+<div id="key"></div>
+<div class="hint">drag to orbit · scroll to zoom</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ===========================================================================
+   FROM CELL TO DNA — the 3D story
+
+   The vocabulary of genetics, in the order a pupil meets it going inwards:
+   cell, nucleus, chromosome (in pairs), DNA (a double helix), gene, base
+   (A-T, C-G, nucleotides) and then back out to the genome.
+
+   Two worlds, swapped behind a fade:
+
+     cell   the cell, its nucleus, and the 46 chromosomes. They sit inside
+            the nucleus, then fly out into a karyotype of 23 pairs and back.
+     dna    chromosome 7, big, with its DNA unspooling out of the place the
+            CFTR gene sits, coils loosening into a double helix that is
+            magnified more and more as it goes down (as in the textbook
+            figure), and ending in a straight stretch that can be unrolled
+            into a flat ladder.
+
+   EVERYTHING IS A PURE FUNCTION OF THE CHAPTER CLOCK t. The chromosomes'
+   flight is a Bezier in t; the DNA's shape depends only on how far it is
+   unrolled, u(t), and how much of it has come out of the chromosome, R(t).
+   No state accumulates between frames, so Back, Next and Replay are exact.
+
+   THE NUMBERS ARE DERIVED. Chromosome lengths and centromere positions come
+   from CHROMS; their sizes in the karyotype are proportional to those
+   lengths; the gold band sits at GENE.at along chromosome 7; and every figure
+   a caption quotes (46, 23, 3.0 billion, 2 metres, 5.4 cm, the gene length,
+   the magnification) comes out of FIG, which is worked out from those tables.
+   test-genetics.js checks all of this.
+=========================================================================== */
+
+/* ----------------------------------------------------------------- helpers */
+const clamp = (v,a,b) => v<a?a:(v>b?b:v);
+const lerp  = (a,b,u) => a + (b-a)*u;
+const ss = (a,b,x) => { const u = clamp((x-a)/(b-a),0,1); return u*u*(3-2*u); };
+const hexCss = n => '#'+n.toString(16).padStart(6,'0');
+function rng(seed){
+  let a = seed >>> 0;
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const V3 = THREE.Vector3;
+const UP = new V3(0,1,0);
+
+/* =========================================================================
+   DATA
+========================================================================= */
+/* The 23 kinds of human chromosome (a female cell: the 23rd pair is XX).
+   mb = length in millions of base pairs; p = the share of that length in the
+   short arm, i.e. where the centromere (the waist of the X) sits. */
+const CHROMS = [
+  {n:'1', mb:248, p:0.50}, {n:'2', mb:242, p:0.39}, {n:'3', mb:198, p:0.46}, {n:'4', mb:190, p:0.26},
+  {n:'5', mb:181, p:0.27}, {n:'6', mb:171, p:0.35}, {n:'7', mb:159, p:0.38}, {n:'8', mb:145, p:0.31},
+  {n:'9', mb:138, p:0.31}, {n:'10',mb:134, p:0.30}, {n:'11',mb:135, p:0.40}, {n:'12',mb:133, p:0.27},
+  {n:'13',mb:114, p:0.16}, {n:'14',mb:107, p:0.16}, {n:'15',mb:102, p:0.19}, {n:'16',mb:90,  p:0.41},
+  {n:'17',mb:83,  p:0.30}, {n:'18',mb:80,  p:0.23}, {n:'19',mb:59,  p:0.44}, {n:'20',mb:64,  p:0.44},
+  {n:'21',mb:47,  p:0.22}, {n:'22',mb:51,  p:0.25}, {n:'X', mb:156, p:0.39}
+];
+/* the karyotype's rows, as a cytogeneticist lays them out */
+const ROWS = [['1','2','3','4','5'], ['6','7','8','9','10','11','12'],
+              ['13','14','15','16','17','18'], ['19','20','21','22','X']];
+/* the one gene the story follows: CFTR, chr7:117.48-117.67 Mb (GRCh38) */
+const GENE = {name:'CFTR', chrom:'7', at:117.6, bp:188700};
+const GENES_IN_GENOME = 20000;      // protein-coding genes, roughly
+const BP_NM = 0.34;                 // rise per base pair, nm
+const TURN_BP = 10.5;               // base pairs per turn of the helix
+const DNA_WIDTH_NM = 2;             // the helix is 2 nm across: radius 1 nm
+const BIG = CHROMS.find(c => c.n === GENE.chrom);
+
+const COL = {
+  cell:0xc4b11c, cellIn:0x7d6f0c, er:0xeee3a8, nucleus:0xe6e0a0,
+  chrom:0x3159c8, band:0xffbf3a,
+  sugar:0xe3e9f5, phosphate:0x93a9d6,
+  A:0x3cb44b, T:0xe0473b, G:0xf2c94c, C:0xf08a2c
+};
+const PAIR = {A:'T', T:'A', C:'G', G:'C'};
+const BASE_NAME = {A:'adenine', T:'thymine', C:'cytosine', G:'guanine'};
+
+/* ------------------------------------------------------------------ three */
+const stage = document.getElementById('stage');
+const fadeEl = document.getElementById('fade');
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio||1));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.08;
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x080b11);
+const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 500);
+
+scene.add(new THREE.HemisphereLight(0x9fb4d0, 0x0a0d13, 0.6));
+const keyL = new THREE.DirectionalLight(0xffffff, 0.95); keyL.position.set(6,11,8); scene.add(keyL);
+const fillL = new THREE.DirectionalLight(0x9ec3ff, 0.40); fillL.position.set(-8,4,-6); scene.add(fillL);
+const rimL  = new THREE.DirectionalLight(0xffd9b0, 0.32); rimL.position.set(0,3,-10); scene.add(rimL);
+
+(function environment(){
+  const env = new THREE.Scene();
+  const box = new THREE.BoxGeometry(1,1,1);
+  env.add(new THREE.Mesh(new THREE.BoxGeometry(30,18,30),
+    new THREE.MeshBasicMaterial({color:0x1d2634, side:THREE.BackSide})));
+  const panel=(hex,gain,x,y,z,sx,sy,sz)=>{
+    const m=new THREE.Mesh(box,new THREE.MeshBasicMaterial({color:hex}));
+    m.material.color.multiplyScalar(gain);
+    m.position.set(x,y,z); m.scale.set(sx,sy,sz); env.add(m);
+  };
+  panel(0xffffff,1.1,  0, 8.4,  0, 14,0.1,14);
+  panel(0xbcd6ff,1.3,-11, 1.5,  0, 0.1,11,20);
+  panel(0xffd7b0,0.9, 11, 1.5,  2, 0.1,11,20);
+  panel(0x8fb0e0,0.5,  0, 0.0,-12, 22,11,0.1);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(env, 0.04).texture;
+  pmrem.dispose();
+})();
+
+function linearise(root){
+  root.traverse(o=>{
+    if(!o.material) return;
+    (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{
+      if(!m || m.userData.__lin) return;
+      m.userData.__lin = true;
+      if(m.color)    m.color.convertSRGBToLinear();
+      if(m.emissive) m.emissive.convertSRGBToLinear();
+    });
+  });
+}
+const linColor = hex => new THREE.Color(hex).convertSRGBToLinear();
+
+const W1 = new THREE.Group(), W2 = new THREE.Group();     // the cell world, the DNA world
+scene.add(W1, W2);
+
+/* =========================================================================
+   A TUBE whose radius varies along it, written in place so it can be
+   reshaped without reallocating. Rings are carried along by parallel
+   transport, so the tube does not twist.
+========================================================================= */
+function makeTube(n, radial){
+  const g = new THREE.BufferGeometry();
+  const vn = n*(radial+1);
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vn*3), 3));
+  g.setAttribute('normal',   new THREE.BufferAttribute(new Float32Array(vn*3), 3));
+  const idx = new (vn > 65535 ? Uint32Array : Uint16Array)((n-1)*radial*6);
+  let o = 0;
+  for(let i=0;i<n-1;i++) for(let k=0;k<radial;k++){
+    const a = i*(radial+1)+k, b = a+radial+1;
+    idx[o++]=a; idx[o++]=a+1; idx[o++]=b;
+    idx[o++]=a+1; idx[o++]=b+1; idx[o++]=b;
+  }
+  g.setIndex(new THREE.BufferAttribute(idx, 1));
+  g.userData.tube = {n, radial};
+  return g;
+}
+function writeTube(g, P, R){
+  const {n, radial} = g.userData.tube;
+  const pos = g.attributes.position.array, nor = g.attributes.normal.array;
+  const T = new V3(), N = new V3(), B = new V3(), d = new V3();
+  for(let i=0;i<n;i++){
+    T.subVectors(P[Math.min(n-1,i+1)], P[Math.max(0,i-1)]).normalize();
+    if(i === 0){
+      N.set(0,0,1).cross(T);
+      if(N.lengthSq() < 1e-6) N.set(1,0,0).cross(T);
+      N.normalize();
+    } else N.addScaledVector(T, -N.dot(T)).normalize();
+    B.crossVectors(T, N);
+    for(let k=0;k<=radial;k++){
+      const th = k/radial*Math.PI*2, c = Math.cos(th), s = Math.sin(th);
+      d.set(N.x*c + B.x*s, N.y*c + B.y*s, N.z*c + B.z*s);
+      const o = (i*(radial+1)+k)*3;
+      pos[o] = P[i].x + d.x*R[i]; pos[o+1] = P[i].y + d.y*R[i]; pos[o+2] = P[i].z + d.z*R[i];
+      nor[o] = d.x; nor[o+1] = d.y; nor[o+2] = d.z;
+    }
+  }
+  g.attributes.position.needsUpdate = true;
+  g.attributes.normal.needsUpdate = true;
+  g.computeBoundingSphere();
+}
+const tubeRingsDrawn = (g, rings) => g.setDrawRange(0, Math.max(0, rings-1)*g.userData.tube.radial*6);
+
+/* =========================================================================
+   A CHROMOSOME: two chromatids (identical copies, side by side) pinched
+   together at the centromere. Each is a lathe -- a rod with rounded ends and
+   a waist -- pushed sideways so the two meet at the waist and splay at the
+   tips. y = 0 is the centromere; the short arm p points up.
+========================================================================= */
+function chromatidRadius(y, p, q, T){
+  const arm = y >= 0 ? p : q, a = Math.abs(y);
+  const c = Math.min(T, arm*0.9);
+  let r = T;
+  if(a > arm - c){ const u = (a - (arm - c))/c; r = T*Math.sqrt(Math.max(0, 1 - u*u)); }
+  return r*(1 - 0.42*Math.exp(-Math.pow(y/(0.75*T), 2)));
+}
+function chromatidOffset(y, p, q, T){
+  const arm = y >= 0 ? p : q, a = Math.abs(y);
+  return T*(0.52 + 0.4*ss(0, 1.6*T, a) + 0.3*Math.pow(a/Math.max(arm, 1e-9), 2));
+}
+function chromatidGeometry(p, q, T, side, opt){
+  const rows = opt.rows, pts = [];
+  for(let i=0;i<=rows;i++){
+    const y = -q + (p+q)*i/rows;
+    pts.push(new THREE.Vector2(i === 0 || i === rows ? 0 : chromatidRadius(y, p, q, T), y));
+  }
+  const g = new THREE.LatheGeometry(pts, opt.seg);
+  const pos = g.attributes.position, n = pos.count;
+  const col = new Float32Array(n*3);
+  const cBlue = linColor(COL.chrom), cBand = linColor(COL.band), c = new THREE.Color();
+  for(let i=0;i<n;i++){
+    let x = pos.getX(i), z = pos.getZ(i);
+    const y = pos.getY(i);
+    if(opt.ridge){
+      /* a helical ridge: the chromatid is DNA coiled, so it looks coiled */
+      const r = Math.hypot(x, z);
+      if(r > 1e-9){
+        const k = 1 + opt.ridge*Math.sin(Math.atan2(x, z) + 2*Math.PI*y/opt.lambda)*(r/T);
+        x *= k; z *= k;
+      }
+    }
+    pos.setXYZ(i, x + side*chromatidOffset(y, p, q, T), y, z);
+    const b = opt.band ? 1 - ss(opt.band.w*0.3, opt.band.w*0.5, Math.abs(y - opt.band.y)) : 0;
+    c.copy(cBlue).lerp(cBand, b);
+    col[i*3] = c.r; col[i*3+1] = c.g; col[i*3+2] = c.b;
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  g.computeVertexNormals();
+  /* the lathe's first and last columns are the same seam: give them one normal */
+  const nP = rows + 1, nor = g.attributes.normal;
+  for(let j=0;j<nP;j++){
+    const a = j, b = opt.seg*nP + j;
+    const x = nor.getX(a)+nor.getX(b), y = nor.getY(a)+nor.getY(b), z = nor.getZ(a)+nor.getZ(b);
+    const l = Math.hypot(x,y,z) || 1;
+    nor.setXYZ(a, x/l, y/l, z/l); nor.setXYZ(b, x/l, y/l, z/l);
+  }
+  return g;
+}
+/* where the gene's band sits, measured down from the tip of the short arm */
+const GENE_FRAC = GENE.at/BIG.mb;
+const BAND_W = 0.035;                 // band width, as a share of the length -- far wider than the gene
+function chromShape(c, unitsPerMb){
+  const L = c.mb*unitsPerMb, p = L*c.p, q = L - p;
+  return {L, p, q, band: c === BIG ? {y:p - GENE_FRAC*L, w:BAND_W*L} : null};
+}
+
+/* =========================================================================
+   WORLD 1: the cell
+========================================================================= */
+const CELL_R = 6.2, CELL_FLAT = 0.55, NUC_R = 1.9;
+function cellBump(x, y, z){
+  return 1 + 0.07*Math.sin(3.1*x + 1.3)*Math.cos(2.7*z - 0.4)
+           + 0.05*Math.sin(5.3*y + 2.1*x) + 0.035*Math.sin(7.7*z + 4.1*y);
+}
+function cellPoint(x, y, z, frac){
+  const l = Math.hypot(x, y, z); x /= l; y /= l; z /= l;
+  const r = CELL_R*cellBump(x, y, z)*(frac === undefined ? 1 : frac);
+  return new V3(x*r, y*r*CELL_FLAT, z*r);
+}
+const cellGeo = new THREE.SphereGeometry(1, 96, 64);
+(function(){
+  const p = cellGeo.attributes.position;
+  for(let i=0;i<p.count;i++){
+    const v = cellPoint(p.getX(i), p.getY(i), p.getZ(i));
+    p.setXYZ(i, v.x, v.y, v.z);
+  }
+  cellGeo.computeVertexNormals();
+})();
+const cellFrontMat = new THREE.MeshStandardMaterial({color:COL.cell, roughness:0.55, metalness:0,
+  transparent:true, opacity:0.5, depthWrite:false, envMapIntensity:0.35});
+const cellBackMat = new THREE.MeshStandardMaterial({color:COL.cellIn, roughness:0.8, metalness:0,
+  transparent:true, opacity:0.55, depthWrite:false, side:THREE.BackSide, envMapIntensity:0.2});
+const cellBack = new THREE.Mesh(cellGeo, cellBackMat);   cellBack.renderOrder = 1;
+const cellFront = new THREE.Mesh(cellGeo, cellFrontMat); cellFront.renderOrder = 3;
+W1.add(cellBack, cellFront);
+
+/* the endoplasmic reticulum, as the textbook draws it: arcs round the nucleus */
+const erMat = new THREE.MeshStandardMaterial({color:COL.er, roughness:0.6, transparent:true, opacity:1,
+  envMapIntensity:0.3});
+const erGroup = new THREE.Group();
+(function(){
+  const R = rng(31);
+  for(let i=0;i<16;i++){
+    const rad = 2.5 + R()*2.4, arc = 0.6 + R()*0.9;
+    const m = new THREE.Mesh(new THREE.TorusGeometry(rad, 0.05, 6, 48, arc), erMat);
+    m.rotation.set(Math.PI/2 + (R()-0.5)*0.25, (R()-0.5)*0.2, R()*Math.PI*2);
+    m.position.y = (R()-0.5)*1.4*(1 - rad/CELL_R);
+    erGroup.add(m);
+  }
+})();
+W1.add(erGroup);
+
+const nucMat = new THREE.MeshStandardMaterial({color:COL.nucleus, roughness:0.35, metalness:0,
+  transparent:true, opacity:0.5, depthWrite:false, envMapIntensity:0.5});
+const nucleus = new THREE.Mesh(new THREE.SphereGeometry(NUC_R, 64, 48), nucMat);
+nucleus.renderOrder = 2;
+W1.add(nucleus);
+
+/* --- the 46 chromosomes. Built at karyotype size; shrunk to fit the nucleus */
+const KK = 0.0105;                 // karyotype units per million base pairs
+const KT = 0.15;                   // chromatid radius in the karyotype
+const KZ = 1.2;                    // the karyotype hangs this far in front of the nucleus
+const S_NUC = 0.8/(CHROMS[0].mb*KK);   // in the nucleus, chromosome 1 is 0.8 long
+const chromMat = new THREE.MeshStandardMaterial({color:0xffffff, vertexColors:true,
+  roughness:0.45, metalness:0.05, envMapIntensity:0.6});
+const TYPES = CHROMS.map(c => {
+  const s = chromShape(c, KK);
+  s.geo = [-1, 1].map(side => chromatidGeometry(s.p, s.q, KT, side, {rows:64, seg:14, band:s.band}));
+  return s;
+});
+
+const KARY = (function(){
+  const W_CH = 2*(KT*1.22 + KT);
+  const IN_PAIR = W_CH + 0.08, PAIR_W = IN_PAIR + W_CH, GAP = 0.62, ROW_GAP = 0.6, NUM = 0.4;
+  const target = new Array(2*CHROMS.length), num = new Array(CHROMS.length);
+  const rows = ROWS.map(r => {
+    const tys = r.map(n => CHROMS.findIndex(c => c.n === n));
+    return {tys,
+      top: Math.max(...tys.map(ty => TYPES[ty].p)) + KT,
+      bot: Math.max(...tys.map(ty => TYPES[ty].q)) + KT,
+      width: tys.length*PAIR_W + (tys.length-1)*GAP};
+  });
+  const totalH = rows.reduce((h, r) => h + r.top + r.bot + NUM, 0) + (rows.length-1)*ROW_GAP;
+  let y = totalH/2;
+  rows.forEach(r => {
+    y -= r.top;
+    const yc = y;
+    y -= r.bot + NUM + ROW_GAP;
+    let x = -r.width/2;
+    r.tys.forEach(ty => {
+      const cx = x + PAIR_W/2;
+      target[2*ty]   = new V3(cx - IN_PAIR/2, yc, KZ);
+      target[2*ty+1] = new V3(cx + IN_PAIR/2, yc, KZ);
+      num[ty] = new V3(cx, yc - r.bot - NUM*0.45, KZ);
+      x += PAIR_W + GAP;
+    });
+  });
+  return {target, num, IN_PAIR, PAIR_W,
+          halfW: Math.max(...rows.map(r => r.width))/2, halfH: totalH/2, centre: new V3(0, 0, KZ)};
+})();
+
+const CHR_OBJS = [];
+(function(){
+  const R = rng(46);
+  const order = [];
+  for(let k=0;k<2*CHROMS.length;k++) order.push(k);
+  for(let i=order.length-1;i>0;i--){ const j = Math.floor(R()*(i+1)); const t = order[i]; order[i] = order[j]; order[j] = t; }
+  const homes = [];
+  for(let k=0;k<2*CHROMS.length;k++){
+    let pos = null, last = null;
+    for(let tries=0; tries<600 && !pos; tries++){
+      const v = new V3(R()*2-1, R()*2-1, R()*2-1).multiplyScalar(1.15);
+      if(v.length() > 1.15) continue;
+      last = v;
+      if(homes.every(h => h.distanceTo(v) > 0.42)) pos = v;
+    }
+    pos = pos || last || new V3();
+    homes.push(pos);
+    const ty = k >> 1, g = new THREE.Group();
+    TYPES[ty].geo.forEach(geo => g.add(new THREE.Mesh(geo, chromMat)));
+    W1.add(g);
+    CHR_OBJS.push({g, ty, copy:k & 1, home:pos,
+      homeQ: new THREE.Quaternion().setFromEuler(new THREE.Euler(R()*6.28, R()*6.28, R()*6.28)),
+      drift:[R()*6.28, R()*6.28, R()*6.28],
+      target:KARY.target[k], order: order.indexOf(k)/(2*CHROMS.length - 1)});
+  }
+})();
+
+/* a point on chromosome k: f runs from the tip of the short arm (0) to the
+   tip of the long arm (1); side -1/+1 picks a chromatid; out pushes it to
+   the surface */
+function chrPoint(k, f, side, out){
+  const o = CHR_OBJS[k], s = TYPES[o.ty];
+  const y = s.p - f*s.L;
+  const x = side*(chromatidOffset(y, s.p, s.q, KT) + (out||0)*chromatidRadius(y, s.p, s.q, KT));
+  return o.g.localToWorld(new V3(x, y, 0));
+}
+
+/* =========================================================================
+   WORLD 2: one chromosome, and its DNA
+========================================================================= */
+const W2_LEN = 14;                              // chromosome 7, 14 units tall here
+const W2K = W2_LEN/BIG.mb;
+const W2T = KT*W2K/KK;                          // same proportions as in the karyotype
+const BIGC = new V3(0, 6.8, 0);                 // its centromere
+const big = chromShape(BIG, W2K);
+big.group = new THREE.Group();
+big.group.position.copy(BIGC);
+const bigMat = new THREE.MeshStandardMaterial({color:0xffffff, vertexColors:true,
+  roughness:0.5, metalness:0.05, envMapIntensity:0.6});
+[-1, 1].forEach(side => big.group.add(new THREE.Mesh(
+  chromatidGeometry(big.p, big.q, W2T, side, {rows:360, seg:56, ridge:0.06, lambda:0.44, band:big.band}), bigMat)));
+W2.add(big.group);
+function bigPoint(f, side, out){
+  const y = big.p - f*big.L;
+  const x = side*(chromatidOffset(y, big.p, big.q, W2T) + (out||0)*chromatidRadius(y, big.p, big.q, W2T));
+  return new V3(x, y, 0).add(BIGC);
+}
+
+/* The DNA leaves the right-hand chromatid at the gold band, inside its surface. */
+const FIBRE_START = bigPoint(GENE_FRAC, 1, 0.7);
+
+/* One centre line for all of it: the coiled fibre (control points 0-5), the
+   double helix (5-13), straight from 9 on so the end can lie flat. */
+const CP = [[0,0,0],[1.6,-0.5,0.3],[2.8,-2.4,0.5],[2.7,-4.9,0.7],[1.6,-6.9,0.9],[-0.2,-8.2,1.0],
+            [-1.5,-9.7,1.3],[-3.4,-11.6,1.7],[-5.4,-14,2.1],[-6.5,-17,2.4],
+            [-6.5,-20,2.4],[-6.5,-24,2.4],[-6.5,-28,2.4],[-6.5,-32,2.4]];
+const I_JOIN = 5, I_FLAT = 10;
+const curve = new THREE.CatmullRomCurve3(CP.map(c => new V3(c[0], c[1], c[2]).add(FIBRE_START)), false, 'centripetal');
+const AXN = 4000;
+const AX = {p:[], T:[], N:[], B:[], l:new Float64Array(AXN+1)};
+(function(){
+  for(let i=0;i<=AXN;i++) AX.p.push(curve.getPoint(i/AXN));
+  for(let i=1;i<=AXN;i++) AX.l[i] = AX.l[i-1] + AX.p[i].distanceTo(AX.p[i-1]);
+  let N = null;
+  for(let i=0;i<=AXN;i++){
+    const T = new V3().subVectors(AX.p[Math.min(AXN,i+1)], AX.p[Math.max(0,i-1)]).normalize();
+    if(!N){ N = new V3(0,0,1).cross(T).normalize(); }
+    else N = N.clone().addScaledVector(T, -N.dot(T)).normalize();
+    AX.T.push(T); AX.N.push(N); AX.B.push(new V3().crossVectors(T, N));
+  }
+})();
+const L_JOIN = AX.l[Math.round(AXN*I_JOIN/(CP.length-1))];
+const L_FLAT = AX.l[Math.round(AXN*I_FLAT/(CP.length-1))];
+const L_END  = AX.l[AXN];
+function axisAt(l){
+  l = clamp(l, 0, L_END);
+  let lo = 0, hi = AXN;
+  while(hi - lo > 1){ const m = (lo+hi) >> 1; if(AX.l[m] <= l) lo = m; else hi = m; }
+  const f = (l - AX.l[lo])/((AX.l[hi] - AX.l[lo]) || 1);
+  return {
+    p: new V3().lerpVectors(AX.p[lo], AX.p[hi], f),
+    T: new V3().lerpVectors(AX.T[lo], AX.T[hi], f).normalize(),
+    N: new V3().lerpVectors(AX.N[lo], AX.N[hi], f).normalize(),
+    B: new V3().lerpVectors(AX.B[lo], AX.B[hi], f).normalize()
+  };
+}
+
+/* --- the coiled fibre: one strand wound round the centre line. Tight coils
+   by the chromosome (as tight as the chromosome's own ridges), then a few
+   wide loops, then smaller coils unwinding onto the line where the helix
+   begins. Its thickness tapers to the helix's own width at the join. */
+const SIG0 = 0.12, SIGMAX = 1.25;     // helix radius at its start and at the bottom
+function fibreShape(x){
+  const bA = ss(0.34, 0.42, x), bC = ss(0.72, 0.80, x), e = ss(0.80, 1.0, x);
+  return {
+    rho:   lerp(lerp(0.42, 0.95, bA), 0.32, bC)*(1 - e)*ss(0, 0.04, x),    // starts on the line, inside the chromatid
+    pitch: lerp(lerp(0.44, 1.50, bA), 0.62, bC),
+    w:     lerp(lerp(lerp(0.22, 0.19, bA), 0.16, bC), SIG0, e)
+  };
+}
+const FIB_N = 1800;
+const fibreGeo = makeTube(FIB_N + 1, 10);
+const FIBRE = {P:[], R:[]};
+(function(){
+  let phi = 0;
+  for(let i=0;i<=FIB_N;i++){
+    const x = i/FIB_N, l = L_JOIN*x, s = fibreShape(x);
+    if(i) phi += 2*Math.PI*(L_JOIN/FIB_N)/s.pitch;
+    const a = axisAt(l);
+    FIBRE.P.push(a.p.clone().addScaledVector(a.N, s.rho*Math.cos(phi)).addScaledVector(a.B, s.rho*Math.sin(phi)));
+    FIBRE.R.push(s.w);
+  }
+  writeTube(fibreGeo, FIBRE.P, FIBRE.R);
+})();
+const strandMat = new THREE.MeshStandardMaterial({color:COL.chrom, roughness:0.42, metalness:0.05, envMapIntensity:0.6});
+const fibre = new THREE.Mesh(fibreGeo, strandMat);
+W2.add(fibre);
+
+/* --- the double helix. Base pairs every 0.34 nm along the axis, a turn
+   every 10.5 of them, radius 1 nm: in units of the local radius sigma, a
+   rise of 0.34*sigma. sigma grows down the picture -- the magnification. */
+const sigmaAt = l => SIG0*Math.pow(SIGMAX/SIG0, ss(L_JOIN, L_FLAT - 1.0, l));
+const RISE = BP_NM/(DNA_WIDTH_NM/2);
+const BPS = [];
+(function(){
+  const R = rng(2026);
+  for(let l = L_JOIN + 0.5*RISE*SIG0; l < L_END - 0.5; ){
+    const s = sigmaAt(l), b1 = 'ATCG'[Math.floor(R()*4)];
+    BPS.push({l, s, b1, b2:PAIR[b1], w:0});
+    l += RISE*s;
+  }
+})();
+const NBP = BPS.length;
+const FLAT0 = BPS.findIndex(b => b.l >= L_FLAT);         // the straight stretch that can lie flat
+BPS.forEach((b, i) => { b.w = ss(FLAT0 - 8, FLAT0, i); });
+const DTH = 2*Math.PI/TURN_BP;
+const DELTA0 = 150*Math.PI/180;      // the two backbones are not opposite: major and minor grooves
+
+/* When flat, the ladder must face the camera with strand 1 on the left. Its
+   angle there is fixed by everything before it, so choose where to start. */
+const FLAT = (function(){
+  const f = axisAt(BPS[FLAT0].l);
+  let alpha = Math.atan2(f.N.z, -f.B.z);
+  const d1 = f.N.clone().multiplyScalar(Math.cos(alpha)).addScaledVector(f.B, Math.sin(alpha));
+  if(d1.x > 0){ alpha += Math.PI; d1.negate(); }
+  let S = 0;
+  for(let j=0;j<FLAT0;j++) S += DTH*(1 - BPS[j].w);
+  const normal = new V3().crossVectors(d1, f.T).normalize();
+  if(normal.z < 0) normal.negate();
+  return {alpha, phi0: alpha - S, dir:d1, T:f.T.clone(), normal};
+})();
+
+/* the gene: a stretch in the middle of the magnifying part */
+const GENE_BP = (function(){
+  const l0 = L_JOIN + 0.36*(L_FLAT - L_JOIN), l1 = L_JOIN + 0.66*(L_FLAT - L_JOIN);
+  const g0 = BPS.findIndex(b => b.l >= l0);
+  let g1 = g0;
+  while(g1 + 1 < NBP && BPS[g1+1].l <= l1) g1++;
+  return {g0, g1};
+})();
+
+const SUB = 4;                                  // backbone points between base pairs
+const backboneGeo = [makeTube((NBP-1)*SUB + 1, 10), makeTube((NBP-1)*SUB + 1, 10)];
+const backbones = backboneGeo.map(g => new THREE.Mesh(g, strandMat));
+W2.add(...backbones);
+
+const CYL = new THREE.CylinderGeometry(1, 1, 1, 12, 1, false);
+const SPH = new THREE.SphereGeometry(1, 18, 12);
+const PENT = new THREE.CylinderGeometry(1, 1, 0.5, 5, 1, false);
+function instanced(geo, color, count, opt){
+  const m = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial(Object.assign(
+    {color, roughness:0.4, metalness:0.05, envMapIntensity:0.6}, opt||{})), Math.max(1, count));
+  m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  m.frustumCulled = false;
+  m.userData.slotBp = [];
+  W2.add(m);
+  return m;
+}
+const RUNG = {};
+'ATCG'.split('').forEach(L => {
+  const n = BPS.reduce((s, b) => s + (b.b1 === L) + (b.b2 === L), 0);
+  RUNG[L] = instanced(CYL, COL[L], n, {emissive:COL[L], emissiveIntensity:0.08});
+});
+const NFLAT = NBP - FLAT0;
+const sugars = instanced(PENT, COL.sugar, 2*NFLAT, {roughness:0.5});
+const phosphates = instanced(SPH, COL.phosphate, 2*(NFLAT - 1), {roughness:0.35});
+const caps = instanced(SPH, COL.chrom, 4);           // round off both ends of both backbones
+
+/* the gene sleeve: a glass tube round the gene, gold like the band */
+const sleeveGeo = (function(){
+  const n = 160, P = [], R = [];
+  const l0 = BPS[GENE_BP.g0].l - 0.3*BPS[GENE_BP.g0].s, l1 = BPS[GENE_BP.g1].l + 0.3*BPS[GENE_BP.g1].s;
+  for(let i=0;i<n;i++){ const l = lerp(l0, l1, i/(n-1)); P.push(axisAt(l).p); R.push(1.55*sigmaAt(l)); }
+  const g = makeTube(n, 32);
+  writeTube(g, P, R);
+  return g;
+})();
+const sleeveMat = new THREE.MeshStandardMaterial({color:COL.band, emissive:COL.band, emissiveIntensity:0.35,
+  roughness:0.2, metalness:0, transparent:true, opacity:0, depthWrite:false, side:THREE.DoubleSide});
+const sleeve = new THREE.Mesh(sleeveGeo, sleeveMat);
+sleeve.renderOrder = 4;
+W2.add(sleeve);
+
+/* letters on the bases of the flat stretch */
+function letterTexture(L){
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const x = c.getContext('2d');
+  x.font = '800 92px ui-sans-serif, "Segoe UI", Arial, sans-serif';
+  x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.lineWidth = 12; x.strokeStyle = 'rgba(8,11,17,.9)';
+  x.strokeText(L, 64, 68);
+  x.fillStyle = '#ffffff';
+  x.fillText(L, 64, 68);
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+}
+const LETTER_MAT = {};
+'ATCG'.split('').forEach(L => {
+  LETTER_MAT[L] = new THREE.SpriteMaterial({map:letterTexture(L), transparent:true, opacity:0,
+    depthTest:false, depthWrite:false});
+});
+const letters = [];
+for(let i=FLAT0;i<NBP;i++){
+  [BPS[i].b1, BPS[i].b2].forEach((L, strand) => {
+    const s = new THREE.Sprite(LETTER_MAT[L]);
+    s.renderOrder = 10;
+    s.userData = {bp:i, strand};
+    letters.push(s); W2.add(s);
+  });
+}
+
+/* --- the DNA's shape, given how far the flat stretch is unrolled (u) */
+const SHAPE = {u:-1, a:[], del:[], ax:[], P1:[], P2:[], M:[]};
+const _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new V3(), _c = new V3(), _d = new V3();
+function placeRod(mesh, slot, a, b, r){
+  _d.subVectors(b, a);
+  const len = _d.length();
+  _c.addVectors(a, b).multiplyScalar(0.5);
+  _q.setFromUnitVectors(UP, _d.multiplyScalar(1/(len || 1)));
+  _m4.compose(_c, _q, _s.set(r, len, r));
+  mesh.setMatrixAt(slot, _m4);
+}
+function placeAt(mesh, slot, p, q, sx, sy, sz){
+  _m4.compose(p, q, _s.set(sx, sy, sz));
+  mesh.setMatrixAt(slot, _m4);
+}
+const ringPoint = (f, a, s) => f.p.clone().addScaledVector(f.N, s*Math.cos(a)).addScaledVector(f.B, s*Math.sin(a));
+function dnaShape(u){
+  if(SHAPE.u === u) return SHAPE;
+  SHAPE.u = u;
+  let acc = FLAT.phi0;
+  for(let i=0;i<NBP;i++){
+    const b = BPS[i], f = axisAt(b.l);
+    SHAPE.a[i] = acc;
+    SHAPE.del[i] = lerp(DELTA0, Math.PI, u*b.w);
+    SHAPE.ax[i] = f.p;
+    SHAPE.P1[i] = ringPoint(f, acc, b.s);
+    SHAPE.P2[i] = ringPoint(f, acc + SHAPE.del[i], b.s);
+    SHAPE.M[i] = new V3().addVectors(SHAPE.P1[i], SHAPE.P2[i]).multiplyScalar(0.5);
+    acc += DTH*(1 - u*b.w);
+  }
+  /* the two backbones, smooth between base pairs */
+  [0, 1].forEach(strand => {
+    const P = [], R = [];
+    for(let i=0;i<NBP;i++){
+      const last = i === NBP-1;
+      for(let k=0;k<(last ? 1 : SUB);k++){
+        const f = k/SUB, j = last ? i : i+1;
+        const l = lerp(BPS[i].l, BPS[j].l, f), s = lerp(BPS[i].s, BPS[j].s, f);
+        const a = lerp(SHAPE.a[i], SHAPE.a[j], f) + (strand ? lerp(SHAPE.del[i], SHAPE.del[j], f) : 0);
+        P.push(ringPoint(axisAt(l), a, s)); R.push(0.16*s);
+      }
+    }
+    writeTube(backboneGeo[strand], P, R);
+    placeAt(caps, strand*2, P[0], _q.identity(), R[0], R[0], R[0]);
+    placeAt(caps, strand*2 + 1, P[P.length-1], _q.identity(), R[R.length-1], R[R.length-1], R[R.length-1]);
+  });
+  /* rungs: each base a rod from its backbone to just short of the middle */
+  const slot = {A:0, T:0, C:0, G:0};
+  'ATCG'.split('').forEach(L => { RUNG[L].userData.slotBp = []; });
+  const gapA = new V3(), gapB = new V3();
+  for(let i=0;i<NBP;i++){
+    const b = BPS[i], dir = new V3().subVectors(SHAPE.P2[i], SHAPE.P1[i]).normalize();
+    gapA.copy(SHAPE.M[i]).addScaledVector(dir, -0.05*b.s);
+    gapB.copy(SHAPE.M[i]).addScaledVector(dir,  0.05*b.s);
+    placeRod(RUNG[b.b1], slot[b.b1], SHAPE.P1[i], gapA, 0.14*b.s); RUNG[b.b1].userData.slotBp[slot[b.b1]++] = i;
+    placeRod(RUNG[b.b2], slot[b.b2], SHAPE.P2[i], gapB, 0.14*b.s); RUNG[b.b2].userData.slotBp[slot[b.b2]++] = i;
+  }
+  /* sugars and phosphates, only on the flat stretch, growing in as it flattens */
+  const show = ss(0.8, 1.0, u);
+  const qN = new THREE.Quaternion().setFromUnitVectors(UP, FLAT.normal);
+  sugars.userData.slotBp = []; phosphates.userData.slotBp = [];
+  let ks = 0, kp = 0;
+  for(let i=FLAT0;i<NBP;i++){
+    const s = BPS[i].s;
+    [SHAPE.P1[i], SHAPE.P2[i]].forEach(P => {
+      placeAt(sugars, ks, P, qN, 0.3*s*show + 1e-6, 0.7*s*show + 1e-6, 0.3*s*show + 1e-6);
+      sugars.userData.slotBp[ks++] = i;
+    });
+    if(i < NBP-1){
+      [[SHAPE.P1[i], SHAPE.P1[i+1]], [SHAPE.P2[i], SHAPE.P2[i+1]]].forEach(pr => {
+        _c.addVectors(pr[0], pr[1]).multiplyScalar(0.5);
+        placeAt(phosphates, kp, _c.clone(), _q.identity(), 0.21*s*show + 1e-6, 0.21*s*show + 1e-6, 0.21*s*show + 1e-6);
+        phosphates.userData.slotBp[kp++] = i + 1;
+      });
+    }
+  }
+  [...Object.values(RUNG), sugars, phosphates, caps].forEach(m => { m.instanceMatrix.needsUpdate = true; });
+  /* letters sit on their base, towards the camera */
+  letters.forEach(sp => {
+    const i = sp.userData.bp, s = BPS[i].s;
+    const P = sp.userData.strand ? SHAPE.P2[i] : SHAPE.P1[i];
+    sp.position.addVectors(P, SHAPE.M[i]).multiplyScalar(0.5).addScaledVector(FLAT.normal, 0.3*s);
+    sp.scale.set(0.62*s, 0.62*s, 1);
+  });
+  return SHAPE;
+}
+
+/* how much has come out of the chromosome: arc length R along the line */
+function revealDna(R){
+  tubeRingsDrawn(fibreGeo, Math.round(clamp(R/L_JOIN, 0, 1)*FIB_N) + 1);
+  let n = 0;
+  while(n < NBP && BPS[n].l <= R) n++;
+  tubeRingsDrawn(backboneGeo[0], n ? (n-1)*SUB + 1 : 0);
+  tubeRingsDrawn(backboneGeo[1], n ? (n-1)*SUB + 1 : 0);
+  [...Object.values(RUNG), sugars, phosphates].forEach(m => {
+    const sb = m.userData.slotBp;
+    let c = 0;
+    while(c < sb.length && sb[c] < n) c++;
+    m.count = c;
+  });
+  caps.visible = n === NBP;
+  letters.forEach(sp => { sp.visible = sp.userData.bp < n; });
+  return n;
+}
+
+linearise(scene);
+
+/* =========================================================================
+   FIGURES the captions quote -- all worked out, none typed in
+========================================================================= */
+const FIG = (function(){
+  const setMb = CHROMS.reduce((s, c) => s + c.mb, 0);     // one set of 23
+  const setBp = setMb*1e6;
+  return {
+    kinds: CHROMS.length,
+    total: 2*CHROMS.length,
+    genomeBn: (setBp/1e9).toFixed(1),
+    cellBn: Math.round(2*setBp/1e9),
+    metres: Math.round(2*setBp*BP_NM*1e-9),
+    chr7cm: (BIG.mb*1e6*BP_NM*1e-7).toFixed(1),
+    geneKbp: Math.round(GENE.bp/1000),
+    geneDrawn: GENE_BP.g1 - GENE_BP.g0 + 1,
+    magnify: Math.round(SIGMAX/SIG0),
+    genes: GENES_IN_GENOME.toLocaleString('en-GB').replace(',', ' ')
+  };
+})();
+
+/* =========================================================================
+   CAMERA KEYS -- found from the geometry, refitted on resize
+========================================================================= */
+function fitDist(halfW, halfH){
+  const vf = camera.fov*Math.PI/180, hf = 2*Math.atan(Math.tan(vf/2)*camera.aspect);
+  return Math.max(halfW/Math.tan(hf/2), halfH/Math.tan(vf/2));
+}
+const key = (look, dist, az, el) => ({look:[look.x, look.y, look.z], dist, az:az||0, el:el||0});
+let CAM = {};
+/* the anchors the story's labels and camera keys hang on */
+const ANCH = {};
+function buildCams(){
+  const c = new V3();
+  CAM.cellWide = key(c, fitDist(7.4, 4.4)*1.08, 0.45, 0.55);
+  CAM.cell     = key(c, fitDist(6.8, 4.8), 0.25, 0.42);
+  CAM.nucleus  = key(c, fitDist(2.5, 2.3), 0.18, 0.28);
+  CAM.kary     = key(KARY.centre, fitDist(KARY.halfW + 0.6, KARY.halfH + 0.5), 0, 0);
+  /* chromosome 7 in the karyotype, and the same framing of the big one in the
+     DNA world, so the cut between them is seamless */
+  const s7 = TYPES[CHROMS.indexOf(BIG)];
+  const t7 = KARY.target[2*CHROMS.indexOf(BIG)];
+  CAM.chr7     = key(t7.clone().add(new V3(0, (s7.p - s7.q)/2, 0)), fitDist(s7.L*0.36, s7.L*0.62), 0, 0);
+  CAM.chromIn  = key(BIGC.clone().add(new V3(0, (big.p - big.q)/2, 0)), CAM.chr7.dist*W2K/KK, 0, 0);
+  const box = new THREE.Box3().setFromObject(big.group);
+  FIBRE.P.forEach(p => box.expandByPoint(p));
+  box.getCenter(c);
+  CAM.chrom    = key(c, fitDist((box.max.x - box.min.x)/2 + 1.2, (box.max.y - box.min.y)/2 + 0.6), 0.12, 0.06);
+  CAM.fibre    = key(axisAt(0.5*L_JOIN).p, fitDist(3.6, 3.6), 0.15, 0.08);
+  const lh = L_JOIN + 0.5*(L_FLAT - L_JOIN);
+  CAM.helix    = key(axisAt(lh).p, fitDist(3.4, 3.4), 0.12, 0.05);
+  const gA = BPS[GENE_BP.g0], gB = BPS[GENE_BP.g1];
+  const gMid = new V3().addVectors(axisAt(gA.l).p, axisAt(gB.l).p).multiplyScalar(0.5);
+  const gHalf = 0.5*axisAt(gA.l).p.distanceTo(axisAt(gB.l).p) + 2*gB.s;
+  CAM.gene     = key(gMid, fitDist(gHalf*1.25, gHalf), 0.1, 0.04);
+  const n = FLAT.normal;
+  const fMid = axisAt(BPS[FLAT0 + (NFLAT >> 1)].l).p;
+  CAM.ladder   = key(fMid, fitDist(SIGMAX*5.2, 7*RISE*SIGMAX + 0.7), Math.atan2(n.x, n.z), Math.asin(n.y));
+  const all = new THREE.Box3().setFromObject(big.group);
+  AX.p.forEach(p => all.expandByPoint(p));
+  all.expandByScalar(SIGMAX);
+  all.getCenter(c);
+  CAM.allDna   = key(c, fitDist((all.max.x - all.min.x)/2 + 1, (all.max.y - all.min.y)/2 + 1), 0.1, 0.05);
+}
+
+/* ----------------------------------------------------- anchors for labels */
+ANCH.cell    = cellPoint(-0.82, -0.3, 0.5);
+ANCH.cyto    = cellPoint(-0.78, 0.25, 0.58, 0.62);
+ANCH.nucR    = new V3(0.55, 0.5, 0.67).normalize().multiplyScalar(NUC_R);
+ANCH.nucL    = new V3(-0.62, 0.52, 0.58).normalize().multiplyScalar(NUC_R);
+/* two chromosomes near the front right of the nucleus, for "Chromosome" */
+ANCH.front = CHR_OBJS.map((o, k) => k)
+  .sort((a, b) => (CHR_OBJS[b].home.z + 0.5*CHR_OBJS[b].home.x) - (CHR_OBJS[a].home.z + 0.5*CHR_OBJS[a].home.x));
+ANCH.front = [ANCH.front[0],
+  ANCH.front.slice(1).find(k => CHR_OBJS[k].home.distanceTo(CHR_OBJS[ANCH.front[0]].home) > 0.7) ?? ANCH.front[1]];
+const K7 = 2*CHROMS.indexOf(BIG), KX = 2*CHROMS.findIndex(c => c.n === 'X');
+/* bases the last chapter points at: one nucleotide in the middle of the
+   flat stretch, and an A-T and a C-G pair on either side of it */
+const PICK = (function(){
+  const mid = FLAT0 + (NFLAT >> 1);
+  const near = (want, after) => {
+    for(let d=2; d<=5; d++){
+      const i = mid + (after ? d : -d);
+      if(i >= FLAT0 && i < NBP && want.includes(BPS[i].b1)) return i;
+    }
+    for(let d=2; d<=5; d++){
+      const i = mid + (after ? -d : d);
+      if(i >= FLAT0 && i < NBP && want.includes(BPS[i].b1)) return i;
+    }
+    return mid + (after ? 3 : -3);         // the sequence lacks one nearby: point at any pair
+  };
+  return {nuc: mid, at: near('AT', false), cg: near('CG', true)};
+})();
+
+/* =========================================================================
+   THE STORY
+========================================================================= */
+const CH = [
+  {
+    part:'Cell', len:10,
+    shots:[{world:'cell', keys:[[0,'cellWide'],[1,'cellWide'],[7,'cell']]}],
+    cell:{cell:()=>1, nuc:()=>0.5, kary:'home'},
+    title:'Start with a cell',
+    text:'Almost every cell in your body has a <b>nucleus</b>. The nucleus holds the cell\'s <b>genetic material</b>: the instructions for building and running the cell — and for building you.<br><br>Follow those instructions inwards, from the whole cell down to the smallest part of the code.',
+    look:'The blue shapes you can just see inside the nucleus are <b>chromosomes</b>.',
+    scale:'Red blood cells are the exception: they lose their nucleus as they mature.',
+    terms:[['Cell','the basic building block of all living things.'],
+           ['Nucleus','the part of the cell that contains the genetic material.']],
+    key:['cell','nucleus','chrom'],
+    labels:[
+      {text:'Cell', world:'cell', at:()=>[ANCH.cell], dx:-70, dy:60, t0:3},
+      {text:'Cytoplasm', world:'cell', at:()=>[ANCH.cyto], dx:-90, dy:-60, t0:4.2},
+      {text:'Nucleus', world:'cell', at:()=>[ANCH.nucR], dx:120, dy:-70, t0:5.4}
+    ]
+  },
+  {
+    part:'Nucleus', len:12,
+    shots:[{world:'cell', keys:[[0,'cell'],[0.8,'cell'],[5,'nucleus']]}],
+    cell:{cell:t=>1 - 0.72*ss(0.5, 4, t), nuc:t=>lerp(0.5, 0.15, ss(1.5, 4.5, t)), kary:'home'},
+    title:'Inside the nucleus: chromosomes',
+    text:'Inside the nucleus are <b>chromosomes</b>. A human body cell has <b>'+FIG.total+'</b> of them.<br><br>Each chromosome is one very long molecule of <b>DNA</b>, coiled up tightly so that it fits inside the nucleus.',
+    look:'Count them if you like: there are '+FIG.total+'.',
+    scale:'Chromosomes only bunch up into these short, thick X shapes when a cell is about to divide. The rest of the time they are long, thin threads spread through the nucleus — far too thin to see like this.',
+    terms:[['Chromosome','a long, coiled-up molecule of DNA, found in the nucleus.']],
+    key:['nucleus','chrom'],
+    labels:[
+      {text:'Nucleus', world:'cell', at:()=>[ANCH.nucL], dx:-110, dy:-50, t0:5},
+      {text:'Chromosome', world:'cell', at:()=>ANCH.front.map(k => chrPoint(k, 0.3, 1, 0)), dx:120, dy:-40, t0:6.5}
+    ]
+  },
+  {
+    part:'Pairs', len:14,
+    shots:[{world:'cell', keys:[[0,'nucleus'],[1,'nucleus'],[6,'kary']]}],
+    cell:{cell:t=>0.28*(1 - ss(0.5, 3, t)), nuc:t=>0.15*(1 - ss(1, 3, t)), kary:'out'},
+    title:FIG.total+' chromosomes, in '+FIG.kinds+' pairs',
+    text:'Line the chromosomes up by size and they fall into <b>'+FIG.kinds+' pairs</b>. The two chromosomes of a pair are the same size and carry the <b>same genes in the same places</b> — look for the gold band on both chromosomes of pair 7.<br><br>One chromosome of every pair came from your <b>mother</b>, the other from your <b>father</b>.',
+    look:'Pair 23 are the sex chromosomes. This cell is from a female: <b>XX</b>. A male has <b>XY</b> — an X and a much smaller Y.',
+    scale:'Each chromosome is drawn with its length in proportion to the amount of DNA it holds. A picture of a cell\'s chromosomes sorted like this is called a karyotype.',
+    terms:[['Pair of chromosomes','two chromosomes that carry the same genes: one from each parent.']],
+    key:['chrom','band'],
+    labels:[
+      {text:'One pair<span class="sub">same size, same genes</span>', world:'cell',
+       at:()=>[chrPoint(0, 0.02, -1, 1), chrPoint(1, 0.02, 1, 1)], dx:-40, dy:-55, t0:7},
+      {text:'Same gene, same place', cls:'gold', world:'cell',
+       at:()=>[chrPoint(K7, GENE_FRAC, -1, 1), chrPoint(K7+1, GENE_FRAC, 1, 1)], dx:60, dy:40, t0:8.5},
+      {text:'Sex chromosomes: XX', world:'cell',
+       at:()=>[chrPoint(KX, 0.75, -1, 1), chrPoint(KX+1, 0.75, 1, 1)], dx:50, dy:40, t0:10}
+    ]
+  },
+  {
+    part:'Chromosome', len:13,
+    shots:[{world:'cell', keys:[[0,'kary'],[0.6,'kary'],[3.2,'chr7']], until:3.8},
+           {world:'dna', keys:[[3.8,'chromIn'],[4.8,'chromIn'],[8,'chrom']]}],
+    cell:{cell:()=>0, nuc:()=>0, kary:'kary'},
+    dna:{reveal:t=>0.3*L_JOIN*ss(8.5, 12.5, t)},
+    title:'One chromosome',
+    text:'Zoom in on chromosome 7. A chromosome looks solid, but it is made of a single <b>DNA</b> molecule, wound into coils, and those coils wound into more coils.<br><br>It is an X because the DNA has been <b>copied</b>, ready for the cell to divide. The two sides of the X are two <b>identical copies</b>, held together at the waist.',
+    look:'The gold band marks where one particular gene is. Watch it: the DNA is about to unwind out of the chromosome just there.',
+    scale:'Chromosome 7 holds about '+BIG.mb+' million base pairs of DNA. Stretched out, that is about '+FIG.chr7cm+' cm of DNA, packed into a chromosome a few thousandths of a millimetre long.',
+    terms:[['Chromosome','a long molecule of DNA, coiled up. Before a cell divides, each chromosome is copied, giving the X shape.']],
+    key:['chrom','band'],
+    labels:[
+      {text:'Chromosome 7', world:'dna', at:()=>[bigPoint(0.05, -1, 1)], dx:-100, dy:-30, t0:8},
+      {text:'Two identical copies', world:'dna', at:()=>[bigPoint(0.9, -1, 0.6), bigPoint(0.9, 1, 0.6)], dx:-110, dy:50, t0:9},
+      {text:'Gold band:<span class="sub">where one gene is</span>', cls:'gold', world:'dna',
+       at:()=>[bigPoint(GENE_FRAC, -1, 1)], dx:-110, dy:-10, t0:10}
+    ]
+  },
+  {
+    part:'DNA', len:15,
+    shots:[{world:'dna', keys:[[0,'chrom'],[1,'chrom'],[5,'fibre'],[6,'fibre'],[10.5,'helix']]}],
+    dna:{reveal:t=>lerp(0.3*L_JOIN, L_JOIN, ss(0.5, 5, t)) + (L_END - L_JOIN)*ss(5, 10, t)},
+    title:'DNA: a double helix',
+    text:'Unwind the coils and you reach <b>DNA</b> itself. A DNA molecule is made of <b>two strands</b> twisted around each other into a spiral called a <b>double helix</b>.<br><br>DNA is a <b>polymer</b>: each strand is a long chain of small units joined end to end. The strands are held together across the middle, like the rungs of a twisted ladder.',
+    look:'The two blue strands run round the outside of the helix. The coloured rungs joining them across the middle are the <b>bases</b>.',
+    scale:'Not to scale. Going down the picture, the DNA is magnified more and more: the helix at the bottom is drawn '+FIG.magnify+' times wider than where it leaves the chromosome. Real DNA is only '+DNA_WIDTH_NM+' nanometres wide — two millionths of a millimetre — with one twist every '+TURN_BP+' base pairs, as drawn here.',
+    terms:[['DNA','the chemical that genetic material is made of: a polymer of two strands forming a double helix.'],
+           ['Double helix','two strands twisted round each other, like a twisted ladder.']],
+    key:['chrom','A','T','C','G'],
+    labels:[
+      {text:'DNA, coiled up', world:'dna', at:()=>[FIBRE.P[Math.round(0.3*FIB_N)]], dx:90, dy:-40, t0:3, t1:7.2},
+      {text:'Double helix', world:'dna', at:()=>[SHAPE.ax[helixBp(6)]], dx:110, dy:-50, t0:10.5},
+      {text:'Two strands', world:'dna', at:()=>[SHAPE.P1[helixBp(-5)], SHAPE.P2[helixBp(-2)]], dx:-110, dy:-30, t0:11.5},
+      {text:'Bases', world:'dna', at:()=>[SHAPE.M[helixBp(1)]], dx:-120, dy:60, t0:12.5}
+    ]
+  },
+  {
+    part:'Gene', len:12,
+    shots:[{world:'dna', keys:[[0,'helix'],[0.5,'helix'],[3,'gene']]}],
+    dna:{gene:t=>ss(1.5, 3, t)},
+    bracket:{t0:3.2},
+    title:'A gene is a section of DNA',
+    text:'A <b>gene</b> is a small section of DNA on a chromosome. Each gene <b>codes for a particular sequence of amino acids</b>, to make a <b>specific protein</b>.<br><br>The gene marked here is the one under the gold band: the <b>CFTR</b> gene. Its protein sits in the membranes of cells lining the lungs and gut, and lets chloride ions through.',
+    look:'A faulty version of this gene causes <b>cystic fibrosis</b>. Different versions of the same gene are called <b>alleles</b>.',
+    scale:'Drawn far too short. The real CFTR gene is about '+FIG.geneKbp+' 000 base pairs long; this one has '+FIG.geneDrawn+'.',
+    terms:[['Gene','a small section of DNA on a chromosome that codes for a particular sequence of amino acids, to make a specific protein.'],
+           ['Allele','a different version of the same gene.']],
+    key:['chrom','band','A','T','C','G'],
+    labels:[]
+  },
+  {
+    part:'Bases', len:16,
+    shots:[{world:'dna', keys:[[0,'gene'],[1.2,'gene'],[4.5,'ladder']]}],
+    dna:{gene:()=>0.55, flat:t=>ss(2, 6, t), letters:t=>ss(6, 7, t)},
+    hull:{t0:10},
+    title:'Bases: the letters of the code',
+    text:'Lay the end of the helix out flat and it looks like a ladder. Each rung is a pair of <b>bases</b>. There are four bases: <b>A</b>, <b>T</b>, <b>C</b> and <b>G</b>.<br><br>The bases always pair up the same way: <b>A with T</b>, and <b>C with G</b>. These are <b>complementary base pairs</b>. The <b>order</b> of the bases along a strand is the genetic code: in a gene, each group of three bases codes for one amino acid.',
+    look:'Each strand is built from repeating units called <b>nucleotides</b>. One nucleotide is a <b>sugar</b>, a <b>phosphate</b> and one <b>base</b>.',
+    scale:'The order of letters here is made up. Real DNA stays twisted; it is only drawn flat here to read it.',
+    terms:[['Bases','A (adenine), T (thymine), C (cytosine) and G (guanine).'],
+           ['Complementary base pairs','A always pairs with T, and C always pairs with G.'],
+           ['Nucleotide','one repeating unit of DNA: a sugar, a phosphate and a base.']],
+    key:['A','T','C','G','sugar','phosphate'],
+    labels:[
+      {text:'Base pair', world:'dna', at:()=>[SHAPE.M[PICK.at]], dx:130, dy:0, t0:7.5,
+       html:()=>BPS[PICK.at].b1+' pairs with '+BPS[PICK.at].b2},
+      {text:'Base pair', world:'dna', at:()=>[SHAPE.M[PICK.cg]], dx:130, dy:0, t0:8.5,
+       html:()=>BPS[PICK.cg].b1+' pairs with '+BPS[PICK.cg].b2},
+      {text:'Nucleotide', world:'dna', at:()=>[nucleotidePts()[1]], dx:-150, dy:-70, t0:10},
+      {text:'Phosphate', world:'dna', at:()=>[nucleotidePts()[0]], dx:-150, dy:-10, t0:11},
+      {text:'Sugar', world:'dna', at:()=>[nucleotidePts()[1]], dx:-150, dy:30, t0:11.6},
+      {text:'Base', world:'dna', at:()=>[nucleotidePts()[2]], dx:-150, dy:75, t0:12.2}
+    ]
+  },
+  {
+    part:'Genome', len:15,
+    shots:[{world:'dna', keys:[[0,'ladder'],[0.6,'ladder'],[4,'allDna']], until:5},
+           {world:'cell', keys:[[5,'kary'],[7,'kary'],[13,'cellWide']]}],
+    dna:{gene:()=>0.55, flat:()=>1, letters:()=>1},
+    cell:{cell:t=>ss(9, 12.5, t), nuc:t=>0.5*ss(9, 12.5, t), kary:'in'},
+    title:'The genome: all of it',
+    text:'The <b>genome</b> of an organism is the <b>entire genetic material</b> of that organism. The human genome is about <b>'+FIG.genomeBn+' billion</b> base pairs, carrying about <b>'+FIG.genes+'</b> genes, spread across '+FIG.kinds+' chromosomes.<br><br>Your body cells hold two copies — one set of '+FIG.kinds+' from each parent — so one nucleus holds about '+FIG.cellBn+' billion base pairs. Stretched out end to end, the DNA in a single nucleus would be about <b>'+FIG.metres+' metres</b> long.',
+    look:'From biggest to smallest: <b>cell</b> → <b>nucleus</b> → <b>chromosome</b> → <b>DNA</b> → <b>gene</b> → <b>base</b>.',
+    scale:'The whole human genome has been read, base by base (the Human Genome Project, finished in 2003). Knowing it helps scientists find genes linked to diseases, understand inherited disorders, and trace how humans migrated across the world long ago.',
+    terms:[['Genome','the entire genetic material of an organism.']],
+    key:['cell','nucleus','chrom'],
+    labels:[
+      {text:'Genome<span class="sub">all of the genetic material</span>', cls:'big', world:'cell', screen:[0.5, 0.1], t0:7.5}
+    ]
+  }
+];
+
+/* labels that number the pairs, whenever the karyotype is out */
+[2, 3, 7].forEach(ch => {
+  CHROMS.forEach((c, ty) => CH[ch].labels.push({
+    text:c.n, cls:'num', world:'cell', noLine:true, at:()=>[KARY.num[ty]], dx:0, dy:0, t0:0,
+    op:t=>ss(0.85, 1, karyU(2*ty, ch, t))
+  }));
+});
+
+/* the helix's base pairs the DNA chapter points at, counted from the one
+   nearest the camera's aim */
+function helixBp(d){
+  const lh = L_JOIN + 0.5*(L_FLAT - L_JOIN);
+  let i = BPS.findIndex(b => b.l >= lh);
+  return clamp(i + d, 0, NBP-1);
+}
+/* one nucleotide on strand 1: its phosphate, its sugar, its base */
+function nucleotidePts(){
+  const i = PICK.nuc;
+  return [new V3().addVectors(SHAPE.P1[i], SHAPE.P1[i-1]).multiplyScalar(0.5),
+          SHAPE.P1[i].clone(),
+          new V3().addVectors(SHAPE.P1[i], SHAPE.M[i]).multiplyScalar(0.5),
+          SHAPE.M[i].clone()];
+}
+
+const KEYS = {
+  cell:'<div><span class="sq" style="background:'+hexCss(COL.cell)+'"></span>cell</div>',
+  nucleus:'<div><span class="sq" style="background:'+hexCss(COL.nucleus)+'"></span>nucleus</div>',
+  chrom:'<div><span class="sq" style="background:'+hexCss(COL.chrom)+'"></span>DNA (chromosomes and strands)</div>',
+  band:'<div><span class="sq" style="background:'+hexCss(COL.band)+'"></span>the CFTR gene</div>',
+  sugar:'<div><span class="dot" style="background:'+hexCss(COL.sugar)+'"></span>sugar</div>',
+  phosphate:'<div><span class="dot" style="background:'+hexCss(COL.phosphate)+'"></span>phosphate</div>'
+};
+'ATCG'.split('').forEach(L => {
+  KEYS[L] = '<div><span class="sq" style="background:'+hexCss(COL[L])+'"></span><b>'+L+'</b>'+BASE_NAME[L]+'</div>';
+});
+
+/* =========================================================================
+   STATE as a function of (chapter, t)
+========================================================================= */
+function karyU(k, ch, t){
+  const mode = CH[ch].cell ? CH[ch].cell.kary : 'kary';
+  const o = CHR_OBJS[k];
+  if(mode === 'home') return 0;
+  if(mode === 'kary') return 1;
+  if(mode === 'out')  return ss(0, 2.4, t - 1.0 - 3.0*o.order);
+  if(mode === 'in')   return 1 - ss(0, 2.4, t - 6.0 - 3.0*o.order);
+  return 0;
+}
+const QI = new THREE.Quaternion();
+const _hp = new V3(), _b1 = new V3(), _b2 = new V3();
+function bez(p0, p1, p2, p3, u, out){
+  const v = 1 - u;
+  return out.set(0,0,0).addScaledVector(p0, v*v*v).addScaledVector(p1, 3*v*v*u)
+    .addScaledVector(p2, 3*v*u*u).addScaledVector(p3, u*u*u);
+}
+function updateCell(ch, t){
+  const C = CH[ch].cell || {cell:()=>0, nuc:()=>0};
+  const cOp = C.cell(t), nOp = C.nuc(t);
+  cellFrontMat.opacity = 0.5*cOp; cellBackMat.opacity = 0.55*cOp; erMat.opacity = cOp;
+  cellFront.visible = cellBack.visible = erGroup.visible = cOp > 0.005;
+  nucMat.opacity = nOp; nucleus.visible = nOp > 0.005;
+  CHR_OBJS.forEach((o, k) => {
+    const e = karyU(k, ch, t);
+    _hp.set(Math.sin(0.7*t + o.drift[0]), Math.sin(0.6*t + o.drift[1]), Math.sin(0.5*t + o.drift[2]))
+       .multiplyScalar(0.025).add(o.home);
+    _b1.copy(_hp).multiplyScalar(1.4).add(new V3(0, 0, 1.6));
+    _b2.copy(o.target).add(new V3(0, 0, 1.8));
+    bez(_hp, _b1, _b2, o.target, e, o.g.position);
+    o.g.quaternion.copy(o.homeQ).slerp(QI, e);
+    o.g.scale.setScalar(lerp(S_NUC, 1, e));
+  });
+}
+function updateDna(ch, t){
+  const D = CH[ch].dna || {};
+  const R = D.reveal ? D.reveal(t) : (ch < 3 ? 0 : L_END);
+  dnaShape(D.flat ? D.flat(t) : 0);
+  revealDna(R);
+  const g = D.gene ? D.gene(t) : 0;
+  sleeveMat.opacity = 0.22*g; sleeve.visible = g > 0.005;
+  const lo = D.letters ? D.letters(t) : 0;
+  'ATCG'.split('').forEach(L => { LETTER_MAT[L].opacity = lo; });
+}
+
+/* ------------------------------------------------------------- the camera */
+const FADE = 0.32;
+function lerpCam(a, b, u){
+  return {
+    dist: Math.exp(lerp(Math.log(a.dist), Math.log(b.dist), u)),
+    az: lerp(a.az, b.az, u), el: lerp(a.el, b.el, u),
+    look:[lerp(a.look[0],b.look[0],u), lerp(a.look[1],b.look[1],u), lerp(a.look[2],b.look[2],u)]
+  };
+}
+function shotAt(C, t){
+  let i = 0;
+  while(i < C.shots.length-1 && t >= C.shots[i].until) i++;
+  const sh = C.shots[i], ks = sh.keys;
+  const start = i ? C.shots[i-1].until : 0, end = i < C.shots.length-1 ? sh.until : Infinity;
+  let cam;
+  if(t <= ks[0][0]) cam = CAM[ks[0][1]];
+  else {
+    let j = 0;
+    while(j < ks.length-1 && t >= ks[j+1][0]) j++;
+    cam = j === ks.length-1 ? CAM[ks[j][1]] : lerpCam(CAM[ks[j][1]], CAM[ks[j+1][1]], ss(ks[j][0], ks[j+1][0], t));
+  }
+  let fade = 1 - clamp((t - start)/FADE, 0, 1);
+  if(isFinite(end)) fade = Math.max(fade, 1 - clamp((end - t)/FADE, 0, 1));
+  return {world:sh.world, cam, fade};
+}
+let dragAz = 0, dragEl = 0, zoomAdj = 0;
+function applyCamera(c){
+  const az = c.az + dragAz, el = clamp(c.el + dragEl, -1.2, 1.2);
+  const d = Math.max(0.2, c.dist*Math.exp(zoomAdj));
+  camera.position.set(
+    c.look[0] + d*Math.cos(el)*Math.sin(az),
+    c.look[1] + d*Math.sin(el),
+    c.look[2] + d*Math.cos(el)*Math.cos(az));
+  camera.lookAt(c.look[0], c.look[1], c.look[2]);
+  camera.near = d/200; camera.far = d*30 + 100;
+  camera.updateProjectionMatrix();
+}
+
+/* ---------------------------------------------------- labels with leaders */
+const labelLayer = document.getElementById('labels');
+const linesSvg = document.getElementById('lines');
+const ALL_LABELS = [];
+CH.forEach((C, ch) => C.labels.forEach(L => {
+  L.ch = ch;
+  L.el = document.createElement('div');
+  L.el.className = 'lab' + (L.cls ? ' ' + L.cls : '');
+  L.el.innerHTML = L.html ? L.html() : L.text;
+  labelLayer.appendChild(L.el);
+  ALL_LABELS.push(L);
+}));
+function measureLabels(){
+  ALL_LABELS.forEach(L => { L.w = L.el.offsetWidth || 0; L.h = L.el.offsetHeight || 0; });
+}
+let VW = 1, VH = 1;
+const _pv = new V3();
+function toScreen(v){
+  _pv.copy(v).project(camera);
+  return {x:(_pv.x + 1)/2*VW, y:(1 - _pv.y)/2*VH, z:_pv.z, ok:_pv.z > -1 && _pv.z < 1};
+}
+function labelOpacity(L, t){
+  return ss(L.t0, L.t0 + 0.6, t)*(L.t1 ? 1 - ss(L.t1 - 0.5, L.t1, t) : 1)*(L.op ? L.op(t) : 1);
+}
+const LAYOUT = [];       // where each visible label was put this frame (read by the tests)
+function drawOverlay(ch, t, world){
+  let svg = '';
+  LAYOUT.length = 0;
+  const C = CH[ch];
+  ALL_LABELS.forEach(L => {
+    const op = L.ch === ch && L.world === world ? labelOpacity(L, t) : 0;
+    if(op < 0.01){ if(L.shown){ L.el.style.opacity = 0; L.shown = false; } return; }
+    L.shown = true;
+    let left, top, pts = [];
+    if(L.screen){
+      left = L.screen[0]*VW - L.w/2; top = L.screen[1]*VH - L.h/2;
+    } else {
+      pts = L.at().map(toScreen).filter(p => p.ok);
+      if(!pts.length){ L.el.style.opacity = 0; return; }
+      const ax = pts.reduce((s, p) => s + p.x, 0)/pts.length, ay = pts.reduce((s, p) => s + p.y, 0)/pts.length;
+      const bx = ax + L.dx, by = ay + L.dy;
+      left = L.noLine ? bx - L.w/2 : (L.dx >= 0 ? bx : bx - L.w);
+      top = by - L.h/2;
+    }
+    left = clamp(left, 8, Math.max(8, VW - L.w - 8));
+    top  = clamp(top, 8, Math.max(8, VH - L.h - 8));
+    L.el.style.opacity = op.toFixed(3);
+    L.el.style.transform = 'translate(' + left.toFixed(1) + 'px,' + top.toFixed(1) + 'px)';
+    LAYOUT.push({L, left, top, pts});
+    if(L.noLine || L.screen) return;
+    const ex = L.dx >= 0 ? left - 4 : left + L.w + 4, ey = top + L.h/2;
+    pts.forEach(p => {
+      svg += '<line x1="'+ex.toFixed(1)+'" y1="'+ey.toFixed(1)+'" x2="'+p.x.toFixed(1)+'" y2="'+p.y.toFixed(1)+
+             '" stroke="rgba(232,238,247,'+(0.8*op).toFixed(3)+'" stroke-width="1.3"/>'+
+             '<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="2.8" fill="rgba(255,255,255,'+(0.9*op).toFixed(3)+')"/>';
+    });
+  });
+  if(world === 'dna' && C.bracket) svg += geneBracket(t, C.bracket.t0);
+  if(world === 'dna' && C.hull) svg += nucleotideHull(t, C.hull.t0);
+  linesSvg.innerHTML = svg;
+}
+/* the gene's bracket, as in the textbook figure: two ticks down from the ends
+   of the gene, joined, and the word under it */
+const BRACKET = {};
+function geneBracket(t, t0){
+  const op = ss(t0, t0 + 0.7, t);
+  if(op < 0.01) return '';
+  const gA = BPS[GENE_BP.g0], gB = BPS[GENE_BP.g1];
+  const a = toScreen(axisAt(gA.l).p), b = toScreen(axisAt(gB.l).p);
+  const fa = axisAt(gA.l), fb = axisAt(gB.l);
+  /* how far below the helix: its radius on screen, plus a margin */
+  const ra = Math.abs(toScreen(fa.p.clone().addScaledVector(camera.up, 1.6*gA.s)).y - a.y);
+  const rb = Math.abs(toScreen(fb.p.clone().addScaledVector(camera.up, 1.6*gB.s)).y - b.y);
+  const base = Math.max(a.y + ra, b.y + rb) + 16;
+  const col = 'rgba(255,210,119,'+op.toFixed(3)+')';
+  const mx = (a.x + b.x)/2;
+  Object.assign(BRACKET, {a, b, base, mx});
+  return '<polyline points="'+a.x.toFixed(1)+','+(a.y + ra).toFixed(1)+' '+a.x.toFixed(1)+','+base.toFixed(1)+' '+
+         b.x.toFixed(1)+','+base.toFixed(1)+' '+b.x.toFixed(1)+','+(b.y + rb).toFixed(1)+
+         '" fill="none" stroke="'+col+'" stroke-width="2"/>'+
+         '<line x1="'+mx.toFixed(1)+'" y1="'+base.toFixed(1)+'" x2="'+mx.toFixed(1)+'" y2="'+(base + 14).toFixed(1)+'" stroke="'+col+'" stroke-width="2"/>'+
+         '<text x="'+mx.toFixed(1)+'" y="'+(base + 38).toFixed(1)+'" text-anchor="middle" fill="'+col+'" '+
+         'style="font:700 20px ui-sans-serif,Segoe UI,Arial,sans-serif;paint-order:stroke;stroke:rgba(8,11,17,.85);stroke-width:4px">Gene</text>'+
+         '<text x="'+mx.toFixed(1)+'" y="'+(base + 58).toFixed(1)+'" text-anchor="middle" fill="rgba(220,228,240,'+op.toFixed(3)+')" '+
+         'style="font:500 13px ui-sans-serif,Segoe UI,Arial,sans-serif;paint-order:stroke;stroke:rgba(8,11,17,.85);stroke-width:4px">the CFTR gene, shortened</text>';
+}
+/* a dashed outline round one nucleotide */
+function nucleotideHull(t, t0){
+  const op = ss(t0, t0 + 0.7, t);
+  if(op < 0.01) return '';
+  const s = BPS[PICK.nuc].s;
+  const P = nucleotidePts();
+  const pad = Math.abs(toScreen(P[1].clone().addScaledVector(camera.up, 0.45*s)).y - toScreen(P[1]).y);
+  const pts = [];
+  P.forEach(p => {
+    const q = toScreen(p);
+    for(let k=0;k<16;k++) pts.push([q.x + pad*Math.cos(k*Math.PI/8), q.y + pad*Math.sin(k*Math.PI/8)]);
+  });
+  pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o, a, b) => (a[0]-o[0])*(b[1]-o[1]) - (a[1]-o[1])*(b[0]-o[0]);
+  const lower = [], upper = [];
+  pts.forEach(p => { while(lower.length >= 2 && cross(lower[lower.length-2], lower[lower.length-1], p) <= 0) lower.pop(); lower.push(p); });
+  for(let i=pts.length-1;i>=0;i--){ const p = pts[i]; while(upper.length >= 2 && cross(upper[upper.length-2], upper[upper.length-1], p) <= 0) upper.pop(); upper.push(p); }
+  const hull = lower.slice(0, -1).concat(upper.slice(0, -1));
+  return '<polygon points="'+hull.map(p => p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')+
+         '" fill="rgba(255,255,255,'+(0.06*op).toFixed(3)+')" stroke="rgba(255,255,255,'+(0.85*op).toFixed(3)+
+         '" stroke-width="1.6" stroke-dasharray="6 4"/>';
+}
+
+/* ---------------------------------------------------------------- a frame */
+let cur = 0;
+function frame(t){
+  const C = CH[cur];
+  const shot = shotAt(C, t);
+  applyCamera(shot.cam);
+  fadeEl.style.opacity = shot.fade.toFixed(3);
+  W1.visible = shot.world === 'cell';
+  W2.visible = shot.world === 'dna';
+  if(W1.visible) updateCell(cur, t);
+  if(W2.visible) updateDna(cur, t);
+  scene.updateMatrixWorld();
+  camera.updateMatrixWorld();
+  drawOverlay(cur, t, shot.world);
+  renderer.render(scene, camera);
+  return shot;
+}
+
+/* --------------------------------------------------------------- chapters */
+let chStart = null;
+function enterChapter(i){
+  cur = i; chStart = null;
+  dragAz = dragEl = zoomAdj = 0;
+  const C = CH[i];
+  document.getElementById('sStep').textContent = (i+1)+' / '+CH.length+' · '+C.part;
+  document.getElementById('sTitle').innerHTML = C.title;
+  document.getElementById('sText').innerHTML = C.text;
+  const lk = document.getElementById('sLook');
+  lk.innerHTML = C.look ? 'Look for: '+C.look : ''; lk.hidden = !C.look;
+  const sc = document.getElementById('sScale');
+  sc.textContent = C.scale || ''; sc.hidden = !C.scale;
+  const tm = document.getElementById('sTerms');
+  tm.innerHTML = C.terms.length
+    ? '<div class="hd">Key words</div>' + C.terms.map(x => '<dt>'+x[0]+'</dt><dd>'+x[1]+'</dd>').join('')
+    : '';
+  tm.hidden = !C.terms.length;
+  document.getElementById('key').innerHTML = C.key.map(k => KEYS[k]).join('');
+  document.getElementById('back').disabled = i === 0;
+  document.getElementById('next').disabled = i === CH.length-1;
+  document.querySelectorAll('#dots i').forEach((d, k) => d.classList.toggle('on', k === i));
+  ALL_LABELS.forEach(L => { L.el.style.opacity = 0; L.shown = false; });
+}
+function animate(now){
+  requestAnimationFrame(animate);
+  if(chStart === null) chStart = now;
+  frame((now - chStart)/1000);
+}
+
+/* ------------------------------------------------------------------ wiring */
+const cv = renderer.domElement;
+cv.style.touchAction = 'none';
+cv.style.cursor = 'grab';
+let dragging = false, lastX = 0, lastY = 0;
+cv.addEventListener('pointerdown', e => {
+  dragging = true; lastX = e.clientX; lastY = e.clientY;
+  cv.style.cursor = 'grabbing';
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove', e => {
+  if(!dragging) return;
+  dragAz -= (e.clientX - lastX)*0.006;
+  dragEl = clamp(dragEl + (e.clientY - lastY)*0.004, -0.9, 0.9);
+  lastX = e.clientX; lastY = e.clientY;
+});
+['pointerup','pointercancel'].forEach(ev =>
+  cv.addEventListener(ev, () => { dragging = false; cv.style.cursor = 'grab'; }));
+cv.addEventListener('wheel', e => {
+  e.preventDefault();
+  zoomAdj = clamp(zoomAdj + e.deltaY*0.001, -1.2, 1.2);
+}, {passive:false});
+
+const dotsEl = document.getElementById('dots');
+CH.forEach((c, i) => {
+  const d = document.createElement('i');
+  d.title = c.part;
+  d.addEventListener('click', () => enterChapter(i));
+  dotsEl.appendChild(d);
+});
+document.getElementById('next').addEventListener('click', () => { if(cur < CH.length-1) enterChapter(cur+1); });
+document.getElementById('back').addEventListener('click', () => { if(cur > 0) enterChapter(cur-1); });
+document.getElementById('replay').addEventListener('click', () => enterChapter(cur));
+window.addEventListener('keydown', e => {
+  if(e.key === 'ArrowRight' && cur < CH.length-1) enterChapter(cur+1);
+  if(e.key === 'ArrowLeft'  && cur > 0) enterChapter(cur-1);
+});
+
+function resize(){
+  VW = stage.clientWidth || window.innerWidth;
+  VH = stage.clientHeight || window.innerHeight;
+  renderer.setSize(VW, VH);
+  camera.aspect = VW/VH;
+  camera.fov = (VW/VH < 1.1) ? 58 : 42;
+  camera.updateProjectionMatrix();
+  buildCams();
+  measureLabels();
+}
+window.addEventListener('resize', resize);
+resize();
+
+enterChapter(0);
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>
