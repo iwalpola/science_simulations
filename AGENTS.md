@@ -320,6 +320,15 @@ particular to it:
 - **The phase names toggle** (prophase … telophase, for Edexcel/OCR) adds a
   banner, a panel note and a key word; it changes no geometry. Captions in
   both modes go through the number check.
+- **The cell's own parts come from `cell_biology/organelles.js`** —
+  membrane, cytoplasm, nuclear envelope, mitochondria (with cristae) and
+  ribosomes — loaded with `<script src="../cell_biology/organelles.js">` as
+  the cell_biology pages load it, so a cell looks the same in both folders.
+  Both this page and the meiosis page therefore need that file beside them;
+  their tests load it from the same `src` and check the materials are its.
+  `COL` reads those colours off the materials, so the key and the pie chart
+  follow. Clone a shared material (`ORG.envelope.clone()`) wherever one copy
+  fades on its own.
 - **Frames are cheap only because** the reshaped meshes have
   `frustumCulled = false` and skip `computeBoundingSphere()` (it was most of
   a 35 ms frame), and `writeLathe`/`updateCell` skip work when nothing moved.

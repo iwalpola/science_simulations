@@ -183,6 +183,7 @@
 <div id="key"></div>
 <div class="hint">drag to orbit · scroll to zoom</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="../cell_biology/organelles.js"></script>
 <script>
 /* ===========================================================================
    MITOSIS AND THE CELL CYCLE — the 3D story
@@ -232,6 +233,7 @@ const clamp = (v,a,b) => v<a?a:(v>b?b:v);
 const lerp  = (a,b,u) => a + (b-a)*u;
 const ss = (a,b,x) => { const u = clamp((x-a)/(b-a),0,1); return u*u*(3-2*u); };
 const hexCss = n => '#'+n.toString(16).padStart(6,'0');
+const rgbaCss = (n, a) => 'rgba('+(n >> 16)+','+(n >> 8 & 255)+','+(n & 255)+','+a+')';
 function rng(seed){
   let a = seed >>> 0;
   return function(){
@@ -271,11 +273,17 @@ const CHROMS = [
 ];
 CHROMS.forEach(c => { c.pl = c.p*c.L; c.ql = c.L - c.pl; });
 
+/* The membrane, cytoplasm, nuclear envelope, mitochondria and ribosomes look
+   as they do in every cell in cell_biology/: their materials come from
+   ../cell_biology/organelles.js, and their colours here are read off those. */
+const ORG = Organelles.materials;
+const cellFrontMat = Organelles.membraneMaterial({opacity:0.3, side:THREE.FrontSide});
+const cellBackMat  = Organelles.cytoplasmMaterial({opacity:0.25, side:THREE.BackSide});
 const COL = {
-  cell:0xc4b11c, cellIn:0x7d6f0c, nucleus:0xe6e0a0,
+  cell:cellFrontMat.color.getHex(), cyto:cellBackMat.color.getHex(), nucleus:ORG.envelope.color.getHex(),
   father:0x3159c8, mother:0xd23a5a,
   fibre:0xd5ecdf, pole:0xeaf7ee,
-  mito:0xe0847f, ribo:0x6a2f8a
+  mito:ORG.mitochondrion.color.getHex(), ribo:ORG.ribosome.color.getHex()
 };
 
 /* sizes, in scene units */
@@ -589,10 +597,6 @@ function writeLathe(g, S){
   g.attributes.normal.needsUpdate = true;
 }
 
-const cellFrontMat = new THREE.MeshStandardMaterial({color:COL.cell, roughness:0.55, metalness:0,
-  transparent:true, opacity:0.42, depthWrite:false, envMapIntensity:0.35});
-const cellBackMat = new THREE.MeshStandardMaterial({color:COL.cellIn, roughness:0.8, metalness:0,
-  transparent:true, opacity:0.5, depthWrite:false, side:THREE.BackSide, envMapIntensity:0.2});
 const cellGeo = makeLathe(110, 72);
 const cellBack = new THREE.Mesh(cellGeo, cellBackMat);   cellBack.renderOrder = 1;
 const cellFront = new THREE.Mesh(cellGeo, cellFrontMat); cellFront.renderOrder = 3;
@@ -630,8 +634,7 @@ function makeEnvelope(seed){
   g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(dir.length*3), 3));
   g.setAttribute('normal',   new THREE.BufferAttribute(new Float32Array(dir.length*3), 3));
   g.setIndex(idx);
-  const mat = new THREE.MeshStandardMaterial({color:COL.nucleus, roughness:0.35, metalness:0,
-    transparent:true, opacity:0.45, depthWrite:false, side:THREE.DoubleSide, envMapIntensity:0.5});
+  const mat = ORG.envelope.clone();         // each fades on its own
   const mesh = new THREE.Mesh(g, mat);
   mesh.renderOrder = 2;
   mesh.frustumCulled = false;
@@ -802,12 +805,13 @@ function makeOrganelles(n, seed, rMin, rMax, born){
 const MITO = makeOrganelles(N_MITO, 7, 0.62, 0.88, i => [2 + 0.85*i, 3.6 + 0.85*i]);
 const RIBO = makeOrganelles(N_RIBO, 8, 0.5, 0.92, (i, rnd) => { const a = 1 + 11.5*rnd(); return [a, a + 0.8]; });
 RIBO.forEach(o => { o.parent = -1; });      // ribosomes are made, not split
-const mitoMat = new THREE.MeshStandardMaterial({color:COL.mito, roughness:0.5, metalness:0, envMapIntensity:0.35});
-const riboMat = new THREE.MeshStandardMaterial({color:COL.ribo, roughness:0.6, metalness:0, envMapIntensity:0.3});
-const mitoMesh = new THREE.InstancedMesh(SPH, mitoMat, MITO.length);
-const riboMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 8, 6), riboMat, RIBO.length);
-W1.add(mitoMesh, riboMesh);
-const MITO_S = new V3(0.42, 0.16, 0.16), RIBO_S = 0.06;
+/* a mitochondrion is organelles.js's own, cristae and all; each is turned
+   about its long axis by a different amount so the folds do not line up */
+const makeMito = Organelles.mitochondrionMaker({length:0.42, width:0.16});
+MITO.forEach((o, i) => { o.mesh = makeMito(2.4*i); W1.add(o.mesh); });
+const riboMesh = new THREE.InstancedMesh(Organelles.ribosomeGeometry(1), ORG.ribosome, RIBO.length);
+W1.add(riboMesh);
+const RIBO_S = 0.06;
 
 /* =========================================================================
    WORLD 2: the tissue. The same division, simplified -- membrane, nucleus,
@@ -843,8 +847,7 @@ for(let i=0;i<N_SLOT;i++){
   g.add(back, front);
   W2.add(g);
   const nuc = [0, 1].map(() => {
-    const m = new THREE.Mesh(nucGeo, new THREE.MeshStandardMaterial({color:COL.nucleus, roughness:0.35, metalness:0,
-      transparent:true, opacity:0.45, depthWrite:false, envMapIntensity:0.5}));
+    const m = new THREE.Mesh(nucGeo, Object.assign(ORG.envelope.clone(), {side:THREE.FrontSide}));
     m.renderOrder = 2; W2.add(m); return m;
   });
   SLOTS.push({g, geo, nuc});
@@ -1078,8 +1081,9 @@ function updateOrganelles(){
       o.pos.lerpVectors(_tp, o.pos, u);
     }
     keepInside(o.pos, o.side, S, 0.38);
-    const sc = o.born && u <= 0 ? 0 : 1;
-    mitoMesh.setMatrixAt(i, _m4.compose(o.pos, o.quat, _sc.copy(MITO_S).multiplyScalar(sc)));
+    o.mesh.visible = !(o.born && u <= 0);
+    o.mesh.position.copy(o.pos);
+    o.mesh.quaternion.copy(o.quat);
   });
   RIBO.forEach((o, i) => {
     orgPlace(o, o.pos);
@@ -1087,7 +1091,6 @@ function updateOrganelles(){
     const sc = RIBO_S*bornAt(o);
     riboMesh.setMatrixAt(i, _m4.compose(o.pos, o.quat, _sc.set(sc, sc, sc)));
   });
-  mitoMesh.instanceMatrix.needsUpdate = true;
   riboMesh.instanceMatrix.needsUpdate = true;
 }
 let lastT = null;
@@ -1320,7 +1323,8 @@ const CH = [
 ];
 
 const KEYS = {
-  cell:'<div><span class="sq" style="background:'+hexCss(COL.cell)+'"></span>cell membrane and cytoplasm</div>',
+  cell:'<div><span class="sq" style="background:'+hexCss(COL.cell)+'"></span>cell membrane</div>'+
+       '<div><span class="sq" style="background:'+hexCss(COL.cyto)+'"></span>cytoplasm</div>',
   nucleus:'<div><span class="sq" style="background:'+hexCss(COL.nucleus)+'"></span>nucleus</div>',
   mother:'<div><span class="sq" style="background:'+hexCss(COL.mother)+'"></span>chromosome from the mother</div>',
   father:'<div><span class="sq" style="background:'+hexCss(COL.father)+'"></span>chromosome from the father</div>',
@@ -1460,22 +1464,22 @@ function slicePath(cx, cy, r, a0, a1){
 /* the pictures attached to the slices, drawn in a 100 x 100 box */
 const PIC = {
   inter:() =>
-    '<circle r="46" fill="rgba(196,177,28,.22)" stroke="#c4b11c" stroke-width="3"/>'+
-    '<circle r="19" fill="rgba(230,224,160,.3)" stroke="#e6e0a0" stroke-width="2.5"/>'+
+    '<circle r="46" fill="'+rgbaCss(COL.cyto, .3)+'" stroke="'+hexCss(COL.cell)+'" stroke-width="3"/>'+
+    '<circle r="19" fill="'+rgbaCss(COL.nucleus, .3)+'" stroke="'+hexCss(COL.nucleus)+'" stroke-width="2.5"/>'+
     '<path d="M-12 -5 q4 -9 8 -2 t9 1 t6 6" fill="none" stroke="'+hexCss(COL.father)+'" stroke-width="2.6" stroke-linecap="round"/>'+
     '<path d="M-11 6 q5 6 9 0 t9 -2 t5 -7" fill="none" stroke="'+hexCss(COL.mother)+'" stroke-width="2.6" stroke-linecap="round"/>'+
     [[27,-20,-25],[-28,18,20],[16,31,8],[-22,-27,-40]].map(m =>
       '<ellipse cx="'+m[0]+'" cy="'+m[1]+'" rx="8" ry="3.4" transform="rotate('+m[2]+' '+m[0]+' '+m[1]+')" fill="'+hexCss(COL.mito)+'"/>').join(''),
   mitosis:() =>
-    '<circle r="46" fill="rgba(196,177,28,.22)" stroke="#c4b11c" stroke-width="3"/>'+
+    '<circle r="46" fill="'+rgbaCss(COL.cyto, .3)+'" stroke="'+hexCss(COL.cell)+'" stroke-width="3"/>'+
     [-24,-8,8,24].map((y, i) =>
       '<path d="M-33 0 L-3 '+y+' M33 0 L3 '+y+'" stroke="'+hexCss(COL.fibre)+'" stroke-width="1.2" opacity=".75"/>'+
       '<path d="M-6 '+(y-6)+' L6 '+(y+6)+' M-6 '+(y+6)+' L6 '+(y-6)+'" stroke="'+hexCss(i % 2 ? COL.father : COL.mother)+'" stroke-width="3.4" stroke-linecap="round"/>').join('')+
     '<circle cx="-34" r="2.6" fill="'+hexCss(COL.pole)+'"/><circle cx="34" r="2.6" fill="'+hexCss(COL.pole)+'"/>',
   cyto:() =>
-    '<path d="M0 -9.6 A24 24 0 1 0 0 9.6 A24 24 0 1 0 0 -9.6 Z" fill="rgba(196,177,28,.22)" stroke="#c4b11c" stroke-width="3"/>'+
+    '<path d="M0 -9.6 A24 24 0 1 0 0 9.6 A24 24 0 1 0 0 -9.6 Z" fill="'+rgbaCss(COL.cyto, .3)+'" stroke="'+hexCss(COL.cell)+'" stroke-width="3"/>'+
     [-24, 24].map(x =>
-      '<circle cx="'+x+'" r="9" fill="rgba(230,224,160,.3)" stroke="#e6e0a0" stroke-width="2"/>'+
+      '<circle cx="'+x+'" r="9" fill="'+rgbaCss(COL.nucleus, .3)+'" stroke="'+hexCss(COL.nucleus)+'" stroke-width="2"/>'+
       '<path d="M'+(x-5)+' -2 q3 -5 6 0 t5 1" fill="none" stroke="'+hexCss(COL.father)+'" stroke-width="2" stroke-linecap="round"/>'+
       '<path d="M'+(x-4)+' 3 q3 4 6 0 t4 -2" fill="none" stroke="'+hexCss(COL.mother)+'" stroke-width="2" stroke-linecap="round"/>').join('')
 };
@@ -1540,7 +1544,7 @@ function pieSvg(ch, t, T){
 
 /* how see-through the membrane and the nuclei are: they fade while the
    camera is looking at what is inside them, as in cell-to-dna-3d-story.html */
-const MEM = 0.42;
+const MEM = 0.3;
 function applySkin(C, t){
   const m = C.mem ? C.mem(t) : 1, n = C.nuc ? C.nuc(t) : 1;
   cellFrontMat.opacity = MEM*m;

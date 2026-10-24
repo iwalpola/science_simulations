@@ -80,6 +80,16 @@ function loadThree(src){
   return null;
 }
 
+/* the shared organelles (../cell_biology/organelles.js), read out of the
+   page's own <script src> like three.js, so the two cannot drift */
+function loadOrganelles(THREE, html){
+  const m = html.match(/<script src="([^"]*organelles\.js)"><\/script>/);
+  if(!m) return undefined;
+  const win = {};
+  new Function('THREE', 'window', read(m[1]))(THREE, win);
+  return win.Organelles;
+}
+
 /* ------------------------------------------------------- just enough DOM */
 function makeDom(){
   const els = new Map();
@@ -126,10 +136,11 @@ function run(THREE, html){
     'tissueAt','TS','LAY','SLOTS','centromere','OFF0','ALL_LABELS','LAYOUT','toScreen','VW','VH','W1','W2','HUMAN','copiedAt','ORIG'].join(',');
   const js = html.match(/<script>([\s\S]*?)<\/script>/)[1];
   const win = {addEventListener(){}, innerWidth:1280, innerHeight:720, devicePixelRatio:1};
+  const ORGS = loadOrganelles(THREE, html);
   let S;
   try {
-    S = new Function('THREE','document','window','requestAnimationFrame','performance',
-      js + '\nreturn {' + expose + '};')(THREE, dom, win, () => 0, {now(){ return 0; }});
+    S = new Function('THREE','Organelles','document','window','requestAnimationFrame','performance',
+      js + '\nreturn {' + expose + '};')(THREE, ORGS, dom, win, () => 0, {now(){ return 0; }});
   } catch(e){
     chk(false, 'the page threw while loading: ' + e.message);
     console.log((e.stack || '').split('\n').slice(0, 5).join('\n'));
@@ -148,6 +159,20 @@ function run(THREE, html){
   }
   const enter = i => { S.enterChapter(i); curCh = i; };
   const inside = (p, St, margin) => S.cellSdf(p.x, Math.hypot(p.y, p.z), St) < -(margin || 0);
+
+  /* the cell is drawn with cell_biology/organelles.js, so it looks as it does
+     in every model there (the page linearises colours, so compare that way) */
+  section('the organelles are the ones in cell_biology/organelles.js');
+  chk(!!ORGS, 'the page does not load ../cell_biology/organelles.js');
+  if(ORGS){
+    const lin = m => m.color.clone().convertSRGBToLinear().getHex();
+    chk(S.MITO.every(o => o.mesh && o.mesh.material === ORGS.materials.mitochondrion &&
+      o.mesh.children.some(c => c.material === ORGS.materials.cristae)), "a mitochondrion is not organelles.js's, cristae and all");
+    chk(S.ENV.every(E => E.mat.color.getHex() === lin(ORGS.materials.envelope)), "a nuclear envelope is not organelles.js's colour");
+    const ribo = [];
+    S.W1.traverse(o => { if(o.material === ORGS.materials.ribosome) ribo.push(o); });
+    chk(ribo.length > 0, "the ribosomes are not organelles.js's");
+  }
 
   /* ---------------------------------------------------------- every frame */
   section('every frame of every chapter');
@@ -168,6 +193,7 @@ function run(THREE, html){
           if(Math.round(t*30) % 15 === 0){
             S.scene.traverse(o => {
               if(!o.isMesh || !o.visible || !o.geometry.attributes.position) return;
+              if(![o.position.x, o.position.y, o.position.z].every(isFinite)){ badGeo++; return; }
               const a = o.geometry.attributes.position.array;
               for(let i=0;i<a.length;i+=97) if(!isFinite(a[i])){ badGeo++; break; }
             });
@@ -179,7 +205,7 @@ function run(THREE, html){
         continue;
       }
       chk(bad === 0, `chapter ${ch}: the camera went non-finite on ${bad} frames`);
-      chk(badGeo === 0, `chapter ${ch}: ${badGeo} meshes have non-finite vertices`);
+      chk(badGeo === 0, `chapter ${ch}: ${badGeo} meshes have non-finite vertices or positions`);
       chk(S.renderer.__renders > before, `chapter ${ch} drew nothing`);
       for(const m of instanced){
         const a = m.instanceMatrix.array;

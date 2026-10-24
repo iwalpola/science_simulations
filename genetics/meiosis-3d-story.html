@@ -173,6 +173,7 @@
 <div id="key"></div>
 <div class="hint">drag to orbit · scroll to zoom</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="../cell_biology/organelles.js"></script>
 <script>
 /* ===========================================================================
    MEIOSIS AND FERTILISATION — the 3D story
@@ -217,6 +218,7 @@ const clamp = (v,a,b) => v<a?a:(v>b?b:v);
 const lerp  = (a,b,u) => a + (b-a)*u;
 const ss = (a,b,x) => { const u = clamp((x-a)/(b-a),0,1); return u*u*(3-2*u); };
 const hexCss = n => '#'+n.toString(16).padStart(6,'0');
+const rgbaCss = (n, a) => 'rgba('+(n >> 16)+','+(n >> 8 & 255)+','+(n & 255)+','+a+')';
 function rng(seed){
   let a = seed >>> 0;
   return function(){
@@ -257,10 +259,16 @@ const EGG = [
    a sperm's head is about 5 micrometres long */
 const SIZE_UM = {egg:100, spermHead:5};
 
+/* The membrane, cytoplasm, nuclear envelope and mitochondria look as they do
+   in every cell in cell_biology/: their materials come from
+   ../cell_biology/organelles.js, and their colours here are read off those. */
+const ORG = Organelles.materials;
+const cellFrontMat = Organelles.membraneMaterial({opacity:0.3, side:THREE.FrontSide});
+const cellBackMat  = Organelles.cytoplasmMaterial({opacity:0.25, side:THREE.BackSide});
 const COL = {
-  cell:0xc4b11c, cellIn:0x7d6f0c, nucleus:0xe6e0a0,
+  cell:cellFrontMat.color.getHex(), cyto:cellBackMat.color.getHex(), nucleus:ORG.envelope.color.getHex(),
   hisMother:0xd23a5a, hisFather:0x3159c8, herMother:0x3fae6a, herFather:0xd9a51f,
-  fibre:0xd5ecdf, pole:0xeaf7ee, mito:0xe0847f, sperm:0xdfe6f0
+  fibre:0xd5ecdf, pole:0xeaf7ee, mito:ORG.mitochondrion.color.getHex(), sperm:0xdfe6f0
 };
 const OWNERS = ['hisMother', 'hisFather', 'herMother', 'herFather'];
 
@@ -583,10 +591,6 @@ function writeLathe(g, S){
   g.attributes.normal.needsUpdate = true;
 }
 
-const cellFrontMat = new THREE.MeshStandardMaterial({color:COL.cell, roughness:0.55, metalness:0,
-  transparent:true, opacity:0.42, depthWrite:false, envMapIntensity:0.35});
-const cellBackMat = new THREE.MeshStandardMaterial({color:COL.cellIn, roughness:0.8, metalness:0,
-  transparent:true, opacity:0.5, depthWrite:false, side:THREE.BackSide, envMapIntensity:0.2});
 function latheMesh(M, NR){
   const geo = makeLathe(M, NR), g = new THREE.Group();
   const back = new THREE.Mesh(geo, cellBackMat), front = new THREE.Mesh(geo, cellFrontMat);
@@ -635,8 +639,7 @@ function makeEnvelope(seed){
   g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(dir.length*3), 3));
   g.setAttribute('normal',   new THREE.BufferAttribute(new Float32Array(dir.length*3), 3));
   g.setIndex(idx);
-  const mat = new THREE.MeshStandardMaterial({color:COL.nucleus, roughness:0.35, metalness:0,
-    transparent:true, opacity:0.45, depthWrite:false, side:THREE.DoubleSide, envMapIntensity:0.5});
+  const mat = ORG.envelope.clone();         // each fades on its own
   const mesh = new THREE.Mesh(g, mat);
   mesh.renderOrder = 2;
   mesh.frustumCulled = false;
@@ -819,10 +822,10 @@ const MITO = (function(){
   }
   return out;
 })();
-const mitoMat = new THREE.MeshStandardMaterial({color:COL.mito, roughness:0.5, metalness:0, envMapIntensity:0.35});
-const mitoMesh = new THREE.InstancedMesh(SPH, mitoMat, N_MITO);
-W1.add(mitoMesh);
-const MITO_S = new V3(0.36, 0.14, 0.14);
+/* a mitochondrion is organelles.js's own, cristae and all; each is turned
+   about its long axis by a different amount so the folds do not line up */
+const makeMito = Organelles.mitochondrionMaker({length:0.36, width:0.14});
+MITO.forEach((o, i) => { o.mesh = makeMito(2.4*i); W1.add(o.mesh); });
 
 /* =========================================================================
    WORLD 2: FERTILISATION. An egg (from a woman) and a sperm carrying the
@@ -838,8 +841,7 @@ const eggMemB = cellBackMat.clone();  eggMemB.opacity = 0.34;
 const eggGeo = new THREE.SphereGeometry(EGG_R, 72, 48);
 W2.add(Object.assign(new THREE.Mesh(eggGeo, eggMemB), {renderOrder:1}), Object.assign(new THREE.Mesh(eggGeo, eggMemF), {renderOrder:3}));
 const nucMesh = () => {
-  const m = new THREE.Mesh(new THREE.SphereGeometry(1, 40, 28), new THREE.MeshStandardMaterial({color:COL.nucleus,
-    roughness:0.35, metalness:0, transparent:true, opacity:0.4, depthWrite:false, envMapIntensity:0.5}));
+  const m = new THREE.Mesh(new THREE.SphereGeometry(1, 40, 28), Object.assign(ORG.envelope.clone(), {side:THREE.FrontSide}));
   m.renderOrder = 2; W2.add(m); return m;
 };
 const FN = {egg:nucMesh(), sperm:nucMesh(), zyg:nucMesh()};
@@ -854,18 +856,21 @@ const tail = new THREE.Mesh(tailGeo, spermMat);
 tail.frustumCulled = false;
 W2.add(tail);
 const TAIL = {P:Array.from({length:TAIL_N}, () => new V3()), R:new Float32Array(TAIL_N)};
-const eggMito = new THREE.InstancedMesh(SPH, mitoMat, 40);
-(function(){
-  const rnd = rng(9), m = new THREE.Matrix4();
+const EGG_MITO = (function(){
+  const rnd = rng(9), out = [];
+  const make = Organelles.mitochondrionMaker({length:1.4*0.36, width:1.4*0.14});
   for(let i=0;i<40;i++){
     let v;
     do { v = new V3(2*rnd()-1, 2*rnd()-1, 2*rnd()-1).multiplyScalar(EGG_R*0.88); }
     while(v.length() > EGG_R*0.88 || v.length() < EGG_R*0.45 || v.distanceTo(EN0) < 2.6);
-    m.compose(v, new THREE.Quaternion().setFromEuler(new THREE.Euler(rnd()*6, rnd()*6, rnd()*6)), MITO_S.clone().multiplyScalar(1.4));
-    eggMito.setMatrixAt(i, m);
+    const m = make(2.4*i);
+    m.position.copy(v);
+    m.rotation.set(rnd()*6, rnd()*6, rnd()*6);
+    W2.add(m);
+    out.push(m);
   }
+  return out;
 })();
-W2.add(eggMito);
 /* the zygote's four chromosomes: the sperm's two (as they left meiosis),
    the egg's two. kz = which thread shape (and territory) each has */
 const FCHR = [];
@@ -1096,9 +1101,9 @@ function updateMito(){
       }
       o.pos.lerp(_oc, hi);
     }
-    mitoMesh.setMatrixAt(i, _m4.compose(o.pos, o.quat, MITO_S));
+    o.mesh.position.copy(o.pos);
+    o.mesh.quaternion.copy(o.quat);
   });
-  mitoMesh.instanceMatrix.needsUpdate = true;
 }
 let lastT = null;
 function updateCell(T){
@@ -1336,7 +1341,8 @@ const CH = [
 ];
 
 const KEYS = {
-  cell:'<div><span class="sq" style="background:'+hexCss(COL.cell)+'"></span>cell membrane and cytoplasm</div>',
+  cell:'<div><span class="sq" style="background:'+hexCss(COL.cell)+'"></span>cell membrane</div>'+
+       '<div><span class="sq" style="background:'+hexCss(COL.cyto)+'"></span>cytoplasm</div>',
   nucleus:'<div><span class="sq" style="background:'+hexCss(COL.nucleus)+'"></span>nucleus</div>',
   hisMother:'<div><span class="sq" style="background:'+hexCss(COL.hisMother)+'"></span>from the man\'s mother</div>',
   hisFather:'<div><span class="sq" style="background:'+hexCss(COL.hisFather)+'"></span>from the man\'s father</div>',
@@ -1440,7 +1446,7 @@ const cHex = o => hexCss(COL[o]);
 const bar = (x, y, len, col, w) => '<path d="M'+(x - len/2)+' '+y+' L'+(x + len/2)+' '+y+'" stroke="'+col+'" stroke-width="'+(w||4)+'" stroke-linecap="round"/>';
 const xGlyph = (x, y, len, col) => '<path d="M'+(x - len/2)+' '+(y - 3)+' L'+(x + len/2)+' '+(y + 3)+' M'+(x - len/2)+' '+(y + 3)+' L'+(x + len/2)+' '+(y - 3)+
   '" stroke="'+col+'" stroke-width="3.6" stroke-linecap="round"/>';
-const circ = (x, y, r) => '<circle cx="'+x+'" cy="'+y+'" r="'+r+'" fill="rgba(196,177,28,.22)" stroke="#c4b11c" stroke-width="2.6"/>';
+const circ = (x, y, r) => '<circle cx="'+x+'" cy="'+y+'" r="'+r+'" fill="'+rgbaCss(COL.cyto, .3)+'" stroke="'+hexCss(COL.cell)+'" stroke-width="2.6"/>';
 const LONG = 22, SHORT = 13;
 /* the chromosomes a gamete gets, as drawn in the diagram */
 const gameteGlyph = (sx, j) => CHROMS.map((c, k) => k).filter(k => CHROMS[k].side === sx).map(k => ({k, len:CHROMS[k].pair === 0 ? LONG : SHORT}));
@@ -1500,7 +1506,7 @@ function stripSvg(ch, t, T){
 }
 
 /* ---------------------------------------------------------------- a frame */
-const MEM = 0.42;
+const MEM = 0.3;
 function applySkin(C, t){
   const m = C.mem ? C.mem(t) : 1, n = C.nuc ? C.nuc(t) : 1;
   cellFrontMat.opacity = MEM*m;
