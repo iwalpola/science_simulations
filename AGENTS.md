@@ -15,7 +15,7 @@ energy/                     energy stores and transfers (+ test-energy-scenes.js
 electricity/                conduction and resistance (+ test-wire.js)
 human_anatomy/reflex-arc/   2D reflex arc story over a baked 3D model (+ bake-backdrop.js, test-reflex-arc.js)
 human_anatomy/heart/        heart, valves and double circulation, 3D over the Z-Anatomy heart (+ test-heart.js)
-genetics/                   cell → chromosome → DNA → gene → base, a three.js story (+ test-genetics.js)
+genetics/                   cell → chromosome → DNA → gene → base, mitosis + the cell cycle, meiosis + fertilisation: three.js stories (+ test-genetics.js, test-mitosis.js, test-meiosis.js)
 tools/                      one-off colour-migration scripts (animcolour.mjs, colourfix.mjs)
 tools/anatomy/              build .glb files of named body parts from Z-Anatomy (see its README.md)
 ```
@@ -62,6 +62,8 @@ cd human_anatomy/reflex-arc && node test-reflex-arc.js  # choreography + headles
 cd human_anatomy/reflex-arc && node test-reflex-arc-3d.js  # 3D story: routes, the arc, every frame, labels in view
 cd human_anatomy/heart      && node test-heart.js        # the cut, valves, one-way flow, vessel routes, every frame
 cd genetics         && node test-genetics.js   # pairs, band position, base pairing, flat ladder, quoted figures, every frame
+cd genetics         && node test-mitosis.js    # copying, one copy of each chromosome per daughter, half volume, pie times, tissue, every frame
+cd genetics         && node test-meiosis.js    # pairing, crossing over, one of each pair per cell, four different gametes, fertilisation
 node tools/anatomy/test-anatomy.js              # anatomy catalogue, recipes, licence, built .glb files
 ```
 
@@ -287,6 +289,65 @@ geometry when the page loads, and `test-heart.js` checks it is anatomy:
 - **Inside the muscle or not**: ray parity fails on these meshes (the right
   ventricle is open along the septum). The test uses the nearest vertex's
   normal and ignores vertices on an open edge.
+
+---
+
+## Mitosis: one cell's clock, and a nucleus that is never pinched
+
+`genetics/mitosis-3d-story.html` is a three.js story in the same shell as
+`cell-to-dna-3d-story.html` (panel, nav, key, labels with leaders). What is
+particular to it:
+
+- **One timeline.** Chapters 2-7 are consecutive windows `[T0, T0+Tlen]` of
+  one clock `T` (`TL` holds every event's window), so the cell at the end of
+  a chapter is the cell at the start of the next; the test asserts they join.
+  The story ends with two cells identical to the one it began with.
+- **A chromatid is one tube** whose centre line blends, by how condensed it
+  is, between an interphase thread (`THREAD`, a tangle in units of the
+  nucleus radius) and a coiled rod placed by the chromosome's frame. Do not
+  draw interphase chromosomes as X shapes: copying happens while they are
+  threads, and the page shows it there (bubbles from several origins).
+- **The membrane is a smooth union of two spheres** (`cellSdf`); cytokinesis
+  is `cytoState`: the waist narrows to nothing as the halves shrink to half
+  the volume, then they part and round off. The sign of `cellSdf` is the
+  inside test the organelles and the suite use.
+- **The nucleus is never pinched in two.** The envelope breaks into patches
+  and two new ones gather at the ends; the test fails if any new-nucleus
+  vertex crosses the middle.
+- **The pie chart is to scale** (`CYCLE`, a lab-grown human cell, about 24 h)
+  and its hand is `handMin(T)`; how much slower mitosis is played than
+  interphase is worked out from that, not typed in.
+- **The phase names toggle** (prophase … telophase, for Edexcel/OCR) adds a
+  banner, a panel note and a key word; it changes no geometry. Captions in
+  both modes go through the number check.
+- **Frames are cheap only because** the reshaped meshes have
+  `frustumCulled = false` and skip `computeBoundingSphere()` (it was most of
+  a 35 ms frame), and `writeLathe`/`updateCell` skip work when nothing moved.
+  Keep that if you add a reshaped mesh.
+
+### Meiosis: the same machinery, two divisions, and why crossing over is in it
+
+`genetics/meiosis-3d-story.html` shares the mitosis page's tube, membrane,
+envelope and label code (copied, as every page here is one file). What is
+particular to it:
+
+- **Crossing over is shown on purpose.** GCSE says the four gametes are "all
+  genetically different"; without crossing over the four from one cell are
+  two identical pairs, and the picture would contradict the caption. One
+  swap per pair, between the two chromatids next to each other in the row
+  of four (`CROSS`, `innerJ`), drawn as a colour change along the tube
+  (`cid` per ring). The panel says not every course asks about it.
+- **Which way each pair faces is chance**, fixed in `CHROMS[k].side`; the
+  caption names the arrangement and the test checks it, so change both.
+- **After the first division the membrane is two cells**, each a lathe about
+  y (`MEM2`), swapped in at `SPLIT1` when both halves are exact spheres.
+  `cellsSdf` is the inside test across both stages.
+- **`cytoState` shrinks the halves early** (`ss(0, 0.7, p)`) so their centres
+  only ever move apart; both pages' tests assert it. `D_SPLIT(r)` is where
+  two parted halves' centres end up.
+- **The sperm is one of the four gametes** (`SPERM_FROM`); the test checks the
+  zygote holds exactly its chromosomes plus the egg's (green and gold: the
+  woman's own parents).
 
 ---
 

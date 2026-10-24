@@ -1,0 +1,1613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meiosis and fertilisation — a 3D story</title>
+<style>
+  :root{
+    --ink:#eef2f7;
+    --dim:#93a2b6;
+    --panel:rgba(10,14,21,.78);
+    --line:rgba(147,162,182,.22);
+    --side:360px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;background:#080b11;color:var(--ink);overflow:hidden;
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  #stage{position:fixed;top:0;right:0;bottom:0;left:var(--side);}
+  canvas{display:block;}
+  #overlay{position:fixed;top:0;right:0;bottom:0;left:var(--side);pointer-events:none;z-index:1;overflow:hidden;}
+  #overlay svg{position:absolute;left:0;top:0;width:100%;height:100%;}
+  #fade{position:fixed;top:0;right:0;bottom:0;left:var(--side);background:#080b11;
+    opacity:0;pointer-events:none;z-index:2;}
+
+  .lab{position:absolute;left:0;top:0;white-space:nowrap;opacity:0;
+    font-size:16px;font-weight:650;letter-spacing:.2px;color:#f3f6fb;
+    text-shadow:0 1px 6px rgba(0,0,0,.95),0 0 2px rgba(0,0,0,.9);}
+  .lab .sub{display:block;font-size:12.5px;font-weight:450;color:#b9c5d6;margin-top:1px;}
+  .lab.gold{color:#ffd277;}
+
+  #side{
+    position:fixed;top:0;left:0;bottom:0;width:var(--side);
+    background:var(--panel);backdrop-filter:blur(16px);
+    border-right:1px solid var(--line);
+    padding:20px 22px 16px;
+    display:flex;flex-direction:column;gap:14px;
+    overflow-y:auto;
+  }
+  #side h1{
+    margin:0;
+    font-family:"Iowan Old Style","Charter","Palatino Linotype",Georgia,serif;
+    font-weight:600;font-size:19px;letter-spacing:.2px;line-height:1.25;
+  }
+  #side .byline{margin:4px 0 0;font-size:12px;line-height:1.5;color:var(--dim);}
+  #side a{color:var(--dim);text-decoration:none;font-size:12px;
+    border-bottom:1px solid rgba(147,162,182,.3);}
+  #side a:hover{color:var(--ink);}
+  .story p a{font-size:inherit;color:#ffd9a0;border-bottom-color:rgba(255,217,160,.4);}
+  .links{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;}
+  .story{flex:1;min-height:0;}
+  .story .step{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:700;}
+  .story h2{
+    margin:3px 0 0;font-family:"Iowan Old Style","Charter",Georgia,serif;
+    font-size:17px;font-weight:600;letter-spacing:.2px;
+  }
+  .story p{margin:8px 0 0;font-size:13.5px;line-height:1.62;color:#cbd5e1;}
+  .story p b{color:#ffd9a0;font-weight:600;}
+  .story .look{
+    margin-top:10px;font-size:12.5px;line-height:1.5;color:#a9c7ee;
+    border-left:2px solid rgba(127,176,255,.45);padding-left:10px;
+  }
+  .story .look b{color:#d6e6ff;font-weight:600;}
+  .story .scale{
+    margin-top:10px;font-size:12px;line-height:1.5;color:#c9b8e0;
+    border-left:2px solid rgba(190,150,240,.45);padding-left:10px;
+  }
+  .terms{
+    margin:12px 0 0;padding:10px 12px;
+    background:rgba(255,217,160,.05);border:1px solid rgba(255,217,160,.18);border-radius:10px;
+  }
+  .terms .hd{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#d9b98a;font-weight:700;margin-bottom:6px;}
+  .terms dt{font-size:12.5px;font-weight:700;color:#ffd9a0;}
+  .terms dd{margin:1px 0 7px;font-size:12.5px;line-height:1.5;color:#cbd5e1;}
+  .terms dd:last-child{margin-bottom:0;}
+  .credit{font-size:10.5px;line-height:1.5;color:#6c7a8e;}
+
+  .nav{
+    position:fixed;left:var(--side);right:0;bottom:20px;z-index:5;
+    margin:0 auto;width:fit-content;max-width:calc(100% - var(--side) - 32px);
+    display:flex;align-items:center;gap:8px;flex-wrap:nowrap;justify-content:center;
+    background:var(--panel);backdrop-filter:blur(16px);
+    border:1px solid var(--line);border-radius:999px;
+    padding:9px 12px;white-space:nowrap;
+  }
+  .nav button{
+    font:inherit;font-size:12.5px;font-weight:500;color:var(--dim);
+    background:rgba(255,255,255,.05);border:1px solid var(--line);
+    border-radius:999px;padding:7px 14px;cursor:pointer;
+    transition:background .15s ease,color .15s ease,opacity .15s ease;
+  }
+  .nav button:hover:not(:disabled){background:rgba(255,255,255,.12);color:var(--ink);}
+  .nav button:disabled{opacity:.32;cursor:default;}
+  .nav button.primary{background:rgba(127,176,255,.2);color:#dce9ff;border-color:rgba(127,176,255,.35);}
+  .dots{display:flex;gap:6px;padding:0 4px;}
+  .dots i{
+    width:7px;height:7px;border-radius:50%;background:rgba(147,162,182,.3);
+    cursor:pointer;transition:background .2s ease,transform .2s ease;
+  }
+  .dots i.on{background:var(--ink);transform:scale(1.25);}
+  #key{
+    position:fixed;top:18px;right:20px;z-index:5;
+    background:var(--panel);backdrop-filter:blur(16px);
+    border:1px solid var(--line);border-radius:12px;
+    padding:11px 14px;
+    font-size:11.5px;line-height:1.75;color:var(--dim);
+  }
+  #key:empty{display:none;}
+  #key div{display:flex;align-items:center;gap:8px;}
+  .dot{width:11px;height:11px;border-radius:50%;flex:none;
+    box-shadow:inset -2px -2px 3px rgba(0,0,0,.45);}
+  .sq{width:11px;height:11px;border-radius:2px;flex:none;}
+  .ln{width:14px;height:2px;border-radius:1px;flex:none;}
+  .hint{
+    position:fixed;right:20px;bottom:20px;z-index:3;
+    font-size:11px;color:#5a687d;pointer-events:none;
+  }
+  @media (max-width:860px){
+    :root{--side:0px;}
+    #stage,#overlay,#fade{left:0;bottom:44vh;}
+    #side{
+      top:auto;left:0;right:0;bottom:0;width:auto;height:44vh;
+      border-right:none;border-top:1px solid var(--line);
+      padding:14px 16px;gap:11px;
+    }
+    #side h1{font-size:16px;}
+    #side .byline{display:none;}
+    .nav{
+      left:0;right:0;bottom:44vh;
+      width:auto;max-width:none;margin:0;
+      border-radius:0;border-width:1px 0 0;
+      flex-wrap:wrap;white-space:normal;justify-content:center;
+    }
+    #key{top:14px;right:14px;padding:8px 10px;font-size:11px;line-height:1.6;}
+    .lab{font-size:13px;}
+    .lab .sub{font-size:11px;}
+    .hint{display:none;}
+  }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="overlay"><svg id="lines"></svg><div id="labels"></div></div>
+<div id="fade"></div>
+<div id="side">
+  <div>
+    <h1>Meiosis and fertilisation</h1>
+    <p class="byline">How a cell in a testis makes four sperm cells, each with half the chromosomes and each one different, and how fertilisation puts the pairs back together.</p>
+    <div class="links">
+      <a href="./index.html">← Genetics</a>
+      <a href="./mitosis-3d-story.html">Mitosis</a>
+      <a href="../index.html">All simulations</a>
+    </div>
+  </div>
+  <div class="story">
+    <div class="step" id="sStep"></div>
+    <h2 id="sTitle"></h2>
+    <p id="sText"></p>
+    <div class="look" id="sLook"></div>
+    <div class="scale" id="sScale"></div>
+    <dl class="terms" id="sTerms"></dl>
+  </div>
+  <div class="credit">Everything here is drawn, not photographed: real chromosomes are not coloured by where they came from.
+    Only 2 of the 23 pairs of human chromosomes are drawn.</div>
+</div>
+<!-- outside #side: its backdrop-filter would otherwise pin fixed children to the column -->
+<div class="nav">
+  <button id="back">← Back</button>
+  <button id="next" class="primary">Next →</button>
+  <button id="replay">Replay</button>
+  <div class="dots" id="dots"></div>
+</div>
+<div id="key"></div>
+<div class="hint">drag to orbit · scroll to zoom</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ===========================================================================
+   MEIOSIS AND FERTILISATION — the 3D story
+
+   A cell in a man's testis, with 2 pairs of chromosomes, makes four gametes:
+
+     copy      the DNA is copied once, as before mitosis
+     pair      the chromosomes condense and each finds its partner; while
+               paired, the partners swap a section (crossing over)
+     line up   the pairs line up across the middle, one of each pair on each
+               side -- which way round is chance
+     first     the PAIRS are pulled apart (each chromosome still two copies),
+               and the cell divides: two cells, one chromosome of each pair
+     second    in each, the COPIES are pulled apart and the cell divides:
+               four cells, each with one set, all different
+     fertilise one of those sperm meets an egg, and the pairs are restored
+
+   Why crossing over is in it: GCSE says the four gametes are "all
+   genetically different". Without crossing over, the four from one cell
+   would be two identical pairs, and the picture would contradict the
+   caption. With one swap in each pair, all four differ.
+
+   Two worlds, swapped behind a fade:
+
+     cell   the dividing cell. Chapters 2-7 are consecutive windows of ONE
+            clock T; the cell at the end of one is the cell at the start of
+            the next. After the first division the membrane is two cells,
+            each a lathe about the vertical axis, ready to split again.
+     fert   an egg, a sperm carrying one of the four gametes' chromosomes,
+            and the two nuclei coming together.
+
+   EVERYTHING IS A PURE FUNCTION OF THE CLOCK, as in mitosis-3d-story.html,
+   whose tube, membrane, envelope and label machinery this page shares.
+   test-meiosis.js checks the biology as properties: one of each pair in
+   each cell after the first division, sisters together through it, apart
+   in the second, a quarter of the volume each, four different gametes, the
+   sperm's chromosomes being one of them, and the numbers in the captions.
+=========================================================================== */
+
+/* ----------------------------------------------------------------- helpers */
+const clamp = (v,a,b) => v<a?a:(v>b?b:v);
+const lerp  = (a,b,u) => a + (b-a)*u;
+const ss = (a,b,x) => { const u = clamp((x-a)/(b-a),0,1); return u*u*(3-2*u); };
+const hexCss = n => '#'+n.toString(16).padStart(6,'0');
+function rng(seed){
+  let a = seed >>> 0;
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const V3 = THREE.Vector3;
+const UP = new V3(0,1,0);
+
+/* =========================================================================
+   DATA
+========================================================================= */
+const HUMAN = {chromosomes:46, pairs:23};
+/* the man's cell: two pairs, one of each from his mother and his father.
+   side = which end of the cell the chromosome goes to in the first division
+   (chance: here the long pair puts his mother's on the left, the short
+   pair puts it on the right) */
+const CHROMS = [
+  {pair:0, from:'hisMother', L:1.9,  p:0.42, side:-1},
+  {pair:0, from:'hisFather', L:1.9,  p:0.42, side: 1},
+  {pair:1, from:'hisMother', L:1.15, p:0.30, side: 1},
+  {pair:1, from:'hisFather', L:1.15, p:0.30, side:-1}
+];
+CHROMS.forEach(c => { c.pl = c.p*c.L; c.ql = c.L - c.pl; });
+/* crossing over: one swap per pair, between the two chromatids that lie
+   next to each other (one from each partner), of everything from s onwards */
+const CROSS = [{pair:0, s:0.68}, {pair:1, s:0.72}];
+/* the egg's two chromosomes (a woman's: hers came from her mother, green,
+   and her father, gold, and crossed over in her own meiosis) */
+const EGG = [
+  {pair:0, own:'herMother', swap:{s:0.55, to:'herFather'}},
+  {pair:1, own:'herFather', swap:null}
+];
+/* real sizes, for the one scale note: a human egg is about 0.1 mm across;
+   a sperm's head is about 5 micrometres long */
+const SIZE_UM = {egg:100, spermHead:5};
+
+const COL = {
+  cell:0xc4b11c, cellIn:0x7d6f0c, nucleus:0xe6e0a0,
+  hisMother:0xd23a5a, hisFather:0x3159c8, herMother:0x3fae6a, herFather:0xd9a51f,
+  fibre:0xd5ecdf, pole:0xeaf7ee, mito:0xe0847f, sperm:0xdfe6f0
+};
+const OWNERS = ['hisMother', 'hisFather', 'herMother', 'herFather'];
+
+/* sizes, in scene units */
+const CELL_R  = 5;
+const CELL_R1 = CELL_R*Math.pow(2, -1/3);   // after the first division: half the volume
+const CELL_R2 = CELL_R*Math.pow(2, -2/3);   // a gamete: a quarter
+const NUC_R   = 1.9, NUC_G = 1.25;           // the cell's nucleus; a gamete's
+const ROD_T   = 0.17;
+const TUBE_R  = 0.62*ROD_T, COIL_A = 0.42*ROD_T, COIL_L = 1.1*ROD_T;
+const THREAD_R = 0.045, DELTA = 0.1;
+const XP = 4.1, XA = 3.1;                    // first division: poles, where chromosomes go
+const YP2 = 2.9, YA2 = 2.2;                  // second division, up and down in each cell
+const D_EL = 0.9, D_EL2 = 0.6;               // how far each division stretches the cell
+const GAP_D = 0.15;
+const KU = 0.35;
+const D_SPLIT = r => r*(1 + KU/4) + GAP_D;          // where two halves' centres end up once parted
+const D1 = D_SPLIT(CELL_R1), D2 = D_SPLIT(CELL_R2);
+const NS = 420;
+const N_MITO = 24;
+
+/* the cell's one timeline, in seconds of story */
+const TL = {
+  copy0:2.5,
+  condense:[14, 20],
+  pair:[17.5, 23],
+  cross:[23.5, 26.5],
+  envOff:[24.5, 29],
+  poles1:[25.5, 31],
+  spindle1:[26.5, 31],
+  fibres1:[29, 31.5],        // + 0.6 s per pair
+  cong1:[31, 36],            // + 0.6 s per pair
+  ana1:[39, 45],
+  elong1:[39, 47],
+  spindleOff1:[45, 49],
+  furrow1:[47, 53],
+  apart1:[53, 55],
+  share1:[50, 55],
+  poles2:[56, 59.5],
+  spindle2:[56.5, 59.5],
+  fibres2:[57.5, 60],        // + 0.5 s per chromosome
+  cong2:[58, 62.5],          // + 0.6 s per chromosome
+  ana2:[64, 69],
+  elong2:[64, 71],
+  spindleOff2:[70, 74],
+  furrow2:[71, 78],
+  apart2:[78, 80],
+  share2:[74, 81],
+  envOn:[72, 77],
+  envShrink:[76, 80],
+  decondense:[73, 80],
+  dSlide2:[71, 79]
+};
+/* the overview strip: which step of the diagram each moment is */
+const stepAt = T => T < TL.copy0 ? 0 : T < TL.furrow1[0] ? 1 : T < TL.furrow2[0] ? 2 : 3;
+
+/* ------------------------------------------------------------------ three */
+const stage = document.getElementById('stage');
+const fadeEl = document.getElementById('fade');
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio||1));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.08;
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x080b11);
+const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 500);
+
+scene.add(new THREE.HemisphereLight(0x9fb4d0, 0x0a0d13, 0.6));
+const keyL = new THREE.DirectionalLight(0xffffff, 0.95); keyL.position.set(6,11,8); scene.add(keyL);
+const fillL = new THREE.DirectionalLight(0x9ec3ff, 0.40); fillL.position.set(-8,4,-6); scene.add(fillL);
+const rimL  = new THREE.DirectionalLight(0xffd9b0, 0.32); rimL.position.set(0,3,-10); scene.add(rimL);
+
+(function environment(){
+  const env = new THREE.Scene();
+  const box = new THREE.BoxGeometry(1,1,1);
+  env.add(new THREE.Mesh(new THREE.BoxGeometry(30,18,30),
+    new THREE.MeshBasicMaterial({color:0x1d2634, side:THREE.BackSide})));
+  const panel=(hex,gain,x,y,z,sx,sy,sz)=>{
+    const m=new THREE.Mesh(box,new THREE.MeshBasicMaterial({color:hex}));
+    m.material.color.multiplyScalar(gain);
+    m.position.set(x,y,z); m.scale.set(sx,sy,sz); env.add(m);
+  };
+  panel(0xffffff,1.1,  0, 8.4,  0, 14,0.1,14);
+  panel(0xbcd6ff,1.3,-11, 1.5,  0, 0.1,11,20);
+  panel(0xffd7b0,0.9, 11, 1.5,  2, 0.1,11,20);
+  panel(0x8fb0e0,0.5,  0, 0.0,-12, 22,11,0.1);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(env, 0.04).texture;
+  pmrem.dispose();
+})();
+
+function linearise(root){
+  root.traverse(o=>{
+    if(!o.material) return;
+    (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{
+      if(!m || m.userData.__lin) return;
+      m.userData.__lin = true;
+      if(m.color)    m.color.convertSRGBToLinear();
+      if(m.emissive) m.emissive.convertSRGBToLinear();
+    });
+  });
+}
+const linColor = hex => new THREE.Color(hex).convertSRGBToLinear();
+
+const W1 = new THREE.Group(), W2 = new THREE.Group();     // the dividing cell; fertilisation
+scene.add(W1, W2);
+
+/* =========================================================================
+   TUBES (as in mitosis-3d-story.html), here with a colour per ring so that
+   a chromatid can carry a section swapped from its partner. Meshes rewritten
+   every frame are drawn with frustumCulled off and never recompute their
+   bounding spheres: that was most of a frame.
+========================================================================= */
+const TRIG = {};
+function trig(n){
+  if(!TRIG[n]){
+    const c = new Float64Array(n+1), s = new Float64Array(n+1);
+    for(let k=0;k<=n;k++){ c[k] = Math.cos(2*Math.PI*k/n); s[k] = Math.sin(2*Math.PI*k/n); }
+    TRIG[n] = {c, s};
+  }
+  return TRIG[n];
+}
+function makeTube(n, radial){
+  const g = new THREE.BufferGeometry();
+  const vn = n*(radial+1);
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vn*3), 3));
+  g.setAttribute('normal',   new THREE.BufferAttribute(new Float32Array(vn*3), 3));
+  g.setAttribute('color',    new THREE.BufferAttribute(new Float32Array(vn*3).fill(1), 3));
+  const idx = new (vn > 65535 ? Uint32Array : Uint16Array)((n-1)*radial*6);
+  let o = 0;
+  for(let i=0;i<n-1;i++) for(let k=0;k<radial;k++){
+    const a = i*(radial+1)+k, b = a+radial+1;
+    idx[o++]=a; idx[o++]=a+1; idx[o++]=b;
+    idx[o++]=a+1; idx[o++]=b+1; idx[o++]=b;
+  }
+  g.setIndex(new THREE.BufferAttribute(idx, 1));
+  g.userData.tube = {n, radial};
+  return g;
+}
+const _wT = new V3(), _wN = new V3(), _wB = new V3();
+function writeTube(g, P, R){
+  const {n, radial} = g.userData.tube;
+  const pos = g.attributes.position.array, nor = g.attributes.normal.array;
+  const T = _wT, N = _wN, B = _wB, tc = trig(radial).c, ts = trig(radial).s;
+  for(let i=0;i<n;i++){
+    T.subVectors(P[Math.min(n-1,i+1)], P[Math.max(0,i-1)]).normalize();
+    if(i === 0){
+      N.set(0,0,1).cross(T);
+      if(N.lengthSq() < 1e-6) N.set(1,0,0).cross(T);
+      N.normalize();
+    } else N.addScaledVector(T, -N.dot(T)).normalize();
+    B.crossVectors(T, N);
+    const px = P[i].x, py = P[i].y, pz = P[i].z, r = R[i];
+    for(let k=0;k<=radial;k++){
+      const c = tc[k], s = ts[k];
+      const dx = N.x*c + B.x*s, dy = N.y*c + B.y*s, dz = N.z*c + B.z*s;
+      const o = (i*(radial+1)+k)*3;
+      pos[o] = px + dx*r; pos[o+1] = py + dy*r; pos[o+2] = pz + dz*r;
+      nor[o] = dx; nor[o+1] = dy; nor[o+2] = dz;
+    }
+  }
+  g.attributes.position.needsUpdate = true;
+  g.attributes.normal.needsUpdate = true;
+}
+const PAL = OWNERS.map(o => linColor(COL[o]));
+const _col = new THREE.Color();
+/* a chromatid's colours: its own owner's, blended by x towards the colours
+   it ends up with (its final colour per ring, cid) */
+function writeColours(tb, x){
+  if(tb.lastX === x) return;
+  tb.lastX = x;
+  const {n, radial} = tb.geo.userData.tube, col = tb.geo.attributes.color.array;
+  for(let i=0;i<n;i++){
+    _col.copy(PAL[tb.own]).lerp(PAL[tb.cid[i]], x);
+    for(let k=0;k<=radial;k++){
+      const o = (i*(radial+1)+k)*3;
+      col[o] = _col.r; col[o+1] = _col.g; col[o+2] = _col.b;
+    }
+  }
+  tb.geo.attributes.color.needsUpdate = true;
+}
+
+/* a condensed chromatid's radius and its offset from its sister */
+function chromatidRadius(y, p, q, T){
+  const arm = y >= 0 ? p : q, a = Math.abs(y);
+  const c = Math.min(T, arm*0.9);
+  let r = T;
+  if(a > arm - c){ const u = (a - (arm - c))/c; r = T*Math.sqrt(Math.max(0, 1 - u*u)); }
+  return r*(1 - 0.42*Math.exp(-Math.pow(y/(0.75*T), 2)));
+}
+function chromatidOffset(y, p, q, T){
+  const arm = y >= 0 ? p : q, a = Math.abs(y);
+  return T*(0.52 + 0.4*ss(0, 1.6*T, a) + 0.3*Math.pow(a/Math.max(arm, 1e-9), 2));
+}
+const OFF0 = chromatidOffset(0, 1, 1, ROD_T);
+const HW = 2*OFF0;          // partners in a pair: their centres this far either side of the pair's middle
+
+/* =========================================================================
+   MEMBRANES: a smooth union of two spheres (as in mitosis-3d-story.html)
+========================================================================= */
+function smin(a, b, k){
+  if(!(k > 0)) return Math.min(a, b);
+  const h = Math.max(k - Math.abs(a - b), 0)/k;
+  return Math.min(a, b) - h*h*k/4;
+}
+function cellSdf(x, rho, S){
+  return smin(Math.hypot(x + S.d, rho) - S.r, Math.hypot(x - S.d, rho) - S.r, S.k);
+}
+function rhoAt(x, S){
+  if(cellSdf(x, 0, S) >= 0) return 0;
+  let lo = 0, hi = S.r + S.k + 0.01;
+  for(let it=0; it<34; it++){ const m = 0.5*(lo + hi); if(cellSdf(x, m, S) < 0) lo = m; else hi = m; }
+  return lo;
+}
+function lobeRange(S){
+  let a = -S.d - S.r - S.k - 0.01, b = -S.d;
+  for(let it=0; it<44; it++){ const m = 0.5*(a + b); if(cellSdf(m, 0, S) < 0) b = m; else a = m; }
+  const x0 = 0.5*(a + b);
+  if(cellSdf(0, 0, S) < 0) return {x0, x1:0, open:true};
+  let c = -S.d, e = 0;
+  for(let it=0; it<44; it++){ const m = 0.5*(c + e); if(cellSdf(m, 0, S) < 0) c = m; else e = m; }
+  return {x0, x1:0.5*(c + e), open:false};
+}
+/* a division, from any cell s0, to two cells of radius rT */
+function cytoState(s0, p, u, rT){
+  const r = lerp(s0.r, rT, ss(0, 0.7, p));             // shrink early, so the halves only ever move apart
+  const kp = lerp(s0.k, KU*r, ss(0, 0.25, p)), k = kp*(1 - u);
+  const n0 = Math.sqrt(Math.max(0, (s0.r + s0.k/4)**2 - s0.d*s0.d));
+  const n = n0*(1 - p);
+  const d = Math.sqrt(Math.max(0, (r + kp/4)**2 - n*n)) + GAP_D*u;
+  return {d, r, k};
+}
+/* the first division (about x), then each half's second (about y) */
+function state1(T){
+  const e = ss(TL.elong1[0], TL.elong1[1], T), r = CELL_R - 0.25*e;
+  const s0 = {d:D_EL*e, r, k:KU*r*e};
+  const p = ss(TL.furrow1[0], TL.furrow1[1], T);
+  return p > 0 ? cytoState(s0, p, ss(TL.apart1[0], TL.apart1[1], T), CELL_R1) : s0;
+}
+function state2(T){
+  const e = ss(TL.elong2[0], TL.elong2[1], T), r = CELL_R1 - 0.2*e;
+  const s0 = {d:D_EL2*e, r, k:KU*r*e};
+  const p = ss(TL.furrow2[0], TL.furrow2[1], T);
+  return p > 0 ? cytoState(s0, p, ss(TL.apart2[0], TL.apart2[1], T), CELL_R2) : s0;
+}
+const SPLIT1 = TL.apart1[1];           // from here on the cell is two cells
+const d1c = T => T < SPLIT1 ? state1(T).d : D1;
+const d2c = T => T < SPLIT1 ? 0 : state2(T).d;
+/* inside all the cells there are at this moment? (< 0 inside) */
+function cellsSdf(p, T){
+  if(T < SPLIT1) return cellSdf(p.x, Math.hypot(p.y, p.z), state1(T));
+  const S = state2(T);
+  return Math.min(cellSdf(p.y, Math.hypot(p.x + D1, p.z), S), cellSdf(p.y, Math.hypot(p.x - D1, p.z), S));
+}
+
+function makeLathe(M, NR){
+  const g = new THREE.BufferGeometry();
+  const per = (M+1)*(NR+1), vn = 2*per;
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vn*3), 3));
+  g.setAttribute('normal',   new THREE.BufferAttribute(new Float32Array(vn*3), 3));
+  const idx = new (vn > 65535 ? Uint32Array : Uint16Array)(2*M*NR*6);
+  let o = 0;
+  for(let side=0; side<2; side++) for(let i=0;i<M;i++) for(let k=0;k<NR;k++){
+    const a = side*per + i*(NR+1) + k, b = a + NR + 1, c = a + 1, d = b + 1;
+    if(side === 0){ idx[o++]=a; idx[o++]=c; idx[o++]=b; idx[o++]=c; idx[o++]=d; idx[o++]=b; }
+    else          { idx[o++]=a; idx[o++]=b; idx[o++]=c; idx[o++]=c; idx[o++]=b; idx[o++]=d; }
+  }
+  g.setIndex(new THREE.BufferAttribute(idx, 1));
+  g.userData.lathe = {M, NR, px:new Float64Array(M+1), pr:new Float64Array(M+1)};
+  return g;
+}
+const NF = 240;
+const _fx = new Float64Array(NF+1), _fr = new Float64Array(NF+1), _fl = new Float64Array(NF+1);
+function sampleProfile(S, M, px, pr){
+  const L = lobeRange(S);
+  for(let i=0;i<=NF;i++){
+    const u = i/NF;
+    const w = L.open ? 1 - Math.cos(u*Math.PI/2) : 0.5*(1 - Math.cos(u*Math.PI));
+    _fx[i] = L.x0 + (L.x1 - L.x0)*w;
+    _fr[i] = (i === 0 || (!L.open && i === NF)) ? 0 : rhoAt(_fx[i], S);
+    _fl[i] = i ? _fl[i-1] + Math.hypot(_fx[i] - _fx[i-1], _fr[i] - _fr[i-1]) : 0;
+  }
+  let j = 0;
+  for(let i=0;i<=M;i++){
+    const l = _fl[NF]*i/M;
+    while(j < NF-1 && _fl[j+1] < l) j++;
+    const f = (l - _fl[j])/((_fl[j+1] - _fl[j]) || 1);
+    px[i] = lerp(_fx[j], _fx[j+1], clamp(f, 0, 1));
+    pr[i] = lerp(_fr[j], _fr[j+1], clamp(f, 0, 1));
+  }
+  if(L.open){ px[M] = 0; pr[M] = rhoAt(0, S); }
+  return L;
+}
+function writeLathe(g, S){
+  const L = g.userData.lathe;
+  if(L.d === S.d && L.r === S.r && L.k === S.k) return;
+  L.d = S.d; L.r = S.r; L.k = S.k;
+  const {M, NR, px, pr} = L, tc = trig(NR).c, ts = trig(NR).s;
+  sampleProfile(S, M, px, pr);
+  const pos = g.attributes.position.array, nor = g.attributes.normal.array, per = (M+1)*(NR+1);
+  for(let side=0; side<2; side++){
+    const m = side ? -1 : 1;
+    for(let i=0;i<=M;i++){
+      const ia = Math.max(0, i-1), ib = Math.min(M, i+1);
+      let tx = px[ib] - px[ia], tr = pr[ib] - pr[ia];
+      const tl = Math.hypot(tx, tr) || 1; tx /= tl; tr /= tl;
+      const nx = -tr*m, nr = tx;
+      for(let k=0;k<=NR;k++){
+        const c = tc[k], s = ts[k];
+        const o = (side*per + i*(NR+1) + k)*3;
+        pos[o] = m*px[i]; pos[o+1] = pr[i]*c; pos[o+2] = pr[i]*s;
+        nor[o] = nx; nor[o+1] = nr*c; nor[o+2] = nr*s;
+      }
+    }
+  }
+  g.attributes.position.needsUpdate = true;
+  g.attributes.normal.needsUpdate = true;
+}
+
+const cellFrontMat = new THREE.MeshStandardMaterial({color:COL.cell, roughness:0.55, metalness:0,
+  transparent:true, opacity:0.42, depthWrite:false, envMapIntensity:0.35});
+const cellBackMat = new THREE.MeshStandardMaterial({color:COL.cellIn, roughness:0.8, metalness:0,
+  transparent:true, opacity:0.5, depthWrite:false, side:THREE.BackSide, envMapIntensity:0.2});
+function latheMesh(M, NR){
+  const geo = makeLathe(M, NR), g = new THREE.Group();
+  const back = new THREE.Mesh(geo, cellBackMat), front = new THREE.Mesh(geo, cellFrontMat);
+  back.renderOrder = 1; front.renderOrder = 3;
+  back.frustumCulled = front.frustumCulled = false;
+  g.add(back, front);
+  return {g, geo};
+}
+/* the whole cell, splitting about x; then its two halves, each splitting
+   about y (a lathe about x, turned a quarter turn about z) */
+const MEM1 = latheMesh(110, 72);
+W1.add(MEM1.g);
+const MEM2 = [-1, 1].map(sx => {
+  const m = latheMesh(80, 60);
+  m.g.position.set(sx*D1, 0, 0);
+  m.g.rotation.z = Math.PI/2;
+  W1.add(m.g);
+  return m;
+});
+
+/* =========================================================================
+   NUCLEAR ENVELOPES, made of patches so they can break up (b = 0 whole)
+========================================================================= */
+const ENV_NB = 7, ENV_NL = 14, ENV_SUB = 4;
+function makeEnvelope(seed){
+  const rnd = rng(seed);
+  const dir = [], pcI = [], pc = [], jit = [], idx = [];
+  for(let bi=0; bi<ENV_NB; bi++) for(let li=0; li<ENV_NL; li++){
+    const base = dir.length, p = pc.length;
+    const th0 = Math.PI*bi/ENV_NB, th1 = Math.PI*(bi+1)/ENV_NB;
+    const ph0 = 2*Math.PI*li/ENV_NL, ph1 = 2*Math.PI*(li+1)/ENV_NL;
+    const tm = 0.5*(th0 + th1), pm = 0.5*(ph0 + ph1);
+    pc.push(new V3(Math.sin(tm)*Math.cos(pm), Math.cos(tm), Math.sin(tm)*Math.sin(pm)));
+    jit.push(rnd());
+    for(let a=0;a<=ENV_SUB;a++) for(let b=0;b<=ENV_SUB;b++){
+      const th = lerp(th0, th1, a/ENV_SUB), ph = lerp(ph0, ph1, b/ENV_SUB);
+      dir.push(new V3(Math.sin(th)*Math.cos(ph), Math.cos(th), Math.sin(th)*Math.sin(ph)));
+      pcI.push(p);
+    }
+    for(let a=0;a<ENV_SUB;a++) for(let b=0;b<ENV_SUB;b++){
+      const v00 = base + a*(ENV_SUB+1) + b, v01 = v00 + 1, v10 = v00 + ENV_SUB + 1, v11 = v10 + 1;
+      idx.push(v00, v01, v10, v01, v11, v10);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(dir.length*3), 3));
+  g.setAttribute('normal',   new THREE.BufferAttribute(new Float32Array(dir.length*3), 3));
+  g.setIndex(idx);
+  const mat = new THREE.MeshStandardMaterial({color:COL.nucleus, roughness:0.35, metalness:0,
+    transparent:true, opacity:0.45, depthWrite:false, side:THREE.DoubleSide, envMapIntensity:0.5});
+  const mesh = new THREE.Mesh(g, mat);
+  mesh.renderOrder = 2;
+  mesh.frustumCulled = false;
+  return {g, mat, mesh, dir, pcI, pc, jit, centre:new V3(NaN, 0, 0), rad:1, b:0, op0:0, k:1};
+}
+function writeEnvelope(E, centre, rad, b, spread){
+  E.op0 = 0.45*(1 - ss(0.5, 1, b));
+  E.mat.opacity = E.op0*E.k;
+  E.mesh.visible = b < 0.999;
+  if(!E.mesh.visible || (E.centre.equals(centre) && E.rad === rad && E.b === b)) return;
+  const pos = E.g.attributes.position.array, nor = E.g.attributes.normal.array;
+  E.centre.copy(centre); E.rad = rad; E.b = b;
+  for(let i=0;i<E.dir.length;i++){
+    const v = E.dir[i], p = E.pc[E.pcI[i]], j = E.jit[E.pcI[i]];
+    const out = 1 + spread*b*(0.3 + 0.25*j), sh = 1 - 0.55*b;
+    pos[i*3]   = centre.x + rad*(p.x*out + (v.x - p.x)*sh);
+    pos[i*3+1] = centre.y + rad*(p.y*out + (v.y - p.y)*sh);
+    pos[i*3+2] = centre.z + rad*(p.z*out + (v.z - p.z)*sh);
+    nor[i*3] = v.x; nor[i*3+1] = v.y; nor[i*3+2] = v.z;
+  }
+  E.g.attributes.position.needsUpdate = true;
+  E.g.attributes.normal.needsUpdate = true;
+}
+/* the cell's nucleus, then the four gametes' */
+const ENV = [makeEnvelope(11), makeEnvelope(12), makeEnvelope(13), makeEnvelope(14), makeEnvelope(15)];
+ENV.forEach(E => W1.add(E.mesh));
+/* the four gametes: which cell of the first division (sx), which end of
+   the second (j). A chromatid ends up in gamete (its chromosome's side, its j) */
+const GAMETES = [];
+[-1, 1].forEach(sx => [-1, 1].forEach(j => GAMETES.push({sx, j, env:ENV[1 + GAMETES.length]})));
+
+/* =========================================================================
+   THE CHROMOSOMES
+========================================================================= */
+const TERR = [[1,1,1],[-1,-1,1],[-1,1,-1],[1,-1,-1]].map(v => new V3(v[0], v[1], v[2]).normalize());
+const THREAD = [0, 1, 2, 3].map(k => {
+  const L = k < 2 ? 1.9 : 1.15;
+  const rnd = rng(100 + k), f = 0.55 + 0.45*L/1.9;
+  const fr = [0,1,2].map(() => 2*Math.PI*(3 + 2.2*rnd())*f);
+  const ph = [0,1,2].map(() => 2*Math.PI*rnd());
+  const P = [], N = [];
+  for(let i=0;i<=NS;i++){
+    const s = i/NS;
+    P.push(new V3(Math.sin(fr[0]*s + ph[0]), Math.sin(fr[1]*s + ph[1]), Math.sin(fr[2]*s + ph[2]))
+      .multiplyScalar(0.46/Math.sqrt(3)).addScaledVector(TERR[k], 0.4));
+  }
+  let n = null;
+  for(let i=0;i<=NS;i++){
+    const T = new V3().subVectors(P[Math.min(NS, i+1)], P[Math.max(0, i-1)]).normalize();
+    if(!n){ n = new V3(0,0,1).cross(T); if(n.lengthSq() < 1e-6) n = new V3(1,0,0).cross(T); n.normalize(); }
+    else n = n.clone().addScaledVector(T, -n.dot(T)).normalize();
+    N.push(n);
+  }
+  return {P, N};
+});
+const FORK_V = 0.026;
+const ORIG = CHROMS.map((c, k) => {
+  const rnd = rng(200 + k);
+  return [0.1, 0.36, 0.62, 0.88].map(o => ({s:o + (rnd() - 0.5)*0.06, t:TL.copy0 + 3*rnd()}));
+});
+function copiedAt(k, s, T){
+  let c = 0;
+  for(const o of ORIG[k]) c = Math.max(c, ss(-0.006, 0.006, FORK_V*(T - o.t) - Math.abs(s - o.s)));
+  return c;
+}
+
+const frameQ = (S, D) => new THREE.Quaternion().setFromRotationMatrix(
+  new THREE.Matrix4().makeBasis(S, D, new V3().crossVectors(S, D)));
+/* where each chromosome condenses: in its own territory */
+const KF0 = CHROMS.map((c, k) => {
+  const rnd = rng(300 + k), dir = TERR[k];
+  const D = new V3().crossVectors(dir, new V3(rnd()-0.5, rnd()-0.5, rnd()-0.5)).normalize();
+  const S = new V3().crossVectors(D, dir).normalize();
+  return {C:dir.clone().multiplyScalar(0.4*NUC_R*0.7), Q:frameQ(S, D)};
+});
+/* each pair: where its partners lie side by side in the nucleus (BIV1), and
+   on the equator (BIV2). A partner sits at the pair's middle + S*(side*HW),
+   so the four chromatids lie in a row along S, and the two in the middle of
+   the row -- one from each partner -- are the ones that cross over. */
+const pairFrame = (C, D, hint) => {
+  D = D.clone().normalize();
+  const S = hint.clone().addScaledVector(D, -hint.dot(D)).normalize();
+  return {C, Q:frameQ(S, D)};
+};
+const BIV1 = [pairFrame(new V3(0.1, 0.72, 0.15), new V3(1, 0.15, 0.3), new V3(0, 1, 0.2)),
+              pairFrame(new V3(-0.15, -0.75, -0.1), new V3(0.9, -0.1, -0.45), new V3(0, 1, -0.2))];
+const BIV2 = [{C:new V3(0, 1.25, 0.15), Q:frameQ(new V3(1,0,0), new V3(0, Math.cos(0.1), Math.sin(0.1)))},
+              {C:new V3(0, -0.6, -0.15), Q:frameQ(new V3(1,0,0), new V3(0, Math.cos(-0.12), Math.sin(-0.12)))}];
+/* metaphase of the second division: in each half, the two chromosomes
+   lie across that cell's middle, end to end, their copies facing up and down */
+const F3 = CHROMS.map((c, k) => {
+  const b = [0.08, -0.1, 0.12, -0.06][k];
+  return {C:new V3(c.side*D1 + (c.pair === 0 ? -0.85 : 0.95), 0, [0.12, -0.12, 0.1, -0.1][k]),
+          Q:frameQ(new V3(0, 1, 0), new V3(-Math.cos(b), 0, Math.sin(b)))};
+});
+const bend = a => ss(0, 0.3, a)*(1 - 0.5*ss(0.75, 1, a));
+
+/* the colours each chromatid ends with: its own, except that the inner two
+   of each pair swap everything from the crossing point on */
+const innerJ = side => side < 0 ? 1 : -1;      // the chromatid of a partner nearest the middle of the row
+function finalCid(k, j){
+  const c = CHROMS[k], own = OWNERS.indexOf(c.from), cid = new Uint8Array(NS+1).fill(own);
+  const X = CROSS.find(x => x.pair === c.pair);
+  if(X && j === innerJ(c.side)){
+    const other = CHROMS.findIndex((o, m) => m !== k && o.pair === c.pair);
+    for(let i=0;i<=NS;i++) if(i/NS >= X.s) cid[i] = OWNERS.indexOf(CHROMS[other].from);
+  }
+  return cid;
+}
+const chromMat = new THREE.MeshStandardMaterial({color:0xffffff, vertexColors:true, roughness:0.45,
+  metalness:0.05, envMapIntensity:0.6});
+function makeChromatid(group, own, cid){
+  const geo = makeTube(NS+1, 10);
+  const mesh = new THREE.Mesh(geo, chromMat);
+  mesh.frustumCulled = false;
+  group.add(mesh);
+  return {geo, mesh, own, cid, lastX:null, P:Array.from({length:NS+1}, () => new V3()), R:new Float32Array(NS+1)};
+}
+const TUBES = [];
+CHROMS.forEach((c, k) => [-1, 1].forEach(j => {
+  const tb = makeChromatid(W1, OWNERS.indexOf(c.from), finalCid(k, j));
+  Object.assign(tb, {k, j, phase:j > 0 ? Math.PI : 0});
+  TUBES.push(tb);
+}));
+const tubeOf = (k, j) => TUBES[2*k + (j > 0 ? 1 : 0)];
+/* the chiasma: a ring where each pair crossed over, while it happens */
+const ringMat = new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0, depthWrite:false});
+const RINGS = CROSS.map(() => { const m = new THREE.Mesh(new THREE.TorusGeometry(1, 0.08, 8, 32), ringMat); W1.add(m); return m; });
+
+/* =========================================================================
+   SPINDLES: the first (along x), then one in each half (along y)
+========================================================================= */
+const CYL = new THREE.CylinderGeometry(1, 1, 1, 7, 1, false);
+const SPH = new THREE.SphereGeometry(1, 18, 12);
+const fibreMat = new THREE.MeshStandardMaterial({color:COL.fibre, roughness:0.5, transparent:true, opacity:0.8,
+  depthWrite:false, envMapIntensity:0.4});
+const POLAR1 = [-1, 1].map(j => { const rnd = rng(400 + j);
+  return Array.from({length:7}, () => new V3(-j*(0.35 + 0.5*rnd()), (rnd() - 0.5)*2.4, (rnd() - 0.5)*2.4)); });
+const ASTRAL1 = [-1, 1].map(j => { const rnd = rng(500 + j);
+  return Array.from({length:8}, () => { const b = 0.35 + 0.85*rnd(), g = 2*Math.PI*rnd();
+    return new V3(j*Math.cos(b), Math.sin(b)*Math.cos(g), Math.sin(b)*Math.sin(g)); }); });
+const POLAR2 = [0, 1, 2, 3].map(i => { const rnd = rng(600 + i), j = i % 2 ? 1 : -1;
+  return Array.from({length:5}, () => new V3((rnd() - 0.5)*2.4, -j*(0.3 + 0.4*rnd()), (rnd() - 0.5)*1.6)); });
+const ASTRAL2 = [0, 1, 2, 3].map(i => { const rnd = rng(700 + i), j = i % 2 ? 1 : -1;
+  return Array.from({length:6}, () => { const b = 0.35 + 0.8*rnd(), g = 2*Math.PI*rnd();
+    return new V3(Math.sin(b)*Math.cos(g), j*Math.cos(b), Math.sin(b)*Math.sin(g)); }); });
+const N_FIB = 4 + 14 + 16 + 8 + 20 + 24;
+const fibres = new THREE.InstancedMesh(CYL, fibreMat, N_FIB);
+fibres.renderOrder = 2;
+W1.add(fibres);
+const poleMat = new THREE.MeshStandardMaterial({color:COL.pole, emissive:COL.pole, emissiveIntensity:0.5,
+  roughness:0.4, transparent:true, opacity:1});
+const POLES = Array.from({length:6}, () => { const m = new THREE.Mesh(SPH, poleMat); m.scale.setScalar(0.13); W1.add(m); return m; });
+
+/* =========================================================================
+   MITOCHONDRIA, shared out twice: each has a quarter (sx, sy) of the cell,
+   a place in the cell (q0), in its half (q1) and in its gamete (q2)
+========================================================================= */
+function pickIn(rnd, sx, sy, rMin, rMax, axis){
+  for(;;){
+    const v = new V3(2*rnd()-1, 2*rnd()-1, 2*rnd()-1), l = v.length();
+    if(l < rMin || l > rMax) continue;
+    if(axis){
+      const a = Math.abs(v[axis]), o = axis === 'x' ? Math.abs(v.y) : Math.abs(v.x);
+      if(a > 0.64*l) continue;                                 // keep clear of the spindle
+      if(a < 0.2 && Math.abs(v.z) < 0.45 && o < 0.6) continue;  // ...and of the chromosomes in the middle
+    }
+    if(sx && Math.sign(v.x) !== sx) continue;
+    if(sy && Math.sign(v.y) !== sy) continue;
+    return v;
+  }
+}
+const MITO = (function(){
+  const rnd = rng(7), out = [];
+  for(let i=0;i<N_MITO;i++){
+    const sx = i % 2 ? 1 : -1, sy = (i >> 1) % 2 ? 1 : -1;
+    out.push({sx, sy, q0:pickIn(rnd, sx, sy, 0.62, 0.88, 'x'), q1:pickIn(rnd, 0, sy, 0.6, 0.85, 'y'),
+      q2:pickIn(rnd, 0, 0, 0.58, 0.8, null),
+      quat:new THREE.Quaternion().setFromEuler(new THREE.Euler(rnd()*6.28, rnd()*6.28, rnd()*6.28)), pos:new V3()});
+  }
+  return out;
+})();
+const mitoMat = new THREE.MeshStandardMaterial({color:COL.mito, roughness:0.5, metalness:0, envMapIntensity:0.35});
+const mitoMesh = new THREE.InstancedMesh(SPH, mitoMat, N_MITO);
+W1.add(mitoMesh);
+const MITO_S = new V3(0.36, 0.14, 0.14);
+
+/* =========================================================================
+   WORLD 2: FERTILISATION. An egg (from a woman) and a sperm carrying the
+   chromosomes of one of the four gametes above.
+========================================================================= */
+const EGG_R = 8, EGG_NR = 1.6, ZYG_R = 2.0, PRO_R = 1.3;
+const EN0 = new V3(2.8, 1.0, -0.6);          // the egg's nucleus to start with
+const MEET = new V3(0.4, 0.5, 0);            // where the two nuclei meet
+const FT = {swim:[0, 6], enter:[6, 8], tail:[6.5, 8.5], swell:[8, 10.5], approach:[10.5, 16.5], merge:[16.5, 20.5]};
+const SPERM_FROM = GAMETES[1];               // the left half's upper gamete
+const eggMemF = cellFrontMat.clone(); eggMemF.opacity = 0.26;
+const eggMemB = cellBackMat.clone();  eggMemB.opacity = 0.34;
+const eggGeo = new THREE.SphereGeometry(EGG_R, 72, 48);
+W2.add(Object.assign(new THREE.Mesh(eggGeo, eggMemB), {renderOrder:1}), Object.assign(new THREE.Mesh(eggGeo, eggMemF), {renderOrder:3}));
+const nucMesh = () => {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(1, 40, 28), new THREE.MeshStandardMaterial({color:COL.nucleus,
+    roughness:0.35, metalness:0, transparent:true, opacity:0.4, depthWrite:false, envMapIntensity:0.5}));
+  m.renderOrder = 2; W2.add(m); return m;
+};
+const FN = {egg:nucMesh(), sperm:nucMesh(), zyg:nucMesh()};
+const spermMat = new THREE.MeshStandardMaterial({color:COL.sperm, roughness:0.45, metalness:0, envMapIntensity:0.5,
+  transparent:true, opacity:1});
+const spermHead = new THREE.Mesh(SPH, spermMat);
+spermHead.scale.set(0.8, 0.48, 0.5);
+W2.add(spermHead);
+const TAIL_N = 121, TAIL_L = 7;
+const tailGeo = makeTube(TAIL_N, 8);
+const tail = new THREE.Mesh(tailGeo, spermMat);
+tail.frustumCulled = false;
+W2.add(tail);
+const TAIL = {P:Array.from({length:TAIL_N}, () => new V3()), R:new Float32Array(TAIL_N)};
+const eggMito = new THREE.InstancedMesh(SPH, mitoMat, 40);
+(function(){
+  const rnd = rng(9), m = new THREE.Matrix4();
+  for(let i=0;i<40;i++){
+    let v;
+    do { v = new V3(2*rnd()-1, 2*rnd()-1, 2*rnd()-1).multiplyScalar(EGG_R*0.88); }
+    while(v.length() > EGG_R*0.88 || v.length() < EGG_R*0.45 || v.distanceTo(EN0) < 2.6);
+    m.compose(v, new THREE.Quaternion().setFromEuler(new THREE.Euler(rnd()*6, rnd()*6, rnd()*6)), MITO_S.clone().multiplyScalar(1.4));
+    eggMito.setMatrixAt(i, m);
+  }
+})();
+W2.add(eggMito);
+/* the zygote's four chromosomes: the sperm's two (as they left meiosis),
+   the egg's two. kz = which thread shape (and territory) each has */
+const FCHR = [];
+TUBES.filter(t => CHROMS[t.k].side === SPERM_FROM.sx && t.j === SPERM_FROM.j).forEach(t => {
+  const tb = makeChromatid(W2, t.own, t.cid);
+  Object.assign(tb, {from:'sperm', pair:CHROMS[t.k].pair, kz:t.k, src:t});
+  FCHR.push(tb);
+});
+EGG.forEach(e => {
+  const own = OWNERS.indexOf(e.own), cid = new Uint8Array(NS+1).fill(own);
+  if(e.swap) for(let i=0;i<=NS;i++) if(i/NS >= e.swap.s) cid[i] = OWNERS.indexOf(e.swap.to);
+  const kz = CHROMS.findIndex((c, k) => c.pair === e.pair && !FCHR.some(f => f.kz === k));
+  const tb = makeChromatid(W2, own, cid);
+  Object.assign(tb, {from:'egg', pair:e.pair, kz});
+  FCHR.push(tb);
+});
+FCHR.forEach(tb => writeColours(tb, 1));
+
+scene.traverse(o => { if(o.isInstancedMesh) o.frustumCulled = false; });
+linearise(scene);
+
+/* =========================================================================
+   FIGURES the captions quote -- all worked out, none typed in
+========================================================================= */
+const FIG = {
+  chrom:CHROMS.length, pairs:CHROMS.length/2, half:CHROMS.length/2,
+  human:HUMAN.chromosomes, humanHalf:HUMAN.chromosomes/2, humanPairs:HUMAN.pairs,
+  gametes:GAMETES.length, divisions:2,
+  egg:Math.round(SIZE_UM.egg/SIZE_UM.spermHead)
+};
+
+/* =========================================================================
+   STATE as a function of the clock T
+========================================================================= */
+const F = {T:0, S1:null, S2:null, ec:0, cross:0, nx2:0,
+  fr:CHROMS.map(() => ({C:new V3(), Q:new THREE.Quaternion(), S:new V3(), D:new V3(), W:new V3(), phi:0, sig:1, splayK:1})),
+  cov:CHROMS.map(() => new Float32Array(NS+1)),
+  poles:Array.from({length:6}, () => new V3())};
+const _qb = new THREE.Quaternion(), _cb = new V3(), _sb = new V3(), _ct = new V3();
+function chromFrame(k, T, fr){
+  const c = CHROMS[k], p = c.pair, hs = c.side;
+  const m1 = ss(TL.pair[0], TL.pair[1], T);
+  const m2 = ss(TL.cong1[0] + 0.6*p, TL.cong1[1] + 0.6*p, T);
+  _qb.copy(BIV1[p].Q).slerp(BIV2[p].Q, m2);
+  _cb.lerpVectors(BIV1[p].C, BIV2[p].C, m2);
+  _sb.set(1,0,0).applyQuaternion(_qb);
+  _cb.addScaledVector(_sb, hs*HW);
+  fr.Q.copy(KF0[k].Q).slerp(_qb, m1);
+  fr.C.lerpVectors(KF0[k].C, _cb, m1);
+  fr.phi = 0; fr.sig = hs; fr.splayK = 1 - m1;          // partners lie tight, side by side
+  /* first division: the whole chromosome, both copies, to its own end */
+  const a1 = ss(TL.ana1[0], TL.ana1[1], T);
+  if(a1 > 0){
+    fr.C.lerp(_ct.set(hs*XA, 0.35*fr.C.y, 0.35*fr.C.z), a1);
+    fr.phi = bend(a1); fr.splayK = ss(0, 0.6, a1);
+    if(T > TL.ana1[1]) fr.C.x += hs*(d1c(T) - d1c(TL.ana1[1]));     // ...and ride with its half
+  }
+  /* second division: line up across the middle of its half */
+  const m3 = ss(TL.cong2[0] + 0.6*p, TL.cong2[1] + 0.6*p, T);
+  if(m3 > 0){
+    fr.C.lerp(F3[k].C, m3);
+    fr.Q.slerp(F3[k].Q, m3);
+    fr.phi = lerp(fr.phi, 0, m3);
+  }
+  fr.S.set(1,0,0).applyQuaternion(fr.Q);
+  fr.D.set(0,1,0).applyQuaternion(fr.Q);
+  fr.W.set(0,0,1).applyQuaternion(fr.Q);
+}
+/* the centromere of chromatid j of chromosome k, and how its arms bend:
+   together with its sister until the second division pulls them apart */
+const ROD = {Cc:new V3(), sig:1, phi:0, splayK:1};
+function chromatidRod(k, j, T){
+  const fr = F.fr[k];
+  ROD.Cc.copy(fr.C).addScaledVector(fr.S, j*OFF0);
+  ROD.sig = fr.sig; ROD.phi = fr.phi; ROD.splayK = fr.splayK;
+  const a2 = ss(TL.ana2[0], TL.ana2[1], T);
+  if(a2 > 0){
+    const cx = CHROMS[k].side*D1;
+    ROD.Cc.lerp(_ct.set(cx + 0.35*(fr.C.x - cx), j*YA2, 0.35*fr.C.z), a2);
+    ROD.sig = j; ROD.phi = bend(a2); ROD.splayK = fr.splayK*(1 - ss(0, 0.2, a2));
+    if(T > TL.ana2[1]) ROD.Cc.y += j*(d2c(T) - d2c(TL.ana2[1]));
+  }
+  return ROD;
+}
+const gameteCentre = (sx, j, out) => out.set(sx*D1, j*F.nx2, 0);
+function poleSet(T){
+  /* the first division's two poles: up from the nucleus and round to the ends */
+  const u = ss(TL.poles1[0], TL.poles1[1], T), e1 = ss(TL.elong1[0], TL.elong1[1], T);
+  [-1, 1].forEach((j, i) => {
+    const th = lerp(Math.PI/2, j < 0 ? Math.PI : 0, u), rho = lerp(NUC_R*1.22, XP, u) + 0.5*e1;
+    F.poles[i].set(rho*Math.cos(th), rho*Math.sin(th), 0);
+  });
+  /* the second's: in each half, out from its middle, up and down */
+  const u2 = ss(TL.poles2[0], TL.poles2[1], T), e2 = ss(TL.elong2[0], TL.elong2[1], T);
+  [-1, 1].forEach((sx, a) => [-1, 1].forEach((j, b) =>
+    F.poles[2 + 2*a + b].set(sx*D1, j*(lerp(0.6, YP2, u2) + 0.35*e2), 0)));
+}
+function cellFrame(T){
+  F.T = T;
+  F.S1 = state1(T); F.S2 = state2(T);
+  F.ec = T < 72 ? ss(TL.condense[0], TL.condense[1], T) : 1 - ss(TL.decondense[0], TL.decondense[1], T);
+  F.cross = ss(TL.cross[0], TL.cross[1], T);
+  F.nx2 = lerp(2.3, d2c(T), ss(TL.dSlide2[0], TL.dSlide2[1], T));
+  CHROMS.forEach((c, k) => {
+    chromFrame(k, T, F.fr[k]);
+    const cv = F.cov[k];
+    for(let i=0;i<=NS;i++) cv[i] = copiedAt(k, i/NS, T);
+  });
+  poleSet(T);
+}
+const threadCap = i => { const e = Math.min(i, NS - i)/4; return e >= 1 ? 1 : Math.sqrt(1 - (1 - e)*(1 - e)); };
+const _tp = new V3(), _rp = new V3(), _n1 = new V3(), _gc = new V3();
+function updateChromatids(){
+  const parent = F.T < 40;
+  for(const tb of TUBES){
+    const ch = CHROMS[tb.k], fr = F.fr[tb.k], U = THREAD[tb.k], j = tb.j, cov = F.cov[tb.k];
+    const rod = F.ec > 0 ? chromatidRod(tb.k, j, F.T) : null;
+    if(!parent) gameteCentre(ch.side, j, _gc);
+    for(let i=0;i<=NS;i++){
+      let rT = THREAD_R*threadCap(i);
+      if(parent){
+        const cv = cov[i];
+        _tp.copy(U.P[i]).multiplyScalar(NUC_R).addScaledVector(U.N[i], j*0.5*DELTA*cv);
+        if(j > 0) rT *= cv;
+      } else _tp.copy(U.P[i]).multiplyScalar(NUC_G).add(_gc);
+      const out = tb.P[i];
+      if(!rod){ out.copy(_tp); tb.R[i] = rT; continue; }
+      const y = ch.pl - i/NS*ch.L, sg = y >= 0 ? 1 : -1, ay = Math.abs(y);
+      const rr = chromatidRadius(y, ch.pl, ch.ql, TUBE_R);
+      const splay = (chromatidOffset(y, ch.pl, ch.ql, ROD_T) - OFF0)*rod.splayK;
+      const sp = Math.sin(rod.phi), cp = Math.cos(rod.phi);
+      _rp.copy(rod.Cc).addScaledVector(fr.D, y*cp).addScaledVector(fr.S, j*splay - rod.sig*ay*sp);
+      _n1.copy(fr.D).multiplyScalar(sg*rod.sig*sp).addScaledVector(fr.S, cp);
+      const th = 2*Math.PI*y/COIL_L + tb.phase, amp = COIL_A*rr/TUBE_R;
+      _rp.addScaledVector(_n1, amp*Math.cos(th)).addScaledVector(fr.W, amp*Math.sin(th));
+      out.lerpVectors(_tp, _rp, F.ec);
+      tb.R[i] = lerp(rT, rr, F.ec);
+    }
+    writeTube(tb.geo, tb.P, tb.R);
+    writeColours(tb, F.cross);
+  }
+  /* the chiasma rings, between the two inner chromatids at the crossing point */
+  const rop = ss(TL.cross[0] - 0.3, TL.cross[0] + 0.5, F.T)*(1 - ss(TL.cross[1] + 0.8, TL.cross[1] + 2.5, F.T));
+  ringMat.opacity = 0.9*rop;
+  CROSS.forEach((X, n) => {
+    const m = RINGS[n];
+    m.visible = rop > 0.01;
+    if(!m.visible) return;
+    const ks = CHROMS.map((c, k) => k).filter(k => CHROMS[k].pair === X.pair);
+    const i = Math.round(X.s*NS);
+    const a = tubeOf(ks[0], innerJ(CHROMS[ks[0]].side)).P[i], b = tubeOf(ks[1], innerJ(CHROMS[ks[1]].side)).P[i];
+    m.position.addVectors(a, b).multiplyScalar(0.5);
+    m.lookAt(_tp.copy(m.position).add(F.fr[ks[0]].D));
+    m.scale.setScalar(0.32*(1 + 0.15*Math.sin(8*F.T)));
+  });
+}
+
+const _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _sc = new V3(), _dv = new V3(), _mid = new V3();
+function placeRod(mesh, slot, a, b, r){
+  _dv.subVectors(b, a);
+  const len = _dv.length();
+  if(len < 1e-6 || !(r > 0)){ mesh.setMatrixAt(slot, _m4.makeScale(0, 0, 0)); return; }
+  _q.setFromUnitVectors(UP, _dv.multiplyScalar(1/len));
+  _mid.addVectors(a, b).multiplyScalar(0.5);
+  mesh.setMatrixAt(slot, _m4.compose(_mid, _q, _sc.set(r, len, r)));
+}
+const FIB = Array.from({length:N_FIB}, () => ({a:new V3(), b:new V3(), on:false, kind:''}));
+const _fe = new V3(), _cc = new V3();
+function updateSpindles(){
+  const T = F.T;
+  const op1 = ss(TL.spindle1[0], TL.spindle1[0] + 2, T)*(1 - ss(TL.spindleOff1[0], TL.spindleOff1[1], T));
+  const op2 = ss(TL.spindle2[0], TL.spindle2[0] + 2, T)*(1 - ss(TL.spindleOff2[0], TL.spindleOff2[1], T));
+  fibreMat.opacity = 0.8*Math.max(op1, op2);
+  poleMat.opacity = Math.max(op1, op2);
+  POLES.forEach((m, i) => { m.position.copy(F.poles[i]); m.visible = (i < 2 ? op1 : op2) > 0.01; });
+  fibres.visible = Math.max(op1, op2) > 0.01;
+  let s = 0;
+  const set = (a, b, on, kind) => { const f = FIB[s]; f.a.copy(a); f.b.copy(b); f.on = on; f.kind = kind;
+    placeRod(fibres, s++, a, b, on ? 0.026 : 0); };
+  /* first division: each chromosome is held by one fibre, from its own end */
+  CHROMS.forEach((c, k) => {
+    const g = ss(TL.fibres1[0] + 0.6*c.pair, TL.fibres1[1] + 0.6*c.pair, T);
+    const p = F.poles[c.side > 0 ? 1 : 0];
+    set(p, _fe.lerpVectors(p, F.fr[k].C, g), g > 0.001 && op1 > 0.01, 'k1');
+  });
+  const g1 = ss(TL.spindle1[0], TL.spindle1[1], T);
+  [0, 1].forEach(i => {
+    const p = F.poles[i];
+    POLAR1[i].forEach(e => set(p, _fe.lerpVectors(p, e, g1), g1 > 0.001 && op1 > 0.01, 'p1'));
+    ASTRAL1[i].forEach(d => set(p, _fe.copy(p).addScaledVector(d, 0.6*g1), g1 > 0.001 && op1 > 0.01, 'a1'));
+  });
+  /* second division: each copy is held by a fibre from its own pole */
+  CHROMS.forEach((c, k) => [-1, 1].forEach(j => {
+    const g = ss(TL.fibres2[0] + 0.5*c.pair, TL.fibres2[1] + 0.5*c.pair, T);
+    const p = F.poles[2 + (c.side > 0 ? 2 : 0) + (j > 0 ? 1 : 0)];
+    _cc.copy(chromatidRod(k, j, T).Cc);
+    set(p, _fe.lerpVectors(p, _cc, g), g > 0.001 && op2 > 0.01, 'k2');
+  }));
+  const g2 = ss(TL.spindle2[0], TL.spindle2[1], T);
+  [0, 1, 2, 3].forEach(i => {
+    const p = F.poles[2 + i], sx = i < 2 ? -1 : 1;
+    POLAR2[i].forEach(e => set(p, _fe.lerpVectors(p, _cc.set(sx*D1 + e.x, e.y, e.z), g2), g2 > 0.001 && op2 > 0.01, 'p2'));
+    ASTRAL2[i].forEach(d => set(p, _fe.copy(p).addScaledVector(d, 0.5*g2), g2 > 0.001 && op2 > 0.01, 'a2'));
+  });
+  fibres.instanceMatrix.needsUpdate = true;
+}
+
+/* a mitochondrion's place: in its quarter of the cell, then its half, then
+   its gamete; kept inside the membrane */
+const _oq = new V3(), _oc = new V3(), _op = new V3();
+function mitoCentre(o, T, out){
+  return T < SPLIT1 ? out.set(o.sx*F.S1.d, 0, 0) : out.set(o.sx*D1, o.sy*F.S2.d, 0);
+}
+function updateMito(){
+  const T = F.T;
+  MITO.forEach((o, i) => {
+    let r;
+    if(T < SPLIT1){ _oq.copy(o.q0).lerp(o.q1, ss(TL.share1[0], TL.share1[1], T)); r = F.S1.r; }
+    else { _oq.copy(o.q1).lerp(o.q2, ss(TL.share2[0], TL.share2[1], T)); r = F.S2.r; }
+    mitoCentre(o, T, _oc);
+    o.pos.copy(_oq).multiplyScalar(r).add(_oc);
+    if(cellsSdf(o.pos, T) > -0.32){
+      let lo = 0, hi = 1;
+      for(let it=0; it<24; it++){
+        const m = 0.5*(lo + hi);
+        _op.copy(o.pos).lerp(_oc, m);
+        if(cellsSdf(_op, T) <= -0.32) hi = m; else lo = m;
+      }
+      o.pos.lerp(_oc, hi);
+    }
+    mitoMesh.setMatrixAt(i, _m4.compose(o.pos, o.quat, MITO_S));
+  });
+  mitoMesh.instanceMatrix.needsUpdate = true;
+}
+let lastT = null;
+function updateCell(T){
+  if(T === lastT) return;
+  lastT = T;
+  cellFrame(T);
+  const two = T >= SPLIT1;
+  MEM1.g.visible = !two;
+  MEM2.forEach(m => { m.g.visible = two; });
+  if(two) MEM2.forEach(m => writeLathe(m.geo, F.S2)); else writeLathe(MEM1.geo, F.S1);
+  writeEnvelope(ENV[0], new V3(), NUC_R, ss(TL.envOff[0], TL.envOff[1], T), 1);
+  const gR = NUC_G*lerp(1.2, 1, ss(TL.envShrink[0], TL.envShrink[1], T));
+  const gB = T < 70 ? 1 : 1 - ss(TL.envOn[0], TL.envOn[1], T);
+  GAMETES.forEach(g => writeEnvelope(g.env, gameteCentre(g.sx, g.j, _gc), gR, gB, 0.3));
+  updateChromatids();
+  updateSpindles();
+  updateMito();
+}
+
+/* -------------------------------------------------------- fertilisation */
+const FS = {head:new V3(), dir:new V3(1,0,0), spermN:new V3(), spermR:0.35, eggN:new V3(), merge:0};
+function spermHeadAt(t, out){
+  const u = ss(FT.swim[0], FT.swim[1], t)*0.85 + 0.15*clamp(t/FT.swim[1], 0, 1);
+  out.set(lerp(-17, -EGG_R - 0.78, u), 0.5 + 0.35*Math.sin(1.3*t)*(1 - u), 0.25*Math.sin(0.9*t)*(1 - u));
+  const v = ss(FT.enter[0], FT.enter[1], t);
+  return out.lerp(_tp.set(-EGG_R + 1.6, 0.5, 0), v);
+}
+const _fz = new V3(), _fa = new V3();
+function updateFert(t){
+  spermHeadAt(t, FS.head);
+  spermHeadAt(t + 0.05, _fa);
+  FS.dir.subVectors(_fa, FS.head);
+  if(FS.dir.lengthSq() < 1e-10) FS.dir.set(1, 0, 0); else FS.dir.normalize();
+  /* the head and tail, until the head is inside and the tail has gone */
+  const tailOp = 1 - ss(FT.tail[0], FT.tail[1], t), headOp = 1 - ss(FT.swell[0], FT.swell[0] + 1, t);
+  spermMat.opacity = Math.max(headOp, 0);
+  spermHead.visible = headOp > 0.01;
+  spermHead.position.copy(FS.head);
+  spermHead.quaternion.setFromUnitVectors(_fa.set(1,0,0), FS.dir);
+  tail.visible = tailOp > 0.01;
+  if(tail.visible){
+    const side = new V3(0, 1, 0).addScaledVector(FS.dir, -FS.dir.y).normalize();
+    for(let i=0;i<TAIL_N;i++){
+      const u = i/(TAIL_N-1), back = 0.75 + u*TAIL_L;
+      const wave = 0.55*Math.pow(u, 0.8)*Math.sin(2*Math.PI*(u*1.6 - 1.8*t))*tailOp;
+      TAIL.P[i].copy(FS.head).addScaledVector(FS.dir, -back).addScaledVector(side, wave);
+      TAIL.R[i] = (u < 0.12 ? 0.13 : lerp(0.08, 0.025, u))*Math.min(1, (1 - u)*40)*Math.max(tailOp, 0.001);
+    }
+    writeTube(tailGeo, TAIL.P, TAIL.R);
+  }
+  /* the sperm's nucleus swells inside the egg; the two nuclei meet and join */
+  const sw = ss(FT.swell[0], FT.swell[1], t), ap = ss(FT.approach[0], FT.approach[1], t);
+  FS.merge = ss(FT.merge[0], FT.merge[1], t);
+  FS.spermR = lerp(0.35, PRO_R, sw);
+  FS.spermN.copy(FS.head).lerp(_fz.copy(MEET).add(_fa.set(-1.1, 0, 0)), ap).lerp(MEET, FS.merge);
+  FS.eggN.copy(EN0).lerp(_fz.copy(MEET).add(_fa.set(1.25, 0, 0)), ap).lerp(MEET, FS.merge);
+  const set = (m, c, r, op) => { m.position.copy(c); m.scale.setScalar(r); m.material.opacity = op; m.visible = op > 0.01; };
+  set(FN.sperm, FS.spermN, FS.spermR, 0.4*sw*(1 - FS.merge));
+  set(FN.egg, FS.eggN, EGG_NR, 0.4*(1 - FS.merge));
+  set(FN.zyg, MEET, ZYG_R, 0.4*FS.merge);
+  for(const tb of FCHR){
+    const U = THREAD[tb.kz];
+    for(let i=0;i<=NS;i++){
+      const own = tb.from === 'sperm' ? _fz.copy(U.P[i]).multiplyScalar(FS.spermR).add(FS.spermN)
+                                      : _fz.copy(U.P[i]).multiplyScalar(EGG_NR).add(FS.eggN);
+      tb.P[i].copy(own).lerp(_fa.copy(U.P[i]).multiplyScalar(ZYG_R).add(MEET), FS.merge);
+      tb.R[i] = THREAD_R*threadCap(i)*(tb.from === 'sperm' ? lerp(0.55, 1, sw) : 1);
+    }
+    writeTube(tb.geo, tb.P, tb.R);
+    tb.mesh.visible = tb.from === 'egg' || FS.head.length() + 0.8 < EGG_R;     // once the head is inside
+  }
+}
+
+/* =========================================================================
+   CAMERA KEYS
+========================================================================= */
+function fitDist(halfW, halfH){
+  const vf = camera.fov*Math.PI/180, hf = 2*Math.atan(Math.tan(vf/2)*camera.aspect);
+  return Math.max(halfW/Math.tan(hf/2), halfH/Math.tan(vf/2));
+}
+const key = (look, dist, az, el) => ({look:[look.x, look.y, look.z], dist, az:az||0, el:el||0});
+let CAM = {};
+function buildCams(){
+  const o = new V3();
+  /* the overview chapter: the cell in the upper part, the diagram below */
+  const vf = camera.fov*Math.PI/180;
+  const di = Math.max(fitDist(CELL_R*1.2, 0), CELL_R/(0.3*Math.tan(vf/2)));
+  CAM.intro   = key(new V3(0, -0.36*di*Math.tan(vf/2), 0), di, 0.2, 0.1);
+  CAM.cell    = key(o, fitDist(CELL_R*1.12, CELL_R*1.12), 0.3, 0.25);
+  CAM.nucleus = key(o, fitDist(NUC_R*1.35, NUC_R*1.35), 0.35, 0.3);
+  CAM.nucleus2= key(o, fitDist(NUC_R*1.45, NUC_R*1.45), 0.6, 0.32);
+  CAM.meta1   = key(o, fitDist(CELL_R*1.12, CELL_R*1.15), 0.12, 0.1);
+  CAM.ana1    = key(o, fitDist(CELL_R + D_EL + 0.7, CELL_R*1.18), 0.16, 0.12);
+  CAM.halves  = key(o, fitDist(D1 + CELL_R1 + 1.6, CELL_R1*1.35), 0.15, 0.16);
+  CAM.four    = key(o, fitDist(D1 + CELL_R1 + 0.9, D2 + CELL_R2 + 1.4), 0.12, 0.14);
+  CAM.fertA   = key(new V3(-8, 0, 0), fitDist(17.5, 9.5), 0.1, 0.12);
+  CAM.fertB   = key(new V3(-1, 0, 0), fitDist(EGG_R + 1.8, EGG_R + 1.2), 0.15, 0.15);
+  CAM.zyg     = key(MEET, fitDist(3.8, 3.4), 0.25, 0.2);
+}
+
+/* =========================================================================
+   THE STORY. Chapters 1-6 play the cell's clock from T0 for Tlen seconds.
+========================================================================= */
+const tubePt = (k, j, s) => tubeOf(k, j).P[Math.round(s*NS)];
+const fibreMid = s => new V3().addVectors(FIB[s].a, FIB[s].b).multiplyScalar(0.5);
+const envPt = (E, d) => new V3().copy(d).normalize().multiplyScalar(E.rad*(1 + 0.3*E.b)).add(E.centre);
+const kOf = (pair, from) => CHROMS.findIndex(c => c.pair === pair && c.from === from);
+const crossPt = n => RINGS[n].position;
+
+const CH = [
+  {
+    part:'Overview', T0:0, Tlen:0, len:14, strip:'big',
+    shots:[{world:'cell', keys:[[0,'intro']]}],
+    title:'Meiosis: making gametes',
+    text:'Body cells have their chromosomes in <b>pairs</b>: one of each pair came from the mother, the other from the father. A human body cell has '+FIG.human+' chromosomes, in '+FIG.humanPairs+' pairs.<br><br><b>Gametes</b> — sperm and egg cells — are different. They have just <b>one chromosome from each pair</b>: '+FIG.humanHalf+' in a human. They are made by a special kind of cell division, <b>meiosis</b>, in the reproductive organs: the testes and the ovaries.<br><br>At <b>fertilisation</b> a sperm and an egg join, and the full number is restored.',
+    look:'This cell has '+FIG.chrom+' chromosomes in '+FIG.pairs+' pairs. Follow the diagram: copied once, divided twice, giving '+FIG.gametes+' gametes with '+FIG.half+' chromosomes each.',
+    scale:'Mitosis makes two cells, each identical to the parent. Meiosis makes four, each with half the number of chromosomes, and all different.',
+    terms:[['Gamete','a sex cell: a sperm cell or an egg cell.'],
+           ['Meiosis','cell division that makes gametes. The cell divides twice, making four gametes, each with a single set of chromosomes.']],
+    key:['cell','nucleus','hisMother','hisFather'],
+    labels:[]
+  },
+  {
+    part:'Copying', T0:0, Tlen:14, len:15, strip:'small',
+    shots:[{world:'cell', keys:[[0,'cell'],[1,'cell'],[4.5,'nucleus'],[15,'nucleus2']]}],
+    mem:t => lerp(1, 0.3, ss(1, 4.5, t)), nuc:t => lerp(1, 0.4, ss(1, 4.5, t)),
+    title:'First, the DNA is copied',
+    text:'This cell is in a man\'s testis. In each pair, one chromosome came from his <b>mother</b> (red) and one from his <b>father</b> (blue).<br><br>Just as before mitosis, each chromosome is copied, giving <b>two identical copies</b> lying side by side.',
+    look:'The DNA is copied once — but the cell is about to divide twice.',
+    scale:'Real chromosome threads are far longer and thinner than this.',
+    terms:[['Chromosome','a long molecule of DNA, found in the nucleus.']],
+    key:['nucleus','hisMother','hisFather'],
+    labels:[
+      {text:'Nucleus', world:'cell', at:()=>[envPt(ENV[0], new V3(-0.6, 0.55, 0.58))], dx:-110, dy:-50, t0:5},
+      {text:'Copying starts here', world:'cell', at:()=>[tubePt(1, 1, ORIG[1][0].s)], dx:120, dy:-50, t0:3, t1:8.5},
+      {text:'Two identical copies', world:'cell', at:()=>[tubePt(2, -1, 0.3), tubePt(2, 1, 0.3)], dx:120, dy:50, t0:10.5}
+    ]
+  },
+  {
+    part:'Pairing', T0:14, Tlen:15, len:15.5, strip:'small',
+    shots:[{world:'cell', keys:[[0,'nucleus2'],[15.5,'nucleus']]}],
+    mem:() => 0.3, nuc:() => 0.4,
+    title:'The pairs come together',
+    text:'The chromosomes coil up, short and thick. Then something happens that never happens in mitosis: the two chromosomes of each pair <b>find each other</b> and lie side by side.<br><br>While they are paired, the two chromosomes of a pair can <b>swap sections</b>. Look for a blue section on a red chromosome, and a red section on the blue one.',
+    look:'Each chromosome is still two identical copies, so a pair is four strands lying side by side. The swap is between the two in the middle.',
+    scale:'This swapping is called crossing over. Not every GCSE course asks about it, but it is the reason that the four gametes made from one cell all turn out different.',
+    terms:[['Pair of chromosomes','two chromosomes carrying the same genes: one from each parent.'],
+           ['Crossing over','the two chromosomes of a pair swapping sections of DNA.']],
+    key:['nucleus','hisMother','hisFather'],
+    labels:[
+      {text:'The chromosomes coil up', world:'cell', at:()=>[tubePt(1, -1, 0.2)], dx:120, dy:-60, t0:2, t1:5.5},
+      {text:'A pair, side by side', world:'cell', at:()=>[F.fr[kOf(0, 'hisMother')].C, F.fr[kOf(0, 'hisFather')].C], dx:-130, dy:-70, t0:8.5},
+      {text:'Crossing over:<span class="sub">the pair swap sections</span>', cls:'gold', world:'cell',
+       at:()=>[crossPt(0), crossPt(1)], dx:130, dy:60, t0:10, t1:14.5}
+    ]
+  },
+  {
+    part:'Lining up', T0:29, Tlen:9, len:9.5, strip:'small',
+    shots:[{world:'cell', keys:[[0,'nucleus'],[0.5,'nucleus'],[6,'meta1']]}],
+    mem:t => lerp(0.3, 0.5, ss(1, 6, t)), nuc:() => 0.4,
+    title:'The pairs line up across the middle',
+    text:'The membrane around the nucleus has broken up, and spindle fibres grow across the cell, as in mitosis. But this time the chromosomes line up across the middle <b>in their pairs</b>: one chromosome of each pair on each side.<br><br>Which way round each pair lines up is down to <b>chance</b>.',
+    look:'In the long pair, the red chromosome is on the left; in the short pair, it is on the right. It could just as well have been the other way round.',
+    terms:[['Spindle fibres','fibres that grow across a dividing cell and pull the chromosomes apart.']],
+    key:['hisMother','hisFather','fibre'],
+    labels:[
+      {text:'Spindle fibres', world:'cell', at:()=>[fibreMid(0), fibreMid(1)], dx:-120, dy:-130, t0:2.5},
+      {text:'Pairs line up across the middle', world:'cell', at:()=>[BIV2[0].C, BIV2[1].C], dx:150, dy:110, t0:6.5}
+    ]
+  },
+  {
+    part:'First division', T0:38, Tlen:18, len:18.5, strip:'small',
+    shots:[{world:'cell', keys:[[0,'meta1'],[1,'meta1'],[6,'ana1'],[13,'halves']]}],
+    mem:t => lerp(0.5, 0.7, ss(9, 16, t)),
+    title:'First division: the pairs are separated',
+    text:'The spindle fibres pull the chromosomes of each pair apart: <b>one chromosome of each pair</b> goes to each end. The two copies of each chromosome stay together.<br><br>Then the cell divides. Each new cell has <b>'+FIG.half+' chromosomes</b>, one from each pair — half the number the cell started with.',
+    look:'Each new cell has one long and one short chromosome, and a different mix of red and blue.',
+    scale:'In many cells a nuclear membrane forms for a short while between the two divisions; it is left out here.',
+    terms:[['Meiosis','the first division separates the pairs: each new cell gets one chromosome of each pair.']],
+    key:['cell','hisMother','hisFather','fibre'],
+    labels:[
+      {text:'One of each pair to this end', world:'cell', at:()=>CHROMS.map((c, k) => k).filter(k => CHROMS[k].side < 0).map(k => F.fr[k].C), dx:-80, dy:-150, t0:5, t1:10},
+      {text:'...and one to that end', world:'cell', at:()=>CHROMS.map((c, k) => k).filter(k => CHROMS[k].side > 0).map(k => F.fr[k].C), dx:80, dy:-150, t0:5.6, t1:10},
+      {text:'Half the chromosomes in each', world:'cell', at:()=>CHROMS.map((c, k) => F.fr[k].C), dx:30, dy:-170, t0:15}
+    ]
+  },
+  {
+    part:'Second division', T0:56, Tlen:14, len:14.5, strip:'small',
+    shots:[{world:'cell', keys:[[0,'halves'],[3,'halves'],[11,'four']]}],
+    mem:() => 0.6,
+    title:'Second division: the copies are separated',
+    text:'Now both cells divide again. New spindles form, the chromosomes line up across the middle of each cell — one at a time this time, as in mitosis — and the two copies of each chromosome are <b>pulled apart</b>.',
+    look:'Here the second division is up and down, at right angles to the first; in real cells it can be at any angle.',
+    terms:[['Meiosis','the second division separates the two copies of each chromosome.']],
+    key:['cell','hisMother','hisFather','fibre'],
+    labels:[
+      {text:'New spindles', world:'cell', at:()=>[F.poles[3], F.poles[5]], dx:60, dy:-80, t0:2.5, t1:6.5},
+      {text:'Lined up one at a time', world:'cell', at:()=>CHROMS.map((c, k) => F3[k].C), dx:40, dy:150, t0:6.8},
+      {text:'The copies separate', world:'cell', at:()=>[tubePt(0, 1, 0.45), tubePt(0, -1, 0.45)], dx:-120, dy:-40, t0:9.5}
+    ]
+  },
+  {
+    part:'Four gametes', T0:70, Tlen:15, len:16, strip:'small',
+    shots:[{world:'cell', keys:[[0,'four']]}],
+    mem:t => lerp(0.6, 0.85, ss(2, 10, t)), nuc:() => 0.8,
+    title:'Four gametes, all different',
+    text:'Each cell splits in two once more, and a nucleus forms in each. One cell has become <b>'+FIG.gametes+'</b>.<br><br>Each has <b>'+FIG.half+' chromosomes</b>: a single set, one from each pair. And every one is <b>genetically different</b> — from the others, and from the cell they came from. This is where the variation in the offspring of sexual reproduction comes from.',
+    look:'Compare the four: each has a different mix of red and blue.',
+    scale:'In a man, all four become sperm cells. In a woman the divisions are lopsided: one egg cell is made, and the other sets of chromosomes end up in tiny cells that die.',
+    terms:[['Gamete','a sex cell. It has one set of chromosomes: one from each pair.'],
+           ['Genetically different','carrying a different combination of genes.']],
+    key:['cell','nucleus','hisMother','hisFather'],
+    labels:[
+      {text:'Four gametes<span class="sub">all different</span>', world:'cell', at:()=>GAMETES.map(g => g.env.centre), dx:150, dy:-200, t0:9}
+    ]
+  },
+  {
+    part:'Fertilisation', len:26, strip:'small',
+    shots:[{world:'fert', keys:[[0,'fertA'],[4,'fertA'],[9,'fertB'],[12,'fertB'],[17,'zyg']]}],
+    title:'Fertilisation: back to pairs',
+    text:'A sperm cell from the man — one of the four we made — meets an egg cell made by meiosis in a woman. Only one sperm gets in.<br><br>The nuclei of the sperm and the egg join. The new cell has '+FIG.half+' chromosomes from the sperm and '+FIG.half+' from the egg: '+FIG.chrom+', in '+FIG.pairs+' pairs again. The normal number is restored — in a human, '+FIG.humanHalf+' + '+FIG.humanHalf+' = '+FIG.human+'.<br><br>The new cell then divides again and again by <a href="./mitosis-3d-story.html">mitosis</a>. As the embryo develops, its cells differentiate.',
+    look:'Each pair now has one chromosome from each parent. The woman\'s are green and gold: from her own mother and father.',
+    scale:'Not to scale: a real egg is about '+FIG.egg+' times as wide as a sperm cell\'s head.',
+    terms:[['Fertilisation','a sperm and an egg join, and their nuclei combine, restoring the full number of chromosomes.']],
+    key:['hisMother','hisFather','herMother','herFather'],
+    labels:[
+      {text:'Sperm cell', world:'fert', at:()=>[FS.head], dx:-40, dy:-80, t0:0.8, t1:5.8},
+      {text:'Egg cell', world:'fert', at:()=>[new V3(-0.5, 0.75, 0.43).normalize().multiplyScalar(EGG_R)], dx:-90, dy:-50, t0:1.5, t1:12},
+      {text:'Nucleus of the egg', world:'fert', at:()=>[_tp.copy(FS.eggN).add(new V3(0.3, 0.9, 0.6))], dx:110, dy:-60, t0:3, t1:15.5},
+      {text:'Nucleus from the sperm', world:'fert', at:()=>[_fa.copy(FS.spermN).add(new V3(-0.3, 0.9, 0.5))], dx:-110, dy:-70, t0:10.5, t1:15.5},
+      {text:'One nucleus:<span class="sub">'+FIG.chrom+' chromosomes, in '+FIG.pairs+' pairs</span>', world:'fert',
+       at:()=>[new V3(0.2, 0.8, 0.6).multiplyScalar(ZYG_R).add(MEET)], dx:120, dy:-90, t0:21}
+    ]
+  }
+];
+
+const KEYS = {
+  cell:'<div><span class="sq" style="background:'+hexCss(COL.cell)+'"></span>cell membrane and cytoplasm</div>',
+  nucleus:'<div><span class="sq" style="background:'+hexCss(COL.nucleus)+'"></span>nucleus</div>',
+  hisMother:'<div><span class="sq" style="background:'+hexCss(COL.hisMother)+'"></span>from the man\'s mother</div>',
+  hisFather:'<div><span class="sq" style="background:'+hexCss(COL.hisFather)+'"></span>from the man\'s father</div>',
+  herMother:'<div><span class="sq" style="background:'+hexCss(COL.herMother)+'"></span>from the woman\'s mother</div>',
+  herFather:'<div><span class="sq" style="background:'+hexCss(COL.herFather)+'"></span>from the woman\'s father</div>',
+  fibre:'<div><span class="ln" style="background:'+hexCss(COL.fibre)+'"></span>spindle fibres</div>'
+};
+
+/* ------------------------------------------------------------- the camera */
+const FADE = 0.32;
+function lerpCam(a, b, u){
+  return {
+    dist: Math.exp(lerp(Math.log(a.dist), Math.log(b.dist), u)),
+    az: lerp(a.az, b.az, u), el: lerp(a.el, b.el, u),
+    look:[lerp(a.look[0],b.look[0],u), lerp(a.look[1],b.look[1],u), lerp(a.look[2],b.look[2],u)]
+  };
+}
+function shotAt(C, t){
+  let i = 0;
+  while(i < C.shots.length-1 && t >= C.shots[i].until) i++;
+  const sh = C.shots[i], ks = sh.keys;
+  const start = i ? C.shots[i-1].until : 0, end = i < C.shots.length-1 ? sh.until : Infinity;
+  let cam;
+  if(t <= ks[0][0]) cam = CAM[ks[0][1]];
+  else {
+    let j = 0;
+    while(j < ks.length-1 && t >= ks[j+1][0]) j++;
+    cam = j === ks.length-1 ? CAM[ks[j][1]] : lerpCam(CAM[ks[j][1]], CAM[ks[j+1][1]], ss(ks[j][0], ks[j+1][0], t));
+  }
+  let fade = 1 - clamp((t - start)/FADE, 0, 1);
+  if(isFinite(end)) fade = Math.max(fade, 1 - clamp((end - t)/FADE, 0, 1));
+  return {world:sh.world, cam, fade};
+}
+let dragAz = 0, dragEl = 0, zoomAdj = 0;
+function applyCamera(c){
+  const az = c.az + dragAz, el = clamp(c.el + dragEl, -1.2, 1.35);
+  const d = Math.max(0.2, c.dist*Math.exp(zoomAdj));
+  camera.position.set(
+    c.look[0] + d*Math.cos(el)*Math.sin(az),
+    c.look[1] + d*Math.sin(el),
+    c.look[2] + d*Math.cos(el)*Math.cos(az));
+  camera.lookAt(c.look[0], c.look[1], c.look[2]);
+  camera.near = d/200; camera.far = d*30 + 100;
+  camera.updateProjectionMatrix();
+}
+
+/* ---------------------------------------------------- labels with leaders */
+const labelLayer = document.getElementById('labels');
+const linesSvg = document.getElementById('lines');
+const ALL_LABELS = [];
+CH.forEach((C, ch) => C.labels.forEach(L => {
+  L.ch = ch;
+  L.el = document.createElement('div');
+  L.el.className = 'lab' + (L.cls ? ' ' + L.cls : '');
+  L.el.innerHTML = L.text;
+  labelLayer.appendChild(L.el);
+  ALL_LABELS.push(L);
+}));
+function measureLabels(){
+  ALL_LABELS.forEach(L => { L.w = L.el.offsetWidth || 0; L.h = L.el.offsetHeight || 0; });
+}
+let VW = 1, VH = 1;
+const _pv = new V3();
+function toScreen(v){
+  _pv.copy(v).project(camera);
+  return {x:(_pv.x + 1)/2*VW, y:(1 - _pv.y)/2*VH, z:_pv.z, ok:_pv.z > -1 && _pv.z < 1};
+}
+function labelOpacity(L, t){
+  return ss(L.t0, L.t0 + 0.6, t)*(L.t1 ? 1 - ss(L.t1 - 0.5, L.t1, t) : 1);
+}
+const LAYOUT = [];
+function drawOverlay(ch, t, world, T){
+  let svg = stripSvg(ch, t, T);
+  LAYOUT.length = 0;
+  ALL_LABELS.forEach(L => {
+    const op = L.ch === ch && L.world === world ? labelOpacity(L, t) : 0;
+    if(op < 0.01){ if(L.shown){ L.el.style.opacity = 0; L.shown = false; } return; }
+    L.shown = true;
+    const pts = L.at().map(toScreen).filter(p => p.ok);
+    if(!pts.length){ L.el.style.opacity = 0; return; }
+    const ax = pts.reduce((s, p) => s + p.x, 0)/pts.length, ay = pts.reduce((s, p) => s + p.y, 0)/pts.length;
+    const bx = ax + L.dx, by = ay + L.dy;
+    let left = L.dx >= 0 ? bx : bx - L.w, top = by - L.h/2;
+    left = clamp(left, 8, Math.max(8, VW - L.w - 8));
+    top  = clamp(top, 8, Math.max(8, VH - L.h - 8));
+    L.el.style.opacity = op.toFixed(3);
+    L.el.style.transform = 'translate(' + left.toFixed(1) + 'px,' + top.toFixed(1) + 'px)';
+    LAYOUT.push({L, left, top, pts});
+    const ex = L.dx >= 0 ? left - 4 : left + L.w + 4, ey = top + L.h/2;
+    pts.forEach(p => {
+      svg += '<line x1="'+ex.toFixed(1)+'" y1="'+ey.toFixed(1)+'" x2="'+p.x.toFixed(1)+'" y2="'+p.y.toFixed(1)+
+             '" stroke="rgba(232,238,247,'+(0.8*op).toFixed(3)+')" stroke-width="1.3"/>'+
+             '<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="2.8" fill="rgba(255,255,255,'+(0.9*op).toFixed(3)+')"/>';
+    });
+  });
+  linesSvg.innerHTML = svg;
+}
+
+/* ------------------------------------------- the overview diagram (strip) */
+const cHex = o => hexCss(COL[o]);
+const bar = (x, y, len, col, w) => '<path d="M'+(x - len/2)+' '+y+' L'+(x + len/2)+' '+y+'" stroke="'+col+'" stroke-width="'+(w||4)+'" stroke-linecap="round"/>';
+const xGlyph = (x, y, len, col) => '<path d="M'+(x - len/2)+' '+(y - 3)+' L'+(x + len/2)+' '+(y + 3)+' M'+(x - len/2)+' '+(y + 3)+' L'+(x + len/2)+' '+(y - 3)+
+  '" stroke="'+col+'" stroke-width="3.6" stroke-linecap="round"/>';
+const circ = (x, y, r) => '<circle cx="'+x+'" cy="'+y+'" r="'+r+'" fill="rgba(196,177,28,.22)" stroke="#c4b11c" stroke-width="2.6"/>';
+const LONG = 22, SHORT = 13;
+/* the chromosomes a gamete gets, as drawn in the diagram */
+const gameteGlyph = (sx, j) => CHROMS.map((c, k) => k).filter(k => CHROMS[k].side === sx).map(k => ({k, len:CHROMS[k].pair === 0 ? LONG : SHORT}));
+const STEPS = [
+  {name:'Body cell', note:FIG.chrom+' chromosomes', draw:() => circ(0, 0, 44) +
+    CHROMS.map((c, k) => bar(c.from === 'hisMother' ? -12 : 12, c.pair === 0 ? -9 : 11, c.pair === 0 ? LONG : SHORT, cHex(c.from))).join('')},
+  {name:'Copied', note:FIG.chrom+', each copied', draw:() => circ(0, 0, 44) +
+    CHROMS.map((c, k) => xGlyph(c.from === 'hisMother' ? -13 : 13, c.pair === 0 ? -9 : 11, c.pair === 0 ? LONG : SHORT, cHex(c.from))).join('')},
+  {name:'First division', note:FIG.half+' in each cell', draw:() => [-1, 1].map(sx => circ(sx*25, 0, 23) +
+    CHROMS.filter(c => c.side === sx).map(c => xGlyph(sx*25, c.pair === 0 ? -6 : 9, (c.pair === 0 ? LONG : SHORT)*0.8, cHex(c.from))).join('')).join('')},
+  {name:'Second division', note:FIG.gametes+' gametes, '+FIG.half+' each', draw:() => GAMETES.map(g => circ(g.sx*24, -g.j*23, 19) +
+    gameteGlyph(g.sx, g.j).map(o => bar(g.sx*24, -g.j*23 + (CHROMS[o.k].pair === 0 ? -5 : 6), o.len*0.7, cHex(CHROMS[o.k].from), 3.4)).join('')).join('')},
+  {name:'Fertilisation', note:FIG.half+' + '+FIG.half+' = '+FIG.chrom, draw:() => circ(0, 0, 44) +
+    FCHR.map((f, i) => bar(f.from === 'sperm' ? -12 : 12, f.pair === 0 ? -9 : 11, f.pair === 0 ? LONG : SHORT, hexCss(COL[OWNERS[f.own]]))).join('')}
+];
+const txt = (x, y, s, size, weight, fill, anchor) =>
+  '<text x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" text-anchor="'+(anchor||'middle')+'" fill="'+fill+'" '+
+  'style="font:'+weight+' '+size.toFixed(1)+'px ui-sans-serif,Segoe UI,Arial,sans-serif;paint-order:stroke;stroke:rgba(8,11,17,.85);stroke-width:4px">'+s+'</text>';
+const STRIP = {};      // the last strip drawn (read by the tests)
+function stripSvg(ch, t, T){
+  const C = CH[ch];
+  if(!C.strip) return '';
+  const big = C.strip === 'big';
+  const cur = big ? Math.min(STEPS.length - 1, Math.floor(clamp((t - 2)/1.6, 0, STEPS.length - 1 + 0.999)))
+                  : (T === null ? 4 : stepAt(T));
+  const n = STEPS.length, gap = 0.5;
+  let b, x0, cy;
+  if(big){
+    b = Math.min((VW - 40)/(n + (n-1)*gap), 0.22*VH, 150);
+    x0 = VW/2 - (n + (n-1)*gap)*b/2 + b/2; cy = 0.72*VH;
+  } else {
+    b = VW < 700 ? 30 : 40;
+    x0 = 14 + b/2; cy = 14 + b/2;
+  }
+  Object.assign(STRIP, {cur, big, b});
+  let s = '';
+  STEPS.forEach((st, i) => {
+    const x = x0 + i*(1 + gap)*b, lit = big ? (t > 2 + 1.6*i) : i === cur;
+    const op = lit ? (i === cur || big ? 1 : 0.5) : (big ? 0.15 : 0.35);
+    s += '<g opacity="'+op+'" transform="translate('+x.toFixed(1)+','+cy.toFixed(1)+') scale('+(b/100).toFixed(4)+')">'+st.draw()+'</g>';
+    if(i < n - 1){
+      const ax = x + 0.56*b, bx = x + (1 + gap)*b - 0.56*b;
+      s += '<path d="M'+ax.toFixed(1)+' '+cy.toFixed(1)+' L'+bx.toFixed(1)+' '+cy.toFixed(1)+'" stroke="rgba(238,242,247,'+(0.5*op)+')" stroke-width="1.6"/>'+
+           '<path d="M'+(bx-5).toFixed(1)+' '+(cy-4).toFixed(1)+' L'+bx.toFixed(1)+' '+cy.toFixed(1)+' L'+(bx-5).toFixed(1)+' '+(cy+4).toFixed(1)+'" fill="none" stroke="rgba(238,242,247,'+(0.5*op)+')" stroke-width="1.6"/>';
+    }
+    if(big){
+      const fs = clamp(b*0.13, 11, 16);
+      s += '<g opacity="'+op+'">'+txt(x, cy + 0.55*b + fs*1.2, st.name, fs, 700, '#f3f6fb')+
+           txt(x, cy + 0.55*b + fs*2.35, st.note, fs*0.85, 500, '#c9d3e0')+'</g>';
+    }
+  });
+  if(!big){
+    const st = STEPS[cur];
+    s += txt(14, cy + b/2 + 18, st.name + ' · ' + st.note, 13, 650, '#dce4ef', 'start');
+  }
+  return s;
+}
+
+/* ---------------------------------------------------------------- a frame */
+const MEM = 0.42;
+function applySkin(C, t){
+  const m = C.mem ? C.mem(t) : 1, n = C.nuc ? C.nuc(t) : 1;
+  cellFrontMat.opacity = MEM*m;
+  ENV.forEach(E => { E.k = n; E.mat.opacity = E.op0*n; });
+}
+let cur = 0;
+function frame(t){
+  const C = CH[cur];
+  const shot = shotAt(C, t);
+  applyCamera(shot.cam);
+  fadeEl.style.opacity = shot.fade.toFixed(3);
+  W1.visible = shot.world === 'cell';
+  W2.visible = shot.world === 'fert';
+  let T = null;
+  if(W1.visible){ T = C.T0 + clamp(t, 0, C.Tlen); updateCell(T); applySkin(C, t); }
+  if(W2.visible) updateFert(t);
+  scene.updateMatrixWorld();
+  camera.updateMatrixWorld();
+  drawOverlay(cur, t, shot.world, T);
+  renderer.render(scene, camera);
+  shot.T = T;
+  return shot;
+}
+
+/* --------------------------------------------------------------- chapters */
+let chStart = null;
+function enterChapter(i){
+  cur = i; chStart = null;
+  dragAz = dragEl = zoomAdj = 0;
+  const C = CH[i];
+  document.getElementById('sStep').textContent = (i+1)+' / '+CH.length+' · '+C.part;
+  document.getElementById('sTitle').innerHTML = C.title;
+  document.getElementById('sText').innerHTML = C.text;
+  const lk = document.getElementById('sLook');
+  lk.innerHTML = C.look ? 'Look for: '+C.look : ''; lk.hidden = !C.look;
+  const sc = document.getElementById('sScale');
+  sc.textContent = C.scale || ''; sc.hidden = !C.scale;
+  const tm = document.getElementById('sTerms');
+  tm.innerHTML = C.terms.length
+    ? '<div class="hd">Key words</div>' + C.terms.map(x => '<dt>'+x[0]+'</dt><dd>'+x[1]+'</dd>').join('')
+    : '';
+  tm.hidden = !C.terms.length;
+  document.getElementById('key').innerHTML = C.key.map(k => KEYS[k]).join('');
+  document.getElementById('back').disabled = i === 0;
+  document.getElementById('next').disabled = i === CH.length-1;
+  document.querySelectorAll('#dots i').forEach((d, k) => d.classList.toggle('on', k === i));
+  ALL_LABELS.forEach(L => { L.el.style.opacity = 0; L.shown = false; });
+}
+function animate(now){
+  requestAnimationFrame(animate);
+  if(chStart === null) chStart = now;
+  frame((now - chStart)/1000);
+}
+
+/* ------------------------------------------------------------------ wiring */
+const cv = renderer.domElement;
+cv.style.touchAction = 'none';
+cv.style.cursor = 'grab';
+let dragging = false, lastX = 0, lastY = 0;
+cv.addEventListener('pointerdown', e => {
+  dragging = true; lastX = e.clientX; lastY = e.clientY;
+  cv.style.cursor = 'grabbing';
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove', e => {
+  if(!dragging) return;
+  dragAz -= (e.clientX - lastX)*0.006;
+  dragEl = clamp(dragEl + (e.clientY - lastY)*0.004, -0.9, 0.9);
+  lastX = e.clientX; lastY = e.clientY;
+});
+['pointerup','pointercancel'].forEach(ev =>
+  cv.addEventListener(ev, () => { dragging = false; cv.style.cursor = 'grab'; }));
+cv.addEventListener('wheel', e => {
+  e.preventDefault();
+  zoomAdj = clamp(zoomAdj + e.deltaY*0.001, -1.2, 1.2);
+}, {passive:false});
+
+const dotsEl = document.getElementById('dots');
+CH.forEach((c, i) => {
+  const d = document.createElement('i');
+  d.title = c.part;
+  d.addEventListener('click', () => enterChapter(i));
+  dotsEl.appendChild(d);
+});
+document.getElementById('next').addEventListener('click', () => { if(cur < CH.length-1) enterChapter(cur+1); });
+document.getElementById('back').addEventListener('click', () => { if(cur > 0) enterChapter(cur-1); });
+document.getElementById('replay').addEventListener('click', () => enterChapter(cur));
+window.addEventListener('keydown', e => {
+  if(e.key === 'ArrowRight' && cur < CH.length-1) enterChapter(cur+1);
+  if(e.key === 'ArrowLeft'  && cur > 0) enterChapter(cur-1);
+});
+
+function resize(){
+  VW = stage.clientWidth || window.innerWidth;
+  VH = stage.clientHeight || window.innerHeight;
+  renderer.setSize(VW, VH);
+  camera.aspect = VW/VH;
+  camera.fov = (VW/VH < 1.1) ? 58 : 42;
+  camera.updateProjectionMatrix();
+  buildCams();
+  measureLabels();
+}
+window.addEventListener('resize', resize);
+resize();
+
+enterChapter(0);
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

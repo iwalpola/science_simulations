@@ -1,0 +1,1672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mitosis and the cell cycle — a 3D story</title>
+<style>
+  :root{
+    --ink:#eef2f7;
+    --dim:#93a2b6;
+    --panel:rgba(10,14,21,.78);
+    --line:rgba(147,162,182,.22);
+    --side:360px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;background:#080b11;color:var(--ink);overflow:hidden;
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  #stage{position:fixed;top:0;right:0;bottom:0;left:var(--side);}
+  canvas{display:block;}
+  #overlay{position:fixed;top:0;right:0;bottom:0;left:var(--side);pointer-events:none;z-index:1;overflow:hidden;}
+  #overlay svg{position:absolute;left:0;top:0;width:100%;height:100%;}
+  #fade{position:fixed;top:0;right:0;bottom:0;left:var(--side);background:#080b11;
+    opacity:0;pointer-events:none;z-index:2;}
+
+  .lab{position:absolute;left:0;top:0;white-space:nowrap;opacity:0;
+    font-size:16px;font-weight:650;letter-spacing:.2px;color:#f3f6fb;
+    text-shadow:0 1px 6px rgba(0,0,0,.95),0 0 2px rgba(0,0,0,.9);}
+  .lab .sub{display:block;font-size:12.5px;font-weight:450;color:#b9c5d6;margin-top:1px;}
+  .lab.big{font-family:"Iowan Old Style","Charter",Georgia,serif;font-size:24px;font-weight:600;text-align:center;}
+  .lab.big .sub{font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:13px;}
+  .lab.green{color:#b9f0cc;}
+
+  #side{
+    position:fixed;top:0;left:0;bottom:0;width:var(--side);
+    background:var(--panel);backdrop-filter:blur(16px);
+    border-right:1px solid var(--line);
+    padding:20px 22px 16px;
+    display:flex;flex-direction:column;gap:14px;
+    overflow-y:auto;
+  }
+  #side h1{
+    margin:0;
+    font-family:"Iowan Old Style","Charter","Palatino Linotype",Georgia,serif;
+    font-weight:600;font-size:19px;letter-spacing:.2px;line-height:1.25;
+  }
+  #side .byline{margin:4px 0 0;font-size:12px;line-height:1.5;color:var(--dim);}
+  #side a{color:var(--dim);text-decoration:none;font-size:12px;
+    border-bottom:1px solid rgba(147,162,182,.3);}
+  #side a:hover{color:var(--ink);}
+  .links{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;}
+  .story{flex:1;min-height:0;}
+  .story .step{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:700;}
+  .story h2{
+    margin:3px 0 0;font-family:"Iowan Old Style","Charter",Georgia,serif;
+    font-size:17px;font-weight:600;letter-spacing:.2px;
+  }
+  .story p{margin:8px 0 0;font-size:13.5px;line-height:1.62;color:#cbd5e1;}
+  .story p b{color:#ffd9a0;font-weight:600;}
+  .story .look{
+    margin-top:10px;font-size:12.5px;line-height:1.5;color:#a9c7ee;
+    border-left:2px solid rgba(127,176,255,.45);padding-left:10px;
+  }
+  .story .look b{color:#d6e6ff;font-weight:600;}
+  .story .phase{
+    margin-top:10px;font-size:12.5px;line-height:1.55;color:#c4e8d0;
+    border-left:2px solid rgba(140,220,170,.5);padding-left:10px;
+  }
+  .story .phase b{color:#e2fbe9;font-weight:700;}
+  .story .scale{
+    margin-top:10px;font-size:12px;line-height:1.5;color:#c9b8e0;
+    border-left:2px solid rgba(190,150,240,.45);padding-left:10px;
+  }
+  .terms{
+    margin:12px 0 0;padding:10px 12px;
+    background:rgba(255,217,160,.05);border:1px solid rgba(255,217,160,.18);border-radius:10px;
+  }
+  .terms .hd{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#d9b98a;font-weight:700;margin-bottom:6px;}
+  .terms dt{font-size:12.5px;font-weight:700;color:#ffd9a0;}
+  .terms dd{margin:1px 0 7px;font-size:12.5px;line-height:1.5;color:#cbd5e1;}
+  .terms dd:last-child{margin-bottom:0;}
+  .credit{font-size:10.5px;line-height:1.5;color:#6c7a8e;}
+
+  .nav{
+    position:fixed;left:var(--side);right:0;bottom:20px;z-index:5;
+    margin:0 auto;width:fit-content;max-width:calc(100% - var(--side) - 32px);
+    display:flex;align-items:center;gap:8px;flex-wrap:nowrap;justify-content:center;
+    background:var(--panel);backdrop-filter:blur(16px);
+    border:1px solid var(--line);border-radius:999px;
+    padding:9px 12px;white-space:nowrap;
+  }
+  .nav button{
+    font:inherit;font-size:12.5px;font-weight:500;color:var(--dim);
+    background:rgba(255,255,255,.05);border:1px solid var(--line);
+    border-radius:999px;padding:7px 14px;cursor:pointer;
+    transition:background .15s ease,color .15s ease,opacity .15s ease;
+  }
+  .nav button:hover:not(:disabled){background:rgba(255,255,255,.12);color:var(--ink);}
+  .nav button:disabled{opacity:.32;cursor:default;}
+  .nav button.primary{background:rgba(127,176,255,.2);color:#dce9ff;border-color:rgba(127,176,255,.35);}
+  .nav button.on{background:rgba(140,220,170,.18);color:#d9f5e2;border-color:rgba(140,220,170,.42);}
+  .dots{display:flex;gap:6px;padding:0 4px;}
+  .dots i{
+    width:7px;height:7px;border-radius:50%;background:rgba(147,162,182,.3);
+    cursor:pointer;transition:background .2s ease,transform .2s ease;
+  }
+  .dots i.on{background:var(--ink);transform:scale(1.25);}
+  #key{
+    position:fixed;top:18px;right:20px;z-index:5;
+    background:var(--panel);backdrop-filter:blur(16px);
+    border:1px solid var(--line);border-radius:12px;
+    padding:11px 14px;
+    font-size:11.5px;line-height:1.75;color:var(--dim);
+  }
+  #key:empty{display:none;}
+  #key div{display:flex;align-items:center;gap:8px;}
+  .dot{width:11px;height:11px;border-radius:50%;flex:none;
+    box-shadow:inset -2px -2px 3px rgba(0,0,0,.45);}
+  .sq{width:11px;height:11px;border-radius:2px;flex:none;}
+  .ln{width:14px;height:2px;border-radius:1px;flex:none;}
+  .hint{
+    position:fixed;right:20px;bottom:20px;z-index:3;
+    font-size:11px;color:#5a687d;pointer-events:none;
+  }
+  @media (max-width:860px){
+    :root{--side:0px;}
+    #stage,#overlay,#fade{left:0;bottom:44vh;}
+    #side{
+      top:auto;left:0;right:0;bottom:0;width:auto;height:44vh;
+      border-right:none;border-top:1px solid var(--line);
+      padding:14px 16px;gap:11px;
+    }
+    #side h1{font-size:16px;}
+    #side .byline{display:none;}
+    .nav{
+      left:0;right:0;bottom:44vh;
+      width:auto;max-width:none;margin:0;
+      border-radius:0;border-width:1px 0 0;
+      flex-wrap:wrap;white-space:normal;justify-content:center;
+    }
+    #key{top:14px;right:14px;padding:8px 10px;font-size:11px;line-height:1.6;}
+    .lab{font-size:13px;}
+    .lab .sub{font-size:11px;}
+    .lab.big{font-size:18px;}
+    .hint{display:none;}
+  }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="overlay"><svg id="lines"></svg><div id="labels"></div></div>
+<div id="fade"></div>
+<div id="side">
+  <div>
+    <h1>Mitosis and the cell cycle</h1>
+    <p class="byline">A body cell grows, copies its chromosomes, divides its nucleus and then splits in two: interphase, mitosis and cytokinesis, round and round.</p>
+    <div class="links">
+      <a href="./index.html">← Genetics</a>
+      <a href="./meiosis-3d-story.html">Meiosis</a>
+      <a href="../index.html">All simulations</a>
+    </div>
+  </div>
+  <div class="story">
+    <div class="step" id="sStep"></div>
+    <h2 id="sTitle"></h2>
+    <p id="sText"></p>
+    <div class="look" id="sLook"></div>
+    <div class="phase" id="sPhase"></div>
+    <div class="scale" id="sScale"></div>
+    <dl class="terms" id="sTerms"></dl>
+  </div>
+  <div class="credit">Cycle times: a typical human cell dividing in a lab, about once a day. Different cells take different times.
+    Everything here is drawn, not photographed: real chromosomes are not red and blue.</div>
+</div>
+<!-- outside #side: its backdrop-filter would otherwise pin fixed children to the column -->
+<div class="nav">
+  <button id="back">← Back</button>
+  <button id="next" class="primary">Next →</button>
+  <button id="replay">Replay</button>
+  <button id="phases" title="Name the four phases of mitosis (prophase, metaphase, anaphase, telophase)">Phase names: off</button>
+  <div class="dots" id="dots"></div>
+</div>
+<div id="key"></div>
+<div class="hint">drag to orbit · scroll to zoom</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ===========================================================================
+   MITOSIS AND THE CELL CYCLE — the 3D story
+
+   The cell cycle as GCSE teaches it, three stages:
+
+     Stage 1  interphase    the cell grows, its mitochondria and ribosomes
+                            multiply, and its DNA is copied
+     Stage 2  mitosis       one set of chromosomes is pulled to each end of
+                            the cell, and the nucleus divides
+     Stage 3  cytokinesis   the cytoplasm and cell membrane divide
+
+   and then the same thing again, cell after cell: 1, 2, 4, 8, 16.
+
+   Two worlds, swapped behind a fade:
+
+     cell    one cell with 2 pairs of chromosomes, followed through one turn
+             of the cycle. Chapters 2-7 are consecutive windows of ONE
+             timeline T, so the cell at the end of one chapter is the cell at
+             the start of the next.
+     tissue  the same division, simplified, run on every cell at once.
+
+   EVERYTHING IS A PURE FUNCTION OF THE CLOCK. Nothing accumulates between
+   frames, so Back, Next, Replay and dragging the camera are all exact.
+
+     - A chromatid is one tube. Its centre line is a blend, by how condensed
+       it is, of a tangled interphase thread and a coiled rod; the rod is
+       placed by the chromosome's frame (where it condensed, then on the
+       equator), bent by how far anaphase has pulled it.
+     - Copying the DNA opens bubbles at several origins at once; a sister
+       thread is visible exactly where the forks have passed.
+     - The cell membrane is a smooth union of two spheres. Cytokinesis is the
+       two spheres moving apart while they shrink to half the volume, so the
+       waist narrows to nothing and the cell separates without a jump.
+     - The nucleus does NOT pinch in two: its envelope breaks into pieces
+       that drift and fade, and two new envelopes gather round each set of
+       chromosomes. That is what happens; the dumbbell picture is wrong.
+
+   THE NUMBERS ARE DERIVED. The pie chart's slices, the hand going round it,
+   the clock reading, how much slower mitosis is played, the chromosome and
+   mitochondrion counts and the doubling sequence all come out of the tables
+   below; test-mitosis.js checks the captions quote exactly those.
+=========================================================================== */
+
+/* ----------------------------------------------------------------- helpers */
+const clamp = (v,a,b) => v<a?a:(v>b?b:v);
+const lerp  = (a,b,u) => a + (b-a)*u;
+const ss = (a,b,x) => { const u = clamp((x-a)/(b-a),0,1); return u*u*(3-2*u); };
+const hexCss = n => '#'+n.toString(16).padStart(6,'0');
+function rng(seed){
+  let a = seed >>> 0;
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const V3 = THREE.Vector3;
+const UP = new V3(0,1,0);
+
+/* =========================================================================
+   DATA
+========================================================================= */
+/* One turn of the cycle, in minutes, for a typical human cell dividing in a
+   lab about once a day (G1 11 h, S 8 h, G2 4 h, M phase about 1 h). How that
+   last hour splits between mitosis and cytokinesis is a rough guide: the two
+   overlap in a real cell. */
+const CYCLE = {G1:11*60, S:8*60, G2:4*60, mitosis:45, cyto:15};
+const STAGES = [
+  {id:'inter',   name:'Interphase',  n:1, min:CYCLE.G1 + CYCLE.S + CYCLE.G2},
+  {id:'mitosis', name:'Mitosis',     n:2, min:CYCLE.mitosis},
+  {id:'cyto',    name:'Cytokinesis', n:3, min:CYCLE.cyto}
+];
+const TOTAL = STAGES.reduce((s, x) => s + x.min, 0);
+const HUMAN = {chromosomes:46, pairs:23};
+
+/* The cell's chromosomes: two pairs. In each pair, one from the mother and
+   one from the father, the same length and with the centromere (the waist)
+   in the same place. L is the length condensed; p the share in the short arm. */
+const CHROMS = [
+  {pair:0, from:'mother', L:1.9,  p:0.42},
+  {pair:0, from:'father', L:1.9,  p:0.42},
+  {pair:1, from:'mother', L:1.15, p:0.30},
+  {pair:1, from:'father', L:1.15, p:0.30}
+];
+CHROMS.forEach(c => { c.pl = c.p*c.L; c.ql = c.L - c.pl; });
+
+const COL = {
+  cell:0xc4b11c, cellIn:0x7d6f0c, nucleus:0xe6e0a0,
+  father:0x3159c8, mother:0xd23a5a,
+  fibre:0xd5ecdf, pole:0xeaf7ee,
+  mito:0xe0847f, ribo:0x6a2f8a
+};
+
+/* sizes, in scene units */
+const CELL_R  = 5;                          // a full-grown cell
+const CELL_RD = CELL_R*Math.pow(2, -1/3);   // a new daughter: half the volume
+const NUC_R   = 1.9, NUC_R0 = 0.85*NUC_R;   // nucleus, full grown and new
+const ROD_T   = 0.17;                       // a condensed chromatid's radius
+const TUBE_R  = 0.62*ROD_T, COIL_A = 0.42*ROD_T, COIL_L = 1.1*ROD_T;   // ...drawn as a tight coil
+const THREAD_R = 0.045;                     // an interphase thread (far too thick: see the caption)
+const DELTA   = 0.1;                        // sister threads lie this far apart once copied
+const XP = 4.1, XA = 3.1;                   // spindle poles; where anaphase takes the chromatids
+const D_EL = 0.9;                           // how far the cell stretches in anaphase
+const GAP_D = 0.15;                         // the gap left between the daughters
+const KU = 0.35;                            // how much the membrane is rounded where the two halves meet
+const NS = 420;                             // samples along a chromatid
+const N_MITO = 12, N_RIBO = 120;            // in a new cell; growth doubles both
+
+/* the cell's one timeline, in seconds of story */
+const TL = {
+  grow:[0.5, 13],
+  copy0:15.5,                // the first replication origins fire
+  condense:[30, 37],
+  poles:[30.5, 38],
+  envOff:[34, 39.5],
+  spindle:[35.5, 39.5],
+  fibres:[36, 39],           // + 0.8 s per chromosome
+  congress:[40, 45.5],       // + 0.8 s per chromosome
+  ana:[50, 57.5],
+  elong:[50, 66],
+  spindleOff:[61, 66],
+  envOn:[61, 67],
+  envShrink:[66, 71],
+  decondense:[62.5, 70.5],
+  furrow:[73, 81],
+  apart:[81, 84],
+  dSlide:[73, 82],
+  share:[76, 85]
+};
+/* the phases of mitosis, named only when the toggle is on */
+const PHASES = [
+  {name:'Prophase',  T0:30, T1:41, sub:'chromosomes condense · nuclear membrane breaks down · spindle forms'},
+  {name:'Metaphase', T0:41, T1:49, sub:'chromosomes line up across the middle of the cell'},
+  {name:'Anaphase',  T0:49, T1:60, sub:'the copies of each chromosome are pulled to opposite ends'},
+  {name:'Telophase', T0:60, T1:72, sub:'a new nuclear membrane forms around each set'}
+];
+const phaseAt = T => PHASES.find(p => T >= p.T0 && T < p.T1) || null;
+
+/* where the pie chart's hand is, in minutes into the cycle, at each point of
+   the timeline: growth is G1, copying is S, then G2, then mitosis, cytokinesis */
+const HAND = [[0, 0], [14, CYCLE.G1], [27, CYCLE.G1 + CYCLE.S], [30, STAGES[0].min],
+              [72, STAGES[0].min + CYCLE.mitosis], [85, TOTAL]];
+function handMin(T){
+  if(T <= HAND[0][0]) return HAND[0][1];
+  for(let i=1;i<HAND.length;i++)
+    if(T <= HAND[i][0]) return lerp(HAND[i-1][1], HAND[i][1], (T - HAND[i-1][0])/(HAND[i][0] - HAND[i-1][0]));
+  return HAND[HAND.length-1][1];
+}
+function stageAt(min){
+  let a = 0;
+  for(let i=0;i<STAGES.length;i++){ a += STAGES[i].min; if(min < a - 1e-9) return i; }
+  return STAGES.length - 1;
+}
+
+/* ------------------------------------------------------------------ three */
+const stage = document.getElementById('stage');
+const fadeEl = document.getElementById('fade');
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio||1));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.08;
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x080b11);
+const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 500);
+
+scene.add(new THREE.HemisphereLight(0x9fb4d0, 0x0a0d13, 0.6));
+const keyL = new THREE.DirectionalLight(0xffffff, 0.95); keyL.position.set(6,11,8); scene.add(keyL);
+const fillL = new THREE.DirectionalLight(0x9ec3ff, 0.40); fillL.position.set(-8,4,-6); scene.add(fillL);
+const rimL  = new THREE.DirectionalLight(0xffd9b0, 0.32); rimL.position.set(0,3,-10); scene.add(rimL);
+
+(function environment(){
+  const env = new THREE.Scene();
+  const box = new THREE.BoxGeometry(1,1,1);
+  env.add(new THREE.Mesh(new THREE.BoxGeometry(30,18,30),
+    new THREE.MeshBasicMaterial({color:0x1d2634, side:THREE.BackSide})));
+  const panel=(hex,gain,x,y,z,sx,sy,sz)=>{
+    const m=new THREE.Mesh(box,new THREE.MeshBasicMaterial({color:hex}));
+    m.material.color.multiplyScalar(gain);
+    m.position.set(x,y,z); m.scale.set(sx,sy,sz); env.add(m);
+  };
+  panel(0xffffff,1.1,  0, 8.4,  0, 14,0.1,14);
+  panel(0xbcd6ff,1.3,-11, 1.5,  0, 0.1,11,20);
+  panel(0xffd7b0,0.9, 11, 1.5,  2, 0.1,11,20);
+  panel(0x8fb0e0,0.5,  0, 0.0,-12, 22,11,0.1);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(env, 0.04).texture;
+  pmrem.dispose();
+})();
+
+function linearise(root){
+  root.traverse(o=>{
+    if(!o.material) return;
+    (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{
+      if(!m || m.userData.__lin) return;
+      m.userData.__lin = true;
+      if(m.color)    m.color.convertSRGBToLinear();
+      if(m.emissive) m.emissive.convertSRGBToLinear();
+    });
+  });
+}
+const linColor = hex => new THREE.Color(hex).convertSRGBToLinear();
+
+const W1 = new THREE.Group(), W2 = new THREE.Group();     // the cell world, the tissue world
+scene.add(W1, W2);
+
+/* =========================================================================
+   A TUBE whose radius varies along it, written in place so it can be
+   reshaped without reallocating. Rings are carried along by parallel
+   transport, so the tube does not twist. (As in cell-to-dna-3d-story.html.)
+========================================================================= */
+function makeTube(n, radial){
+  const g = new THREE.BufferGeometry();
+  const vn = n*(radial+1);
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vn*3), 3));
+  g.setAttribute('normal',   new THREE.BufferAttribute(new Float32Array(vn*3), 3));
+  const idx = new (vn > 65535 ? Uint32Array : Uint16Array)((n-1)*radial*6);
+  let o = 0;
+  for(let i=0;i<n-1;i++) for(let k=0;k<radial;k++){
+    const a = i*(radial+1)+k, b = a+radial+1;
+    idx[o++]=a; idx[o++]=a+1; idx[o++]=b;
+    idx[o++]=a+1; idx[o++]=b+1; idx[o++]=b;
+  }
+  g.setIndex(new THREE.BufferAttribute(idx, 1));
+  g.userData.tube = {n, radial};
+  return g;
+}
+/* Meshes rewritten every frame are drawn with frustumCulled off, so their
+   bounding spheres are never needed: recomputing them was most of a frame. */
+const TRIG = {};
+function trig(n){
+  if(!TRIG[n]){
+    const c = new Float64Array(n+1), s = new Float64Array(n+1);
+    for(let k=0;k<=n;k++){ c[k] = Math.cos(2*Math.PI*k/n); s[k] = Math.sin(2*Math.PI*k/n); }
+    TRIG[n] = {c, s};
+  }
+  return TRIG[n];
+}
+const _wT = new V3(), _wN = new V3(), _wB = new V3();
+function writeTube(g, P, R){
+  const {n, radial} = g.userData.tube;
+  const pos = g.attributes.position.array, nor = g.attributes.normal.array;
+  const T = _wT, N = _wN, B = _wB, tc = trig(radial).c, ts = trig(radial).s;
+  for(let i=0;i<n;i++){
+    T.subVectors(P[Math.min(n-1,i+1)], P[Math.max(0,i-1)]).normalize();
+    if(i === 0){
+      N.set(0,0,1).cross(T);
+      if(N.lengthSq() < 1e-6) N.set(1,0,0).cross(T);
+      N.normalize();
+    } else N.addScaledVector(T, -N.dot(T)).normalize();
+    B.crossVectors(T, N);
+    const px = P[i].x, py = P[i].y, pz = P[i].z, r = R[i];
+    for(let k=0;k<=radial;k++){
+      const c = tc[k], s = ts[k];
+      const dx = N.x*c + B.x*s, dy = N.y*c + B.y*s, dz = N.z*c + B.z*s;
+      const o = (i*(radial+1)+k)*3;
+      pos[o] = px + dx*r; pos[o+1] = py + dy*r; pos[o+2] = pz + dz*r;
+      nor[o] = dx; nor[o+1] = dy; nor[o+2] = dz;
+    }
+  }
+  g.attributes.position.needsUpdate = true;
+  g.attributes.normal.needsUpdate = true;
+}
+
+/* a condensed chromatid's radius and its sideways offset from its sister,
+   along its length y (0 = the centromere, p up, q down) -- the same shape as
+   in cell-to-dna-3d-story.html */
+function chromatidRadius(y, p, q, T){
+  const arm = y >= 0 ? p : q, a = Math.abs(y);
+  const c = Math.min(T, arm*0.9);
+  let r = T;
+  if(a > arm - c){ const u = (a - (arm - c))/c; r = T*Math.sqrt(Math.max(0, 1 - u*u)); }
+  return r*(1 - 0.42*Math.exp(-Math.pow(y/(0.75*T), 2)));
+}
+function chromatidOffset(y, p, q, T){
+  const arm = y >= 0 ? p : q, a = Math.abs(y);
+  return T*(0.52 + 0.4*ss(0, 1.6*T, a) + 0.3*Math.pow(a/Math.max(arm, 1e-9), 2));
+}
+const OFF0 = chromatidOffset(0, 1, 1, ROD_T);
+
+/* =========================================================================
+   THE CELL MEMBRANE: a smooth union of two spheres, radius r, centred at
+   x = -d and +d, rounded where they meet by k. One sphere (d = 0, k = 0) is
+   a cell; two touching-then-parting spheres are a cell dividing. The sign
+   of cellSdf says inside (< 0) or out.
+========================================================================= */
+function smin(a, b, k){
+  if(!(k > 0)) return Math.min(a, b);
+  const h = Math.max(k - Math.abs(a - b), 0)/k;
+  return Math.min(a, b) - h*h*k/4;
+}
+function cellSdf(x, rho, S){
+  return smin(Math.hypot(x + S.d, rho) - S.r, Math.hypot(x - S.d, rho) - S.r, S.k);
+}
+/* the membrane's distance from the axis at x (0 where there is no cell) */
+function rhoAt(x, S){
+  if(cellSdf(x, 0, S) >= 0) return 0;
+  let lo = 0, hi = S.r + S.k + 0.01;
+  for(let it=0; it<34; it++){ const m = 0.5*(lo + hi); if(cellSdf(x, m, S) < 0) lo = m; else hi = m; }
+  return lo;
+}
+/* the left half of the membrane runs from its outer tip x0 to x1: 0 while
+   the two halves are joined (an open ring there, shared with the right
+   half), or the inner tip once they have parted */
+function lobeRange(S){
+  let a = -S.d - S.r - S.k - 0.01, b = -S.d;
+  for(let it=0; it<44; it++){ const m = 0.5*(a + b); if(cellSdf(m, 0, S) < 0) b = m; else a = m; }
+  const x0 = 0.5*(a + b);
+  if(cellSdf(0, 0, S) < 0) return {x0, x1:0, open:true};
+  let c = -S.d, e = 0;
+  for(let it=0; it<44; it++){ const m = 0.5*(c + e); if(cellSdf(m, 0, S) < 0) c = m; else e = m; }
+  return {x0, x1:0.5*(c + e), open:false};
+}
+/* the cell at any moment of its own cycle */
+function cellState(T){
+  const g = ss(TL.grow[0], TL.grow[1], T), e = ss(TL.elong[0], TL.elong[1], T);
+  const r = lerp(CELL_RD, CELL_R, g) - 0.25*e;
+  const s0 = {d:D_EL*e, r, k:KU*r*e};
+  const p = ss(TL.furrow[0], TL.furrow[1], T);
+  return p > 0 ? cytoState(s0, p, ss(TL.apart[0], TL.apart[1], T)) : s0;
+}
+/* cytokinesis, from any cell s0: p runs the waist down to nothing (the two
+   halves shrinking to daughter size as they go), then u moves them apart
+   and lets them round off into two plain spheres */
+function cytoState(s0, p, u){
+  const r = lerp(s0.r, CELL_RD, ss(0, 0.7, p));       // shrink early, so the halves only ever move apart
+  const kp = lerp(s0.k, KU*r, ss(0, 0.25, p)), k = kp*(1 - u);
+  const n0 = Math.sqrt(Math.max(0, (s0.r + s0.k/4)**2 - s0.d*s0.d));     // the waist at the start
+  const n = n0*(1 - p);
+  const d = Math.sqrt(Math.max(0, (r + kp/4)**2 - n*n)) + GAP_D*u;
+  return {d, r, k};
+}
+/* where the two halves' centres end up once they have parted */
+const D_SPLIT = r => r*(1 + KU/4) + GAP_D;
+
+/* a membrane mesh: both halves, each a lathe of the profile about the x axis */
+function makeLathe(M, NR){
+  const g = new THREE.BufferGeometry();
+  const per = (M+1)*(NR+1), vn = 2*per;
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vn*3), 3));
+  g.setAttribute('normal',   new THREE.BufferAttribute(new Float32Array(vn*3), 3));
+  const idx = new (vn > 65535 ? Uint32Array : Uint16Array)(2*M*NR*6);
+  let o = 0;
+  for(let side=0; side<2; side++) for(let i=0;i<M;i++) for(let k=0;k<NR;k++){
+    const a = side*per + i*(NR+1) + k, b = a + NR + 1, c = a + 1, d = b + 1;
+    /* the right half is the left half mirrored, so its winding is reversed */
+    if(side === 0){ idx[o++]=a; idx[o++]=c; idx[o++]=b; idx[o++]=c; idx[o++]=d; idx[o++]=b; }
+    else          { idx[o++]=a; idx[o++]=b; idx[o++]=c; idx[o++]=c; idx[o++]=b; idx[o++]=d; }
+  }
+  g.setIndex(new THREE.BufferAttribute(idx, 1));
+  g.userData.lathe = {M, NR, px:new Float64Array(M+1), pr:new Float64Array(M+1)};
+  return g;
+}
+const NF = 240;
+const _fx = new Float64Array(NF+1), _fr = new Float64Array(NF+1), _fl = new Float64Array(NF+1);
+/* the left half's profile, from its outer tip, resampled evenly along its length */
+function sampleProfile(S, M, px, pr){
+  const L = lobeRange(S);
+  for(let i=0;i<=NF;i++){
+    const u = i/NF;
+    const w = L.open ? 1 - Math.cos(u*Math.PI/2) : 0.5*(1 - Math.cos(u*Math.PI));
+    _fx[i] = L.x0 + (L.x1 - L.x0)*w;
+    _fr[i] = (i === 0 || (!L.open && i === NF)) ? 0 : rhoAt(_fx[i], S);
+    _fl[i] = i ? _fl[i-1] + Math.hypot(_fx[i] - _fx[i-1], _fr[i] - _fr[i-1]) : 0;
+  }
+  let j = 0;
+  for(let i=0;i<=M;i++){
+    const l = _fl[NF]*i/M;
+    while(j < NF-1 && _fl[j+1] < l) j++;
+    const f = (l - _fl[j])/((_fl[j+1] - _fl[j]) || 1);
+    px[i] = lerp(_fx[j], _fx[j+1], clamp(f, 0, 1));
+    pr[i] = lerp(_fr[j], _fr[j+1], clamp(f, 0, 1));
+  }
+  if(L.open){ px[M] = 0; pr[M] = rhoAt(0, S); }
+  return L;
+}
+function writeLathe(g, S){
+  const L = g.userData.lathe;
+  if(L.d === S.d && L.r === S.r && L.k === S.k) return;       // unchanged since last time
+  L.d = S.d; L.r = S.r; L.k = S.k;
+  const {M, NR, px, pr} = L, tc = trig(NR).c, ts = trig(NR).s;
+  sampleProfile(S, M, px, pr);
+  const pos = g.attributes.position.array, nor = g.attributes.normal.array, per = (M+1)*(NR+1);
+  for(let side=0; side<2; side++){
+    const m = side ? -1 : 1;
+    for(let i=0;i<=M;i++){
+      const ia = Math.max(0, i-1), ib = Math.min(M, i+1);
+      let tx = px[ib] - px[ia], tr = pr[ib] - pr[ia];
+      const tl = Math.hypot(tx, tr) || 1; tx /= tl; tr /= tl;
+      const nx = -tr*m, nr = tx;
+      for(let k=0;k<=NR;k++){
+        const c = tc[k], s = ts[k];
+        const o = (side*per + i*(NR+1) + k)*3;
+        pos[o] = m*px[i]; pos[o+1] = pr[i]*c; pos[o+2] = pr[i]*s;
+        nor[o] = nx; nor[o+1] = nr*c; nor[o+2] = nr*s;
+      }
+    }
+  }
+  g.attributes.position.needsUpdate = true;
+  g.attributes.normal.needsUpdate = true;
+}
+
+const cellFrontMat = new THREE.MeshStandardMaterial({color:COL.cell, roughness:0.55, metalness:0,
+  transparent:true, opacity:0.42, depthWrite:false, envMapIntensity:0.35});
+const cellBackMat = new THREE.MeshStandardMaterial({color:COL.cellIn, roughness:0.8, metalness:0,
+  transparent:true, opacity:0.5, depthWrite:false, side:THREE.BackSide, envMapIntensity:0.2});
+const cellGeo = makeLathe(110, 72);
+const cellBack = new THREE.Mesh(cellGeo, cellBackMat);   cellBack.renderOrder = 1;
+const cellFront = new THREE.Mesh(cellGeo, cellFrontMat); cellFront.renderOrder = 3;
+cellBack.frustumCulled = cellFront.frustumCulled = false;
+W1.add(cellBack, cellFront);
+
+/* =========================================================================
+   THE NUCLEAR ENVELOPE: a sphere made of patches, so that it can break up.
+   b = 0 is whole; as b rises the patches shrink, drift outwards and fade.
+   A new nucleus's pieces drift less (spread), so they never reach the middle
+   of the cell: the new nuclei form at the two ends, not by pinching.
+========================================================================= */
+const ENV_NB = 7, ENV_NL = 14, ENV_SUB = 4;
+function makeEnvelope(seed){
+  const rnd = rng(seed);
+  const dir = [], pcI = [], pc = [], jit = [], idx = [];
+  for(let bi=0; bi<ENV_NB; bi++) for(let li=0; li<ENV_NL; li++){
+    const base = dir.length, p = pc.length;
+    const th0 = Math.PI*bi/ENV_NB, th1 = Math.PI*(bi+1)/ENV_NB;
+    const ph0 = 2*Math.PI*li/ENV_NL, ph1 = 2*Math.PI*(li+1)/ENV_NL;
+    const tm = 0.5*(th0 + th1), pm = 0.5*(ph0 + ph1);
+    pc.push(new V3(Math.sin(tm)*Math.cos(pm), Math.cos(tm), Math.sin(tm)*Math.sin(pm)));
+    jit.push(rnd());
+    for(let a=0;a<=ENV_SUB;a++) for(let b=0;b<=ENV_SUB;b++){
+      const th = lerp(th0, th1, a/ENV_SUB), ph = lerp(ph0, ph1, b/ENV_SUB);
+      dir.push(new V3(Math.sin(th)*Math.cos(ph), Math.cos(th), Math.sin(th)*Math.sin(ph)));
+      pcI.push(p);
+    }
+    for(let a=0;a<ENV_SUB;a++) for(let b=0;b<ENV_SUB;b++){
+      const v00 = base + a*(ENV_SUB+1) + b, v01 = v00 + 1, v10 = v00 + ENV_SUB + 1, v11 = v10 + 1;
+      idx.push(v00, v01, v10, v01, v11, v10);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(dir.length*3), 3));
+  g.setAttribute('normal',   new THREE.BufferAttribute(new Float32Array(dir.length*3), 3));
+  g.setIndex(idx);
+  const mat = new THREE.MeshStandardMaterial({color:COL.nucleus, roughness:0.35, metalness:0,
+    transparent:true, opacity:0.45, depthWrite:false, side:THREE.DoubleSide, envMapIntensity:0.5});
+  const mesh = new THREE.Mesh(g, mat);
+  mesh.renderOrder = 2;
+  mesh.frustumCulled = false;
+  return {g, mat, mesh, dir, pcI, pc, jit, centre:new V3(NaN, 0, 0), rad:1, b:0, op0:0, k:1};
+}
+function writeEnvelope(E, centre, rad, b, spread){
+  E.op0 = 0.45*(1 - ss(0.5, 1, b));
+  E.mat.opacity = E.op0*E.k;
+  E.mesh.visible = b < 0.999;
+  if(!E.mesh.visible || (E.centre.equals(centre) && E.rad === rad && E.b === b)) return;
+  const pos = E.g.attributes.position.array, nor = E.g.attributes.normal.array;
+  E.centre.copy(centre); E.rad = rad; E.b = b;
+  for(let i=0;i<E.dir.length;i++){
+    const v = E.dir[i], p = E.pc[E.pcI[i]], j = E.jit[E.pcI[i]];
+    const out = 1 + spread*b*(0.3 + 0.25*j), sh = 1 - 0.55*b;
+    pos[i*3]   = centre.x + rad*(p.x*out + (v.x - p.x)*sh);
+    pos[i*3+1] = centre.y + rad*(p.y*out + (v.y - p.y)*sh);
+    pos[i*3+2] = centre.z + rad*(p.z*out + (v.z - p.z)*sh);
+    nor[i*3] = v.x; nor[i*3+1] = v.y; nor[i*3+2] = v.z;
+  }
+  E.g.attributes.position.needsUpdate = true;
+  E.g.attributes.normal.needsUpdate = true;
+}
+const ENV = [makeEnvelope(11), makeEnvelope(12), makeEnvelope(13)];    // the parent's, then the two new ones
+ENV.forEach(E => W1.add(E.mesh));
+
+/* =========================================================================
+   THE CHROMOSOMES
+========================================================================= */
+/* the four territories the threads sit in, at the corners of a tetrahedron */
+const TERR = [[1,1,1],[-1,-1,1],[-1,1,-1],[1,-1,-1]].map(v => new V3(v[0], v[1], v[2]).normalize());
+/* each chromosome's interphase thread, in units of the nucleus radius: a
+   tangle round its territory. Longer chromosomes get longer threads. The
+   normals are carried along it, so a copy can lie beside it. */
+const THREAD = CHROMS.map((c, k) => {
+  const rnd = rng(100 + k), f = 0.55 + 0.45*c.L/CHROMS[0].L;
+  const fr = [0,1,2].map(() => 2*Math.PI*(3 + 2.2*rnd())*f);
+  const ph = [0,1,2].map(() => 2*Math.PI*rnd());
+  const P = [], N = [];
+  for(let i=0;i<=NS;i++){
+    const s = i/NS;
+    P.push(new V3(Math.sin(fr[0]*s + ph[0]), Math.sin(fr[1]*s + ph[1]), Math.sin(fr[2]*s + ph[2]))
+      .multiplyScalar(0.46/Math.sqrt(3)).addScaledVector(TERR[k], 0.4));
+  }
+  let n = null;
+  for(let i=0;i<=NS;i++){
+    const T = new V3().subVectors(P[Math.min(NS, i+1)], P[Math.max(0, i-1)]).normalize();
+    if(!n){ n = new V3(0,0,1).cross(T); if(n.lengthSq() < 1e-6) n = new V3(1,0,0).cross(T); n.normalize(); }
+    else n = n.clone().addScaledVector(T, -n.dot(T)).normalize();
+    N.push(n);
+  }
+  return {P, N};
+});
+/* replication origins: copying starts at several places along each thread at
+   once, and the two forks from each origin run outwards at FORK_V */
+const FORK_V = 0.026;
+const ORIG = CHROMS.map((c, k) => {
+  const rnd = rng(200 + k);
+  return [0.1, 0.36, 0.62, 0.88].map(o => ({s:o + (rnd() - 0.5)*0.06, t:TL.copy0 + 3*rnd()}));
+});
+function copiedAt(k, s, T){
+  let c = 0;
+  for(const o of ORIG[k]) c = Math.max(c, ss(-0.006, 0.006, FORK_V*(T - o.t) - Math.abs(s - o.s)));
+  return c;
+}
+
+/* where each chromosome condenses (in its territory, lying across it), and
+   where it ends up (on the equator, sisters facing the two poles) */
+const ORDER = [1, 2, 0, 3];             // top to bottom on the equator
+const ORD = CHROMS.map((c, k) => ORDER.indexOf(k));
+const KF0 = CHROMS.map((c, k) => {
+  const rnd = rng(300 + k);
+  const dir = TERR[k];
+  const D = new V3().crossVectors(dir, new V3(rnd()-0.5, rnd()-0.5, rnd()-0.5)).normalize();
+  const S = new V3().crossVectors(D, dir).normalize();
+  const W = new V3().crossVectors(S, D);
+  return {C:dir.clone().multiplyScalar(0.4*NUC_R*0.7),
+          Q:new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(S, D, W))};
+});
+const KFM = (function(){
+  const GAP = 0.3, tilt = [0.12, -0.1, 0.08, -0.14], zj = [0.22, -0.18, -0.25, 0.15];
+  let top = (CHROMS.reduce((s, c) => s + c.L, 0) + GAP*(CHROMS.length - 1))/2;
+  const out = [];
+  ORDER.forEach(k => {
+    const c = CHROMS[k], a = tilt[k];
+    const S = new V3(1,0,0), D = new V3(0, Math.cos(a), Math.sin(a)), W = new V3().crossVectors(S, D);
+    out[k] = {C:new V3(0, top - c.pl, zj[k]),
+              Q:new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(S, D, W))};
+    top -= c.L + GAP;
+  });
+  return out;
+})();
+
+const CHR_MAT = {
+  mother:new THREE.MeshStandardMaterial({color:COL.mother, roughness:0.45, metalness:0.05, envMapIntensity:0.6}),
+  father:new THREE.MeshStandardMaterial({color:COL.father, roughness:0.45, metalness:0.05, envMapIntensity:0.6})
+};
+/* the eight chromatids: j = -1 is the thread the cell started with, j = +1
+   its copy. The original ends up in the left daughter, the copy in the right */
+const TUBES = [];
+CHROMS.forEach((c, k) => [-1, 1].forEach(j => {
+  const geo = makeTube(NS+1, 10);
+  const mesh = new THREE.Mesh(geo, CHR_MAT[c.from]);
+  mesh.frustumCulled = false;
+  W1.add(mesh);
+  TUBES.push({k, j, geo, mesh, phase:j > 0 ? Math.PI : 0,
+              P:Array.from({length:NS+1}, () => new V3()), R:new Float32Array(NS+1)});
+}));
+const tubeOf = (k, j) => TUBES[2*k + (j > 0 ? 1 : 0)];
+
+/* =========================================================================
+   THE SPINDLE: two poles, a fibre from each pole to each chromatid's
+   centromere, fibres from pole to pole that overlap in the middle, and
+   short rays out from each pole
+========================================================================= */
+const CYL = new THREE.CylinderGeometry(1, 1, 1, 7, 1, false);
+const SPH = new THREE.SphereGeometry(1, 18, 12);
+const fibreMat = new THREE.MeshStandardMaterial({color:COL.fibre, roughness:0.5, transparent:true, opacity:0.8,
+  depthWrite:false, envMapIntensity:0.4});
+const POLAR = [-1, 1].map(j => {
+  const rnd = rng(400 + j);
+  return Array.from({length:7}, () => new V3(-j*(0.35 + 0.5*rnd()), (rnd() - 0.5)*2.4, (rnd() - 0.5)*2.4));
+});
+const ASTRAL = [-1, 1].map(j => {
+  const rnd = rng(500 + j);
+  return Array.from({length:8}, () => {
+    const b = 0.35 + 0.85*rnd(), g = 2*Math.PI*rnd();
+    return new V3(j*Math.cos(b), Math.sin(b)*Math.cos(g), Math.sin(b)*Math.sin(g));
+  });
+});
+const N_FIB = 8 + 14 + 16;
+const fibres = new THREE.InstancedMesh(CYL, fibreMat, N_FIB);
+fibres.renderOrder = 2;
+W1.add(fibres);
+const poleMat = new THREE.MeshStandardMaterial({color:COL.pole, emissive:COL.pole, emissiveIntensity:0.5,
+  roughness:0.4, transparent:true, opacity:1});
+const POLES = [-1, 1].map(() => { const m = new THREE.Mesh(SPH, poleMat); m.scale.setScalar(0.13); W1.add(m); return m; });
+
+/* =========================================================================
+   ORGANELLES: mitochondria and ribosomes. Each has a place in the whole
+   cell (q, on one side of the middle) and a place in its daughter (q2).
+   The second half of each list is made during growth: a new mitochondrion
+   splits off an old one; new ribosomes simply appear.
+========================================================================= */
+function pickIn(rnd, side, rMin, rMax, avoid){
+  for(;;){
+    const v = new V3(2*rnd()-1, 2*rnd()-1, 2*rnd()-1), l = v.length();
+    if(l < rMin || l > rMax) continue;
+    if(avoid){
+      if(Math.abs(v.x) > 0.64*l) continue;                          // keep clear of the spindle
+      if(Math.abs(v.x) < 0.18 && Math.abs(v.z) < 0.4) continue;     // ...and of the equator
+    }
+    if(side && Math.sign(v.x) !== side) continue;
+    return v;
+  }
+}
+function makeOrganelles(n, seed, rMin, rMax, born){
+  const rnd = rng(seed), out = [];
+  for(let i=0;i<2*n;i++){
+    const side = i % 2 ? 1 : -1;
+    out.push({side, q:pickIn(rnd, side, rMin, rMax, true), q2:pickIn(rnd, 0, 0.55, 0.82, false),
+      parent:i >= n ? i - n : -1, born:i >= n ? born(i - n, rnd) : null,
+      quat:new THREE.Quaternion().setFromEuler(new THREE.Euler(rnd()*6.28, rnd()*6.28, rnd()*6.28)),
+      pos:new V3()});
+  }
+  return out;
+}
+const MITO = makeOrganelles(N_MITO, 7, 0.62, 0.88, i => [2 + 0.85*i, 3.6 + 0.85*i]);
+const RIBO = makeOrganelles(N_RIBO, 8, 0.5, 0.92, (i, rnd) => { const a = 1 + 11.5*rnd(); return [a, a + 0.8]; });
+RIBO.forEach(o => { o.parent = -1; });      // ribosomes are made, not split
+const mitoMat = new THREE.MeshStandardMaterial({color:COL.mito, roughness:0.5, metalness:0, envMapIntensity:0.35});
+const riboMat = new THREE.MeshStandardMaterial({color:COL.ribo, roughness:0.6, metalness:0, envMapIntensity:0.3});
+const mitoMesh = new THREE.InstancedMesh(SPH, mitoMat, MITO.length);
+const riboMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 8, 6), riboMat, RIBO.length);
+W1.add(mitoMesh, riboMesh);
+const MITO_S = new V3(0.42, 0.16, 0.16), RIBO_S = 0.06;
+
+/* =========================================================================
+   WORLD 2: the tissue. The same division, simplified -- membrane, nucleus,
+   four chromosome dots -- run on every cell at once. Cells lie in a sheet
+   (x-z); each division splits along x then z alternately, so 16 cells end
+   up as a 4 x 4 square. Every cell's place is the layout of its generation
+   stretched along the axis now being split, so neighbours make room.
+========================================================================= */
+const TS = {s:2.1*CELL_R, P:7, t0:2.5, gens:4, axes:['x','z','x','z'], gap:0.4};
+const tStart = g => TS.t0 + g*TS.P;
+const LAY = [[new V3()]];
+for(let g=0; g<TS.gens; g++){
+  const a = TS.axes[g], prev = LAY[g], next = [];
+  prev.forEach((c, i) => {
+    const b = c.clone(); b[a] *= 2;
+    const o = new V3(); o[a] = TS.s/2;
+    next[i] = b.clone().sub(o);
+    next[i + prev.length] = b.clone().add(o);
+  });
+  LAY.push(next);
+}
+const N_SLOT = 1 << TS.gens;
+const HOME4 = [[0.6,0.5,0.4],[-0.5,0.6,-0.4],[0.4,-0.5,-0.6],[-0.6,-0.4,0.5]].map(v => new V3(v[0], v[1], v[2]).normalize());
+const PLATE4 = [1.1, 0.37, -0.37, -1.1];
+const nucGeo = new THREE.SphereGeometry(1, 28, 18);
+const SLOTS = [];
+for(let i=0;i<N_SLOT;i++){
+  const geo = makeLathe(48, 40);
+  const g = new THREE.Group();
+  const back = new THREE.Mesh(geo, cellBackMat), front = new THREE.Mesh(geo, cellFrontMat);
+  back.renderOrder = 1; front.renderOrder = 3;
+  back.frustumCulled = front.frustumCulled = false;
+  g.add(back, front);
+  W2.add(g);
+  const nuc = [0, 1].map(() => {
+    const m = new THREE.Mesh(nucGeo, new THREE.MeshStandardMaterial({color:COL.nucleus, roughness:0.35, metalness:0,
+      transparent:true, opacity:0.45, depthWrite:false, envMapIntensity:0.5}));
+    m.renderOrder = 2; W2.add(m); return m;
+  });
+  SLOTS.push({g, geo, nuc});
+}
+const dotMat = new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.45, metalness:0.05, envMapIntensity:0.6});
+const tisDots = new THREE.InstancedMesh(SPH, dotMat, N_SLOT*4);
+for(let i=0;i<N_SLOT*4;i++) tisDots.setColorAt(i, linColor(COL[CHROMS[i % 4].from]));
+W2.add(tisDots);
+const DOT_R = 0.3;
+
+/* the tissue at time t: which cells there are, where, and in what state */
+function tissueAt(t){
+  let g = 0;
+  while(g < TS.gens && t >= tStart(g) + TS.P) g++;
+  const n = 1 << g, out = {count:n, gen:g, cells:[]};
+  const whole = (slot, c, r, nr) => ({slot, c, axis:'x', S:{d:0, r, k:0},
+    nucs:[{c:c.clone(), r:nr, op:1}, null], dots:HOME4.map(h => c.clone().addScaledVector(h, 0.45*nr))});
+  if(g === TS.gens || t < tStart(g)){
+    for(let i=0;i<n;i++) out.cells.push(whole(i, LAY[g][i].clone(), CELL_R, NUC_R));
+    return out;
+  }
+  const u = (t - tStart(g))/TS.P, a = TS.axes[g], ax = new V3(); ax[a] = 1;
+  let S = null, e, r = 0, sep = 0, gr = 0;
+  if(u < 0.5){
+    S = cytoState({d:0, r:CELL_R, k:0}, ss(0.12, 0.42, u), ss(0.42, 0.5, u));
+    e = S.d + S.r + S.k/4;
+  } else {
+    gr = ss(0.55, 1, u);
+    r = lerp(CELL_RD, CELL_R, gr);
+    sep = lerp(D_SPLIT(CELL_RD), TS.s/2, gr);
+    e = sep + r;
+    out.count = 2*n;
+  }
+  const f = Math.max(lerp(1, 2, ss(0.1, 1, u)), (2*e + TS.gap)/TS.s);
+  for(let i=0;i<n;i++){
+    const c = LAY[g][i].clone(); c[a] *= f;
+    if(u >= 0.5){
+      const nr = lerp(NUC_R0, NUC_R, gr);
+      out.cells.push(whole(i, c.clone().addScaledVector(ax, -sep), r, nr));
+      out.cells.push(whole(i + n, c.clone().addScaledVector(ax, sep), r, nr));
+      continue;
+    }
+    const lA = c.clone().addScaledVector(ax, -S.d), lB = c.clone().addScaledVector(ax, S.d);
+    const nucs = u < 0.2 ? [{c:c.clone(), r:NUC_R, op:1 - ss(0, 0.1, u)}, null]
+                         : [{c:lA, r:NUC_R0, op:ss(0.3, 0.42, u)}, {c:lB, r:NUC_R0, op:ss(0.3, 0.42, u)}];
+    const s1 = ss(0.02, 0.12, u), sp = ss(0.12, 0.17, u), go = ss(0.17, 0.34, u);
+    const dA = [], dB = [];
+    HOME4.forEach((h, q) => {
+      const home = c.clone().addScaledVector(h, 0.45*NUC_R), plate = c.clone().addScaledVector(UP, PLATE4[q]);
+      const mid = home.lerp(plate, s1);
+      dA.push(mid.clone().addScaledVector(ax, -0.22*sp).lerp(lA.clone().addScaledVector(h, 0.45*NUC_R0), go));
+      dB.push(mid.clone().addScaledVector(ax, 0.22*sp).lerp(lB.clone().addScaledVector(h, 0.45*NUC_R0), go));
+    });
+    out.cells.push({slot:i, c, axis:a, S, nucs, dots:dA, dotsB:sp > 0 ? dB : null, slotB:i + n});
+  }
+  return out;
+}
+
+/* r128 culls an InstancedMesh by its one base geometry at the origin, which
+   would drop instances that are in view: draw them all */
+scene.traverse(o => { if(o.isInstancedMesh) o.frustumCulled = false; });
+
+linearise(scene);
+
+/* =========================================================================
+   FIGURES the captions quote -- all worked out, none typed in
+========================================================================= */
+const FIG = (function(){
+  const inter = STAGES[0].min;
+  const tInter = HAND[3][0] - HAND[0][0], tMit = HAND[4][0] - HAND[3][0];
+  const slow = (inter/tInter)/(CYCLE.mitosis/tMit);
+  const seq = [];
+  for(let g=0; g<=TS.gens; g++) seq.push(1 << g);
+  return {
+    cycleH: TOTAL/60, interH: inter/60, sH: CYCLE.S/60,
+    mitMin: CYCLE.mitosis, cytMin: CYCLE.cyto,
+    slow: Math.round(slow/10)*10, slowExact: slow,
+    chrom: CHROMS.length, pairs: CHROMS.length/2,
+    human: HUMAN.chromosomes, humanPairs: HUMAN.pairs,
+    mito0: N_MITO, mito1: MITO.length,
+    seq, cells: seq[seq.length-1], tenN: 10, ten: Math.pow(2, 10)
+  };
+})();
+const fmtMin = m => { const h = Math.floor(m/60 + 1e-9), mm = Math.round(m - 60*h); return h + ' h ' + String(mm).padStart(2, '0') + ' min'; };
+
+/* =========================================================================
+   STATE as a function of the cell's clock T
+========================================================================= */
+const F = {T:0, cell:null, rn:NUC_R0, ec:0, a:0, sinPhi:0, cosPhi:1, splayK:1, share:0, nx:0, spindle:0,
+  fr:CHROMS.map(() => ({C:new V3(), Q:new THREE.Quaternion(), S:new V3(), D:new V3(), W:new V3()})),
+  cov:CHROMS.map(() => new Float32Array(NS+1)),
+  poles:[new V3(), new V3()], Nc:[new V3(), new V3()]};
+function polePos(j, T, out){
+  const u = ss(TL.poles[0], TL.poles[1], T);
+  const th = lerp(Math.PI/2, j < 0 ? Math.PI : 0, u);
+  const rho = lerp(NUC_R*1.22, XP, u) + 0.5*ss(TL.elong[0], TL.elong[1], T);
+  return out.set(rho*Math.cos(th), rho*Math.sin(th), 0);
+}
+function cellFrame(T){
+  F.T = T;
+  F.cell = cellState(T);
+  F.rn = lerp(NUC_R0, NUC_R, ss(TL.grow[0], TL.grow[1], T));
+  F.ec = T < 55 ? ss(TL.condense[0], TL.condense[1], T) : 1 - ss(TL.decondense[0], TL.decondense[1], T);
+  F.a = ss(TL.ana[0], TL.ana[1], T);
+  const phi = ss(0, 0.3, F.a)*(1 - 0.5*ss(0.75, 1, F.a));
+  F.sinPhi = Math.sin(phi); F.cosPhi = Math.cos(phi);
+  F.splayK = 1 - ss(0, 0.2, F.a);
+  F.share = ss(TL.share[0], TL.share[1], T);
+  F.spindle = ss(TL.spindle[0], TL.spindle[0] + 2, T)*(1 - ss(TL.spindleOff[0], TL.spindleOff[1], T));
+  F.nx = lerp(2.75, F.cell.d, ss(TL.dSlide[0], TL.dSlide[1], T));
+  F.Nc[0].set(-F.nx, 0, 0); F.Nc[1].set(F.nx, 0, 0);
+  polePos(-1, T, F.poles[0]); polePos(1, T, F.poles[1]);
+  CHROMS.forEach((c, k) => {
+    const m = ss(TL.congress[0] + 0.8*ORD[k], TL.congress[1] + 0.8*ORD[k], T);
+    const fr = F.fr[k];
+    fr.C.lerpVectors(KF0[k].C, KFM[k].C, m);
+    fr.Q.copy(KF0[k].Q).slerp(KFM[k].Q, m);
+    fr.S.set(1,0,0).applyQuaternion(fr.Q);
+    fr.D.set(0,1,0).applyQuaternion(fr.Q);
+    fr.W.set(0,0,1).applyQuaternion(fr.Q);
+    const cv = F.cov[k];
+    for(let i=0;i<=NS;i++) cv[i] = copiedAt(k, i/NS, T);
+  });
+}
+/* the centromere of chromatid j of chromosome k: beside its sister until
+   anaphase, then pulled most of the way to pole j */
+const _ct = new V3();
+function centromere(k, j, out){
+  const fr = F.fr[k];
+  out.copy(fr.C).addScaledVector(fr.S, j*OFF0);
+  if(F.a > 0) out.lerp(_ct.set(j*XA, 0.35*fr.C.y, 0.35*fr.C.z), F.a);
+  return out;
+}
+const threadCap = i => { const e = Math.min(i, NS - i)/4; return e >= 1 ? 1 : Math.sqrt(1 - (1 - e)*(1 - e)); };
+const _tp = new V3(), _rp = new V3(), _cc = new V3(), _n1 = new V3();
+function updateChromatids(){
+  const parent = F.T < 55;
+  for(const tb of TUBES){
+    const ch = CHROMS[tb.k], fr = F.fr[tb.k], U = THREAD[tb.k], j = tb.j, cov = F.cov[tb.k];
+    if(F.ec > 0) centromere(tb.k, j, _cc);
+    for(let i=0;i<=NS;i++){
+      let rT = THREAD_R*threadCap(i);
+      if(parent){
+        const cv = cov[i];
+        _tp.copy(U.P[i]).multiplyScalar(F.rn).addScaledVector(U.N[i], j*0.5*DELTA*cv);
+        if(j > 0) rT *= cv;
+      } else {
+        _tp.copy(U.P[i]).multiplyScalar(NUC_R0).add(F.Nc[j > 0 ? 1 : 0]);
+      }
+      const out = tb.P[i];
+      if(F.ec <= 0){ out.copy(_tp); tb.R[i] = rT; continue; }
+      /* the condensed chromatid: its arms, bent back towards the equator by
+         anaphase, with the coil wound round them */
+      const y = ch.pl - i/NS*ch.L, sg = y >= 0 ? 1 : -1, ay = Math.abs(y);
+      const rr = chromatidRadius(y, ch.pl, ch.ql, TUBE_R);
+      const splay = (chromatidOffset(y, ch.pl, ch.ql, ROD_T) - OFF0)*F.splayK;
+      _rp.copy(_cc).addScaledVector(fr.D, y*F.cosPhi).addScaledVector(fr.S, j*(splay - ay*F.sinPhi));
+      _n1.copy(fr.D).multiplyScalar(sg*j*F.sinPhi).addScaledVector(fr.S, F.cosPhi);
+      const th = 2*Math.PI*y/COIL_L + tb.phase, amp = COIL_A*rr/TUBE_R;
+      _rp.addScaledVector(_n1, amp*Math.cos(th)).addScaledVector(fr.W, amp*Math.sin(th));
+      out.lerpVectors(_tp, _rp, F.ec);
+      tb.R[i] = lerp(rT, rr, F.ec);
+    }
+    writeTube(tb.geo, tb.P, tb.R);
+  }
+}
+
+const _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _sc = new V3(), _dv = new V3(), _mid = new V3();
+function placeRod(mesh, slot, a, b, r){
+  _dv.subVectors(b, a);
+  const len = _dv.length();
+  if(len < 1e-6 || !(r > 0)){ mesh.setMatrixAt(slot, _m4.makeScale(0, 0, 0)); return; }
+  _q.setFromUnitVectors(UP, _dv.multiplyScalar(1/len));
+  _mid.addVectors(a, b).multiplyScalar(0.5);
+  mesh.setMatrixAt(slot, _m4.compose(_mid, _q, _sc.set(r, len, r)));
+}
+/* the fibres, as segments: kept for the labels and the tests */
+const FIB = Array.from({length:N_FIB}, () => ({a:new V3(), b:new V3(), on:false}));
+const _fe = new V3();
+function updateSpindle(){
+  const T = F.T, op = F.spindle;
+  fibreMat.opacity = 0.8*op;
+  poleMat.opacity = op;
+  POLES.forEach((m, i) => { m.position.copy(F.poles[i]); m.visible = op > 0.01; });
+  fibres.visible = op > 0.01;
+  let s = 0;
+  const set = (a, b, on) => { const f = FIB[s]; f.a.copy(a); f.b.copy(b); f.on = on; placeRod(fibres, s++, a, b, on ? 0.026 : 0); };
+  CHROMS.forEach((c, k) => [-1, 1].forEach(j => {
+    const g = ss(TL.fibres[0] + 0.8*ORD[k], TL.fibres[1] + 0.8*ORD[k], T);
+    const p = F.poles[j > 0 ? 1 : 0];
+    centromere(k, j, _cc);
+    set(p, _fe.lerpVectors(p, _cc, g), g > 0.001 && op > 0.01);
+  }));
+  const grow = ss(TL.spindle[0], TL.spindle[1], T);
+  [-1, 1].forEach((j, jj) => {
+    const p = F.poles[jj];
+    POLAR[jj].forEach(e => set(p, _fe.lerpVectors(p, e, grow), grow > 0.001 && op > 0.01));
+    ASTRAL[jj].forEach(d => set(p, _fe.copy(p).addScaledVector(d, 0.6*grow), grow > 0.001 && op > 0.01));
+  });
+  fibres.instanceMatrix.needsUpdate = true;
+}
+
+/* an organelle's place: in the cell while it is whole, then sliding to its
+   place in its own daughter. Kept inside the membrane. */
+const _oq = new V3(), _op = new V3(), _oc = new V3();
+function orgPlace(o, out){
+  const S = F.cell;
+  _oq.copy(o.q).lerp(o.q2, F.share);
+  return out.copy(_oq).multiplyScalar(S.r).add(_oc.set(o.side*S.d, 0, 0));
+}
+function keepInside(p, side, S, margin){
+  if(cellSdf(p.x, Math.hypot(p.y, p.z), S) <= -margin) return p;
+  _oc.set(side*S.d, 0, 0);
+  let lo = 0, hi = 1;
+  for(let it=0; it<24; it++){
+    const m = 0.5*(lo + hi);
+    _op.copy(p).lerp(_oc, m);
+    if(cellSdf(_op.x, Math.hypot(_op.y, _op.z), S) <= -margin) hi = m; else lo = m;
+  }
+  return p.lerp(_oc, hi);
+}
+function bornAt(o){ return o.born ? ss(o.born[0], o.born[1], F.T) : 1; }
+function updateOrganelles(){
+  const S = F.cell;
+  MITO.forEach((o, i) => {
+    orgPlace(o, o.pos);
+    const u = bornAt(o);
+    if(u < 1){
+      const par = MITO[o.parent];
+      orgPlace(par, _tp);
+      o.pos.lerpVectors(_tp, o.pos, u);
+    }
+    keepInside(o.pos, o.side, S, 0.38);
+    const sc = o.born && u <= 0 ? 0 : 1;
+    mitoMesh.setMatrixAt(i, _m4.compose(o.pos, o.quat, _sc.copy(MITO_S).multiplyScalar(sc)));
+  });
+  RIBO.forEach((o, i) => {
+    orgPlace(o, o.pos);
+    keepInside(o.pos, o.side, S, 0.1);
+    const sc = RIBO_S*bornAt(o);
+    riboMesh.setMatrixAt(i, _m4.compose(o.pos, o.quat, _sc.set(sc, sc, sc)));
+  });
+  mitoMesh.instanceMatrix.needsUpdate = true;
+  riboMesh.instanceMatrix.needsUpdate = true;
+}
+let lastT = null;
+function updateCell(T){
+  if(T === lastT) return;
+  lastT = T;
+  cellFrame(T);
+  writeLathe(cellGeo, F.cell);
+  /* the parent's envelope breaks up; two new ones gather round each set */
+  writeEnvelope(ENV[0], new V3(), F.rn, ss(TL.envOff[0], TL.envOff[1], T), 1);
+  const dR = NUC_R0*lerp(1.25, 1, ss(TL.envShrink[0], TL.envShrink[1], T));
+  const dB = T < 60 ? 1 : 1 - ss(TL.envOn[0], TL.envOn[1], T);
+  writeEnvelope(ENV[1], F.Nc[0], dR, dB, 0.35);
+  writeEnvelope(ENV[2], F.Nc[1], dR, dB, 0.35);
+  updateChromatids();
+  updateSpindle();
+  updateOrganelles();
+}
+
+const _tq = new THREE.Quaternion(), _ty = new THREE.Quaternion().setFromAxisAngle(UP, -Math.PI/2);
+let TIS = null;
+function updateTissue(t){
+  TIS = tissueAt(t);
+  SLOTS.forEach(s => { s.g.visible = false; s.nuc.forEach(m => { m.visible = false; }); });
+  for(let i=0;i<N_SLOT*4;i++) tisDots.setMatrixAt(i, _m4.makeScale(0, 0, 0));
+  const putDots = (slot, pts) => pts.forEach((p, q) =>
+    tisDots.setMatrixAt(slot*4 + q, _m4.compose(p, _tq.identity(), _sc.set(DOT_R, DOT_R, DOT_R))));
+  TIS.cells.forEach(cl => {
+    const s = SLOTS[cl.slot];
+    s.g.visible = true;
+    s.g.position.copy(cl.c);
+    s.g.quaternion.copy(cl.axis === 'z' ? _ty : _tq.identity());
+    writeLathe(s.geo, cl.S);
+    cl.nucs.forEach((n, i) => {
+      if(!n) return;
+      const m = s.nuc[i];
+      m.visible = n.op > 0.01;
+      m.position.copy(n.c); m.scale.setScalar(n.r);
+      m.material.opacity = 0.45*n.op;
+    });
+    putDots(cl.slot, cl.dots);
+    if(cl.dotsB) putDots(cl.slotB, cl.dotsB);
+  });
+  tisDots.instanceMatrix.needsUpdate = true;
+}
+
+/* =========================================================================
+   CAMERA KEYS -- found from the geometry, refitted on resize
+========================================================================= */
+function fitDist(halfW, halfH){
+  const vf = camera.fov*Math.PI/180, hf = 2*Math.atan(Math.tan(vf/2)*camera.aspect);
+  return Math.max(halfW/Math.tan(hf/2), halfH/Math.tan(vf/2));
+}
+const key = (look, dist, az, el) => ({look:[look.x, look.y, look.z], dist, az:az||0, el:el||0});
+let CAM = {};
+function buildCams(){
+  const o = new V3();
+  /* the cycle chapter: the cell on the right, leaving the left for the pie */
+  const vf = camera.fov*Math.PI/180, hf = 2*Math.atan(Math.tan(vf/2)*camera.aspect);
+  const dc = Math.max(1.2*CELL_R/(0.25*2*Math.tan(hf/2)), 1.25*CELL_R/Math.tan(vf/2));
+  const az = 0.3, shift = 0.22*2*dc*Math.tan(hf/2);
+  CAM.cycle   = key(new V3(-Math.cos(az)*shift, 0, Math.sin(az)*shift), dc, az, 0.22);
+  CAM.cellA   = key(o, fitDist(CELL_R*1.12, CELL_R*1.12), 0.1, 0.25);
+  CAM.cellB   = key(o, fitDist(CELL_R*1.12, CELL_R*1.12), 0.45, 0.3);
+  CAM.nucleus = key(o, fitDist(NUC_R*1.35, NUC_R*1.35), 0.35, 0.3);
+  CAM.nucleus2= key(o, fitDist(NUC_R*1.35, NUC_R*1.35), 0.7, 0.36);
+  CAM.meta    = key(o, fitDist(CELL_R*1.12, CELL_R*1.15), 0.12, 0.1);
+  CAM.ana     = key(o, fitDist(CELL_R + D_EL + 0.7, CELL_R*1.18), 0.16, 0.12);
+  CAM.tel     = key(o, fitDist(CELL_R + D_EL + 0.7, CELL_R*1.22), 0.3, 0.2);
+  CAM.pair    = key(o, fitDist(D_SPLIT(CELL_RD) + CELL_RD + 1.4, CELL_RD*1.3), 0.2, 0.24);
+}
+const TIS_EL = 0.9;
+function tissueCam(t){
+  const st = tissueAt(t);
+  let mx = 0, mz = 0;
+  st.cells.forEach(cl => {
+    const S = cl.S, along = S.d + S.r + S.k/4, across = S.r + S.k/4;
+    mx = Math.max(mx, Math.abs(cl.c.x) + (cl.axis === 'x' ? along : across));
+    mz = Math.max(mz, Math.abs(cl.c.z) + (cl.axis === 'z' ? along : across));
+  });
+  return {look:[0, 0, 0], dist:1.1*fitDist(mx + 1.2, mz*Math.sin(TIS_EL) + CELL_R*Math.cos(TIS_EL) + 1.2),
+          az:0, el:TIS_EL};
+}
+
+/* =========================================================================
+   THE STORY. Chapters 1-6 play the cell's clock from T0 for Tlen seconds.
+========================================================================= */
+const memPt = (x, ph) => { const r = rhoAt(x, F.cell); return new V3(x, r*Math.cos(ph), r*Math.sin(ph)); };
+const tubePt = (k, j, s) => tubeOf(k, j).P[Math.round(s*NS)];
+const fibreMid = s => new V3().addVectors(FIB[s].a, FIB[s].b).multiplyScalar(0.5);
+const kfSlot = (k, j) => 2*k + (j > 0 ? 1 : 0);
+const frontMost = (list, n) => list.map((o, i) => i).filter(i => !list[i].born)
+  .sort((a, b) => (list[b].q.z + 0.4*list[b].q.y - 0.3*list[b].q.x) - (list[a].q.z + 0.4*list[a].q.y - 0.3*list[a].q.x)).slice(0, n);
+const MITO_PICK = frontMost(MITO, 2), RIBO_PICK = frontMost(RIBO, 2);
+const envPt = (E, d) => new V3().copy(d).normalize().multiplyScalar(E.rad*(1 + 0.3*E.b)).add(E.centre);
+const lobeTop = side => new V3(side*F.cell.d, F.cell.r*0.72, F.cell.r*0.55);
+
+const CH = [
+  {
+    part:'Cycle', T0:14, Tlen:0, len:16, pie:'big',
+    shots:[{world:'cell', keys:[[0,'cycle']]}],
+    title:'The cell cycle',
+    text:'Body cells make new cells by dividing in two. A cell that divides goes round a cycle of <b>three stages</b>, again and again:<br><br><b>Stage 1 — interphase.</b> The cell grows, makes more of its sub-cellular structures such as mitochondria and ribosomes, and copies its DNA.<br><b>Stage 2 — mitosis.</b> One set of chromosomes is pulled to each end of the cell, and the nucleus divides.<br><b>Stage 3 — cytokinesis.</b> The cytoplasm and cell membrane divide, making two identical cells.',
+    look:'The pie chart is drawn to scale. Interphase takes about <b>'+FIG.interH+' hours</b> of a '+FIG.cycleH+'-hour cycle; mitosis and cytokinesis together take about an hour.',
+    scale:'That is why most cells you see down a microscope are in interphase. Different kinds of cell take different times.',
+    terms:[['Cell cycle','the series of stages a cell goes through as it grows and divides.']],
+    key:['cell','nucleus','mother','father'],
+    labels:[]
+  },
+  {
+    part:'Growth', T0:0, Tlen:14, len:15, pie:'small',
+    shots:[{world:'cell', keys:[[0,'cellA'],[15,'cellB']]}],
+    title:'Stage 1: interphase — the cell grows',
+    text:'A new cell starts out small: it got only half of its parent\'s cytoplasm. During interphase it <b>grows</b>, and it makes more of its <b>sub-cellular structures</b>.<br><br>Watch the <b>mitochondria</b>, where respiration happens: new ones are made when existing ones split in two. More <b>ribosomes</b>, where proteins are made, appear too.',
+    look:'The number of mitochondria doubles, from '+FIG.mito0+' to '+FIG.mito1+'. The cell needs enough of everything to share between two.',
+    scale:'A real cell has hundreds of mitochondria and millions of ribosomes; only a few are drawn.',
+    terms:[['Interphase','the stage of the cycle when the cell grows, increases the number of its sub-cellular structures, and copies its DNA.']],
+    key:['cell','nucleus','mito','ribo'],
+    labels:[
+      {text:'Cell membrane', world:'cell', at:()=>[memPt(-0.55*F.cell.r, 2.2)], dx:-90, dy:55, t0:2},
+      {text:'Cytoplasm', world:'cell', at:()=>[new V3(-0.45, 0.42, 0.45).multiplyScalar(F.cell.r)], dx:-100, dy:-60, t0:3.2},
+      {text:'Nucleus', world:'cell', at:()=>[new V3(0.6, 0.5, 0.62).normalize().multiplyScalar(F.rn)], dx:110, dy:-70, t0:4.4},
+      {text:'Mitochondria', world:'cell', at:()=>MITO_PICK.map(i => MITO[i].pos), dx:110, dy:60, t0:6},
+      {text:'Ribosomes', world:'cell', at:()=>RIBO_PICK.map(i => RIBO[i].pos), dx:-110, dy:70, t0:7.5}
+    ]
+  },
+  {
+    part:'Copying', T0:14, Tlen:16, len:17, pie:'small',
+    shots:[{world:'cell', keys:[[0,'cellB'],[1,'cellB'],[4.5,'nucleus'],[17,'nucleus2']]}],
+    mem:t => lerp(1, 0.3, ss(1, 4.5, t)), nuc:t => lerp(1, 0.4, ss(1, 4.5, t)),
+    title:'Interphase — copying the DNA',
+    text:'Before a cell can divide, it must copy its genetic material, so that each new cell gets a complete set.<br><br>Inside the nucleus the chromosomes are long, thin threads. Each one is copied, starting in several places at once, until there are <b>two identical copies</b> lying side by side.',
+    look:'This cell has '+FIG.chrom+' chromosomes in '+FIG.pairs+' pairs. In each pair, one chromosome came from the <b>mother</b> (red) and one from the <b>father</b> (blue).',
+    scale:'A human body cell has '+FIG.human+' chromosomes in '+FIG.humanPairs+' pairs; only '+FIG.pairs+' pairs are drawn here. Real chromosome threads are far longer and thinner than this. Copying all of the DNA takes about '+FIG.sH+' hours.',
+    terms:[['Chromosome','a long molecule of DNA, found in the nucleus.'],
+           ['Copying the DNA','each chromosome is copied, giving two identical copies of every chromosome.']],
+    key:['nucleus','mother','father'],
+    labels:[
+      {text:'Nucleus', world:'cell', at:()=>[envPt(ENV[0], new V3(-0.6, 0.55, 0.58))], dx:-110, dy:-50, t0:5},
+      {text:'Copying starts here', world:'cell', at:()=>[tubePt(1, 1, ORIG[1][0].s)], dx:120, dy:-50, t0:3.5, t1:9.5},
+      {text:'A chromosome:<span class="sub">a long, thin thread</span>', world:'cell', at:()=>[tubePt(0, -1, 0.5)], dx:-120, dy:60, t0:6, t1:11.5},
+      {text:'Two identical copies', world:'cell', at:()=>[tubePt(2, -1, 0.3), tubePt(2, 1, 0.3)], dx:120, dy:50, t0:12}
+    ]
+  },
+  {
+    part:'Lining up', T0:30, Tlen:19, len:19.5, pie:'small',
+    shots:[{world:'cell', keys:[[0,'nucleus2'],[2.5,'nucleus2'],[10,'meta']]}],
+    mem:t => lerp(0.3, 0.5, ss(4, 10, t)), nuc:() => 0.4,
+    title:'Stage 2: mitosis — the chromosomes line up',
+    text:'Mitosis begins. Each chromosome <b>coils up</b>, becoming short and thick, so you can now see its two copies, joined in the middle: the X shape.<br><br>The <b>membrane around the nucleus breaks up</b>. <b>Spindle fibres</b> grow out from each end of the cell and attach to the middle of every chromosome. Then the chromosomes <b>line up across the middle</b> of the cell.',
+    look:'Each X is <b>one</b> chromosome that has been copied. One spindle fibre from the left and one from the right hold it by the middle.',
+    phases:'<b>Prophase:</b> the chromosomes condense, the nuclear membrane breaks down and the spindle forms.<br><b>Metaphase:</b> the chromosomes line up across the middle (the equator) of the cell.',
+    scale:'From here the story slows right down: mitosis is played about '+FIG.slow+' times slower than interphase. Watch the clock on the pie chart.',
+    terms:[['Mitosis','the stage where one set of chromosomes is pulled to each end of the cell and the nucleus divides.'],
+           ['Spindle fibres','fibres that grow across the cell during mitosis and pull the chromosomes apart.']],
+    phaseTerms:[['Chromatid','one of the two identical copies of a chromosome, joined at the middle.']],
+    key:['mother','father','fibre'],
+    labels:[
+      {text:'Chromosomes coil up', world:'cell', at:()=>[tubePt(1, -1, 0.2)], dx:120, dy:-50, t0:2.5, t1:8},
+      {text:'The nuclear membrane breaks up', world:'cell', at:()=>[envPt(ENV[0], new V3(-0.55, 0.6, 0.6))], dx:-100, dy:-60, t0:4.5, t1:9.5},
+      {text:'Spindle fibres', world:'cell', at:()=>[fibreMid(kfSlot(ORDER[0], -1)), fibreMid(kfSlot(ORDER[3], 1))], dx:-120, dy:-150, t0:11},
+      {text:'One chromosome:<span class="sub">two identical copies</span>', world:'cell',
+       at:()=>[tubePt(ORDER[0], -1, 0.12), tubePt(ORDER[0], 1, 0.12)], dx:110, dy:-40, t0:14},
+      {text:'Lined up across the middle', world:'cell', at:()=>CHROMS.map((c, k) => F.fr[k].C), dx:150, dy:120, t0:17}
+    ]
+  },
+  {
+    part:'Pulled apart', T0:49, Tlen:11, len:11.5, pie:'small',
+    shots:[{world:'cell', keys:[[0,'meta'],[11.5,'ana']]}],
+    mem:() => 0.5,
+    title:'Mitosis — one set to each end',
+    text:'The spindle fibres shorten. They pull the two copies of every chromosome apart, <b>one copy to each end</b> of the cell.<br><br>Now each end of the cell has one copy of every chromosome: a <b>complete set</b>, exactly the same as the set at the other end.',
+    look:'Count them: '+FIG.chrom+' at the left end and '+FIG.chrom+' at the right — one red and one blue of each size.',
+    phases:'<b>Anaphase:</b> the copies (chromatids) of each chromosome are pulled to opposite ends of the cell.',
+    terms:[['Mitosis','one set of chromosomes is pulled to each end of the cell, and the nucleus divides.']],
+    key:['mother','father','fibre'],
+    labels:[
+      {text:'Spindle fibres shorten', world:'cell', at:()=>[fibreMid(kfSlot(ORDER[0], 1))], dx:120, dy:-90, t0:3.5, t1:8.5},
+      {text:'One set to this end', world:'cell', at:()=>CHROMS.map((c, k) => centromere(k, -1, new V3())), dx:-90, dy:-150, t0:7},
+      {text:'One set to that end', world:'cell', at:()=>CHROMS.map((c, k) => centromere(k, 1, new V3())), dx:90, dy:-150, t0:7.6}
+    ]
+  },
+  {
+    part:'Two nuclei', T0:60, Tlen:12, len:12.5, pie:'small',
+    shots:[{world:'cell', keys:[[0,'ana'],[12.5,'tel']]}],
+    mem:() => 0.5, nuc:() => 0.75,
+    title:'Mitosis — the nucleus divides',
+    text:'A new membrane forms around each set of chromosomes, so where there was one nucleus there are now <b>two</b>. Each holds the same '+FIG.chrom+' chromosomes as the nucleus we started with.<br><br>The chromosomes uncoil, back into long, thin threads.',
+    look:'The nucleus does not pinch in two. Its membrane broke up at the start of mitosis, and two new ones form at the end.',
+    phases:'<b>Telophase:</b> a new nuclear membrane forms around each set of chromosomes, and the chromosomes uncoil.',
+    terms:[['Nuclear membrane','the membrane around the nucleus. It breaks up at the start of mitosis, and a new one forms around each set of chromosomes at the end.']],
+    key:['nucleus','mother','father'],
+    labels:[
+      {text:'Two new nuclei', world:'cell', at:()=>[envPt(ENV[1], new V3(-0.3, 0.8, 0.5)), envPt(ENV[2], new V3(0.3, 0.8, 0.5))], dx:40, dy:-110, t0:6.5},
+      {text:'The chromosomes uncoil', world:'cell', at:()=>[tubePt(0, 1, 0.5)], dx:120, dy:80, t0:4, t1:10}
+    ]
+  },
+  {
+    part:'Cytokinesis', T0:72, Tlen:13, len:14, pie:'small',
+    shots:[{world:'cell', keys:[[0,'tel'],[1,'tel'],[6.5,'pair']]}],
+    mem:t => lerp(0.5, 0.9, ss(2, 9, t)), nuc:() => 0.75,
+    title:'Stage 3: cytokinesis',
+    text:'Last, the <b>cytoplasm and cell membrane divide</b>. The membrane pinches in around the middle until the cell splits in two.<br><br>The result is <b>two daughter cells</b>, genetically identical to each other and to the parent cell. Each is smaller than the parent, and starts the cycle again at interphase, by growing.',
+    look:'Each new cell has '+FIG.chrom+' chromosomes — the same as the cell we started with — and its share of the mitochondria and ribosomes.',
+    scale:'In a real cell, cytokinesis starts while the two new nuclei are still forming. Here the stages are shown one after the other.',
+    terms:[['Cytokinesis','the cytoplasm and cell membrane divide, forming two identical cells.'],
+           ['Daughter cells','the two cells made when a cell divides. After mitosis they are genetically identical.']],
+    key:['cell','nucleus','mother','father','mito'],
+    labels:[
+      {text:'The membrane pinches in', world:'cell', at:()=>[memPt(0, 0.7)], dx:30, dy:-120, t0:2, t1:8.5},
+      {text:'Two daughter cells<span class="sub">genetically identical</span>', world:'cell', at:()=>[lobeTop(-1), lobeTop(1)], dx:30, dy:-90, t0:10}
+    ]
+  },
+  {
+    part:'Doubling', len:34,
+    shots:[{world:'tissue', auto:true}],
+    title:'Two, four, eight, sixteen',
+    text:'Each new cell can grow and divide again, so every round of division <b>doubles</b> the number of cells: '+FIG.seq.join(' → ')+'. After '+FIG.tenN+' rounds, one cell would have become '+FIG.ten+'.<br><br>This is how a multicellular organism <b>grows and develops</b>, and how it <b>repairs</b> damage and <b>replaces</b> worn-out cells.',
+    look:'Every cell made this way has the same '+FIG.chrom+' chromosomes as the first one.',
+    scale:'Here every cell divides at the same moment, so the number doubles exactly each time. In a real body, cells divide at different times, and many stop dividing once they have specialised.',
+    terms:[['Mitosis','cell division that makes two genetically identical cells. It is used for growth, repair and replacing cells.']],
+    key:['cell','nucleus','mother','father'],
+    labels:[
+      {text:'', cls:'big', world:'tissue', screen:[0.5, 0.08], t0:0.3,
+       html:()=>{ const n = TIS ? TIS.count : 1; return n + (n === 1 ? ' cell' : ' cells') + '<span class="sub">each division doubles the number</span>'; }},
+      {text:'Every cell:<span class="sub">the same '+FIG.chrom+' chromosomes</span>', world:'tissue',
+       at:()=>[TIS.cells[0].nucs[0].c, TIS.cells[TIS.cells.length-1].nucs[0].c], dx:150, dy:-110, t0:31}
+    ]
+  }
+];
+
+const KEYS = {
+  cell:'<div><span class="sq" style="background:'+hexCss(COL.cell)+'"></span>cell membrane and cytoplasm</div>',
+  nucleus:'<div><span class="sq" style="background:'+hexCss(COL.nucleus)+'"></span>nucleus</div>',
+  mother:'<div><span class="sq" style="background:'+hexCss(COL.mother)+'"></span>chromosome from the mother</div>',
+  father:'<div><span class="sq" style="background:'+hexCss(COL.father)+'"></span>chromosome from the father</div>',
+  fibre:'<div><span class="ln" style="background:'+hexCss(COL.fibre)+'"></span>spindle fibres</div>',
+  mito:'<div><span class="dot" style="background:'+hexCss(COL.mito)+'"></span>mitochondria</div>',
+  ribo:'<div><span class="dot" style="background:'+hexCss(COL.ribo)+'"></span>ribosomes</div>'
+};
+
+/* ------------------------------------------------------------- the camera */
+const FADE = 0.32;
+function lerpCam(a, b, u){
+  return {
+    dist: Math.exp(lerp(Math.log(a.dist), Math.log(b.dist), u)),
+    az: lerp(a.az, b.az, u), el: lerp(a.el, b.el, u),
+    look:[lerp(a.look[0],b.look[0],u), lerp(a.look[1],b.look[1],u), lerp(a.look[2],b.look[2],u)]
+  };
+}
+function shotAt(C, t){
+  let i = 0;
+  while(i < C.shots.length-1 && t >= C.shots[i].until) i++;
+  const sh = C.shots[i];
+  const start = i ? C.shots[i-1].until : 0, end = i < C.shots.length-1 ? sh.until : Infinity;
+  let cam;
+  if(sh.auto) cam = tissueCam(t);
+  else {
+    const ks = sh.keys;
+    if(t <= ks[0][0]) cam = CAM[ks[0][1]];
+    else {
+      let j = 0;
+      while(j < ks.length-1 && t >= ks[j+1][0]) j++;
+      cam = j === ks.length-1 ? CAM[ks[j][1]] : lerpCam(CAM[ks[j][1]], CAM[ks[j+1][1]], ss(ks[j][0], ks[j+1][0], t));
+    }
+  }
+  let fade = 1 - clamp((t - start)/FADE, 0, 1);
+  if(isFinite(end)) fade = Math.max(fade, 1 - clamp((end - t)/FADE, 0, 1));
+  return {world:sh.world, cam, fade};
+}
+let dragAz = 0, dragEl = 0, zoomAdj = 0;
+function applyCamera(c){
+  const az = c.az + dragAz, el = clamp(c.el + dragEl, -1.2, 1.35);
+  const d = Math.max(0.2, c.dist*Math.exp(zoomAdj));
+  camera.position.set(
+    c.look[0] + d*Math.cos(el)*Math.sin(az),
+    c.look[1] + d*Math.sin(el),
+    c.look[2] + d*Math.cos(el)*Math.cos(az));
+  camera.lookAt(c.look[0], c.look[1], c.look[2]);
+  camera.near = d/200; camera.far = d*30 + 100;
+  camera.updateProjectionMatrix();
+}
+
+/* ---------------------------------------------------- labels with leaders */
+const labelLayer = document.getElementById('labels');
+const linesSvg = document.getElementById('lines');
+const ALL_LABELS = [];
+CH.forEach((C, ch) => C.labels.forEach(L => {
+  L.ch = ch;
+  L.el = document.createElement('div');
+  L.el.className = 'lab' + (L.cls ? ' ' + L.cls : '');
+  L.el.innerHTML = L.text;
+  labelLayer.appendChild(L.el);
+  ALL_LABELS.push(L);
+}));
+const banner = document.createElement('div');
+banner.className = 'lab big green';
+labelLayer.appendChild(banner);
+function measureLabels(){
+  ALL_LABELS.forEach(L => { L.w = L.el.offsetWidth || 0; L.h = L.el.offsetHeight || 0; });
+}
+let VW = 1, VH = 1;
+const _pv = new V3();
+function toScreen(v){
+  _pv.copy(v).project(camera);
+  return {x:(_pv.x + 1)/2*VW, y:(1 - _pv.y)/2*VH, z:_pv.z, ok:_pv.z > -1 && _pv.z < 1};
+}
+function labelOpacity(L, t){
+  return ss(L.t0, L.t0 + 0.6, t)*(L.t1 ? 1 - ss(L.t1 - 0.5, L.t1, t) : 1);
+}
+const LAYOUT = [];       // where each visible label was put this frame (read by the tests)
+function drawOverlay(ch, t, world, T){
+  let svg = pieSvg(ch, t, T);
+  LAYOUT.length = 0;
+  ALL_LABELS.forEach(L => {
+    const op = L.ch === ch && L.world === world ? labelOpacity(L, t) : 0;
+    if(op < 0.01){ if(L.shown){ L.el.style.opacity = 0; L.shown = false; } return; }
+    L.shown = true;
+    if(L.html){
+      const h = L.html();
+      if(h !== L.last){ L.last = h; L.el.innerHTML = h; L.w = L.el.offsetWidth || 0; L.h = L.el.offsetHeight || 0; }
+    }
+    let left, top, pts = [];
+    if(L.screen){
+      left = L.screen[0]*VW - L.w/2; top = L.screen[1]*VH - L.h/2;
+    } else {
+      pts = L.at().map(toScreen).filter(p => p.ok);
+      if(!pts.length){ L.el.style.opacity = 0; return; }
+      const ax = pts.reduce((s, p) => s + p.x, 0)/pts.length, ay = pts.reduce((s, p) => s + p.y, 0)/pts.length;
+      const bx = ax + L.dx, by = ay + L.dy;
+      left = L.dx >= 0 ? bx : bx - L.w;
+      top = by - L.h/2;
+    }
+    left = clamp(left, 8, Math.max(8, VW - L.w - 8));
+    top  = clamp(top, 8, Math.max(8, VH - L.h - 8));
+    L.el.style.opacity = op.toFixed(3);
+    L.el.style.transform = 'translate(' + left.toFixed(1) + 'px,' + top.toFixed(1) + 'px)';
+    LAYOUT.push({L, left, top, pts});
+    if(L.screen) return;
+    const ex = L.dx >= 0 ? left - 4 : left + L.w + 4, ey = top + L.h/2;
+    pts.forEach(p => {
+      svg += '<line x1="'+ex.toFixed(1)+'" y1="'+ey.toFixed(1)+'" x2="'+p.x.toFixed(1)+'" y2="'+p.y.toFixed(1)+
+             '" stroke="rgba(232,238,247,'+(0.8*op).toFixed(3)+')" stroke-width="1.3"/>'+
+             '<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="2.8" fill="rgba(255,255,255,'+(0.9*op).toFixed(3)+')"/>';
+    });
+  });
+  drawBanner(world, T);
+  linesSvg.innerHTML = svg;
+}
+/* the phase of mitosis, across the top, when phase names are switched on */
+let bannerText = null, bannerW = 0;
+function drawBanner(world, T){
+  const ph = showPhases && world === 'cell' && T !== null && CH[cur].Tlen > 0 ? phaseAt(T) : null;
+  const op = ph ? ss(ph.T0, ph.T0 + 0.6, T)*(1 - ss(ph.T1 - 0.4, ph.T1, T)) : 0;
+  banner.style.opacity = op.toFixed(3);
+  if(!ph) return;
+  const h = ph.name + '<span class="sub">' + ph.sub + '</span>';
+  if(h !== bannerText){ bannerText = h; banner.innerHTML = h; bannerW = banner.offsetWidth || 0; }
+  banner.style.transform = 'translate(' + (VW/2 - bannerW/2).toFixed(1) + 'px,' + (VH < 500 ? 8 : 18) + 'px)';
+}
+
+/* --------------------------------------------------------- the pie chart */
+const SLICE = {inter:'#c9b43a', mitosis:'#7fb0ff', cyto:'#ff9a5c'};
+const turnPt = (cx, cy, r, a) => [cx + r*Math.sin(2*Math.PI*a), cy - r*Math.cos(2*Math.PI*a)];
+function slicePath(cx, cy, r, a0, a1){
+  const p0 = turnPt(cx, cy, r, a0), p1 = turnPt(cx, cy, r, a1);
+  return 'M'+cx.toFixed(1)+' '+cy.toFixed(1)+' L'+p0[0].toFixed(2)+' '+p0[1].toFixed(2)+
+         ' A'+r.toFixed(1)+' '+r.toFixed(1)+' 0 '+(a1 - a0 > 0.5 ? 1 : 0)+' 1 '+p1[0].toFixed(2)+' '+p1[1].toFixed(2)+' Z';
+}
+/* the pictures attached to the slices, drawn in a 100 x 100 box */
+const PIC = {
+  inter:() =>
+    '<circle r="46" fill="rgba(196,177,28,.22)" stroke="#c4b11c" stroke-width="3"/>'+
+    '<circle r="19" fill="rgba(230,224,160,.3)" stroke="#e6e0a0" stroke-width="2.5"/>'+
+    '<path d="M-12 -5 q4 -9 8 -2 t9 1 t6 6" fill="none" stroke="'+hexCss(COL.father)+'" stroke-width="2.6" stroke-linecap="round"/>'+
+    '<path d="M-11 6 q5 6 9 0 t9 -2 t5 -7" fill="none" stroke="'+hexCss(COL.mother)+'" stroke-width="2.6" stroke-linecap="round"/>'+
+    [[27,-20,-25],[-28,18,20],[16,31,8],[-22,-27,-40]].map(m =>
+      '<ellipse cx="'+m[0]+'" cy="'+m[1]+'" rx="8" ry="3.4" transform="rotate('+m[2]+' '+m[0]+' '+m[1]+')" fill="'+hexCss(COL.mito)+'"/>').join(''),
+  mitosis:() =>
+    '<circle r="46" fill="rgba(196,177,28,.22)" stroke="#c4b11c" stroke-width="3"/>'+
+    [-24,-8,8,24].map((y, i) =>
+      '<path d="M-33 0 L-3 '+y+' M33 0 L3 '+y+'" stroke="'+hexCss(COL.fibre)+'" stroke-width="1.2" opacity=".75"/>'+
+      '<path d="M-6 '+(y-6)+' L6 '+(y+6)+' M-6 '+(y+6)+' L6 '+(y-6)+'" stroke="'+hexCss(i % 2 ? COL.father : COL.mother)+'" stroke-width="3.4" stroke-linecap="round"/>').join('')+
+    '<circle cx="-34" r="2.6" fill="'+hexCss(COL.pole)+'"/><circle cx="34" r="2.6" fill="'+hexCss(COL.pole)+'"/>',
+  cyto:() =>
+    '<path d="M0 -9.6 A24 24 0 1 0 0 9.6 A24 24 0 1 0 0 -9.6 Z" fill="rgba(196,177,28,.22)" stroke="#c4b11c" stroke-width="3"/>'+
+    [-24, 24].map(x =>
+      '<circle cx="'+x+'" r="9" fill="rgba(230,224,160,.3)" stroke="#e6e0a0" stroke-width="2"/>'+
+      '<path d="M'+(x-5)+' -2 q3 -5 6 0 t5 1" fill="none" stroke="'+hexCss(COL.father)+'" stroke-width="2" stroke-linecap="round"/>'+
+      '<path d="M'+(x-4)+' 3 q3 4 6 0 t4 -2" fill="none" stroke="'+hexCss(COL.mother)+'" stroke-width="2" stroke-linecap="round"/>').join('')
+};
+const txt = (x, y, s, size, weight, fill, anchor) =>
+  '<text x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" text-anchor="'+(anchor||'middle')+'" fill="'+fill+'" '+
+  'style="font:'+weight+' '+size.toFixed(1)+'px ui-sans-serif,Segoe UI,Arial,sans-serif;paint-order:stroke;stroke:rgba(8,11,17,.85);stroke-width:4px">'+s+'</text>';
+const PIE = {};          // the last pie drawn (read by the tests)
+function pieSvg(ch, t, T){
+  const C = CH[ch];
+  if(!C.pie) return '';
+  const big = C.pie === 'big';
+  let cx, cy, Rp, min;
+  if(big){
+    Rp = Math.min(0.13*VW, 0.2*VH);
+    cx = Math.max(0.29*VW, 1.75*Rp + 12); cy = 0.47*VH;
+    min = TOTAL*ss(3, 13, t);
+  } else {
+    Rp = VW < 700 ? 30 : 40;
+    cx = 14 + Rp; cy = 14 + Rp;
+    min = handMin(T);
+  }
+  const cur = stageAt(min), sweeping = big && t < 13;
+  Object.assign(PIE, {cx, cy, Rp, min, stage:cur, big});
+  let s = '', a0 = 0;
+  const mids = [];
+  STAGES.forEach((st, i) => {
+    const a1 = a0 + st.min/TOTAL;
+    const lit = i === cur || (big && !sweeping);
+    s += '<path d="'+slicePath(cx, cy, Rp, a0, a1)+'" fill="'+SLICE[st.id]+'" fill-opacity="'+(lit ? 0.92 : 0.35)+
+         '" stroke="rgba(8,11,17,.9)" stroke-width="1"/>';
+    mids.push(0.5*(a0 + a1));
+    a0 = a1;
+  });
+  s += '<circle cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" r="'+Rp.toFixed(1)+'" fill="none" stroke="rgba(238,242,247,.5)" stroke-width="1.2"/>';
+  const hp = turnPt(cx, cy, Rp*1.06, min/TOTAL);
+  s += '<line x1="'+cx.toFixed(1)+'" y1="'+cy.toFixed(1)+'" x2="'+hp[0].toFixed(1)+'" y2="'+hp[1].toFixed(1)+
+       '" stroke="#fff" stroke-width="'+(big ? 3 : 2.2)+'" stroke-linecap="round"/>'+
+       '<circle cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" r="'+(big ? 4 : 3)+'" fill="#fff"/>';
+  if(big){
+    const b = 0.85*Rp, place = [[cx + 1.0*Rp, cy + 1.08*Rp], [cx - 1.2*Rp, cy - 1.02*Rp], [cx + 1.2*Rp, cy - 1.02*Rp]];
+    STAGES.forEach((st, i) => {
+      const p = place[i], op = sweeping && i !== cur ? 0.45 : 1;
+      const rim = turnPt(cx, cy, Rp, mids[i]);
+      const dx = rim[0] - p[0], dy = rim[1] - p[1], dl = Math.hypot(dx, dy) || 1, pr = 0.46*b + 4;
+      s += '<line x1="'+rim[0].toFixed(1)+'" y1="'+rim[1].toFixed(1)+'" x2="'+(p[0] + dx/dl*pr).toFixed(1)+'" y2="'+(p[1] + dy/dl*pr).toFixed(1)+
+           '" stroke="'+SLICE[st.id]+'" stroke-opacity="'+op+'" stroke-width="1.6"/>'+
+           '<circle cx="'+rim[0].toFixed(1)+'" cy="'+rim[1].toFixed(1)+'" r="2.6" fill="'+SLICE[st.id]+'"/>';
+      s += '<g opacity="'+op+'" transform="translate('+p[0].toFixed(1)+','+p[1].toFixed(1)+') scale('+(b/100).toFixed(4)+')">'+PIC[st.id]()+'</g>';
+      const fs = clamp(Rp*0.14, 12, 18);
+      const time = st.min >= 60 ? 'about ' + Math.round(st.min/60) + ' hours' : 'about ' + st.min + ' min';
+      const sub = st.id === 'mitosis' && showPhases ? 'pro · meta · ana · telophase' : time;
+      s += '<g opacity="'+op+'">'+txt(p[0], p[1] + 0.5*b + fs*1.35, 'Stage '+st.n+': '+st.name, fs, 700, SLICE[st.id])+
+           txt(p[0], p[1] + 0.5*b + fs*2.5, sub, fs*0.82, 500, '#dce4ef')+'</g>';
+    });
+  } else {
+    const st = STAGES[cur], ph = showPhases && st.id === 'mitosis' ? phaseAt(T) : null;
+    s += txt(cx + Rp + 10, cy - 4, st.name + (ph ? ' · ' + ph.name.toLowerCase() : ''), 15, 700, SLICE[st.id], 'start')+
+         txt(cx + Rp + 10, cy + 15, fmtMin(min) + ' into the cycle', 12, 500, '#c9d3e0', 'start');
+  }
+  return s;
+}
+
+/* how see-through the membrane and the nuclei are: they fade while the
+   camera is looking at what is inside them, as in cell-to-dna-3d-story.html */
+const MEM = 0.42;
+function applySkin(C, t){
+  const m = C.mem ? C.mem(t) : 1, n = C.nuc ? C.nuc(t) : 1;
+  cellFrontMat.opacity = MEM*m;
+  ENV.forEach(E => { E.k = n; E.mat.opacity = E.op0*n; });
+}
+
+/* ---------------------------------------------------------------- a frame */
+let cur = 0;
+function frame(t){
+  const C = CH[cur];
+  const shot = shotAt(C, t);
+  applyCamera(shot.cam);
+  fadeEl.style.opacity = shot.fade.toFixed(3);
+  W1.visible = shot.world === 'cell';
+  W2.visible = shot.world === 'tissue';
+  let T = null;
+  if(W1.visible){ T = C.T0 + clamp(t, 0, C.Tlen); updateCell(T); applySkin(C, t); }
+  if(W2.visible) updateTissue(t);
+  scene.updateMatrixWorld();
+  camera.updateMatrixWorld();
+  drawOverlay(cur, t, shot.world, T);
+  renderer.render(scene, camera);
+  shot.T = T;
+  return shot;
+}
+
+/* --------------------------------------------------------------- chapters */
+let showPhases = false;
+try { showPhases = window.localStorage.getItem('mitosis.phases') === '1'; } catch(e){}
+const phaseBtn = document.getElementById('phases');
+function showPanel(i){
+  const C = CH[i];
+  document.getElementById('sStep').textContent = (i+1)+' / '+CH.length+' · '+C.part;
+  document.getElementById('sTitle').innerHTML = C.title;
+  document.getElementById('sText').innerHTML = C.text;
+  const lk = document.getElementById('sLook');
+  lk.innerHTML = C.look ? 'Look for: '+C.look : ''; lk.hidden = !C.look;
+  const ph = document.getElementById('sPhase');
+  ph.innerHTML = showPhases && C.phases ? C.phases : ''; ph.hidden = !(showPhases && C.phases);
+  const sc = document.getElementById('sScale');
+  sc.textContent = C.scale || ''; sc.hidden = !C.scale;
+  const terms = C.terms.concat(showPhases && C.phaseTerms ? C.phaseTerms : []);
+  const tm = document.getElementById('sTerms');
+  tm.innerHTML = terms.length
+    ? '<div class="hd">Key words</div>' + terms.map(x => '<dt>'+x[0]+'</dt><dd>'+x[1]+'</dd>').join('')
+    : '';
+  tm.hidden = !terms.length;
+  document.getElementById('key').innerHTML = C.key.map(k => KEYS[k]).join('');
+  phaseBtn.textContent = 'Phase names: ' + (showPhases ? 'on' : 'off');
+  phaseBtn.classList.toggle('on', showPhases);
+}
+let chStart = null;
+function enterChapter(i){
+  cur = i; chStart = null;
+  dragAz = dragEl = zoomAdj = 0;
+  showPanel(i);
+  document.getElementById('back').disabled = i === 0;
+  document.getElementById('next').disabled = i === CH.length-1;
+  document.querySelectorAll('#dots i').forEach((d, k) => d.classList.toggle('on', k === i));
+  ALL_LABELS.forEach(L => { L.el.style.opacity = 0; L.shown = false; });
+}
+function setPhases(on){
+  showPhases = on;
+  try { window.localStorage.setItem('mitosis.phases', on ? '1' : '0'); } catch(e){}
+  showPanel(cur);
+}
+function animate(now){
+  requestAnimationFrame(animate);
+  if(chStart === null) chStart = now;
+  frame((now - chStart)/1000);
+}
+
+/* ------------------------------------------------------------------ wiring */
+const cv = renderer.domElement;
+cv.style.touchAction = 'none';
+cv.style.cursor = 'grab';
+let dragging = false, lastX = 0, lastY = 0;
+cv.addEventListener('pointerdown', e => {
+  dragging = true; lastX = e.clientX; lastY = e.clientY;
+  cv.style.cursor = 'grabbing';
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove', e => {
+  if(!dragging) return;
+  dragAz -= (e.clientX - lastX)*0.006;
+  dragEl = clamp(dragEl + (e.clientY - lastY)*0.004, -0.9, 0.9);
+  lastX = e.clientX; lastY = e.clientY;
+});
+['pointerup','pointercancel'].forEach(ev =>
+  cv.addEventListener(ev, () => { dragging = false; cv.style.cursor = 'grab'; }));
+cv.addEventListener('wheel', e => {
+  e.preventDefault();
+  zoomAdj = clamp(zoomAdj + e.deltaY*0.001, -1.2, 1.2);
+}, {passive:false});
+
+const dotsEl = document.getElementById('dots');
+CH.forEach((c, i) => {
+  const d = document.createElement('i');
+  d.title = c.part;
+  d.addEventListener('click', () => enterChapter(i));
+  dotsEl.appendChild(d);
+});
+document.getElementById('next').addEventListener('click', () => { if(cur < CH.length-1) enterChapter(cur+1); });
+document.getElementById('back').addEventListener('click', () => { if(cur > 0) enterChapter(cur-1); });
+document.getElementById('replay').addEventListener('click', () => enterChapter(cur));
+phaseBtn.addEventListener('click', () => setPhases(!showPhases));
+window.addEventListener('keydown', e => {
+  if(e.key === 'ArrowRight' && cur < CH.length-1) enterChapter(cur+1);
+  if(e.key === 'ArrowLeft'  && cur > 0) enterChapter(cur-1);
+});
+
+function resize(){
+  VW = stage.clientWidth || window.innerWidth;
+  VH = stage.clientHeight || window.innerHeight;
+  renderer.setSize(VW, VH);
+  camera.aspect = VW/VH;
+  camera.fov = (VW/VH < 1.1) ? 58 : 42;
+  camera.updateProjectionMatrix();
+  buildCams();
+  measureLabels();
+}
+window.addEventListener('resize', resize);
+resize();
+
+enterChapter(0);
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>
