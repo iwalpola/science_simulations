@@ -1,0 +1,39 @@
+{
+  "_about": "Everything the respiration story shows of the real body. The two supply lines of the respiration equation: the gut (mouth, pharynx, oesophagus, stomach, duodenum, small intestine) for glucose, and the airways (nasal cavity, pharynx, larynx, trachea, every bronchus down to the segmental ones, the five lobes of the lungs) for oxygen; and a thigh muscle, whose cells are where the two meet. The oesophagus, the small intestine (the atlas files the whole coil as the jejunum) and the bronchi are curves in the atlas and come as centrelines with a radius at each point: the page builds the tubes, and the same lines are the routes the glucose and the air are searched along. The bronchioles and alveoli past the segmental bronchi, and the villi, are not in the atlas and are drawn by the page. Skeleton, heart, liver, pancreas and colon are context, shown as ghosts. Build: node tools/anatomy/zanatomy.js build human_anatomy/respiration/respiration.recipe.json, then pack it into the page with node tools/anatomy/zanatomy-pack.js human_anatomy/respiration/respiration.glb human_anatomy/respiration/respiration.html.",
+  "out": "respiration.glb",
+  "budget_kb": 4000,
+  "decimate": 0.2,
+  "include": [
+    {"collection": "Bones of thorax", "decimate": 0.025},
+    {"collection": "Bones of vertebral column", "decimate": 0.04},
+    {"collection": "Bones of cranium", "decimate": 0.02},
+    {"collection": "Extracranial bones of head", "decimate": 0.04},
+    {"collection": "Bones of pelvic girdle", "decimate": 0.1},
+    {"collection": "Bones of upper limb", "decimate": 0.025},
+    {"collection": "Bones of lower limb", "decimate": 0.03},
+    {"collection": "Teeth", "decimate": 0.08},
+
+    {"match": "^(Tongue|Soft palate|Uvula of palate|Nasopharynx|Oropharynx|Laryngopharynx)$", "decimate": 0.35},
+    {"match": "^(Epiglottis|Thyroid cartilage|Cricoid cartilage)$", "decimate": 0.25},
+    {"name": "Mucosa of nasal cavity", "decimate": 0.12},
+    {"name": "Oesophagus", "as": "centreline"},
+    {"name": "Stomach", "decimate": 0.3},
+    {"name": "Mucosa of stomach", "decimate": 0.12},
+    {"name": "Duodenum", "decimate": 1.0},
+    {"name": "Jejunum", "as": "centreline"},
+    {"match": "^(Ascending|Transverse|Descending|Sigmoid) colon$", "decimate": 0.06},
+    {"name": "Liver", "decimate": 0.1},
+    {"name": "Pancreas", "decimate": 0.15},
+
+    {"collection": "Bronchi", "as": "centreline"},
+    {"name": "Trachea", "decimate": 0.3},
+    {"match": "^(Superior|Middle|Inferior) lobe of (left|right) lung$", "decimate": 0.15},
+
+    {"match": "^(Left|Right) (atrium|ventricle)$", "decimate": 0.06},
+
+    {"match": "^(Rectus femoris|Vastus lateralis|Vastus medialis|Vastus intermedius) muscle\\.l$", "decimate": 0.15}
+  ],
+  "exclude": [
+    {"match": "^(Hyoid|Auditory ossicles|Malleus|Incus|Stapes)"}
+  ]
+}

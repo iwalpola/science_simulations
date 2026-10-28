@@ -14,7 +14,11 @@ particles/                  particle-theory scenes (Brownian motion, melting)
 energy/                     energy stores and transfers (+ test-energy-scenes.js)
 electricity/                conduction and resistance (+ test-wire.js)
 human_anatomy/reflex-arc/   2D reflex arc story over a baked 3D model (+ bake-backdrop.js, test-reflex-arc.js)
-human_anatomy/heart/        heart, valves and double circulation, 3D over the Z-Anatomy heart (+ test-heart.js)
+human_anatomy/heart/        heart, valves and double circulation, 3D over the Z-Anatomy heart (+ test-heart.js);
+                            heart-viewer.html, the same heart to inspect: beat paused/slowed, cut at any angle (+ test-heart-viewer.js)
+human_anatomy/respiration/  the respiration equation: glucose in through the real gut, oxygen through the real airways,
+                            villi, alveoli, three diffusing walls, a muscle cell, the atoms rearranged (+ test-respiration.js)
+mechanics/                  projectiles: launch, up to three markers, a click-to-reveal s u v a t matrix (+ test-projectiles.js)
 genetics/                   cell → chromosome → DNA → gene → base, mitosis + the cell cycle, meiosis + fertilisation: three.js stories (+ test-genetics.js, test-mitosis.js, test-meiosis.js)
 tools/                      one-off colour-migration scripts (animcolour.mjs, colourfix.mjs)
 tools/anatomy/              build .glb files of named body parts from Z-Anatomy (see its README.md)
@@ -24,7 +28,7 @@ tools/anatomy/              build .glb files of named body parts from Z-Anatomy 
 
 ## The catalogue and its search list
 
-`index.html` shows one card per category folder (`electricity/`, `waves/`,
+`index.html` shows one card per category folder (`electricity/`, `waves/`, `mechanics/`,
 `energy/`, `particles/`, `3dreactionscenes/`, `reactionbuilder/`,
 `chemsheet_help/`, `cell_biology/`, `human_anatomy/`, `genetics/`). Each folder has its own `index.html` that
 lists its sims. A sim lives in the one folder that fits best; other folders link
@@ -57,10 +61,13 @@ cd particles        && node test-particles.js   # ~3,200 checks
 cd particles        && node test-render.js      # runs the scenes headlessly
 cd energy           && node test-energy-scenes.js  # ~530 checks, incl. headless render
 cd reactionbuilder  && node test.js             # needs: npm install jsdom
+cd mechanics        && node test-projectiles.js # SUVAT identities for random segments, the worked examples' answers, drag, every frame, catalogue
 cd electricity      && node test-wire.js        # model + render path
 cd human_anatomy/reflex-arc && node test-reflex-arc.js  # choreography + headless render
 cd human_anatomy/reflex-arc && node test-reflex-arc-3d.js  # 3D story: routes, the arc, every frame, labels in view
 cd human_anatomy/heart      && node test-heart.js        # the cut, valves, one-way flow, vessel routes, every frame
+cd human_anatomy/heart      && node test-heart-viewer.js # viewer's copied code is still heart.html's (--sync re-copies), any-angle cuts, picking
+cd human_anatomy/respiration && node test-respiration.js # food and air routes, grown bronchioles, diffusion directions, atoms balance, labels clear of the HTML
 cd genetics         && node test-genetics.js   # pairs, band position, base pairing, flat ladder, quoted figures, every frame
 cd genetics         && node test-mitosis.js    # copying, one copy of each chromosome per daughter, half volume, pie times, tissue, every frame
 cd genetics         && node test-meiosis.js    # pairing, crossing over, one of each pair per cell, four different gametes, fertilisation
@@ -153,6 +160,38 @@ stage coordinates and never in pixels**. `resize()` is the only place that
 knows about `innerWidth`, and it *measures* the bar and the legend with
 `offsetHeight` rather than assuming a height — change their padding and the
 stage still fits.
+
+---
+
+## Projectiles: a matrix per stretch of flight, hidden until clicked
+
+`mechanics/projectiles.html` is plain 2D canvas, a pure function of `t`, with one
+precomputed exception (air resistance, below). It follows the teacher's "Projectiles
+Strategy" sheet: vertical `S U V A T` beside horizontal `S U T`, one matrix per
+stretch of flight.
+
+- **Points.** The launch point `L` plus up to three markers (1, 2, 3), so there are
+  up to six stretches; the side panel picks From and To. Time always runs forward:
+  if the pupil picks them backwards the matrix is for the earlier point to the later
+  one, and says so. Markers store a time, so they slide along the path when the
+  launch changes.
+- **Every cell is hidden (`?`) until clicked**, with the equation that finds it shown
+  after. Reveal state is kept per stretch and cell, and survives a change of launch.
+  The typed-placement section is a closed `<details>` on purpose: typing a marker's
+  `t` and `x` gives away two cells.
+- **Sign convention** toggles up-positive / down-positive. Only vertical `S U V A`
+  flip; `T` and the horizontal block never do. The tests check that and the
+  identities (`s = ut + ½at²`, `v = u + at`, `v² = u² + 2as`) on random launches.
+- **Air resistance is a comparison, not the model.** `a = −k|v|v`, RK4 once when a
+  setting changes (`dragPath`), played back by lookup like the Brownian scene. The
+  matrices stay the no-drag SUVAT ones and the page says so; SUVAT needs a constant
+  acceleration.
+- **The presets are the sheet's questions** (table, cannon, catapult and tree), with
+  their answers asserted in the test. The marker specs (`y`, `x`, `apex`, `land`)
+  are resolved against the launch, never typed as times.
+- **`MODEL` and `DRAW` regions** (`/* MODEL:BEGIN */` …) hold all the physics and the
+  canvas drawing with no DOM in them; the test runs both under node. Keep the DOM out
+  of them.
 
 ---
 
@@ -286,11 +325,64 @@ geometry when the page loads, and `test-heart.js` checks it is anatomy:
   share of the picture AND at three quarters of the vessel's radius there.
 - **Colour follows the blood, not the name**: the pulmonary artery is blue.
   The page says real blood is always red.
+- **The viewer (`heart-viewer.html`) is a debugging aid, not a lesson.** It
+  copies seven blocks of `heart.html` verbatim (anatomy through landmarks,
+  the beat, the valves, renderer setup, labels, materials through
+  `poseHeart`, the semilunar plane) so what it shows is what the story
+  draws. After editing any of those in `heart.html`, run
+  `node test-heart-viewer.js --sync`; the test fails until you do. It is
+  not listed in the catalogue.
 - **Inside the muscle or not**: ray parity fails on these meshes (the right
   ventricle is open along the septum). The test uses the nearest vertex's
   normal and ignores vertices on an open edge.
 
 ---
+
+## Respiration: one equation, two supply lines, and diffusion that emerges
+
+`human_anatomy/respiration/respiration.html` is a three.js story in the
+reflex arc's shell (panel, nav, key, cue sheet, packed `ANATOMY` from
+`respiration.recipe.json`), with one addition: the equation bar across the
+top of the stage, `glucose + oxygen -> carbon dioxide + water`, whose
+terms each chapter lights (`Ch.eq`). The chapter's material preset is
+`Ch.view`, not `Ch.look` — `look` is the "Watch for" caption.
+
+- **The way food goes is found, not drawn.** The oesophagus and the small
+  intestine are curves in the atlas (it files the whole coil, 2 m in this
+  model, as "Jejunum"), so they come as centrelines. The stomach and the
+  duodenum are meshes with a hole wherever food passes (`openings()`:
+  boundary loops); `march()` walks through each from hole to hole, re-centring
+  on the walls. The test checks every point is inside the organ (nearest
+  closed vertex's normal, as the heart test does).
+- **The way air goes is searched**, as the reflex arc searches nerves: every
+  bronchus is a curve, joined end to wall within `JOIN`, searched from the
+  carina to a tip of the right middle lobe's lateral segmental bronchus.
+  Where a route only clips one node of a neighbouring bronchus at a fork,
+  that node is dropped, or the route reads as a trip into it.
+- **Past the atlas, the airways are grown.** `TREE` forks `GEN` more times
+  from every tip, keeping each branch inside a real lobe, and ends each in a
+  sac of alveoli (`SAC_R`, drawn about ten times too big, and said so). The
+  air's own tip is the one with most room beyond it.
+- **Diffusion is a seeded random walk, precomputed at load** (`runDiffusion`,
+  the three `WALLS`), and played back by lookup: frames stay a pure function
+  of `t`. Nothing tells a molecule which way to go; the boundaries do what
+  the body does (blood flows off and fresh arrives; breathing out removes
+  CO2 at the top of the alveolus; red cells take up oxygen in the lung and
+  let it go in the muscle; a mitochondrion turns oxygen into carbon dioxide
+  and uses glucose). The test counts whole trips across the wall and
+  asserts each species' net direction — keep those as assertions, not as
+  rules in the walk.
+- **The reaction is atoms, mapped one to one.** `EQN` and `MOL` build
+  `C6H12O6 + 6O2 -> 6CO2 + 6H2O`; `RX.MAP` sends every atom to one slot of
+  the same element, and the test checks the bijection and that atoms start
+  and end where the molecules are drawn. Molecules use the repo's element
+  palette (`EL`), so oxygen is the reaction scenes' blue.
+- **Energy is transferred, never produced or made**; the test greps for it.
+  The blocks are the energy stories' C, K and T.
+- **Labels are tested against the HTML over the stage**, not just the frame:
+  the equation bar (top middle), the key (below it, right) and the buttons
+  (bottom middle), on the 920 x 720 stage a 1280 x 720 screen leaves. They
+  are timed to appear once each shot's camera has settled.
 
 ## Mitosis: one cell's clock, and a nucleus that is never pinched
 

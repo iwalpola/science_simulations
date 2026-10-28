@@ -1,0 +1,7777 @@
+{
+ "recipe": "respiration.recipe.json",
+ "glb": "respiration.glb",
+ "source": {
+  "sha256": "9f08a17ea0115fed80b2a73ecdf0a1bc2ab2f6956f37c593ce23d513ea35afcd",
+  "blender": "4.2.23 LTS"
+ },
+ "licence": "CC BY-SA 4.0",
+ "attribution": "Anatomy: Z-Anatomy (Gauthier Kervyn, Marcin Zielinski), CC BY-SA 4.0, https://github.com/Z-Anatomy/Models-of-human-anatomy; derived from BodyParts3D, The Database Center for Life Science, CC BY-SA 2.1 Japan.",
+ "axes": "glTF y up: model (x, y, z) -> (x, z, -y). Metres. +x is the body's LEFT; the front of the body faces +z.",
+ "tissues": {
+  "bone": "#efe6d2",
+  "cartilage": "#bcd7e0",
+  "connective": "#e9e2cf",
+  "muscle": "#c4473f",
+  "other": "#c9bfb2"
+ },
+ "totals": {
+  "parts": 300,
+  "verts": 27726,
+  "tris": 53667,
+  "bytes": 1329160
+ },
+ "warnings": [],
+ "parts": [
+  {
+   "name": "(Anteromedial basal segmental bronchus of left lung)",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Left inferior lobar bronchus",
+   "as": "centreline",
+   "tris_source": 2880,
+   "points": 63,
+   "radius_mm": [
+    1.0,
+    3.91
+   ],
+   "verts": 0,
+   "tris": 0,
+   "bbox_model_zup": [
+    [
+     0.0757,
+     -0.0424,
+     1.1899
+    ],
+    [
+     0.1272,
+     0.0168,
+     1.2855
+    ]
+   ]
+  },
+  {
+   "name": "Anterior basal segmental bronchus of left lung (BVIII)",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Left inferior lobar bronchus",
+   "as": "centreline",
+   "tris_source": 1440,
+   "points": 32,
+   "radius_mm": [
+    1.5,
+    4.27
+   ],
+   "verts": 0,
+   "tris": 0,
+   "bbox_model_zup": [
+    [
+     0.0814,
+     -0.0544,
+     1.2286
+    ],
+    [
+     0.1239,
+     0.0106,
+     1.2817
+    ]
+   ]
+  },
+  {
+   "name": "Anterior basal segmental bronchus of right lung (BVIII)",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Right inferior lobar bronchus",
+   "as": "centreline",
+   "tris_source": 2880,
+   "points": 63,
+   "radius_mm": [
+    1.0,
+    4.32
+   ],
+   "verts": 0,
+   "tris": 0,
+   "bbox_model_zup": [
+    [
+     -0.1193,
+     -0.0033,
+     1.239
+    ],
+    [
+     -0.0436,
+     0.0258,
+     1.297
+    ]
+   ]
+  },
+  {
+   "name": "Anterior cells of ethmoid bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Ethmoid bone",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 736,
+   "decimate": 0.02,
+   "verts": 11,
+   "tris": 14,
+   "bbox_model_zup": [
+    [
+     0.0055,
+     -0.0625,
+     1.5817
+    ],
+    [
+     0.0131,
+     -0.0552,
+     1.596
+    ]
+   ]
+  },
+  {
+   "name": "Anterior cells of ethmoid bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Ethmoid bone",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 736,
+   "decimate": 0.02,
+   "verts": 11,
+   "tris": 14,
+   "bbox_model_zup": [
+    [
+     -0.0125,
+     -0.062,
+     1.5821
+    ],
+    [
+     -0.006,
+     -0.0543,
+     1.5952
+    ]
+   ]
+  },
+  {
+   "name": "Anterior segmental bronchus of left lung (BIII)",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Left superior lobar bronchus",
+   "as": "centreline",
+   "tris_source": 3456,
+   "points": 77,
+   "radius_mm": [
+    1.0,
+    4.31
+   ],
+   "verts": 0,
+   "tris": 0,
+   "bbox_model_zup": [
+    [
+     0.0335,
+     -0.0608,
+     1.3241
+    ],
+    [
+     0.0952,
+     0.0127,
+     1.3704
+    ]
+   ]
+  },
+  {
+   "name": "Anterior segmental bronchus of right lung (BIII)",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Right superior lobar bronchus",
+   "as": "centreline",
+   "tris_source": 4896,
+   "points": 109,
+   "radius_mm": [
+    1.0,
+    4.52
+   ],
+   "verts": 0,
+   "tris": 0,
+   "bbox_model_zup": [
+    [
+     -0.0846,
+     -0.0589,
+     1.3232
+    ],
+    [
+     -0.0128,
+     0.0163,
+     1.3677
+    ]
+   ]
+  },
+  {
+   "name": "Apical segmental bronchus of right lung (BI)",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Right superior lobar bronchus",
+   "as": "centreline",
+   "tris_source": 6624,
+   "points": 146,
+   "radius_mm": [
+    1.0,
+    3.67
+   ],
+   "verts": 0,
+   "tris": 0,
+   "bbox_model_zup": [
+    [
+     -0.0494,
+     -0.0244,
+     1.3522
+    ],
+    [
+     -0.0292,
+     0.0389,
+     1.4278
+    ]
+   ]
+  },
+  {
+   "name": "Apicoposterior segmental bronchus of left lung (BI+BII)",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Left superior lobar bronchus",
+   "as": "centreline",
+   "tris_source": 7488,
+   "points": 165,
+   "radius_mm": [
+    1.21,
+    5.52
+   ],
+   "verts": 0,
+   "tris": 0,
+   "bbox_model_zup": [
+    [
+     0.0311,
+     0.002,
+     1.3447
+    ],
+    [
+     0.091,
+     0.0612,
+     1.4242
+    ]
+   ]
+  },
+  {
+   "name": "Ascending colon",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Colon",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 17512,
+   "decimate": 0.06,
+   "verts": 527,
+   "tris": 1050,
+   "bbox_model_zup": [
+    [
+     -0.1134,
+     -0.0427,
+     0.9222
+    ],
+    [
+     -0.0624,
+     0.0128,
+     1.1149
+    ]
+   ]
+  },
+  {
+   "name": "Atlas (C1)",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Cervical vertebrae",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 2194,
+   "decimate": 0.04,
+   "verts": 52,
+   "tris": 86,
+   "bbox_model_zup": [
+    [
+     -0.0413,
+     -0.0032,
+     1.5343
+    ],
+    [
+     0.0413,
+     0.0461,
+     1.5523
+    ]
+   ]
+  },
+  {
+   "name": "Axis (C2)",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Cervical vertebrae",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 2334,
+   "decimate": 0.04,
+   "verts": 47,
+   "tris": 92,
+   "bbox_model_zup": [
+    [
+     -0.0273,
+     -0.0007,
+     1.5108
+    ],
+    [
+     0.0274,
+     0.0512,
+     1.5512
+    ]
+   ]
+  },
+  {
+   "name": "Body of sternum",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Sternum",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 4466,
+   "decimate": 0.025,
+   "verts": 62,
+   "tris": 110,
+   "bbox_model_zup": [
+    [
+     -0.0238,
+     -0.1308,
+     1.2398
+    ],
+    [
+     0.0241,
+     -0.0696,
+     1.3582
+    ]
+   ]
+  },
+  {
+   "name": "Calcaneus.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Tarsal bones",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 1448,
+   "decimate": 0.03,
+   "verts": 23,
+   "tris": 42,
+   "bbox_model_zup": [
+    [
+     0.0563,
+     0.0165,
+     0.0101
+    ],
+    [
+     0.1013,
+     0.0912,
+     0.0597
+    ]
+   ]
+  },
+  {
+   "name": "Calcaneus.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Tarsal bones",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 1448,
+   "decimate": 0.03,
+   "verts": 23,
+   "tris": 42,
+   "bbox_model_zup": [
+    [
+     -0.1013,
+     0.0165,
+     0.0101
+    ],
+    [
+     -0.0563,
+     0.0912,
+     0.0597
+    ]
+   ]
+  },
+  {
+   "name": "Capitate bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 472,
+   "decimate": 0.025,
+   "verts": 7,
+   "tris": 10,
+   "bbox_model_zup": [
+    [
+     0.2585,
+     -0.0274,
+     0.832
+    ],
+    [
+     0.2711,
+     -0.0096,
+     0.8566
+    ]
+   ]
+  },
+  {
+   "name": "Capitate bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 472,
+   "decimate": 0.025,
+   "verts": 7,
+   "tris": 10,
+   "bbox_model_zup": [
+    [
+     -0.2711,
+     -0.0274,
+     0.832
+    ],
+    [
+     -0.2585,
+     -0.0096,
+     0.8566
+    ]
+   ]
+  },
+  {
+   "name": "Clavicle.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of pectoral girdle",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 1550,
+   "decimate": 0.025,
+   "verts": 33,
+   "tris": 38,
+   "bbox_model_zup": [
+    [
+     0.0105,
+     -0.0517,
+     1.3885
+    ],
+    [
+     0.152,
+     0.0533,
+     1.4267
+    ]
+   ]
+  },
+  {
+   "name": "Clavicle.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of pectoral girdle",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 1550,
+   "decimate": 0.025,
+   "verts": 33,
+   "tris": 38,
+   "bbox_model_zup": [
+    [
+     -0.1531,
+     -0.0517,
+     1.3885
+    ],
+    [
+     -0.0105,
+     0.0533,
+     1.4267
+    ]
+   ]
+  },
+  {
+   "name": "Cricoid cartilage",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Laryngeal cartilages",
+   "tissues": [
+    "cartilage"
+   ],
+   "tris_source": 1882,
+   "decimate": 0.25,
+   "verts": 235,
+   "tris": 470,
+   "bbox_model_zup": [
+    [
+     -0.0122,
+     -0.0203,
+     1.4569
+    ],
+    [
+     0.0122,
+     -0.0014,
+     1.4744
+    ]
+   ]
+  },
+  {
+   "name": "Cuboid bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Tarsal bones",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 998,
+   "decimate": 0.03,
+   "verts": 16,
+   "tris": 28,
+   "bbox_model_zup": [
+    [
+     0.0802,
+     -0.01,
+     0.0293
+    ],
+    [
+     0.1113,
+     0.0217,
+     0.0575
+    ]
+   ]
+  },
+  {
+   "name": "Cuboid bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Tarsal bones",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 998,
+   "decimate": 0.03,
+   "verts": 16,
+   "tris": 28,
+   "bbox_model_zup": [
+    [
+     -0.1113,
+     -0.01,
+     0.0293
+    ],
+    [
+     -0.0802,
+     0.0217,
+     0.0575
+    ]
+   ]
+  },
+  {
+   "name": "Descending colon",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Colon",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 24744,
+   "decimate": 0.06,
+   "verts": 742,
+   "tris": 1484,
+   "bbox_model_zup": [
+    [
+     -0.0174,
+     -0.036,
+     0.8716
+    ],
+    [
+     0.1142,
+     0.058,
+     1.1344
+    ]
+   ]
+  },
+  {
+   "name": "Distal phalanx of fifth finger of foot.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Phalanges of foot",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 236,
+   "decimate": 0.03,
+   "verts": 5,
+   "tris": 6,
+   "bbox_model_zup": [
+    [
+     0.1382,
+     -0.0962,
+     0.0103
+    ],
+    [
+     0.1463,
+     -0.0858,
+     0.0138
+    ]
+   ]
+  },
+  {
+   "name": "Distal phalanx of fifth finger of foot.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Phalanges of foot",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 236,
+   "decimate": 0.03,
+   "verts": 5,
+   "tris": 6,
+   "bbox_model_zup": [
+    [
+     -0.1463,
+     -0.0962,
+     0.0103
+    ],
+    [
+     -0.1382,
+     -0.0858,
+     0.0138
+    ]
+   ]
+  },
+  {
+   "name": "Distal phalanx of fifth finger of hand.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 192,
+   "decimate": 0.025,
+   "verts": 4,
+   "tris": 4,
+   "bbox_model_zup": [
+    [
+     0.2268,
+     -0.0832,
+     0.7227
+    ],
+    [
+     0.2342,
+     -0.0701,
+     0.7345
+    ]
+   ]
+  },
+  {
+   "name": "Distal phalanx of fifth finger of hand.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 192,
+   "decimate": 0.025,
+   "verts": 4,
+   "tris": 4,
+   "bbox_model_zup": [
+    [
+     -0.2342,
+     -0.0832,
+     0.7227
+    ],
+    [
+     -0.2268,
+     -0.0701,
+     0.7345
+    ]
+   ]
+  },
+  {
+   "name": "Distal phalanx of first finger of foot.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Phalanges of foot",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 466,
+   "decimate": 0.03,
+   "verts": 8,
+   "tris": 12,
+   "bbox_model_zup": [
+    [
+     0.0718,
+     -0.1336,
+     0.0111
+    ],
+    [
+     0.0903,
+     -0.1104,
+     0.0228
+    ]
+   ]
+  },
+  {
+   "name": "Distal phalanx of first finger of foot.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Phalanges of foot",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 466,
+   "decimate": 0.03,
+   "verts": 8,
+   "tris": 12,
+   "bbox_model_zup": [
+    [
+     -0.0903,
+     -0.1336,
+     0.0111
+    ],
+    [
+     -0.0718,
+     -0.1104,
+     0.0228
+    ]
+   ]
+  },
+  {
+   "name": "Distal phalanx of first finger of hand.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 222,
+   "decimate": 0.025,
+   "verts": 4,
+   "tris": 4,
+   "bbox_model_zup": [
+    [
+     0.3204,
+     -0.072,
+     0.7667
+    ],
+    [
+     0.3337,
+     -0.059,
+     0.7902
+    ]
+   ]
+  },
+  {
+   "name": "Distal phalanx of first finger of hand.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 222,
+   "decimate": 0.025,
+   "verts": 4,
+   "tris": 4,
+   "bbox_model_zup": [
+    [
+     -0.3336,
+     -0.072,
+     0.7667
+    ],
+    [
+     -0.3204,
+     -0.059,
+     0.7902
+    ]
+   ]
+  },
+  {
+   "name": "Distal phalanx of fourth finger of foot.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Phalanges of foot",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 278,
+   "decimate": 0.03,
+   "verts": 6,
+   "tris": 8,
+   "bbox_model_zup": [
+    [
+     0.1277,
+     -0.1146,
+     0.0091
+    ],
+    [
+     0.1361,
+     -0.1049,
+     0.0171
+    ]
+   ]
+  },
+  {
+   "name": "Distal phalanx of fourth finger of foot.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Phalanges of foot",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 278,
+   "decimate": 0.03,
+   "verts": 6,
+   "tris": 8,
+   "bbox_model_zup": [
+    [
+     -0.1361,
+     -0.1146,
+     0.0091
+    ],
+    [
+     -0.1277,
+     -0.1049,
+     0.0171
+    ]
+   ]
+  },
+  {
+   "name": "Distal phalanx of fourth finger of hand.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 134,
+   "decimate": 0.025,
+   "verts": 3,
+   "tris": 2,
+   "bbox_model_zup": [
+    [
+     0.2546,
+     -0.0947,
+     0.7119
+    ],
+    [
+     0.2621,
+     -0.0829,
+     0.7189
+    ]
+   ]
+  },
+  {
+   "name": "Distal phalanx of fourth finger of hand.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 134,
+   "decimate": 0.025,
+   "verts": 3,
+   "tris": 2,
+   "bbox_model_zup": [
+    [
+     -0.2621,
+     -0.0947,
+     0.7119
+    ],
+    [
+     -0.2546,
+     -0.0829,
+     0.7189
+    ]
+   ]
+  },
+  {
+   "name": "Distal phalanx of second finger of foot.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Phalanges of foot",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 236,
+   "decimate": 0.03,
+   "verts": 5,
+   "tris": 6,
+   "bbox_model_zup": [
+    [
+     0.0985,
+     -0.136,
+     0.0103
+    ],
+    [
+     0.1086,
+     -0.1239,
+     0.0151
+    ]
+   ]
+  },
+  {
+   "name": "Distal phalanx of second finger of foot.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Phalanges of foot",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 236,
+   "decimate": 0.03,
+   "verts": 5,
+   "tris": 6,
+   "bbox_model_zup": [
+    [
+     -0.1086,
+     -0.136,
+     0.0103
+    ],
+    [
+     -0.0985,
+     -0.1239,
+     0.0151
+    ]
+   ]
+  },
+  {
+   "name": "Distal phalanx of second finger of hand.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 250,
+   "decimate": 0.025,
+   "verts": 5,
+   "tris": 6,
+   "bbox_model_zup": [
+    [
+     0.3124,
+     -0.0878,
+     0.7094
+    ],
+    [
+     0.3215,
+     -0.0705,
+     0.7212
+    ]
+   ]
+  },
+  {
+   "name": "Distal phalanx of second finger of hand.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 250,
+   "decimate": 0.025,
+   "verts": 5,
+   "tris": 6,
+   "bbox_model_zup": [
+    [
+     -0.3215,
+     -0.0878,
+     0.7094
+    ],
+    [
+     -0.3124,
+     -0.0705,
+     0.7212
+    ]
+   ]
+  },
+  {
+   "name": "Distal phalanx of third finger of foot.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Phalanges of foot",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 318,
+   "decimate": 0.03,
+   "verts": 6,
+   "tris": 8,
+   "bbox_model_zup": [
+    [
+     0.1145,
+     -0.1302,
+     0.0098
+    ],
+    [
+     0.1232,
+     -0.1189,
+     0.0155
+    ]
+   ]
+  },
+  {
+   "name": "Distal phalanx of third finger of foot.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Phalanges of foot",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 318,
+   "decimate": 0.03,
+   "verts": 6,
+   "tris": 8,
+   "bbox_model_zup": [
+    [
+     -0.1232,
+     -0.1302,
+     0.0098
+    ],
+    [
+     -0.1145,
+     -0.1189,
+     0.0155
+    ]
+   ]
+  },
+  {
+   "name": "Distal phalanx of third finger of hand.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 192,
+   "decimate": 0.025,
+   "verts": 4,
+   "tris": 4,
+   "bbox_model_zup": [
+    [
+     0.2805,
+     -0.0972,
+     0.7
+    ],
+    [
+     0.2874,
+     -0.0785,
+     0.7125
+    ]
+   ]
+  },
+  {
+   "name": "Distal phalanx of third finger of hand.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 192,
+   "decimate": 0.025,
+   "verts": 4,
+   "tris": 4,
+   "bbox_model_zup": [
+    [
+     -0.2874,
+     -0.0972,
+     0.7
+    ],
+    [
+     -0.2805,
+     -0.0785,
+     0.7125
+    ]
+   ]
+  },
+  {
+   "name": "Duodenum",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Small intestine",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 1750,
+   "decimate": 1.0,
+   "verts": 887,
+   "tris": 1750,
+   "bbox_model_zup": [
+    [
+     -0.0656,
+     -0.0574,
+     1.0449
+    ],
+    [
+     0.0323,
+     -0.0057,
+     1.1433
+    ]
+   ]
+  },
+  {
+   "name": "Eighth rib.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "False ribs",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 8270,
+   "decimate": 0.025,
+   "verts": 105,
+   "tris": 206,
+   "bbox_model_zup": [
+    [
+     0.0174,
+     -0.0673,
+     1.1354
+    ],
+    [
+     0.1353,
+     0.0964,
+     1.2869
+    ]
+   ]
+  },
+  {
+   "name": "Eighth rib.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "False ribs",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 8270,
+   "decimate": 0.025,
+   "verts": 105,
+   "tris": 206,
+   "bbox_model_zup": [
+    [
+     -0.1353,
+     -0.0673,
+     1.1354
+    ],
+    [
+     -0.0174,
+     0.0964,
+     1.2869
+    ]
+   ]
+  },
+  {
+   "name": "Eleventh rib.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Floating ribs",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 5034,
+   "decimate": 0.025,
+   "verts": 64,
+   "tris": 124,
+   "bbox_model_zup": [
+    [
+     0.0196,
+     -0.0028,
+     1.0586
+    ],
+    [
+     0.1199,
+     0.0782,
+     1.1913
+    ]
+   ]
+  },
+  {
+   "name": "Eleventh rib.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Floating ribs",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 5034,
+   "decimate": 0.025,
+   "verts": 64,
+   "tris": 124,
+   "bbox_model_zup": [
+    [
+     -0.1199,
+     -0.0028,
+     1.0586
+    ],
+    [
+     -0.0196,
+     0.0782,
+     1.1913
+    ]
+   ]
+  },
+  {
+   "name": "Epiglottis",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Larynx",
+   "tissues": [
+    "cartilage"
+   ],
+   "tris_source": 3376,
+   "decimate": 0.25,
+   "verts": 384,
+   "tris": 844,
+   "bbox_model_zup": [
+    [
+     -0.0078,
+     -0.0271,
+     1.481
+    ],
+    [
+     0.0078,
+     -0.0194,
+     1.5105
+    ]
+   ]
+  },
+  {
+   "name": "Ethmoid bone",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Bones of cranium",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 10130,
+   "decimate": 0.02,
+   "verts": 115,
+   "tris": 202,
+   "bbox_model_zup": [
+    [
+     -0.017,
+     -0.0746,
+     1.5676
+    ],
+    [
+     0.0176,
+     -0.0319,
+     1.6034
+    ]
+   ]
+  },
+  {
+   "name": "Femur.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of lower limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 3794,
+   "decimate": 0.03,
+   "verts": 58,
+   "tris": 112,
+   "bbox_model_zup": [
+    [
+     0.0341,
+     -0.0221,
+     0.4306
+    ],
+    [
+     0.1473,
+     0.06,
+     0.8844
+    ]
+   ]
+  },
+  {
+   "name": "Femur.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of lower limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 3794,
+   "decimate": 0.03,
+   "verts": 58,
+   "tris": 112,
+   "bbox_model_zup": [
+    [
+     -0.1473,
+     -0.0221,
+     0.4306
+    ],
+    [
+     -0.0341,
+     0.06,
+     0.8844
+    ]
+   ]
+  },
+  {
+   "name": "Fibula.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of lower limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 1264,
+   "decimate": 0.03,
+   "verts": 39,
+   "tris": 36,
+   "bbox_model_zup": [
+    [
+     0.0875,
+     0.0263,
+     0.0544
+    ],
+    [
+     0.1259,
+     0.0597,
+     0.4173
+    ]
+   ]
+  },
+  {
+   "name": "Fibula.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of lower limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 1264,
+   "decimate": 0.03,
+   "verts": 39,
+   "tris": 36,
+   "bbox_model_zup": [
+    [
+     -0.1259,
+     0.0263,
+     0.0544
+    ],
+    [
+     -0.0875,
+     0.0597,
+     0.4173
+    ]
+   ]
+  },
+  {
+   "name": "Fifth metacarpal bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 512,
+   "decimate": 0.025,
+   "verts": 8,
+   "tris": 12,
+   "bbox_model_zup": [
+    [
+     0.2329,
+     -0.0446,
+     0.7783
+    ],
+    [
+     0.2555,
+     -0.0212,
+     0.8349
+    ]
+   ]
+  },
+  {
+   "name": "Fifth metacarpal bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 512,
+   "decimate": 0.025,
+   "verts": 8,
+   "tris": 12,
+   "bbox_model_zup": [
+    [
+     -0.2555,
+     -0.0446,
+     0.7783
+    ],
+    [
+     -0.2329,
+     -0.0214,
+     0.8373
+    ]
+   ]
+  },
+  {
+   "name": "Fifth metatarsal bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Metatarsal bones",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 894,
+   "decimate": 0.03,
+   "verts": 15,
+   "tris": 26,
+   "bbox_model_zup": [
+    [
+     0.1004,
+     -0.0571,
+     0.0106
+    ],
+    [
+     0.1395,
+     0.0151,
+     0.041
+    ]
+   ]
+  },
+  {
+   "name": "Fifth metatarsal bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Metatarsal bones",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 894,
+   "decimate": 0.03,
+   "verts": 15,
+   "tris": 26,
+   "bbox_model_zup": [
+    [
+     -0.1395,
+     -0.0571,
+     0.0106
+    ],
+    [
+     -0.1004,
+     0.0151,
+     0.041
+    ]
+   ]
+  },
+  {
+   "name": "Fifth rib.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "True ribs",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 9376,
+   "decimate": 0.025,
+   "verts": 119,
+   "tris": 234,
+   "bbox_model_zup": [
+    [
+     0.0156,
+     -0.1023,
+     1.2413
+    ],
+    [
+     0.1315,
+     0.087,
+     1.3675
+    ]
+   ]
+  },
+  {
+   "name": "Fifth rib.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "True ribs",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 9376,
+   "decimate": 0.025,
+   "verts": 119,
+   "tris": 234,
+   "bbox_model_zup": [
+    [
+     -0.1315,
+     -0.1023,
+     1.2413
+    ],
+    [
+     -0.0156,
+     0.087,
+     1.3675
+    ]
+   ]
+  },
+  {
+   "name": "First metacarpal bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 682,
+   "decimate": 0.025,
+   "verts": 10,
+   "tris": 16,
+   "bbox_model_zup": [
+    [
+     0.2803,
+     -0.0543,
+     0.8102
+    ],
+    [
+     0.3213,
+     -0.0216,
+     0.8472
+    ]
+   ]
+  },
+  {
+   "name": "First metacarpal bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 682,
+   "decimate": 0.025,
+   "verts": 10,
+   "tris": 16,
+   "bbox_model_zup": [
+    [
+     -0.3213,
+     -0.0543,
+     0.8102
+    ],
+    [
+     -0.2803,
+     -0.0216,
+     0.8472
+    ]
+   ]
+  },
+  {
+   "name": "First metatarsal bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Metatarsal bones",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 1088,
+   "decimate": 0.03,
+   "verts": 18,
+   "tris": 32,
+   "bbox_model_zup": [
+    [
+     0.0604,
+     -0.0845,
+     0.0156
+    ],
+    [
+     0.0823,
+     -0.0213,
+     0.0596
+    ]
+   ]
+  },
+  {
+   "name": "First metatarsal bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Metatarsal bones",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 1088,
+   "decimate": 0.03,
+   "verts": 18,
+   "tris": 32,
+   "bbox_model_zup": [
+    [
+     -0.0823,
+     -0.0845,
+     0.0156
+    ],
+    [
+     -0.0604,
+     -0.0213,
+     0.0596
+    ]
+   ]
+  },
+  {
+   "name": "First rib.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "True ribs",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 3210,
+   "decimate": 0.025,
+   "verts": 42,
+   "tris": 80,
+   "bbox_model_zup": [
+    [
+     0.0164,
+     -0.0376,
+     1.3869
+    ],
+    [
+     0.0715,
+     0.0336,
+     1.4465
+    ]
+   ]
+  },
+  {
+   "name": "First rib.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "True ribs",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 3210,
+   "decimate": 0.025,
+   "verts": 42,
+   "tris": 80,
+   "bbox_model_zup": [
+    [
+     -0.0715,
+     -0.0376,
+     1.3869
+    ],
+    [
+     -0.0164,
+     0.0336,
+     1.4465
+    ]
+   ]
+  },
+  {
+   "name": "Fourth metacarpal bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 642,
+   "decimate": 0.025,
+   "verts": 10,
+   "tris": 16,
+   "bbox_model_zup": [
+    [
+     0.2493,
+     -0.042,
+     0.7762
+    ],
+    [
+     0.2618,
+     -0.0153,
+     0.8334
+    ]
+   ]
+  },
+  {
+   "name": "Fourth metacarpal bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 642,
+   "decimate": 0.025,
+   "verts": 10,
+   "tris": 16,
+   "bbox_model_zup": [
+    [
+     -0.2618,
+     -0.042,
+     0.7762
+    ],
+    [
+     -0.2493,
+     -0.0153,
+     0.8334
+    ]
+   ]
+  },
+  {
+   "name": "Fourth metatarsal bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Metatarsal bones",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 834,
+   "decimate": 0.03,
+   "verts": 14,
+   "tris": 24,
+   "bbox_model_zup": [
+    [
+     0.0965,
+     -0.0718,
+     0.0112
+    ],
+    [
+     0.1246,
+     -0.0046,
+     0.0499
+    ]
+   ]
+  },
+  {
+   "name": "Fourth metatarsal bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Metatarsal bones",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 834,
+   "decimate": 0.03,
+   "verts": 14,
+   "tris": 24,
+   "bbox_model_zup": [
+    [
+     -0.1246,
+     -0.0718,
+     0.0112
+    ],
+    [
+     -0.0965,
+     -0.0046,
+     0.0499
+    ]
+   ]
+  },
+  {
+   "name": "Fourth rib.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "True ribs",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 8646,
+   "decimate": 0.025,
+   "verts": 110,
+   "tris": 216,
+   "bbox_model_zup": [
+    [
+     0.0159,
+     -0.0929,
+     1.2772
+    ],
+    [
+     0.1252,
+     0.0771,
+     1.3944
+    ]
+   ]
+  },
+  {
+   "name": "Fourth rib.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "True ribs",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 8646,
+   "decimate": 0.025,
+   "verts": 110,
+   "tris": 216,
+   "bbox_model_zup": [
+    [
+     -0.1252,
+     -0.0929,
+     1.2772
+    ],
+    [
+     -0.0159,
+     0.0771,
+     1.3944
+    ]
+   ]
+  },
+  {
+   "name": "Frontal bone",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Bones of cranium",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 7776,
+   "decimate": 0.02,
+   "verts": 78,
+   "tris": 154,
+   "bbox_model_zup": [
+    [
+     -0.0595,
+     -0.0876,
+     1.5943
+    ],
+    [
+     0.0595,
+     -0.019,
+     1.6983
+    ]
+   ]
+  },
+  {
+   "name": "Hamate bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 536,
+   "decimate": 0.025,
+   "verts": 8,
+   "tris": 12,
+   "bbox_model_zup": [
+    [
+     0.2453,
+     -0.0345,
+     0.8306
+    ],
+    [
+     0.2598,
+     -0.0108,
+     0.8514
+    ]
+   ]
+  },
+  {
+   "name": "Hamate bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 536,
+   "decimate": 0.025,
+   "verts": 8,
+   "tris": 12,
+   "bbox_model_zup": [
+    [
+     -0.2598,
+     -0.0345,
+     0.8306
+    ],
+    [
+     -0.2453,
+     -0.0108,
+     0.8514
+    ]
+   ]
+  },
+  {
+   "name": "Hip bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of pelvic girdle",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 3788,
+   "decimate": 0.03,
+   "verts": 56,
+   "tris": 112,
+   "bbox_model_zup": [
+    [
+     0.0008,
+     -0.0574,
+     0.795
+    ],
+    [
+     0.1367,
+     0.0872,
+     1.0118
+    ]
+   ]
+  },
+  {
+   "name": "Hip bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of pelvic girdle",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 3788,
+   "decimate": 0.03,
+   "verts": 56,
+   "tris": 112,
+   "bbox_model_zup": [
+    [
+     -0.1367,
+     -0.0577,
+     0.795
+    ],
+    [
+     -0.0008,
+     0.0872,
+     1.0118
+    ]
+   ]
+  },
+  {
+   "name": "Humerus.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 4280,
+   "decimate": 0.025,
+   "verts": 56,
+   "tris": 106,
+   "bbox_model_zup": [
+    [
+     0.1431,
+     0.0016,
+     1.0851
+    ],
+    [
+     0.2498,
+     0.0539,
+     1.406
+    ]
+   ]
+  },
+  {
+   "name": "Humerus.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 4280,
+   "decimate": 0.025,
+   "verts": 56,
+   "tris": 106,
+   "bbox_model_zup": [
+    [
+     -0.2498,
+     0.0016,
+     1.0851
+    ],
+    [
+     -0.1431,
+     0.0539,
+     1.406
+    ]
+   ]
+  },
+  {
+   "name": "Inferior lingular segmental bronchus of left lung (BV)",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Left superior lobar bronchus",
+   "as": "centreline",
+   "tris_source": 2016,
+   "points": 45,
+   "radius_mm": [
+    1.01,
+    3.46
+   ],
+   "verts": 0,
+   "tris": 0,
+   "bbox_model_zup": [
+    [
+     0.0828,
+     -0.0851,
+     1.2469
+    ],
+    [
+     0.1048,
+     -0.0026,
+     1.3139
+    ]
+   ]
+  },
+  {
+   "name": "Inferior lobe of left lung",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Left lung",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 9258,
+   "decimate": 0.15,
+   "verts": 701,
+   "tris": 1387,
+   "bbox_model_zup": [
+    [
+     0.0183,
+     -0.0991,
+     1.1668
+    ],
+    [
+     0.1299,
+     0.0828,
+     1.3605
+    ]
+   ]
+  },
+  {
+   "name": "Inferior lobe of right lung",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Right lung",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 8452,
+   "decimate": 0.15,
+   "verts": 638,
+   "tris": 1267,
+   "bbox_model_zup": [
+    [
+     -0.131,
+     -0.0926,
+     1.1699
+    ],
+    [
+     -0.0026,
+     0.0832,
+     1.3502
+    ]
+   ]
+  },
+  {
+   "name": "Inferior nasal concha bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of cranium",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 476,
+   "decimate": 0.02,
+   "verts": 9,
+   "tris": 18,
+   "bbox_model_zup": [
+    [
+     0.0043,
+     -0.0747,
+     1.5575
+    ],
+    [
+     0.012,
+     -0.0479,
+     1.5746
+    ]
+   ]
+  },
+  {
+   "name": "Inferior nasal concha bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of cranium",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 476,
+   "decimate": 0.02,
+   "verts": 9,
+   "tris": 18,
+   "bbox_model_zup": [
+    [
+     -0.012,
+     -0.0747,
+     1.5575
+    ],
+    [
+     -0.0043,
+     -0.0479,
+     1.5746
+    ]
+   ]
+  },
+  {
+   "name": "Intermediate bronchus.r",
+   "side": "r",
+   "system": "Visceral systems",
+   "group": "Right main bronchus",
+   "as": "centreline",
+   "tris_source": 288,
+   "points": 7,
+   "radius_mm": [
+    7.0,
+    7.95
+   ],
+   "verts": 0,
+   "tris": 0,
+   "bbox_model_zup": [
+    [
+     -0.0315,
+     0.017,
+     1.3175
+    ],
+    [
+     -0.0138,
+     0.0213,
+     1.3486
+    ]
+   ]
+  },
+  {
+   "name": "Intermediate cuneiform bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Tarsal bones",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 444,
+   "decimate": 0.03,
+   "verts": 8,
+   "tris": 12,
+   "bbox_model_zup": [
+    [
+     0.0743,
+     -0.0208,
+     0.0472
+    ],
+    [
+     0.0926,
+     0.0003,
+     0.0706
+    ]
+   ]
+  },
+  {
+   "name": "Intermediate cuneiform bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Tarsal bones",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 444,
+   "decimate": 0.03,
+   "verts": 8,
+   "tris": 12,
+   "bbox_model_zup": [
+    [
+     -0.0926,
+     -0.0208,
+     0.0472
+    ],
+    [
+     -0.0743,
+     0.0003,
+     0.0706
+    ]
+   ]
+  },
+  {
+   "name": "Jejunum",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Small intestine",
+   "as": "centreline",
+   "tris_source": 27648,
+   "points": 577,
+   "radius_mm": [
+    4.59,
+    9.99
+   ],
+   "verts": 0,
+   "tris": 0,
+   "bbox_model_zup": [
+    [
+     -0.0805,
+     -0.073,
+     0.8889
+    ],
+    [
+     0.0918,
+     -0.0248,
+     1.0856
+    ]
+   ]
+  },
+  {
+   "name": "Lacrimal bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of cranium",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 588,
+   "decimate": 0.02,
+   "verts": 7,
+   "tris": 10,
+   "bbox_model_zup": [
+    [
+     0.0082,
+     -0.075,
+     1.5734
+    ],
+    [
+     0.0167,
+     -0.0624,
+     1.5983
+    ]
+   ]
+  },
+  {
+   "name": "Lacrimal bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of cranium",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 588,
+   "decimate": 0.02,
+   "verts": 7,
+   "tris": 10,
+   "bbox_model_zup": [
+    [
+     -0.0167,
+     -0.075,
+     1.5734
+    ],
+    [
+     -0.0082,
+     -0.0624,
+     1.5983
+    ]
+   ]
+  },
+  {
+   "name": "Laryngopharynx",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Pharynx",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 2476,
+   "decimate": 0.35,
+   "verts": 433,
+   "tris": 866,
+   "bbox_model_zup": [
+    [
+     -0.0144,
+     -0.0332,
+     1.4564
+    ],
+    [
+     0.0144,
+     0.0005,
+     1.5104
+    ]
+   ]
+  },
+  {
+   "name": "Lateral basal segmental bronchus of left lung (BIX)",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Left inferior lobar bronchus",
+   "as": "centreline",
+   "tris_source": 2304,
+   "points": 50,
+   "radius_mm": [
+    1.0,
+    4.77
+   ],
+   "verts": 0,
+   "tris": 0,
+   "bbox_model_zup": [
+    [
+     0.0757,
+     0.0071,
+     1.1779
+    ],
+    [
+     0.1218,
+     0.0493,
+     1.2855
+    ]
+   ]
+  },
+  {
+   "name": "Lateral basal segmental bronchus of right lung (BIX)",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Right inferior lobar bronchus",
+   "as": "centreline",
+   "tris_source": 4608,
+   "points": 100,
+   "radius_mm": [
+    1.01,
+    4.69
+   ],
+   "verts": 0,
+   "tris": 0,
+   "bbox_model_zup": [
+    [
+     -0.1225,
+     0.0093,
+     1.1906
+    ],
+    [
+     -0.0473,
+     0.0504,
+     1.283
+    ]
+   ]
+  },
+  {
+   "name": "Lateral cuneiform bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Tarsal bones",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 638,
+   "decimate": 0.03,
+   "verts": 11,
+   "tris": 18,
+   "bbox_model_zup": [
+    [
+     0.0822,
+     -0.0209,
+     0.0412
+    ],
+    [
+     0.1059,
+     0.0066,
+     0.0677
+    ]
+   ]
+  },
+  {
+   "name": "Lateral cuneiform bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Tarsal bones",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 638,
+   "decimate": 0.03,
+   "verts": 11,
+   "tris": 18,
+   "bbox_model_zup": [
+    [
+     -0.1059,
+     -0.0209,
+     0.0413
+    ],
+    [
+     -0.0811,
+     0.0066,
+     0.0677
+    ]
+   ]
+  },
+  {
+   "name": "Lateral segmental bronchus of right lung (BIV)",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Middle lobar bronchus.r",
+   "as": "centreline",
+   "tris_source": 3168,
+   "points": 70,
+   "radius_mm": [
+    1.01,
+    5.08
+   ],
+   "verts": 0,
+   "tris": 0,
+   "bbox_model_zup": [
+    [
+     -0.1195,
+     -0.0424,
+     1.2618
+    ],
+    [
+     -0.0433,
+     -0.0021,
+     1.3065
+    ]
+   ]
+  },
+  {
+   "name": "Left atrium",
+   "side": "mid",
+   "system": "Cardiovascular system",
+   "group": "Heart",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 5105,
+   "decimate": 0.06,
+   "verts": 168,
+   "tris": 305,
+   "bbox_model_zup": [
+    [
+     -0.0234,
+     -0.0539,
+     1.2632
+    ],
+    [
+     0.0648,
+     0.0314,
+     1.3384
+    ]
+   ]
+  },
+  {
+   "name": "Left inferior lobar bronchus",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Left main bronchus",
+   "as": "centreline",
+   "tris_source": 864,
+   "points": 19,
+   "radius_mm": [
+    4.52,
+    7.01
+   ],
+   "verts": 0,
+   "tris": 0,
+   "bbox_model_zup": [
+    [
+     0.0436,
+     0.0168,
+     1.285
+    ],
+    [
+     0.0757,
+     0.0212,
+     1.3212
+    ]
+   ]
+  },
+  {
+   "name": "Left main bronchus",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Bronchi",
+   "as": "centreline",
+   "tris_source": 576,
+   "points": 13,
+   "radius_mm": [
+    7.01,
+    9.3
+   ],
+   "verts": 0,
+   "tris": 0,
+   "bbox_model_zup": [
+    [
+     -0.001,
+     0.0113,
+     1.3207
+    ],
+    [
+     0.0436,
+     0.0212,
+     1.3704
+    ]
+   ]
+  },
+  {
+   "name": "Left superior lobar bronchus",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Left main bronchus",
+   "as": "centreline",
+   "tris_source": 1152,
+   "points": 26,
+   "radius_mm": [
+    3.0,
+    6.52
+   ],
+   "verts": 0,
+   "tris": 0,
+   "bbox_model_zup": [
+    [
+     0.0436,
+     -0.0026,
+     1.3134
+    ],
+    [
+     0.0839,
+     0.0212,
+     1.3442
+    ]
+   ]
+  },
+  {
+   "name": "Left ventricle",
+   "side": "mid",
+   "system": "Cardiovascular system",
+   "group": "Heart",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 22252,
+   "decimate": 0.06,
+   "verts": 729,
+   "tris": 1335,
+   "bbox_model_zup": [
+    [
+     0.0025,
+     -0.0718,
+     1.2366
+    ],
+    [
+     0.0824,
+     0.0155,
+     1.3263
+    ]
+   ]
+  },
+  {
+   "name": "Liver",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Digestive system",
+   "tissues": [
+    "connective",
+    "other"
+   ],
+   "tris_source": 12270,
+   "decimate": 0.1,
+   "verts": 672,
+   "tris": 1227,
+   "bbox_model_zup": [
+    [
+     -0.1149,
+     -0.0994,
+     1.0919
+    ],
+    [
+     0.092,
+     0.0538,
+     1.2578
+    ]
+   ]
+  },
+  {
+   "name": "Lower canine.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Anterior teeth",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 1276,
+   "decimate": 0.08,
+   "verts": 53,
+   "tris": 102,
+   "bbox_model_zup": [
+    [
+     0.0089,
+     -0.0839,
+     1.5017
+    ],
+    [
+     0.0167,
+     -0.0688,
+     1.5279
+    ]
+   ]
+  },
+  {
+   "name": "Lower canine.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Anterior teeth",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 1276,
+   "decimate": 0.08,
+   "verts": 53,
+   "tris": 102,
+   "bbox_model_zup": [
+    [
+     -0.0167,
+     -0.0839,
+     1.5017
+    ],
+    [
+     -0.0089,
+     -0.0688,
+     1.5279
+    ]
+   ]
+  },
+  {
+   "name": "Lower first molar tooth.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Posterior teeth",
+   "tissues": [
+    "bone",
+    "other"
+   ],
+   "tris_source": 4508,
+   "decimate": 0.08,
+   "verts": 186,
+   "tris": 360,
+   "bbox_model_zup": [
+    [
+     0.0167,
+     -0.0647,
+     1.5135
+    ],
+    [
+     0.029,
+     -0.05,
+     1.5327
+    ]
+   ]
+  },
+  {
+   "name": "Lower first molar tooth.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Posterior teeth",
+   "tissues": [
+    "bone",
+    "other"
+   ],
+   "tris_source": 4508,
+   "decimate": 0.08,
+   "verts": 186,
+   "tris": 360,
+   "bbox_model_zup": [
+    [
+     -0.0289,
+     -0.0647,
+     1.5135
+    ],
+    [
+     -0.0167,
+     -0.05,
+     1.5327
+    ]
+   ]
+  },
+  {
+   "name": "Lower first premolar.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Posterior teeth",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 1222,
+   "decimate": 0.08,
+   "verts": 50,
+   "tris": 96,
+   "bbox_model_zup": [
+    [
+     0.013,
+     -0.0777,
+     1.5066
+    ],
+    [
+     0.0208,
+     -0.0639,
+     1.5284
+    ]
+   ]
+  },
+  {
+   "name": "Lower first premolar.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Posterior teeth",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 1222,
+   "decimate": 0.08,
+   "verts": 50,
+   "tris": 96,
+   "bbox_model_zup": [
+    [
+     -0.0208,
+     -0.0777,
+     1.5066
+    ],
+    [
+     -0.013,
+     -0.0639,
+     1.5284
+    ]
+   ]
+  },
+  {
+   "name": "Lower lateral incisor.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Anterior teeth",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 1040,
+   "decimate": 0.08,
+   "verts": 43,
+   "tris": 82,
+   "bbox_model_zup": [
+    [
+     0.0043,
+     -0.0878,
+     1.5029
+    ],
+    [
+     0.0118,
+     -0.0714,
+     1.5274
+    ]
+   ]
+  },
+  {
+   "name": "Lower lateral incisor.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Anterior teeth",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 1040,
+   "decimate": 0.08,
+   "verts": 43,
+   "tris": 82,
+   "bbox_model_zup": [
+    [
+     -0.0118,
+     -0.0878,
+     1.5029
+    ],
+    [
+     -0.0043,
+     -0.0714,
+     1.5274
+    ]
+   ]
+  },
+  {
+   "name": "Lower medial incisor.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Anterior teeth",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 984,
+   "decimate": 0.08,
+   "verts": 41,
+   "tris": 78,
+   "bbox_model_zup": [
+    [
+     0.0002,
+     -0.0885,
+     1.5028
+    ],
+    [
+     0.0063,
+     -0.0705,
+     1.5274
+    ]
+   ]
+  },
+  {
+   "name": "Lower medial incisor.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Anterior teeth",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 984,
+   "decimate": 0.08,
+   "verts": 41,
+   "tris": 78,
+   "bbox_model_zup": [
+    [
+     -0.0063,
+     -0.0885,
+     1.5028
+    ],
+    [
+     -0.0002,
+     -0.0705,
+     1.5274
+    ]
+   ]
+  },
+  {
+   "name": "Lower second molar tooth.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Posterior teeth",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 1676,
+   "decimate": 0.08,
+   "verts": 69,
+   "tris": 134,
+   "bbox_model_zup": [
+    [
+     0.0203,
+     -0.0539,
+     1.5185
+    ],
+    [
+     0.0321,
+     -0.0376,
+     1.5371
+    ]
+   ]
+  },
+  {
+   "name": "Lower second molar tooth.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Posterior teeth",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 1676,
+   "decimate": 0.08,
+   "verts": 69,
+   "tris": 134,
+   "bbox_model_zup": [
+    [
+     -0.0321,
+     -0.0539,
+     1.5185
+    ],
+    [
+     -0.0203,
+     -0.0376,
+     1.5371
+    ]
+   ]
+  },
+  {
+   "name": "Lower second premolar.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Posterior teeth",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 1180,
+   "decimate": 0.08,
+   "verts": 49,
+   "tris": 94,
+   "bbox_model_zup": [
+    [
+     0.016,
+     -0.0712,
+     1.507
+    ],
+    [
+     0.024,
+     -0.058,
+     1.5299
+    ]
+   ]
+  },
+  {
+   "name": "Lower second premolar.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Posterior teeth",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 1180,
+   "decimate": 0.08,
+   "verts": 49,
+   "tris": 94,
+   "bbox_model_zup": [
+    [
+     -0.024,
+     -0.0712,
+     1.507
+    ],
+    [
+     -0.016,
+     -0.058,
+     1.5299
+    ]
+   ]
+  },
+  {
+   "name": "Lunate bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 2088,
+   "decimate": 0.025,
+   "verts": 28,
+   "tris": 52,
+   "bbox_model_zup": [
+    [
+     0.2437,
+     -0.0263,
+     0.8476
+    ],
+    [
+     0.2613,
+     -0.0097,
+     0.8604
+    ]
+   ]
+  },
+  {
+   "name": "Lunate bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 2088,
+   "decimate": 0.025,
+   "verts": 28,
+   "tris": 52,
+   "bbox_model_zup": [
+    [
+     -0.2612,
+     -0.0262,
+     0.8476
+    ],
+    [
+     -0.2438,
+     -0.0094,
+     0.8606
+    ]
+   ]
+  },
+  {
+   "name": "Mandible",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Extracranial bones of head",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 18838,
+   "decimate": 0.04,
+   "verts": 347,
+   "tris": 752,
+   "bbox_model_zup": [
+    [
+     -0.0522,
+     -0.0838,
+     1.4966
+    ],
+    [
+     0.0522,
+     -0.0016,
+     1.5784
+    ]
+   ]
+  },
+  {
+   "name": "Manubrium of sternum",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Sternum",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 2662,
+   "decimate": 0.025,
+   "verts": 38,
+   "tris": 66,
+   "bbox_model_zup": [
+    [
+     -0.0283,
+     -0.0838,
+     1.3501
+    ],
+    [
+     0.0281,
+     -0.0313,
+     1.4041
+    ]
+   ]
+  },
+  {
+   "name": "Maxilla.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of cranium",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 4798,
+   "decimate": 0.02,
+   "verts": 47,
+   "tris": 94,
+   "bbox_model_zup": [
+    [
+     0.0001,
+     -0.0933,
+     1.5385
+    ],
+    [
+     0.0452,
+     -0.0421,
+     1.605
+    ]
+   ]
+  },
+  {
+   "name": "Maxilla.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of cranium",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 4798,
+   "decimate": 0.02,
+   "verts": 47,
+   "tris": 94,
+   "bbox_model_zup": [
+    [
+     -0.0452,
+     -0.0933,
+     1.5385
+    ],
+    [
+     -0.0001,
+     -0.0421,
+     1.605
+    ]
+   ]
+  },
+  {
+   "name": "Medial basal segmental bronchus of left lung (BVII)",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Left inferior lobar bronchus",
+   "as": "centreline",
+   "tris_source": 5760,
+   "points": 125,
+   "radius_mm": [
+    1.0,
+    4.1
+   ],
+   "verts": 0,
+   "tris": 0,
+   "bbox_model_zup": [
+    [
+     0.0253,
+     0.0191,
+     1.1851
+    ],
+    [
+     0.0714,
+     0.0718,
+     1.2956
+    ]
+   ]
+  },
+  {
+   "name": "Medial basal segmental bronchus of right lung (BVII)",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Right inferior lobar bronchus",
+   "as": "centreline",
+   "tris_source": 1728,
+   "points": 38,
+   "radius_mm": [
+    1.53,
+    4.13
+   ],
+   "verts": 0,
+   "tris": 0,
+   "bbox_model_zup": [
+    [
+     -0.0389,
+     0.0193,
+     1.2491
+    ],
+    [
+     -0.0269,
+     0.0226,
+     1.3101
+    ]
+   ]
+  },
+  {
+   "name": "Medial cuneiform bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Tarsal bones",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 992,
+   "decimate": 0.03,
+   "verts": 16,
+   "tris": 28,
+   "bbox_model_zup": [
+    [
+     0.059,
+     -0.0318,
+     0.0346
+    ],
+    [
+     0.0822,
+     0.0003,
+     0.0681
+    ]
+   ]
+  },
+  {
+   "name": "Medial cuneiform bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Tarsal bones",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 992,
+   "decimate": 0.03,
+   "verts": 16,
+   "tris": 28,
+   "bbox_model_zup": [
+    [
+     -0.0822,
+     -0.0318,
+     0.0346
+    ],
+    [
+     -0.059,
+     0.0003,
+     0.0681
+    ]
+   ]
+  },
+  {
+   "name": "Medial segmental bronchus of right lung (BV)",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Middle lobar bronchus.r",
+   "as": "centreline",
+   "tris_source": 3168,
+   "points": 70,
+   "radius_mm": [
+    1.0,
+    5.41
+   ],
+   "verts": 0,
+   "tris": 0,
+   "bbox_model_zup": [
+    [
+     -0.0765,
+     -0.076,
+     1.2637
+    ],
+    [
+     -0.0414,
+     -0.0021,
+     1.3026
+    ]
+   ]
+  },
+  {
+   "name": "Middle cells of ethmoid bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Ethmoid bone",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 960,
+   "decimate": 0.02,
+   "verts": 13,
+   "tris": 18,
+   "bbox_model_zup": [
+    [
+     0.0053,
+     -0.0556,
+     1.5817
+    ],
+    [
+     0.0148,
+     -0.047,
+     1.5941
+    ]
+   ]
+  },
+  {
+   "name": "Middle cells of ethmoid bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Ethmoid bone",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 960,
+   "decimate": 0.02,
+   "verts": 13,
+   "tris": 18,
+   "bbox_model_zup": [
+    [
+     -0.0148,
+     -0.0559,
+     1.5814
+    ],
+    [
+     -0.0057,
+     -0.0468,
+     1.5947
+    ]
+   ]
+  },
+  {
+   "name": "Middle lobar bronchus.r",
+   "side": "r",
+   "system": "Visceral systems",
+   "group": "Intermediate bronchus.r",
+   "as": "centreline",
+   "tris_source": 288,
+   "points": 7,
+   "radius_mm": [
+    5.0,
+    5.91
+   ],
+   "verts": 0,
+   "tris": 0,
+   "bbox_model_zup": [
+    [
+     -0.0433,
+     -0.0021,
+     1.3022
+    ],
+    [
+     -0.0315,
+     0.0213,
+     1.3179
+    ]
+   ]
+  },
+  {
+   "name": "Middle lobe of right lung",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Right lung",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 7396,
+   "decimate": 0.15,
+   "verts": 561,
+   "tris": 1108,
+   "bbox_model_zup": [
+    [
+     -0.1237,
+     -0.1025,
+     1.2155
+    ],
+    [
+     -0.0057,
+     0.0475,
+     1.3191
+    ]
+   ]
+  },
+  {
+   "name": "Middle phalanx of fifth finger of foot.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Phalanges of foot",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 216,
+   "decimate": 0.03,
+   "verts": 5,
+   "tris": 6,
+   "bbox_model_zup": [
+    [
+     0.1368,
+     -0.0879,
+     0.0096
+    ],
+    [
+     0.1445,
+     -0.0812,
+     0.0162
+    ]
+   ]
+  },
+  {
+   "name": "Middle phalanx of fifth finger of foot.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Phalanges of foot",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 216,
+   "decimate": 0.03,
+   "verts": 5,
+   "tris": 6,
+   "bbox_model_zup": [
+    [
+     -0.1445,
+     -0.0879,
+     0.0096
+    ],
+    [
+     -0.1368,
+     -0.0812,
+     0.0162
+    ]
+   ]
+  },
+  {
+   "name": "Middle phalanx of fifth finger of hand.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 292,
+   "decimate": 0.025,
+   "verts": 5,
+   "tris": 6,
+   "bbox_model_zup": [
+    [
+     0.2262,
+     -0.0692,
+     0.7368
+    ],
+    [
+     0.2382,
+     -0.0555,
+     0.7549
+    ]
+   ]
+  },
+  {
+   "name": "Middle phalanx of fifth finger of hand.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 292,
+   "decimate": 0.025,
+   "verts": 5,
+   "tris": 6,
+   "bbox_model_zup": [
+    [
+     -0.2382,
+     -0.0692,
+     0.7368
+    ],
+    [
+     -0.2262,
+     -0.0555,
+     0.7549
+    ]
+   ]
+  },
+  {
+   "name": "Middle phalanx of fourth finger of foot.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Phalanges of foot",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 448,
+   "decimate": 0.03,
+   "verts": 8,
+   "tris": 12,
+   "bbox_model_zup": [
+    [
+     0.1241,
+     -0.106,
+     0.0096
+    ],
+    [
+     0.1351,
+     -0.0928,
+     0.0175
+    ]
+   ]
+  },
+  {
+   "name": "Middle phalanx of fourth finger of foot.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Phalanges of foot",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 448,
+   "decimate": 0.03,
+   "verts": 8,
+   "tris": 12,
+   "bbox_model_zup": [
+    [
+     -0.1351,
+     -0.106,
+     0.0096
+    ],
+    [
+     -0.1241,
+     -0.0928,
+     0.0175
+    ]
+   ]
+  },
+  {
+   "name": "Middle phalanx of fourth finger of hand.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 446,
+   "decimate": 0.025,
+   "verts": 7,
+   "tris": 10,
+   "bbox_model_zup": [
+    [
+     0.2522,
+     -0.0819,
+     0.7165
+    ],
+    [
+     0.2633,
+     -0.0563,
+     0.7398
+    ]
+   ]
+  },
+  {
+   "name": "Middle phalanx of fourth finger of hand.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 446,
+   "decimate": 0.025,
+   "verts": 7,
+   "tris": 10,
+   "bbox_model_zup": [
+    [
+     -0.2633,
+     -0.0819,
+     0.7165
+    ],
+    [
+     -0.2522,
+     -0.0563,
+     0.7398
+    ]
+   ]
+  },
+  {
+   "name": "Middle phalanx of second finger of foot.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Phalanges of foot",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 382,
+   "decimate": 0.03,
+   "verts": 7,
+   "tris": 10,
+   "bbox_model_zup": [
+    [
+     0.0943,
+     -0.1258,
+     0.0122
+    ],
+    [
+     0.1065,
+     -0.11,
+     0.0195
+    ]
+   ]
+  },
+  {
+   "name": "Middle phalanx of second finger of foot.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Phalanges of foot",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 382,
+   "decimate": 0.03,
+   "verts": 7,
+   "tris": 10,
+   "bbox_model_zup": [
+    [
+     -0.1065,
+     -0.1258,
+     0.0122
+    ],
+    [
+     -0.0943,
+     -0.11,
+     0.0195
+    ]
+   ]
+  },
+  {
+   "name": "Middle phalanx of second finger of hand.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 314,
+   "decimate": 0.025,
+   "verts": 5,
+   "tris": 6,
+   "bbox_model_zup": [
+    [
+     0.304,
+     -0.0723,
+     0.7176
+    ],
+    [
+     0.3196,
+     -0.0507,
+     0.7352
+    ]
+   ]
+  },
+  {
+   "name": "Middle phalanx of second finger of hand.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 314,
+   "decimate": 0.025,
+   "verts": 5,
+   "tris": 6,
+   "bbox_model_zup": [
+    [
+     -0.3196,
+     -0.0723,
+     0.7176
+    ],
+    [
+     -0.304,
+     -0.0507,
+     0.7354
+    ]
+   ]
+  },
+  {
+   "name": "Middle phalanx of third finger of foot.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Phalanges of foot",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 400,
+   "decimate": 0.03,
+   "verts": 8,
+   "tris": 12,
+   "bbox_model_zup": [
+    [
+     0.1106,
+     -0.1204,
+     0.0119
+    ],
+    [
+     0.1223,
+     -0.104,
+     0.0196
+    ]
+   ]
+  },
+  {
+   "name": "Middle phalanx of third finger of foot.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Phalanges of foot",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 400,
+   "decimate": 0.03,
+   "verts": 8,
+   "tris": 12,
+   "bbox_model_zup": [
+    [
+     -0.1223,
+     -0.1204,
+     0.0118
+    ],
+    [
+     -0.1106,
+     -0.104,
+     0.0196
+    ]
+   ]
+  },
+  {
+   "name": "Middle phalanx of third finger of hand.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 360,
+   "decimate": 0.025,
+   "verts": 6,
+   "tris": 8,
+   "bbox_model_zup": [
+    [
+     0.2764,
+     -0.0805,
+     0.7107
+    ],
+    [
+     0.2899,
+     -0.0589,
+     0.7343
+    ]
+   ]
+  },
+  {
+   "name": "Middle phalanx of third finger of hand.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 360,
+   "decimate": 0.025,
+   "verts": 6,
+   "tris": 8,
+   "bbox_model_zup": [
+    [
+     -0.2899,
+     -0.0805,
+     0.7107
+    ],
+    [
+     -0.2764,
+     -0.0589,
+     0.7343
+    ]
+   ]
+  },
+  {
+   "name": "Mucosa of nasal cavity",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Nose",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 9808,
+   "decimate": 0.12,
+   "verts": 548,
+   "tris": 1176,
+   "bbox_model_zup": [
+    [
+     -0.0135,
+     -0.1081,
+     1.5495
+    ],
+    [
+     0.0134,
+     -0.0421,
+     1.5977
+    ]
+   ]
+  },
+  {
+   "name": "Mucosa of stomach",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Stomach",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 9748,
+   "decimate": 0.12,
+   "verts": 618,
+   "tris": 1169,
+   "bbox_model_zup": [
+    [
+     -0.0288,
+     -0.0877,
+     1.1046
+    ],
+    [
+     0.1046,
+     0.0155,
+     1.2281
+    ]
+   ]
+  },
+  {
+   "name": "Nasal bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of cranium",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 292,
+   "decimate": 0.02,
+   "verts": 4,
+   "tris": 4,
+   "bbox_model_zup": [
+    [
+     -0.0002,
+     -0.1003,
+     1.5747
+    ],
+    [
+     0.0083,
+     -0.0798,
+     1.6045
+    ]
+   ]
+  },
+  {
+   "name": "Nasal bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of cranium",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 292,
+   "decimate": 0.02,
+   "verts": 4,
+   "tris": 4,
+   "bbox_model_zup": [
+    [
+     -0.0083,
+     -0.1003,
+     1.5747
+    ],
+    [
+     0.0002,
+     -0.0798,
+     1.6045
+    ]
+   ]
+  },
+  {
+   "name": "Nasopharynx",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Pharynx",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 1952,
+   "decimate": 0.35,
+   "verts": 343,
+   "tris": 682,
+   "bbox_model_zup": [
+    [
+     -0.0175,
+     -0.0454,
+     1.55
+    ],
+    [
+     0.0175,
+     -0.0095,
+     1.5913
+    ]
+   ]
+  },
+  {
+   "name": "Navicular bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Tarsal bones",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 732,
+   "decimate": 0.03,
+   "verts": 12,
+   "tris": 20,
+   "bbox_model_zup": [
+    [
+     0.0549,
+     -0.007,
+     0.0492
+    ],
+    [
+     0.0937,
+     0.0146,
+     0.076
+    ]
+   ]
+  },
+  {
+   "name": "Navicular bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Tarsal bones",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 732,
+   "decimate": 0.03,
+   "verts": 12,
+   "tris": 20,
+   "bbox_model_zup": [
+    [
+     -0.0937,
+     -0.007,
+     0.0492
+    ],
+    [
+     -0.0549,
+     0.0146,
+     0.076
+    ]
+   ]
+  },
+  {
+   "name": "Ninth rib.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "False ribs",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 7778,
+   "decimate": 0.025,
+   "verts": 99,
+   "tris": 194,
+   "bbox_model_zup": [
+    [
+     0.0181,
+     -0.0391,
+     1.1039
+    ],
+    [
+     0.133,
+     0.0933,
+     1.259
+    ]
+   ]
+  },
+  {
+   "name": "Ninth rib.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "False ribs",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 7778,
+   "decimate": 0.025,
+   "verts": 99,
+   "tris": 194,
+   "bbox_model_zup": [
+    [
+     -0.133,
+     -0.0391,
+     1.1039
+    ],
+    [
+     -0.0181,
+     0.0933,
+     1.259
+    ]
+   ]
+  },
+  {
+   "name": "Occipital bone",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Bones of cranium",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 7531,
+   "decimate": 0.02,
+   "verts": 136,
+   "tris": 289,
+   "bbox_model_zup": [
+    [
+     -0.0533,
+     -0.0137,
+     1.5507
+    ],
+    [
+     0.049,
+     0.1059,
+     1.647
+    ]
+   ]
+  },
+  {
+   "name": "Oesophagus",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Digestive canal",
+   "as": "centreline",
+   "tris_source": 16320,
+   "points": 43,
+   "radius_mm": [
+    5.24,
+    7.39
+   ],
+   "verts": 0,
+   "tris": 0,
+   "bbox_model_zup": [
+    [
+     0.0,
+     -0.0145,
+     1.1986
+    ],
+    [
+     0.0127,
+     0.0299,
+     1.4748
+    ]
+   ]
+  },
+  {
+   "name": "Oropharynx",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Pharynx",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 2544,
+   "decimate": 0.35,
+   "verts": 447,
+   "tris": 890,
+   "bbox_model_zup": [
+    [
+     -0.0328,
+     -0.0755,
+     1.5083
+    ],
+    [
+     0.0328,
+     -0.0085,
+     1.5526
+    ]
+   ]
+  },
+  {
+   "name": "Palatine bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of cranium",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 1460,
+   "decimate": 0.02,
+   "verts": 16,
+   "tris": 28,
+   "bbox_model_zup": [
+    [
+     0.002,
+     -0.0605,
+     1.5459
+    ],
+    [
+     0.0257,
+     -0.0246,
+     1.5844
+    ]
+   ]
+  },
+  {
+   "name": "Palatine bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of cranium",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 1460,
+   "decimate": 0.02,
+   "verts": 16,
+   "tris": 28,
+   "bbox_model_zup": [
+    [
+     -0.0257,
+     -0.0605,
+     1.5459
+    ],
+    [
+     -0.002,
+     -0.0246,
+     1.5844
+    ]
+   ]
+  },
+  {
+   "name": "Pancreas",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Digestive system",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 5222,
+   "decimate": 0.15,
+   "verts": 393,
+   "tris": 782,
+   "bbox_model_zup": [
+    [
+     -0.0458,
+     -0.048,
+     1.0791
+    ],
+    [
+     0.0727,
+     0.0052,
+     1.1528
+    ]
+   ]
+  },
+  {
+   "name": "Parietal bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of cranium",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 6886,
+   "decimate": 0.02,
+   "verts": 68,
+   "tris": 136,
+   "bbox_model_zup": [
+    [
+     -0.0064,
+     -0.0431,
+     1.5914
+    ],
+    [
+     0.073,
+     0.1002,
+     1.7052
+    ]
+   ]
+  },
+  {
+   "name": "Parietal bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of cranium",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 6780,
+   "decimate": 0.02,
+   "verts": 63,
+   "tris": 134,
+   "bbox_model_zup": [
+    [
+     -0.0722,
+     -0.0363,
+     1.59
+    ],
+    [
+     0.0038,
+     0.0994,
+     1.7035
+    ]
+   ]
+  },
+  {
+   "name": "Patella.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of lower limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 276,
+   "decimate": 0.03,
+   "verts": 6,
+   "tris": 8,
+   "bbox_model_zup": [
+    [
+     0.0582,
+     -0.0205,
+     0.4223
+    ],
+    [
+     0.1078,
+     0.003,
+     0.4674
+    ]
+   ]
+  },
+  {
+   "name": "Patella.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of lower limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 276,
+   "decimate": 0.03,
+   "verts": 6,
+   "tris": 8,
+   "bbox_model_zup": [
+    [
+     -0.1078,
+     -0.0205,
+     0.4223
+    ],
+    [
+     -0.0582,
+     0.003,
+     0.4674
+    ]
+   ]
+  },
+  {
+   "name": "Pisiform bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 1668,
+   "decimate": 0.025,
+   "verts": 22,
+   "tris": 40,
+   "bbox_model_zup": [
+    [
+     0.2397,
+     -0.0376,
+     0.8398
+    ],
+    [
+     0.248,
+     -0.0269,
+     0.8521
+    ]
+   ]
+  },
+  {
+   "name": "Pisiform bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 1668,
+   "decimate": 0.025,
+   "verts": 22,
+   "tris": 40,
+   "bbox_model_zup": [
+    [
+     -0.2481,
+     -0.0372,
+     0.8396
+    ],
+    [
+     -0.2396,
+     -0.0267,
+     0.852
+    ]
+   ]
+  },
+  {
+   "name": "Posterior basal segmental bronchus of left lung (BX)",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Left inferior lobar bronchus",
+   "as": "centreline",
+   "tris_source": 1152,
+   "points": 25,
+   "radius_mm": [
+    1.5,
+    4.15
+   ],
+   "verts": 0,
+   "tris": 0,
+   "bbox_model_zup": [
+    [
+     0.0831,
+     0.0201,
+     1.1919
+    ],
+    [
+     0.0904,
+     0.0668,
+     1.2637
+    ]
+   ]
+  },
+  {
+   "name": "Posterior basal segmental bronchus of right lung (BX)",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Right inferior lobar bronchus",
+   "as": "centreline",
+   "tris_source": 4320,
+   "points": 94,
+   "radius_mm": [
+    1.0,
+    4.39
+   ],
+   "verts": 0,
+   "tris": 0,
+   "bbox_model_zup": [
+    [
+     -0.0715,
+     0.0447,
+     1.1816
+    ],
+    [
+     -0.0335,
+     0.0692,
+     1.2576
+    ]
+   ]
+  },
+  {
+   "name": "Posterior cells of ethmoid bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Ethmoid bone",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 1216,
+   "decimate": 0.02,
+   "verts": 18,
+   "tris": 24,
+   "bbox_model_zup": [
+    [
+     0.004,
+     -0.048,
+     1.5818
+    ],
+    [
+     0.0142,
+     -0.0391,
+     1.5944
+    ]
+   ]
+  },
+  {
+   "name": "Posterior cells of ethmoid bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Ethmoid bone",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 1216,
+   "decimate": 0.02,
+   "verts": 18,
+   "tris": 24,
+   "bbox_model_zup": [
+    [
+     -0.0139,
+     -0.048,
+     1.5817
+    ],
+    [
+     -0.0046,
+     -0.0396,
+     1.5942
+    ]
+   ]
+  },
+  {
+   "name": "Posterior segmental bronchus of right lung (BII)",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Right superior lobar bronchus",
+   "as": "centreline",
+   "tris_source": 4896,
+   "points": 108,
+   "radius_mm": [
+    1.0,
+    5.5
+   ],
+   "verts": 0,
+   "tris": 0,
+   "bbox_model_zup": [
+    [
+     -0.1005,
+     0.0163,
+     1.3335
+    ],
+    [
+     -0.0299,
+     0.0676,
+     1.3941
+    ]
+   ]
+  },
+  {
+   "name": "Proximal phalanx of fifth finger of foot.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Phalanges of foot",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 516,
+   "decimate": 0.03,
+   "verts": 9,
+   "tris": 14,
+   "bbox_model_zup": [
+    [
+     0.1255,
+     -0.0812,
+     0.0097
+    ],
+    [
+     0.1445,
+     -0.0561,
+     0.0205
+    ]
+   ]
+  },
+  {
+   "name": "Proximal phalanx of fifth finger of foot.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Phalanges of foot",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 516,
+   "decimate": 0.03,
+   "verts": 9,
+   "tris": 14,
+   "bbox_model_zup": [
+    [
+     -0.1445,
+     -0.0812,
+     0.0097
+    ],
+    [
+     -0.1255,
+     -0.0561,
+     0.0205
+    ]
+   ]
+  },
+  {
+   "name": "Proximal phalanx of fifth finger of hand.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 560,
+   "decimate": 0.025,
+   "verts": 9,
+   "tris": 14,
+   "bbox_model_zup": [
+    [
+     0.2295,
+     -0.0587,
+     0.7505
+    ],
+    [
+     0.2412,
+     -0.0372,
+     0.7839
+    ]
+   ]
+  },
+  {
+   "name": "Proximal phalanx of fifth finger of hand.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 560,
+   "decimate": 0.025,
+   "verts": 9,
+   "tris": 14,
+   "bbox_model_zup": [
+    [
+     -0.2412,
+     -0.0587,
+     0.7505
+    ],
+    [
+     -0.2295,
+     -0.0372,
+     0.7839
+    ]
+   ]
+  },
+  {
+   "name": "Proximal phalanx of first finger of foot.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Phalanges of foot",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 532,
+   "decimate": 0.03,
+   "verts": 9,
+   "tris": 14,
+   "bbox_model_zup": [
+    [
+     0.0604,
+     -0.1133,
+     0.0114
+    ],
+    [
+     0.0874,
+     -0.0817,
+     0.0305
+    ]
+   ]
+  },
+  {
+   "name": "Proximal phalanx of first finger of foot.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Phalanges of foot",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 532,
+   "decimate": 0.03,
+   "verts": 9,
+   "tris": 14,
+   "bbox_model_zup": [
+    [
+     -0.0874,
+     -0.1133,
+     0.0114
+    ],
+    [
+     -0.0604,
+     -0.0817,
+     0.0305
+    ]
+   ]
+  },
+  {
+   "name": "Proximal phalanx of first finger of hand.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 328,
+   "decimate": 0.025,
+   "verts": 6,
+   "tris": 8,
+   "bbox_model_zup": [
+    [
+     0.3077,
+     -0.0642,
+     0.7875
+    ],
+    [
+     0.3289,
+     -0.0446,
+     0.8166
+    ]
+   ]
+  },
+  {
+   "name": "Proximal phalanx of first finger of hand.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 328,
+   "decimate": 0.025,
+   "verts": 6,
+   "tris": 8,
+   "bbox_model_zup": [
+    [
+     -0.3289,
+     -0.0642,
+     0.7875
+    ],
+    [
+     -0.3077,
+     -0.0446,
+     0.8166
+    ]
+   ]
+  },
+  {
+   "name": "Proximal phalanx of fourth finger of foot.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Phalanges of foot",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 460,
+   "decimate": 0.03,
+   "verts": 8,
+   "tris": 12,
+   "bbox_model_zup": [
+    [
+     0.1135,
+     -0.0947,
+     0.0096
+    ],
+    [
+     0.132,
+     -0.0694,
+     0.0239
+    ]
+   ]
+  },
+  {
+   "name": "Proximal phalanx of fourth finger of foot.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Phalanges of foot",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 460,
+   "decimate": 0.03,
+   "verts": 8,
+   "tris": 12,
+   "bbox_model_zup": [
+    [
+     -0.132,
+     -0.0947,
+     0.0096
+    ],
+    [
+     -0.1135,
+     -0.0694,
+     0.0239
+    ]
+   ]
+  },
+  {
+   "name": "Proximal phalanx of fourth finger of hand.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 368,
+   "decimate": 0.025,
+   "verts": 6,
+   "tris": 8,
+   "bbox_model_zup": [
+    [
+     0.2486,
+     -0.0619,
+     0.7354
+    ],
+    [
+     0.2623,
+     -0.0335,
+     0.7764
+    ]
+   ]
+  },
+  {
+   "name": "Proximal phalanx of fourth finger of hand.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 368,
+   "decimate": 0.025,
+   "verts": 6,
+   "tris": 8,
+   "bbox_model_zup": [
+    [
+     -0.2623,
+     -0.0619,
+     0.7354
+    ],
+    [
+     -0.2486,
+     -0.0335,
+     0.7764
+    ]
+   ]
+  },
+  {
+   "name": "Proximal phalanx of second finger of foot.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Phalanges of foot",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 426,
+   "decimate": 0.03,
+   "verts": 8,
+   "tris": 12,
+   "bbox_model_zup": [
+    [
+     0.0866,
+     -0.1109,
+     0.0134
+    ],
+    [
+     0.1046,
+     -0.0827,
+     0.025
+    ]
+   ]
+  },
+  {
+   "name": "Proximal phalanx of second finger of foot.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Phalanges of foot",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 426,
+   "decimate": 0.03,
+   "verts": 8,
+   "tris": 12,
+   "bbox_model_zup": [
+    [
+     -0.1046,
+     -0.1109,
+     0.0134
+    ],
+    [
+     -0.0866,
+     -0.0827,
+     0.025
+    ]
+   ]
+  },
+  {
+   "name": "Proximal phalanx of second finger of hand.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 414,
+   "decimate": 0.025,
+   "verts": 7,
+   "tris": 10,
+   "bbox_model_zup": [
+    [
+     0.291,
+     -0.0564,
+     0.7335
+    ],
+    [
+     0.3126,
+     -0.0341,
+     0.7714
+    ]
+   ]
+  },
+  {
+   "name": "Proximal phalanx of second finger of hand.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 414,
+   "decimate": 0.025,
+   "verts": 7,
+   "tris": 10,
+   "bbox_model_zup": [
+    [
+     -0.3126,
+     -0.0564,
+     0.7335
+    ],
+    [
+     -0.291,
+     -0.0341,
+     0.7714
+    ]
+   ]
+  },
+  {
+   "name": "Proximal phalanx of third finger of foot.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Phalanges of foot",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 460,
+   "decimate": 0.03,
+   "verts": 8,
+   "tris": 12,
+   "bbox_model_zup": [
+    [
+     0.1018,
+     -0.1066,
+     0.0142
+    ],
+    [
+     0.1183,
+     -0.076,
+     0.0247
+    ]
+   ]
+  },
+  {
+   "name": "Proximal phalanx of third finger of foot.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Phalanges of foot",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 460,
+   "decimate": 0.03,
+   "verts": 8,
+   "tris": 12,
+   "bbox_model_zup": [
+    [
+     -0.1183,
+     -0.1066,
+     0.0142
+    ],
+    [
+     -0.1018,
+     -0.076,
+     0.0247
+    ]
+   ]
+  },
+  {
+   "name": "Proximal phalanx of third finger of hand.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 440,
+   "decimate": 0.025,
+   "verts": 7,
+   "tris": 10,
+   "bbox_model_zup": [
+    [
+     0.2675,
+     -0.0639,
+     0.7299
+    ],
+    [
+     0.2868,
+     -0.0345,
+     0.7695
+    ]
+   ]
+  },
+  {
+   "name": "Proximal phalanx of third finger of hand.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 440,
+   "decimate": 0.025,
+   "verts": 7,
+   "tris": 10,
+   "bbox_model_zup": [
+    [
+     -0.2868,
+     -0.0639,
+     0.7299
+    ],
+    [
+     -0.2675,
+     -0.0345,
+     0.7695
+    ]
+   ]
+  },
+  {
+   "name": "Radius.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 784,
+   "decimate": 0.025,
+   "verts": 11,
+   "tris": 18,
+   "bbox_model_zup": [
+    [
+     0.232,
+     -0.0227,
+     0.8598
+    ],
+    [
+     0.2876,
+     0.042,
+     1.0909
+    ]
+   ]
+  },
+  {
+   "name": "Radius.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 784,
+   "decimate": 0.025,
+   "verts": 11,
+   "tris": 18,
+   "bbox_model_zup": [
+    [
+     -0.2876,
+     -0.0227,
+     0.8598
+    ],
+    [
+     -0.232,
+     0.042,
+     1.0909
+    ]
+   ]
+  },
+  {
+   "name": "Rectus femoris muscle.l",
+   "side": "l",
+   "system": "Muscular system",
+   "group": "Anterior compartment of thigh",
+   "tissues": [
+    "connective",
+    "muscle"
+   ],
+   "tris_source": 8276,
+   "decimate": 0.15,
+   "verts": 618,
+   "tris": 1240,
+   "bbox_model_zup": [
+    [
+     0.067,
+     -0.0602,
+     0.3705
+    ],
+    [
+     0.1483,
+     0.0082,
+     0.916
+    ]
+   ]
+  },
+  {
+   "name": "Right atrium",
+   "side": "mid",
+   "system": "Cardiovascular system",
+   "group": "Heart",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 22682,
+   "decimate": 0.06,
+   "verts": 721,
+   "tris": 1360,
+   "bbox_model_zup": [
+    [
+     -0.0368,
+     -0.0662,
+     1.2462
+    ],
+    [
+     0.0079,
+     0.0078,
+     1.3448
+    ]
+   ]
+  },
+  {
+   "name": "Right inferior lobar bronchus",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Intermediate bronchus.r",
+   "as": "centreline",
+   "tris_source": 1152,
+   "points": 25,
+   "radius_mm": [
+    4.2,
+    7.01
+   ],
+   "verts": 0,
+   "tris": 0,
+   "bbox_model_zup": [
+    [
+     -0.0528,
+     0.0213,
+     1.2571
+    ],
+    [
+     -0.0315,
+     0.0471,
+     1.3179
+    ]
+   ]
+  },
+  {
+   "name": "Right main bronchus",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Bronchi",
+   "as": "centreline",
+   "tris_source": 288,
+   "points": 7,
+   "radius_mm": [
+    7.52,
+    8.54
+   ],
+   "verts": 0,
+   "tris": 0,
+   "bbox_model_zup": [
+    [
+     -0.0138,
+     0.0113,
+     1.3482
+    ],
+    [
+     -0.001,
+     0.017,
+     1.3704
+    ]
+   ]
+  },
+  {
+   "name": "Right superior lobar bronchus",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Right main bronchus",
+   "as": "centreline",
+   "tris_source": 288,
+   "points": 7,
+   "radius_mm": [
+    5.51,
+    6.02
+   ],
+   "verts": 0,
+   "tris": 0,
+   "bbox_model_zup": [
+    [
+     -0.0299,
+     0.0158,
+     1.3486
+    ],
+    [
+     -0.0138,
+     0.017,
+     1.3522
+    ]
+   ]
+  },
+  {
+   "name": "Right ventricle",
+   "side": "mid",
+   "system": "Cardiovascular system",
+   "group": "Heart",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 22322,
+   "decimate": 0.06,
+   "verts": 732,
+   "tris": 1338,
+   "bbox_model_zup": [
+    [
+     -0.0216,
+     -0.0812,
+     1.239
+    ],
+    [
+     0.061,
+     -0.0143,
+     1.3312
+    ]
+   ]
+  },
+  {
+   "name": "Scaphoid bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 390,
+   "decimate": 0.025,
+   "verts": 6,
+   "tris": 8,
+   "bbox_model_zup": [
+    [
+     0.2602,
+     -0.025,
+     0.8463
+    ],
+    [
+     0.2813,
+     -0.0101,
+     0.864
+    ]
+   ]
+  },
+  {
+   "name": "Scaphoid bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 390,
+   "decimate": 0.025,
+   "verts": 6,
+   "tris": 8,
+   "bbox_model_zup": [
+    [
+     -0.2813,
+     -0.025,
+     0.8463
+    ],
+    [
+     -0.2602,
+     -0.0101,
+     0.864
+    ]
+   ]
+  },
+  {
+   "name": "Scapula.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of pectoral girdle",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 25326,
+   "decimate": 0.025,
+   "verts": 343,
+   "tris": 632,
+   "bbox_model_zup": [
+    [
+     0.0603,
+     -0.0013,
+     1.2542
+    ],
+    [
+     0.1734,
+     0.1129,
+     1.418
+    ]
+   ]
+  },
+  {
+   "name": "Scapula.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of pectoral girdle",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 25326,
+   "decimate": 0.025,
+   "verts": 343,
+   "tris": 632,
+   "bbox_model_zup": [
+    [
+     -0.1734,
+     -0.0013,
+     1.2542
+    ],
+    [
+     -0.0603,
+     0.1129,
+     1.418
+    ]
+   ]
+  },
+  {
+   "name": "Second metacarpal bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 764,
+   "decimate": 0.025,
+   "verts": 11,
+   "tris": 18,
+   "bbox_model_zup": [
+    [
+     0.2698,
+     -0.0431,
+     0.7692
+    ],
+    [
+     0.303,
+     -0.0164,
+     0.8373
+    ]
+   ]
+  },
+  {
+   "name": "Second metacarpal bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 764,
+   "decimate": 0.025,
+   "verts": 11,
+   "tris": 18,
+   "bbox_model_zup": [
+    [
+     -0.303,
+     -0.0431,
+     0.7692
+    ],
+    [
+     -0.2698,
+     -0.0164,
+     0.8373
+    ]
+   ]
+  },
+  {
+   "name": "Second metatarsal bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Metatarsal bones",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 690,
+   "decimate": 0.03,
+   "verts": 12,
+   "tris": 20,
+   "bbox_model_zup": [
+    [
+     0.0814,
+     -0.0872,
+     0.0138
+    ],
+    [
+     0.0986,
+     -0.0159,
+     0.0624
+    ]
+   ]
+  },
+  {
+   "name": "Second metatarsal bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Metatarsal bones",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 690,
+   "decimate": 0.03,
+   "verts": 12,
+   "tris": 20,
+   "bbox_model_zup": [
+    [
+     -0.0986,
+     -0.0872,
+     0.0138
+    ],
+    [
+     -0.0814,
+     -0.0159,
+     0.0624
+    ]
+   ]
+  },
+  {
+   "name": "Second rib.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "True ribs",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 5364,
+   "decimate": 0.025,
+   "verts": 69,
+   "tris": 134,
+   "bbox_model_zup": [
+    [
+     0.0175,
+     -0.0663,
+     1.345
+    ],
+    [
+     0.0996,
+     0.0457,
+     1.4368
+    ]
+   ]
+  },
+  {
+   "name": "Second rib.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "True ribs",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 5364,
+   "decimate": 0.025,
+   "verts": 69,
+   "tris": 134,
+   "bbox_model_zup": [
+    [
+     -0.0996,
+     -0.0663,
+     1.345
+    ],
+    [
+     -0.0175,
+     0.0457,
+     1.4368
+    ]
+   ]
+  },
+  {
+   "name": "Sesamoid bones of foot.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of foot",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 290,
+   "decimate": 0.03,
+   "verts": 8,
+   "tris": 8,
+   "bbox_model_zup": [
+    [
+     0.065,
+     -0.0767,
+     0.0104
+    ],
+    [
+     0.0795,
+     -0.0636,
+     0.0187
+    ]
+   ]
+  },
+  {
+   "name": "Sesamoid bones of foot.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of foot",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 290,
+   "decimate": 0.03,
+   "verts": 8,
+   "tris": 8,
+   "bbox_model_zup": [
+    [
+     -0.0795,
+     -0.0767,
+     0.0104
+    ],
+    [
+     -0.065,
+     -0.0636,
+     0.0187
+    ]
+   ]
+  },
+  {
+   "name": "Seventh rib.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "True ribs",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 9776,
+   "decimate": 0.025,
+   "verts": 124,
+   "tris": 244,
+   "bbox_model_zup": [
+    [
+     0.0166,
+     -0.0853,
+     1.1714
+    ],
+    [
+     0.1417,
+     0.0968,
+     1.3158
+    ]
+   ]
+  },
+  {
+   "name": "Seventh rib.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "True ribs",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 9776,
+   "decimate": 0.025,
+   "verts": 124,
+   "tris": 244,
+   "bbox_model_zup": [
+    [
+     -0.1417,
+     -0.0853,
+     1.1714
+    ],
+    [
+     -0.0166,
+     0.0968,
+     1.3159
+    ]
+   ]
+  },
+  {
+   "name": "Sigmoid colon",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Colon",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 3432,
+   "decimate": 0.06,
+   "verts": 102,
+   "tris": 204,
+   "bbox_model_zup": [
+    [
+     -0.026,
+     0.0224,
+     0.8047
+    ],
+    [
+     0.0354,
+     0.0721,
+     0.9271
+    ]
+   ]
+  },
+  {
+   "name": "Sinus of frontal bone",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Frontal bone",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 1504,
+   "decimate": 0.02,
+   "verts": 20,
+   "tris": 30,
+   "bbox_model_zup": [
+    [
+     -0.0243,
+     -0.0855,
+     1.6015
+    ],
+    [
+     0.0245,
+     -0.0743,
+     1.6323
+    ]
+   ]
+  },
+  {
+   "name": "Sinus of sphenoid bone",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Sphenoid bone",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 384,
+   "decimate": 0.02,
+   "verts": 8,
+   "tris": 6,
+   "bbox_model_zup": [
+    [
+     -0.0148,
+     -0.0277,
+     1.5855
+    ],
+    [
+     0.0148,
+     -0.0246,
+     1.5969
+    ]
+   ]
+  },
+  {
+   "name": "Sixth rib.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "True ribs",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 10132,
+   "decimate": 0.025,
+   "verts": 138,
+   "tris": 252,
+   "bbox_model_zup": [
+    [
+     0.0156,
+     -0.0989,
+     1.2059
+    ],
+    [
+     0.1385,
+     0.0973,
+     1.3445
+    ]
+   ]
+  },
+  {
+   "name": "Sixth rib.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "True ribs",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 10132,
+   "decimate": 0.025,
+   "verts": 138,
+   "tris": 252,
+   "bbox_model_zup": [
+    [
+     -0.1387,
+     -0.0989,
+     1.2059
+    ],
+    [
+     -0.0156,
+     0.0973,
+     1.3445
+    ]
+   ]
+  },
+  {
+   "name": "Soft palate",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Mouth",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 3764,
+   "decimate": 0.35,
+   "verts": 660,
+   "tris": 1316,
+   "bbox_model_zup": [
+    [
+     -0.0177,
+     -0.0556,
+     1.5447
+    ],
+    [
+     0.0176,
+     -0.015,
+     1.5549
+    ]
+   ]
+  },
+  {
+   "name": "Sphenoid bone",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Bones of cranium",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 7308,
+   "decimate": 0.02,
+   "verts": 56,
+   "tris": 146,
+   "bbox_model_zup": [
+    [
+     -0.0507,
+     -0.0489,
+     1.5571
+    ],
+    [
+     0.0507,
+     -0.0042,
+     1.6209
+    ]
+   ]
+  },
+  {
+   "name": "Stomach",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Digestive canal",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 9468,
+   "decimate": 0.3,
+   "verts": 1476,
+   "tris": 2839,
+   "bbox_model_zup": [
+    [
+     -0.0288,
+     -0.0889,
+     1.1037
+    ],
+    [
+     0.1054,
+     0.0165,
+     1.2291
+    ]
+   ]
+  },
+  {
+   "name": "Superior lingular segmental bronchus of left lung (BIV)",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Left superior lobar bronchus",
+   "as": "centreline",
+   "tris_source": 2016,
+   "points": 45,
+   "radius_mm": [
+    1.5,
+    3.78
+   ],
+   "verts": 0,
+   "tris": 0,
+   "bbox_model_zup": [
+    [
+     0.0689,
+     -0.0765,
+     1.2846
+    ],
+    [
+     0.1077,
+     0.015,
+     1.3139
+    ]
+   ]
+  },
+  {
+   "name": "Superior lobe of left lung",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Left lung",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 9290,
+   "decimate": 0.15,
+   "verts": 709,
+   "tris": 1393,
+   "bbox_model_zup": [
+    [
+     0.0089,
+     -0.1015,
+     1.2193
+    ],
+    [
+     0.1231,
+     0.0692,
+     1.431
+    ]
+   ]
+  },
+  {
+   "name": "Superior lobe of right lung",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Right lung",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 7748,
+   "decimate": 0.15,
+   "verts": 607,
+   "tris": 1161,
+   "bbox_model_zup": [
+    [
+     -0.1181,
+     -0.0843,
+     1.292
+    ],
+    [
+     -0.0079,
+     0.0714,
+     1.4295
+    ]
+   ]
+  },
+  {
+   "name": "Superior segmental bronchus of left lung (BVI)",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Left inferior lobar bronchus",
+   "as": "centreline",
+   "tris_source": 4320,
+   "points": 96,
+   "radius_mm": [
+    1.03,
+    4.17
+   ],
+   "verts": 0,
+   "tris": 0,
+   "bbox_model_zup": [
+    [
+     0.0378,
+     0.02,
+     1.2712
+    ],
+    [
+     0.097,
+     0.0744,
+     1.3451
+    ]
+   ]
+  },
+  {
+   "name": "Superior segmental bronchus of right lung (BVI)",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Right inferior lobar bronchus",
+   "as": "centreline",
+   "tris_source": 8928,
+   "points": 195,
+   "radius_mm": [
+    0.51,
+    4.61
+   ],
+   "verts": 0,
+   "tris": 0,
+   "bbox_model_zup": [
+    [
+     -0.0988,
+     0.0213,
+     1.2686
+    ],
+    [
+     -0.0315,
+     0.0748,
+     1.3438
+    ]
+   ]
+  },
+  {
+   "name": "Talus.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Tarsal bones",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 1350,
+   "decimate": 0.03,
+   "verts": 22,
+   "tris": 40,
+   "bbox_model_zup": [
+    [
+     0.0538,
+     0.0081,
+     0.0492
+    ],
+    [
+     0.0943,
+     0.0659,
+     0.0847
+    ]
+   ]
+  },
+  {
+   "name": "Talus.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Tarsal bones",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 1350,
+   "decimate": 0.03,
+   "verts": 22,
+   "tris": 40,
+   "bbox_model_zup": [
+    [
+     -0.0943,
+     0.0081,
+     0.0492
+    ],
+    [
+     -0.0538,
+     0.0659,
+     0.0858
+    ]
+   ]
+  },
+  {
+   "name": "Temporal bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of cranium",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 14094,
+   "decimate": 0.02,
+   "verts": 144,
+   "tris": 280,
+   "bbox_model_zup": [
+    [
+     0.0115,
+     -0.0447,
+     1.5483
+    ],
+    [
+     0.0715,
+     0.0515,
+     1.6218
+    ]
+   ]
+  },
+  {
+   "name": "Temporal bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of cranium",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 14094,
+   "decimate": 0.02,
+   "verts": 144,
+   "tris": 280,
+   "bbox_model_zup": [
+    [
+     -0.0715,
+     -0.0447,
+     1.5483
+    ],
+    [
+     -0.0115,
+     0.0515,
+     1.6218
+    ]
+   ]
+  },
+  {
+   "name": "Tenth rib.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "False ribs",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 7026,
+   "decimate": 0.025,
+   "verts": 89,
+   "tris": 174,
+   "bbox_model_zup": [
+    [
+     0.0185,
+     -0.0243,
+     1.0724
+    ],
+    [
+     0.1311,
+     0.0852,
+     1.2291
+    ]
+   ]
+  },
+  {
+   "name": "Tenth rib.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "False ribs",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 7026,
+   "decimate": 0.025,
+   "verts": 89,
+   "tris": 174,
+   "bbox_model_zup": [
+    [
+     -0.1311,
+     -0.0243,
+     1.0724
+    ],
+    [
+     -0.0185,
+     0.0852,
+     1.2291
+    ]
+   ]
+  },
+  {
+   "name": "Third metacarpal bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 708,
+   "decimate": 0.025,
+   "verts": 10,
+   "tris": 16,
+   "bbox_model_zup": [
+    [
+     0.2612,
+     -0.0435,
+     0.7721
+    ],
+    [
+     0.2819,
+     -0.0116,
+     0.8348
+    ]
+   ]
+  },
+  {
+   "name": "Third metacarpal bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 708,
+   "decimate": 0.025,
+   "verts": 10,
+   "tris": 16,
+   "bbox_model_zup": [
+    [
+     -0.2819,
+     -0.0435,
+     0.7721
+    ],
+    [
+     -0.2612,
+     -0.0116,
+     0.8348
+    ]
+   ]
+  },
+  {
+   "name": "Third metatarsal bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Metatarsal bones",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 814,
+   "decimate": 0.03,
+   "verts": 14,
+   "tris": 24,
+   "bbox_model_zup": [
+    [
+     0.0903,
+     -0.0813,
+     0.0139
+    ],
+    [
+     0.1125,
+     -0.0146,
+     0.0573
+    ]
+   ]
+  },
+  {
+   "name": "Third metatarsal bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Metatarsal bones",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 814,
+   "decimate": 0.03,
+   "verts": 14,
+   "tris": 24,
+   "bbox_model_zup": [
+    [
+     -0.1125,
+     -0.0813,
+     0.0139
+    ],
+    [
+     -0.0903,
+     -0.0146,
+     0.0573
+    ]
+   ]
+  },
+  {
+   "name": "Third rib.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "True ribs",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 6980,
+   "decimate": 0.025,
+   "verts": 89,
+   "tris": 174,
+   "bbox_model_zup": [
+    [
+     0.0173,
+     -0.076,
+     1.3108
+    ],
+    [
+     0.1125,
+     0.0631,
+     1.4167
+    ]
+   ]
+  },
+  {
+   "name": "Third rib.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "True ribs",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 6980,
+   "decimate": 0.025,
+   "verts": 89,
+   "tris": 174,
+   "bbox_model_zup": [
+    [
+     -0.1126,
+     -0.076,
+     1.3108
+    ],
+    [
+     -0.0173,
+     0.0631,
+     1.4167
+    ]
+   ]
+  },
+  {
+   "name": "Thyroid cartilage",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Laryngeal cartilages",
+   "tissues": [
+    "cartilage"
+   ],
+   "tris_source": 4488,
+   "decimate": 0.25,
+   "verts": 564,
+   "tris": 1122,
+   "bbox_model_zup": [
+    [
+     -0.0206,
+     -0.0319,
+     1.461
+    ],
+    [
+     0.0206,
+     -0.0005,
+     1.4988
+    ]
+   ]
+  },
+  {
+   "name": "Tibia.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of lower limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 1670,
+   "decimate": 0.03,
+   "verts": 27,
+   "tris": 50,
+   "bbox_model_zup": [
+    [
+     0.0393,
+     -0.007,
+     0.0771
+    ],
+    [
+     0.1158,
+     0.0614,
+     0.4329
+    ]
+   ]
+  },
+  {
+   "name": "Tibia.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of lower limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 1670,
+   "decimate": 0.03,
+   "verts": 27,
+   "tris": 50,
+   "bbox_model_zup": [
+    [
+     -0.1158,
+     -0.007,
+     0.0771
+    ],
+    [
+     -0.0393,
+     0.0614,
+     0.4329
+    ]
+   ]
+  },
+  {
+   "name": "Tongue",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Mouth",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 682,
+   "decimate": 0.35,
+   "verts": 121,
+   "tris": 238,
+   "bbox_model_zup": [
+    [
+     -0.017,
+     -0.0783,
+     1.4968
+    ],
+    [
+     0.017,
+     -0.0218,
+     1.5396
+    ]
+   ]
+  },
+  {
+   "name": "Trachea",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Tracheobronchial tree",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 4756,
+   "decimate": 0.3,
+   "verts": 723,
+   "tris": 1426,
+   "bbox_model_zup": [
+    [
+     -0.014,
+     -0.0177,
+     1.3552
+    ],
+    [
+     0.0135,
+     0.0212,
+     1.4606
+    ]
+   ]
+  },
+  {
+   "name": "Transverse colon",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Colon",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 16616,
+   "decimate": 0.06,
+   "verts": 498,
+   "tris": 996,
+   "bbox_model_zup": [
+    [
+     -0.0873,
+     -0.081,
+     1.0665
+    ],
+    [
+     0.0987,
+     -0.0062,
+     1.1352
+    ]
+   ]
+  },
+  {
+   "name": "Trapezium bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 500,
+   "decimate": 0.025,
+   "verts": 8,
+   "tris": 12,
+   "bbox_model_zup": [
+    [
+     0.2732,
+     -0.0346,
+     0.836
+    ],
+    [
+     0.2913,
+     -0.0159,
+     0.8562
+    ]
+   ]
+  },
+  {
+   "name": "Trapezium bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 500,
+   "decimate": 0.025,
+   "verts": 8,
+   "tris": 12,
+   "bbox_model_zup": [
+    [
+     -0.2913,
+     -0.0346,
+     0.836
+    ],
+    [
+     -0.2732,
+     -0.0159,
+     0.8562
+    ]
+   ]
+  },
+  {
+   "name": "Trapezoid bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 364,
+   "decimate": 0.025,
+   "verts": 6,
+   "tris": 8,
+   "bbox_model_zup": [
+    [
+     0.2714,
+     -0.0265,
+     0.8341
+    ],
+    [
+     0.2839,
+     -0.0141,
+     0.8457
+    ]
+   ]
+  },
+  {
+   "name": "Trapezoid bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 364,
+   "decimate": 0.025,
+   "verts": 6,
+   "tris": 8,
+   "bbox_model_zup": [
+    [
+     -0.2839,
+     -0.0265,
+     0.8341
+    ],
+    [
+     -0.2714,
+     -0.0141,
+     0.8457
+    ]
+   ]
+  },
+  {
+   "name": "Triquetrum bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 176,
+   "decimate": 0.025,
+   "verts": 4,
+   "tris": 4,
+   "bbox_model_zup": [
+    [
+     0.2395,
+     -0.0262,
+     0.8411
+    ],
+    [
+     0.2493,
+     -0.0125,
+     0.8514
+    ]
+   ]
+  },
+  {
+   "name": "Triquetrum bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 176,
+   "decimate": 0.025,
+   "verts": 4,
+   "tris": 4,
+   "bbox_model_zup": [
+    [
+     -0.2493,
+     -0.0262,
+     0.8411
+    ],
+    [
+     -0.2395,
+     -0.0125,
+     0.8514
+    ]
+   ]
+  },
+  {
+   "name": "Twelfth rib.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Floating ribs",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 3002,
+   "decimate": 0.025,
+   "verts": 39,
+   "tris": 74,
+   "bbox_model_zup": [
+    [
+     0.0193,
+     0.0234,
+     1.0562
+    ],
+    [
+     0.0856,
+     0.0677,
+     1.1546
+    ]
+   ]
+  },
+  {
+   "name": "Twelfth rib.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Floating ribs",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 3002,
+   "decimate": 0.025,
+   "verts": 39,
+   "tris": 74,
+   "bbox_model_zup": [
+    [
+     -0.0856,
+     0.0234,
+     1.0562
+    ],
+    [
+     -0.0193,
+     0.0677,
+     1.1546
+    ]
+   ]
+  },
+  {
+   "name": "Ulna.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 904,
+   "decimate": 0.025,
+   "verts": 13,
+   "tris": 22,
+   "bbox_model_zup": [
+    [
+     0.2043,
+     -0.0207,
+     0.861
+    ],
+    [
+     0.2501,
+     0.0626,
+     1.1116
+    ]
+   ]
+  },
+  {
+   "name": "Ulna.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of free part of upper limb",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 904,
+   "decimate": 0.025,
+   "verts": 13,
+   "tris": 22,
+   "bbox_model_zup": [
+    [
+     -0.2501,
+     -0.0207,
+     0.861
+    ],
+    [
+     -0.2043,
+     0.0626,
+     1.1116
+    ]
+   ]
+  },
+  {
+   "name": "Upper canine.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Anterior teeth",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 1470,
+   "decimate": 0.08,
+   "verts": 60,
+   "tris": 116,
+   "bbox_model_zup": [
+    [
+     0.0125,
+     -0.0859,
+     1.527
+    ],
+    [
+     0.0217,
+     -0.0768,
+     1.5577
+    ]
+   ]
+  },
+  {
+   "name": "Upper canine.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Anterior teeth",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 1470,
+   "decimate": 0.08,
+   "verts": 60,
+   "tris": 116,
+   "bbox_model_zup": [
+    [
+     -0.0217,
+     -0.0859,
+     1.527
+    ],
+    [
+     -0.0125,
+     -0.0768,
+     1.5577
+    ]
+   ]
+  },
+  {
+   "name": "Upper first molar tooth.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Posterior teeth",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 2176,
+   "decimate": 0.08,
+   "verts": 89,
+   "tris": 174,
+   "bbox_model_zup": [
+    [
+     0.0186,
+     -0.0649,
+     1.5316
+    ],
+    [
+     0.0299,
+     -0.0534,
+     1.5557
+    ]
+   ]
+  },
+  {
+   "name": "Upper first molar tooth.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Posterior teeth",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 2176,
+   "decimate": 0.08,
+   "verts": 89,
+   "tris": 174,
+   "bbox_model_zup": [
+    [
+     -0.0299,
+     -0.0649,
+     1.5316
+    ],
+    [
+     -0.0186,
+     -0.0534,
+     1.5557
+    ]
+   ]
+  },
+  {
+   "name": "Upper first premolar.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Posterior teeth",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 1684,
+   "decimate": 0.08,
+   "verts": 69,
+   "tris": 134,
+   "bbox_model_zup": [
+    [
+     0.0152,
+     -0.0779,
+     1.5287
+    ],
+    [
+     0.0247,
+     -0.0698,
+     1.5564
+    ]
+   ]
+  },
+  {
+   "name": "Upper first premolar.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Posterior teeth",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 1684,
+   "decimate": 0.08,
+   "verts": 69,
+   "tris": 134,
+   "bbox_model_zup": [
+    [
+     -0.0247,
+     -0.0779,
+     1.5287
+    ],
+    [
+     -0.0152,
+     -0.0698,
+     1.5564
+    ]
+   ]
+  },
+  {
+   "name": "Upper lateral incisor.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Anterior teeth",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 1454,
+   "decimate": 0.08,
+   "verts": 60,
+   "tris": 116,
+   "bbox_model_zup": [
+    [
+     0.0065,
+     -0.0902,
+     1.5256
+    ],
+    [
+     0.016,
+     -0.0791,
+     1.5538
+    ]
+   ]
+  },
+  {
+   "name": "Upper lateral incisor.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Anterior teeth",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 1454,
+   "decimate": 0.08,
+   "verts": 60,
+   "tris": 116,
+   "bbox_model_zup": [
+    [
+     -0.016,
+     -0.0902,
+     1.5256
+    ],
+    [
+     -0.0065,
+     -0.0791,
+     1.5538
+    ]
+   ]
+  },
+  {
+   "name": "Upper medial incisor.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Anterior teeth",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 1368,
+   "decimate": 0.08,
+   "verts": 56,
+   "tris": 108,
+   "bbox_model_zup": [
+    [
+     0.0002,
+     -0.0932,
+     1.5262
+    ],
+    [
+     0.0089,
+     -0.0807,
+     1.552
+    ]
+   ]
+  },
+  {
+   "name": "Upper medial incisor.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Anterior teeth",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 1368,
+   "decimate": 0.08,
+   "verts": 56,
+   "tris": 108,
+   "bbox_model_zup": [
+    [
+     -0.0089,
+     -0.0932,
+     1.5262
+    ],
+    [
+     -0.0002,
+     -0.0807,
+     1.552
+    ]
+   ]
+  },
+  {
+   "name": "Upper second molar tooth.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Posterior teeth",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 1844,
+   "decimate": 0.08,
+   "verts": 75,
+   "tris": 146,
+   "bbox_model_zup": [
+    [
+     0.018,
+     -0.0554,
+     1.535
+    ],
+    [
+     0.0294,
+     -0.0459,
+     1.5572
+    ]
+   ]
+  },
+  {
+   "name": "Upper second molar tooth.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Posterior teeth",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 1844,
+   "decimate": 0.08,
+   "verts": 75,
+   "tris": 146,
+   "bbox_model_zup": [
+    [
+     -0.0294,
+     -0.0554,
+     1.535
+    ],
+    [
+     -0.018,
+     -0.0459,
+     1.5572
+    ]
+   ]
+  },
+  {
+   "name": "Upper second premolar.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Posterior teeth",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 1554,
+   "decimate": 0.08,
+   "verts": 64,
+   "tris": 124,
+   "bbox_model_zup": [
+    [
+     0.0185,
+     -0.0717,
+     1.5296
+    ],
+    [
+     0.0277,
+     -0.0641,
+     1.555
+    ]
+   ]
+  },
+  {
+   "name": "Upper second premolar.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Posterior teeth",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 1554,
+   "decimate": 0.08,
+   "verts": 64,
+   "tris": 124,
+   "bbox_model_zup": [
+    [
+     -0.0277,
+     -0.0717,
+     1.5296
+    ],
+    [
+     -0.0185,
+     -0.0641,
+     1.555
+    ]
+   ]
+  },
+  {
+   "name": "Uvula of palate",
+   "side": "mid",
+   "system": "Visceral systems",
+   "group": "Mouth",
+   "tissues": [
+    "other"
+   ],
+   "tris_source": 1502,
+   "decimate": 0.35,
+   "verts": 264,
+   "tris": 524,
+   "bbox_model_zup": [
+    [
+     -0.0025,
+     -0.0179,
+     1.5409
+    ],
+    [
+     0.0025,
+     -0.0134,
+     1.5502
+    ]
+   ]
+  },
+  {
+   "name": "Vastus intermedius muscle.l",
+   "side": "l",
+   "system": "Muscular system",
+   "group": "Anterior compartment of thigh",
+   "tissues": [
+    "connective",
+    "muscle"
+   ],
+   "tris_source": 6164,
+   "decimate": 0.15,
+   "verts": 456,
+   "tris": 924,
+   "bbox_model_zup": [
+    [
+     0.0772,
+     -0.0379,
+     0.3989
+    ],
+    [
+     0.133,
+     0.0096,
+     0.8069
+    ]
+   ]
+  },
+  {
+   "name": "Vastus lateralis muscle.l",
+   "side": "l",
+   "system": "Muscular system",
+   "group": "Anterior compartment of thigh",
+   "tissues": [
+    "connective",
+    "muscle"
+   ],
+   "tris_source": 9356,
+   "decimate": 0.15,
+   "verts": 701,
+   "tris": 1402,
+   "bbox_model_zup": [
+    [
+     0.0851,
+     -0.0434,
+     0.3835
+    ],
+    [
+     0.1587,
+     0.0359,
+     0.8401
+    ]
+   ]
+  },
+  {
+   "name": "Vastus medialis muscle.l",
+   "side": "l",
+   "system": "Muscular system",
+   "group": "Anterior compartment of thigh",
+   "tissues": [
+    "connective",
+    "muscle"
+   ],
+   "tris_source": 6460,
+   "decimate": 0.15,
+   "verts": 486,
+   "tris": 968,
+   "bbox_model_zup": [
+    [
+     0.0337,
+     -0.0487,
+     0.3849
+    ],
+    [
+     0.1039,
+     0.0194,
+     0.7919
+    ]
+   ]
+  },
+  {
+   "name": "Vertebra C3",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Cervical vertebrae",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 2440,
+   "decimate": 0.04,
+   "verts": 44,
+   "tris": 96,
+   "bbox_model_zup": [
+    [
+     -0.0275,
+     -0.0009,
+     1.4925
+    ],
+    [
+     0.0275,
+     0.0543,
+     1.519
+    ]
+   ]
+  },
+  {
+   "name": "Vertebra C4",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Cervical vertebrae",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 1940,
+   "decimate": 0.04,
+   "verts": 40,
+   "tris": 76,
+   "bbox_model_zup": [
+    [
+     -0.0289,
+     -0.0006,
+     1.4805
+    ],
+    [
+     0.0291,
+     0.0529,
+     1.5061
+    ]
+   ]
+  },
+  {
+   "name": "Vertebra C5",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Cervical vertebrae",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 2336,
+   "decimate": 0.04,
+   "verts": 42,
+   "tris": 92,
+   "bbox_model_zup": [
+    [
+     -0.0309,
+     0.0024,
+     1.4691
+    ],
+    [
+     0.0309,
+     0.0579,
+     1.491
+    ]
+   ]
+  },
+  {
+   "name": "Vertebra C6",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Cervical vertebrae",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 2304,
+   "decimate": 0.04,
+   "verts": 42,
+   "tris": 92,
+   "bbox_model_zup": [
+    [
+     -0.0299,
+     0.0039,
+     1.4539
+    ],
+    [
+     0.0299,
+     0.0667,
+     1.4793
+    ]
+   ]
+  },
+  {
+   "name": "Vertebra C7",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Cervical vertebrae",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 2164,
+   "decimate": 0.04,
+   "verts": 39,
+   "tris": 86,
+   "bbox_model_zup": [
+    [
+     -0.0365,
+     0.0101,
+     1.4385
+    ],
+    [
+     0.0365,
+     0.0764,
+     1.4655
+    ]
+   ]
+  },
+  {
+   "name": "Vertebra L1",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Lumbar vertebrae",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 3162,
+   "decimate": 0.04,
+   "verts": 63,
+   "tris": 126,
+   "bbox_model_zup": [
+    [
+     -0.0368,
+     -0.0126,
+     1.0734
+    ],
+    [
+     0.0368,
+     0.0707,
+     1.1335
+    ]
+   ]
+  },
+  {
+   "name": "Vertebra L2",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Lumbar vertebrae",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 2688,
+   "decimate": 0.04,
+   "verts": 53,
+   "tris": 106,
+   "bbox_model_zup": [
+    [
+     -0.043,
+     -0.0164,
+     1.0496
+    ],
+    [
+     0.043,
+     0.0649,
+     1.0999
+    ]
+   ]
+  },
+  {
+   "name": "Vertebra L3",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Lumbar vertebrae",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 3160,
+   "decimate": 0.04,
+   "verts": 83,
+   "tris": 126,
+   "bbox_model_zup": [
+    [
+     -0.0417,
+     -0.019,
+     1.0216
+    ],
+    [
+     0.0417,
+     0.0664,
+     1.0664
+    ]
+   ]
+  },
+  {
+   "name": "Vertebra L4",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Lumbar vertebrae",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 3804,
+   "decimate": 0.04,
+   "verts": 76,
+   "tris": 152,
+   "bbox_model_zup": [
+    [
+     -0.0449,
+     -0.0165,
+     0.995
+    ],
+    [
+     0.0444,
+     0.0676,
+     1.0372
+    ]
+   ]
+  },
+  {
+   "name": "Vertebra L5",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Lumbar vertebrae",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 4032,
+   "decimate": 0.04,
+   "verts": 80,
+   "tris": 160,
+   "bbox_model_zup": [
+    [
+     -0.0518,
+     -0.0127,
+     0.9576
+    ],
+    [
+     0.0518,
+     0.0695,
+     1.0085
+    ]
+   ]
+  },
+  {
+   "name": "Vertebra T1",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Thoracic vertebrae",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 1946,
+   "decimate": 0.04,
+   "verts": 38,
+   "tris": 76,
+   "bbox_model_zup": [
+    [
+     -0.0396,
+     0.0106,
+     1.4227
+    ],
+    [
+     0.0396,
+     0.0831,
+     1.4526
+    ]
+   ]
+  },
+  {
+   "name": "Vertebra T10",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Thoracic vertebrae",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 3058,
+   "decimate": 0.04,
+   "verts": 61,
+   "tris": 122,
+   "bbox_model_zup": [
+    [
+     -0.038,
+     0.0143,
+     1.1675
+    ],
+    [
+     0.0381,
+     0.0914,
+     1.2272
+    ]
+   ]
+  },
+  {
+   "name": "Vertebra T11",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Thoracic vertebrae",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 1798,
+   "decimate": 0.04,
+   "verts": 35,
+   "tris": 70,
+   "bbox_model_zup": [
+    [
+     -0.0302,
+     0.0045,
+     1.1419
+    ],
+    [
+     0.0302,
+     0.0843,
+     1.1968
+    ]
+   ]
+  },
+  {
+   "name": "Vertebra T12",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Thoracic vertebrae",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 2586,
+   "decimate": 0.04,
+   "verts": 51,
+   "tris": 102,
+   "bbox_model_zup": [
+    [
+     -0.0233,
+     -0.0035,
+     1.1127
+    ],
+    [
+     0.0233,
+     0.0778,
+     1.1658
+    ]
+   ]
+  },
+  {
+   "name": "Vertebra T2",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Thoracic vertebrae",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 2142,
+   "decimate": 0.04,
+   "verts": 42,
+   "tris": 84,
+   "bbox_model_zup": [
+    [
+     -0.0379,
+     0.0165,
+     1.4025
+    ],
+    [
+     0.0379,
+     0.089,
+     1.4379
+    ]
+   ]
+  },
+  {
+   "name": "Vertebra T3",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Thoracic vertebrae",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 2344,
+   "decimate": 0.04,
+   "verts": 46,
+   "tris": 92,
+   "bbox_model_zup": [
+    [
+     -0.0345,
+     0.0213,
+     1.3781
+    ],
+    [
+     0.0345,
+     0.1004,
+     1.4197
+    ]
+   ]
+  },
+  {
+   "name": "Vertebra T4",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Thoracic vertebrae",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 2216,
+   "decimate": 0.04,
+   "verts": 44,
+   "tris": 88,
+   "bbox_model_zup": [
+    [
+     -0.0351,
+     0.0301,
+     1.352
+    ],
+    [
+     0.0351,
+     0.1009,
+     1.3972
+    ]
+   ]
+  },
+  {
+   "name": "Vertebra T5",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Thoracic vertebrae",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 2152,
+   "decimate": 0.04,
+   "verts": 43,
+   "tris": 86,
+   "bbox_model_zup": [
+    [
+     -0.0367,
+     0.0333,
+     1.3198
+    ],
+    [
+     0.0367,
+     0.0978,
+     1.3745
+    ]
+   ]
+  },
+  {
+   "name": "Vertebra T6",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Thoracic vertebrae",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 1780,
+   "decimate": 0.04,
+   "verts": 35,
+   "tris": 70,
+   "bbox_model_zup": [
+    [
+     -0.0366,
+     0.0336,
+     1.2836
+    ],
+    [
+     0.0374,
+     0.1009,
+     1.3458
+    ]
+   ]
+  },
+  {
+   "name": "Vertebra T7",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Thoracic vertebrae",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 2794,
+   "decimate": 0.04,
+   "verts": 55,
+   "tris": 110,
+   "bbox_model_zup": [
+    [
+     -0.0378,
+     0.0312,
+     1.2547
+    ],
+    [
+     0.0378,
+     0.0983,
+     1.3171
+    ]
+   ]
+  },
+  {
+   "name": "Vertebra T8",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Thoracic vertebrae",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 1733,
+   "decimate": 0.04,
+   "verts": 93,
+   "tris": 190,
+   "bbox_model_zup": [
+    [
+     -0.0231,
+     0.0266,
+     1.2258
+    ],
+    [
+     0.0233,
+     0.1005,
+     1.2774
+    ]
+   ]
+  },
+  {
+   "name": "Vertebra T9",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Thoracic vertebrae",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 2978,
+   "decimate": 0.04,
+   "verts": 59,
+   "tris": 118,
+   "bbox_model_zup": [
+    [
+     -0.037,
+     0.0209,
+     1.1994
+    ],
+    [
+     0.037,
+     0.0966,
+     1.2559
+    ]
+   ]
+  },
+  {
+   "name": "Vomer",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Bones of cranium",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 1022,
+   "decimate": 0.02,
+   "verts": 13,
+   "tris": 20,
+   "bbox_model_zup": [
+    [
+     -0.0042,
+     -0.0825,
+     1.5572
+    ],
+    [
+     0.0048,
+     -0.0231,
+     1.5792
+    ]
+   ]
+  },
+  {
+   "name": "Xiphoid process",
+   "side": "mid",
+   "system": "Skeletal system",
+   "group": "Sternum",
+   "tissues": [
+    "bone",
+    "cartilage"
+   ],
+   "tris_source": 913,
+   "decimate": 0.025,
+   "verts": 31,
+   "tris": 61,
+   "bbox_model_zup": [
+    [
+     -0.0124,
+     -0.1114,
+     1.2209
+    ],
+    [
+     0.0121,
+     -0.0959,
+     1.2436
+    ]
+   ]
+  },
+  {
+   "name": "Zygomatic bone.l",
+   "side": "l",
+   "system": "Skeletal system",
+   "group": "Bones of cranium",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 1328,
+   "decimate": 0.02,
+   "verts": 15,
+   "tris": 26,
+   "bbox_model_zup": [
+    [
+     0.033,
+     -0.0714,
+     1.5542
+    ],
+    [
+     0.0611,
+     -0.0325,
+     1.6079
+    ]
+   ]
+  },
+  {
+   "name": "Zygomatic bone.r",
+   "side": "r",
+   "system": "Skeletal system",
+   "group": "Bones of cranium",
+   "tissues": [
+    "bone"
+   ],
+   "tris_source": 1328,
+   "decimate": 0.02,
+   "verts": 15,
+   "tris": 26,
+   "bbox_model_zup": [
+    [
+     -0.0611,
+     -0.0714,
+     1.5542
+    ],
+    [
+     -0.033,
+     -0.0325,
+     1.6079
+    ]
+   ]
+  }
+ ]
+}

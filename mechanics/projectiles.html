@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Projectiles</title>
+<style>
+:root {
+    --paper: #f5f0e6; --ink: #1f2a2c; --muted: #6b7274; --line: #d9d1c0;
+    --card: #fbf8f1; --surface: #fffdf9; --soft: #444d4f; --accent: #d9593d; --teal: #2f6f6b; --gold: #c9962b;
+    --m1: #2f6f6b; --m2: #b57f10; --m3: #7a56c4;
+    --sky: #eef3f1; --ground: #d3c6a6; --grid: rgba(31,42,44,0.10);
+    --plat: #8c7b63; --trunk: #6b4f33; --leaf: #4f8f4a; --ball: #1f2a2c; --hl: rgba(217,89,61,0.28);
+    --shade: rgba(20,25,26,0.62);
+}
+@media (prefers-color-scheme: dark) {
+    :root {
+        --paper: #14191a; --ink: #ece7da; --muted: #8f9895; --line: #2c3535; --card: #1a2122; --surface: #1f2829;
+        --soft: #c2cac6; --accent: #ec7a5e; --teal: #5fb0a9; --gold: #e0b252;
+        --m1: #5fb0a9; --m2: #e0b252; --m3: #a98df0;
+        --sky: #182123; --ground: #3a3426; --grid: rgba(236,231,218,0.10);
+        --plat: #5b5140; --trunk: #8a6a47; --leaf: #5f9f58; --ball: #ece7da; --hl: rgba(236,122,94,0.30);
+        --shade: rgba(0,0,0,0.70);
+    }
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { font-size: clamp(14px, 0.5vw + 10.5px, 22px); }
+body {
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    background: var(--paper); color: var(--ink);
+    height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+}
+button, select, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+
+/* ── top bar ── */
+.top { display: flex; align-items: center; gap: 1rem; padding: 0.55rem 0.9rem; flex-wrap: wrap; }
+.top h1 { font-family: Georgia, 'Iowan Old Style', serif; font-weight: 400; font-size: 1.7rem; letter-spacing: -0.5px; }
+.top h1 em { color: var(--accent); }
+.back { color: var(--muted); font-size: 0.85rem; text-decoration: none; border-bottom: 1px solid var(--line); }
+.back:hover { color: var(--accent); border-color: var(--accent); }
+.top .sp { flex: 1; }
+.pill, .top select {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
+    padding: 0.35rem 0.9rem; font-size: 0.9rem; color: var(--ink);
+}
+.pill:hover, .top select:hover { border-color: var(--ink); }
+.pill.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.pill.hot { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+
+/* ── layout ── */
+.app { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 27rem; gap: 0.7rem; padding: 0 0.9rem 0.9rem; }
+.stage-col { display: flex; flex-direction: column; gap: 0.5rem; min-height: 0; }
+.stage { position: relative; flex: 1; min-height: 14rem; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--sky); }
+#cv { width: 100%; height: 100%; display: block; touch-action: none; }
+#qbox {
+    position: relative; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent);
+    border-radius: 8px; padding: 0.5rem 2rem 0.5rem 0.8rem; font-size: 0.95rem; line-height: 1.4;
+}
+#qbox[hidden] { display: none; }
+#qbox button { position: absolute; right: 0.3rem; top: 0.15rem; border: 0; background: none; font-size: 1.2rem; color: var(--muted); }
+#hint {
+    position: absolute; right: 0.7rem; top: 0.7rem; background: var(--surface); border: 1px solid var(--line);
+    border-radius: 999px; padding: 0.3rem 0.8rem; font-size: 0.85rem; color: var(--soft); max-width: 45%;
+}
+
+.controls { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 0.6rem 0.8rem; display: flex; flex-direction: column; gap: 0.55rem; }
+#pars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.9rem; }
+.par { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.par label { font-size: 0.85rem; color: var(--soft); }
+.par label b { color: var(--ink); font-family: Georgia, serif; font-style: italic; margin-right: 0.3rem; }
+.inp { display: flex; align-items: baseline; gap: 0.35rem; }
+.inp input[type=number] {
+    width: 5.5rem; background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 0.15rem 0.4rem; font-size: 1.15rem; font-weight: 600;
+}
+.inp span { color: var(--muted); font-size: 0.85rem; }
+input[type=range] { width: 100%; accent-color: var(--accent); }
+.row2 { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.9rem; }
+.grp { display: flex; align-items: center; gap: 0.4rem; }
+.grp > span.t { font-size: 0.85rem; color: var(--soft); }
+.chip {
+    width: 2.1rem; height: 2.1rem; border-radius: 50%; border: 2px solid var(--c); background: transparent; color: var(--c); font-weight: 700; font-size: 1rem;
+}
+.chip.placed { background: var(--c); color: #fff; }
+.chip.armed { box-shadow: 0 0 0 3px var(--paper), 0 0 0 5px var(--c); }
+.chip:nth-child(1) { --c: var(--m1); } .chip:nth-child(2) { --c: var(--m2); } .chip:nth-child(3) { --c: var(--m3); }
+.btn { background: var(--ink); color: var(--paper); border: 0; border-radius: 999px; padding: 0.4rem 1.1rem; font-weight: 600; }
+.btn.alt { background: var(--surface); color: var(--ink); border: 1px solid var(--line); font-weight: 500; }
+.btn:hover { filter: brightness(1.15); }
+#scrub { width: 9rem; flex: none; }
+#tLbl { font-variant-numeric: tabular-nums; min-width: 5.5rem; font-size: 0.95rem; }
+.row2 label.chk { display: flex; align-items: center; gap: 0.3rem; font-size: 0.88rem; color: var(--soft); }
+.row2 select { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 0.15rem 0.3rem; }
+#dragBox { display: none; align-items: center; gap: 0.5rem; }
+#dragBox.on { display: flex; }
+#dragBox input[type=range] { width: 8rem; }
+
+/* ── side panel ── */
+.side { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 0.8rem 0.9rem; overflow-y: auto; display: flex; flex-direction: column; gap: 0.7rem; min-height: 0; }
+.side h2 { font-family: Georgia, serif; font-weight: 400; font-size: 1.35rem; }
+.ft { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.ft label { font-size: 0.85rem; color: var(--soft); display: flex; align-items: center; gap: 0.35rem; }
+.ft select { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 0.3rem 0.4rem; font-size: 1rem; font-weight: 600; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.seg button { border: 0; background: transparent; padding: 0.3rem 0.8rem; font-size: 0.85rem; color: var(--soft); }
+.seg button.on { background: var(--ink); color: var(--paper); }
+#segNote { font-size: 0.85rem; color: var(--muted); min-height: 1.2em; }
+.mx { display: grid; grid-template-columns: 1.15fr 1fr; gap: 0.8rem; }
+.mh { font-size: 0.78rem; letter-spacing: 0.6px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.3rem; }
+.vcol { border-left: 3px solid var(--ink); border-radius: 10px 0 0 10px; padding-left: 0.6rem; }
+.hcol { border-left: 3px solid var(--ink); padding-left: 0.6rem; }
+.cell { display: flex; flex-direction: column; align-items: stretch; width: 100%; text-align: left; background: none; border: 0; padding: 0.15rem 0; }
+.cell .row { display: flex; align-items: center; gap: 0.4rem; }
+.cell .lab { width: 2rem; font-family: Georgia, serif; font-style: italic; font-size: 1.15rem; }
+.cell .box {
+    flex: 1; min-width: 0; display: flex; align-items: baseline; justify-content: space-between; gap: 0.3rem;
+    border: 2px dashed var(--line); border-radius: 8px; padding: 0.3rem 0.5rem; background: var(--paper); min-height: 2.3rem;
+}
+.cell:hover .box { border-color: var(--accent); }
+.cell .val { font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--muted); }
+.cell .unit { font-size: 0.78rem; color: var(--muted); }
+.cell.on .box { border-style: solid; border-color: var(--teal); }
+.cell.on .val { color: var(--ink); }
+.cell .how { margin-left: 2.4rem; font-size: 0.74rem; color: var(--muted); line-height: 1.2; }
+.btns { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.empty { color: var(--muted); font-style: italic; padding: 0.6rem 0; line-height: 1.4; }
+.side details { border-top: 1px solid var(--line); padding-top: 0.5rem; }
+.side summary { cursor: pointer; font-size: 0.9rem; color: var(--soft); }
+.mrow { display: flex; align-items: center; gap: 0.35rem; margin-top: 0.4rem; flex-wrap: wrap; font-size: 0.85rem; }
+.mrow .dot { width: 1.5rem; height: 1.5rem; border-radius: 50%; background: var(--c); color: #fff; font-weight: 700; text-align: center; line-height: 1.5rem; font-size: 0.85rem; }
+.mrow:nth-of-type(1) { --c: var(--m1); } .mrow:nth-of-type(2) { --c: var(--m2); } .mrow:nth-of-type(3) { --c: var(--m3); }
+.mrow input { width: 4.4rem; background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 0.1rem 0.3rem; }
+.mrow input:disabled { opacity: 0.4; }
+.mini { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 0.1rem 0.45rem; font-size: 0.8rem; }
+.mini:hover { border-color: var(--accent); }
+.mini:disabled { opacity: 0.4; cursor: default; }
+#dragNote { display: none; font-size: 0.85rem; color: var(--soft); line-height: 1.45; border-top: 1px solid var(--line); padding-top: 0.5rem; }
+#dragNote.on { display: block; }
+#dragNote b { color: var(--ink); }
+#dragNote ul { margin: 0.3rem 0 0.3rem 1.1rem; }
+.fine { font-size: 0.72rem; color: var(--muted); }
+
+/* ── tour ── */
+#tour { position: fixed; inset: 0; z-index: 50; display: none; }
+#tour.on { display: block; }
+#spot { position: fixed; border-radius: 10px; box-shadow: 0 0 0 9999px var(--shade); transition: all 0.25s; pointer-events: none; border: 2px solid var(--accent); }
+#tcard {
+    position: fixed; width: min(24rem, calc(100vw - 1.5rem)); background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+    padding: 0.9rem 1rem; box-shadow: 0 10px 30px rgba(0,0,0,0.3); font-size: 0.95rem; line-height: 1.5;
+}
+#tcard h3 { font-family: Georgia, serif; font-weight: 400; font-size: 1.25rem; margin-bottom: 0.3rem; }
+#tcard .nav { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.7rem; }
+#tcard .nav .n { color: var(--muted); font-size: 0.8rem; flex: 1; }
+
+@media (max-width: 900px) {
+    body { height: auto; overflow: auto; }
+    .app { grid-template-columns: 1fr; }
+    .stage { min-height: 22rem; }
+    #pars { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    #hint { display: none; }
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+    <a class="back" href="index.html">← Mechanics</a>
+    <h1><em>Projectiles</em></h1>
+    <span class="sp"></span>
+    <select id="preset" aria-label="Example"></select>
+    <button class="pill hot" id="tourBtn">? Tour</button>
+</header>
+
+<main class="app">
+    <section class="stage-col">
+        <div id="qbox" hidden></div>
+        <div class="stage" id="stage">
+            <canvas id="cv"></canvas>
+            <div id="hint"></div>
+        </div>
+        <div class="controls">
+            <div id="pars"></div>
+            <div class="row2" id="row2">
+                <div class="grp" id="markerRow"><span class="t">Markers</span><span id="chips"><button class="chip" data-k="0">1</button> <button class="chip" data-k="1">2</button> <button class="chip" data-k="2">3</button></span></div>
+                <div class="grp" id="playRow">
+                    <button class="btn" id="play">▶ Fire</button>
+                    <button class="btn alt" id="restart" title="Back to the start">⟲</button>
+                    <input type="range" id="scrub" min="0" max="1" step="0.001" value="0" aria-label="Time">
+                    <span id="tLbl">t = 0 s</span>
+                    <select id="speed" aria-label="Playback speed"><option value="0.25">¼×</option><option value="0.5">½×</option><option value="1" selected>1×</option><option value="2">2×</option></select>
+                </div>
+                <label class="chk"><input type="checkbox" id="vecChk" checked> velocity arrows</label>
+                <label class="chk"><input type="checkbox" id="lockChk"> lock zoom</label>
+                <div class="grp" id="dragBoxWrap"><label class="chk"><input type="checkbox" id="dragChk"> air resistance</label>
+                    <span id="dragBox"><input type="range" id="dragK" min="0.0005" max="0.01" step="0.0005" value="0.004" aria-label="Drag strength"><span class="fine" id="dragLbl"></span></span></div>
+            </div>
+        </div>
+    </section>
+
+    <aside class="side" id="side">
+        <h2>Motion matrix</h2>
+        <div class="ft" id="fromTo">
+            <label>From <select id="selFrom"></select></label>
+            <label>to <select id="selTo"></select></label>
+        </div>
+        <div id="segNote"></div>
+        <div class="seg" id="signSeg"><button id="signUp">↑ up is +</button><button id="signDown">↓ down is +</button></div>
+        <div id="matrix"></div>
+        <div class="btns" id="matrixBtns"><button class="btn alt" id="revealAll">Reveal all</button><button class="btn alt" id="hideAll">Hide all</button></div>
+        <details id="typed">
+            <summary>Place markers by typing</summary>
+            <div id="mrows"></div>
+            <div class="fine" style="margin-top:0.4rem">Typing shows where each marker is, so leave this shut while pupils predict.</div>
+        </details>
+        <div id="dragNote"></div>
+    </aside>
+</main>
+
+<div id="tour"><div id="spot"></div><div id="tcard"><h3 id="tTitle"></h3><div id="tText"></div>
+    <div class="nav"><span class="n" id="tN"></span><button class="btn alt" id="tPrev">Back</button><button class="btn" id="tNext">Next</button><button class="btn alt" id="tSkip" title="Close the tour">✕</button></div></div></div>
+
+<script>
+/* ============================================================
+   MODEL — no DOM in here. test-projectiles.js runs this region.
+   Everything is a closed form of t. The only integration is the
+   air-resistance path, done once when a setting changes and
+   played back by lookup.
+   ============================================================ */
+/* MODEL:BEGIN */
+const DEG = Math.PI / 180;
+
+function launch(p) {
+    const r = p.ang * DEG;
+    let vx = p.u * Math.cos(r);
+    if (Math.abs(vx) < 1e-9) vx = 0;
+    const vy = p.u * Math.sin(r);
+    const disc = vy * vy + 2 * p.g * p.h;
+    const T = disc < 0 ? 0 : (vy + Math.sqrt(disc)) / p.g;
+    const apexT = vy > 0 ? vy / p.g : 0;
+    return {
+        u: p.u, ang: p.ang, h: p.h, g: p.g, vx, vy, T: Math.max(T, 0),
+        apexT, apexY: p.h + (vy > 0 ? vy * vy / (2 * p.g) : 0), range: vx * Math.max(T, 0)
+    };
+}
+function posAt(L, t) { return { x: L.vx * t, y: L.h + L.vy * t - 0.5 * L.g * t * t }; }
+function velAt(L, t) { return { vx: L.vx, vy: L.vy - L.g * t }; }
+
+/* the time(s) at which the path is at height y: 'up' is the first, 'down' the second */
+function timeAtHeight(L, y, branch) {
+    const c = L.vy * L.vy - 2 * L.g * (y - L.h);
+    if (c < 0) return null;
+    const r = Math.sqrt(c);
+    const t = branch === 'down' ? (L.vy + r) / L.g : (L.vy - r) / L.g;
+    return t < -1e-12 ? null : Math.max(t, 0);
+}
+function timeAtX(L, x) { return L.vx > 0 ? x / L.vx : null; }
+function resolveSpec(L, s) {
+    let t = null;
+    if (s.land) t = L.T;
+    else if (s.apex) t = L.apexT;
+    else if (s.x != null) t = timeAtX(L, s.x);
+    else if (s.y != null) t = timeAtHeight(L, s.y, s.branch);
+    else if (s.t != null) t = s.t;
+    return t == null ? null : Math.min(Math.max(t, 0), L.T);
+}
+
+/* One segment of flight, in the sign convention sign (+1 up is +, -1 down is +).
+   Vertical U is the vertical velocity at the START of the segment, V at its end. */
+function segment(L, t0, t1, sign) {
+    const p0 = posAt(L, t0), p1 = posAt(L, t1), v0 = velAt(L, t0), v1 = velAt(L, t1);
+    return {
+        v: { S: sign * (p1.y - p0.y), U: sign * v0.vy, V: sign * v1.vy, A: -sign * L.g, T: t1 - t0 },
+        h: { S: p1.x - p0.x, U: L.vx, T: t1 - t0 }
+    };
+}
+const CELLS = [
+    ['v', 'S', 'm'], ['v', 'U', 'm/s'], ['v', 'V', 'm/s'], ['v', 'A', 'm/s²'], ['v', 'T', 's'],
+    ['h', 'S', 'm'], ['h', 'U', 'm/s'], ['h', 'T', 's']
+];
+/* a hint for each cell, shown once it is revealed */
+function howText(dir, name, fromLaunch, sign) {
+    if (dir === 'v') {
+        if (name === 'S') return 's = ut + ½at²';
+        if (name === 'U') return fromLaunch ? 'u sin θ' : 'u sin θ − gt (from the launch)';
+        if (name === 'V') return 'v = u + at';
+        if (name === 'A') return sign > 0 ? 'a = −g (down is negative)' : 'a = +g (down is positive)';
+        return 'solve the vertical equation';
+    }
+    if (name === 'S') return 's = ut';
+    if (name === 'U') return 'u cos θ, constant';
+    return 'the same t as the vertical';
+}
+function fmt(x) {
+    if (!isFinite(x)) return '–';
+    if (Math.abs(x) < 5e-10) return '0';
+    return String(Number(x.toPrecision(3))).replace('-', '−');
+}
+
+/* Air resistance: a = −k|v|v. RK4, once per setting; played back by lookup. */
+function dragPath(L, k, dt) {
+    dt = dt || 0.004;
+    const xs = [0], ys = [L.h];
+    if (L.T <= 0) return { dt, xs, ys, T: 0, x1: 0, y1: L.h };
+    const acc = (vx, vy) => { const s = Math.hypot(vx, vy); return [-k * s * vx, -L.g - k * s * vy]; };
+    let x = 0, y = L.h, vx = L.vx, vy = L.vy, t = 0;
+    for (let i = 0; i < 400000; i++) {
+        const [a1x, a1y] = acc(vx, vy);
+        const v2x = vx + a1x * dt / 2, v2y = vy + a1y * dt / 2, [a2x, a2y] = acc(v2x, v2y);
+        const v3x = vx + a2x * dt / 2, v3y = vy + a2y * dt / 2, [a3x, a3y] = acc(v3x, v3y);
+        const v4x = vx + a3x * dt, v4y = vy + a3y * dt, [a4x, a4y] = acc(v4x, v4y);
+        const nx = x + dt / 6 * (vx + 2 * v2x + 2 * v3x + v4x);
+        const ny = y + dt / 6 * (vy + 2 * v2y + 2 * v3y + v4y);
+        const nvx = vx + dt / 6 * (a1x + 2 * a2x + 2 * a3x + a4x);
+        const nvy = vy + dt / 6 * (a1y + 2 * a2y + 2 * a3y + a4y);
+        if (ny < 0) {
+            const f = y / (y - ny);
+            return { dt, xs, ys, T: t + f * dt, x1: x + f * (nx - x), y1: 0 };
+        }
+        x = nx; y = ny; vx = nvx; vy = nvy; t += dt;
+        xs.push(x); ys.push(y);
+    }
+    return { dt, xs, ys, T: t, x1: x, y1: y };
+}
+function dragAt(D, t) {
+    if (t >= D.T) return { x: D.x1, y: D.y1, landed: true };
+    const n = D.xs.length;
+    const i = Math.floor(t / D.dt);
+    if (i >= n - 1) {
+        const t0 = (n - 1) * D.dt, f = (t - t0) / ((D.T - t0) || 1);
+        return { x: D.xs[n - 1] + f * (D.x1 - D.xs[n - 1]), y: D.ys[n - 1] + f * (D.y1 - D.ys[n - 1]), landed: false };
+    }
+    const f = t / D.dt - i;
+    return { x: D.xs[i] + f * (D.xs[i + 1] - D.xs[i]), y: D.ys[i] + f * (D.ys[i + 1] - D.ys[i]), landed: false };
+}
+
+/* worked examples. markers are specs resolved against the launch */
+const PRESETS = [
+    { id: 'free', name: 'Free play', p: { u: 20, ang: 50, h: 0, g: 9.81 }, markers: [{ apex: true }, { land: true }], sign: 1 },
+    {
+        id: 'coin', name: 'Coin off a table',
+        q: 'A coin rolls off the edge of a table at 0.40 m/s. It lands 0.20 m from the table leg. How high is the table?',
+        p: { u: 0.4, ang: 0, h: 0.5 * 9.81 * 0.5 * 0.5, g: 9.81 }, markers: [{ land: true }], sign: -1
+    },
+    {
+        id: 'cannon', name: 'Circus cannon',
+        q: 'A stuntman is fired from a cannon at 21.0 m/s, 45.0° above the horizontal. He must go through a hoop 9.0 m high, then land in a net at the height of the cannon. Where do the hoop and the net go?',
+        p: { u: 21, ang: 45, h: 0, g: 9.81 }, markers: [{ y: 9, branch: 'up' }, { land: true }], sign: 1
+    },
+    {
+        id: 'catapult', name: 'Catapult and the tree',
+        q: 'A catapult flings a rock from a castle wall 60.0 m high, at 80.0 m/s and 25° above the horizontal. A 75 m tree stands 76 m from the wall. Will the rock clear the tree? By how much?',
+        p: { u: 80, ang: 25, h: 60, g: 9.81 }, markers: [{ x: 76 }, { land: true }], sign: 1,
+        props: [{ type: 'tree', x: 76, h: 75 }]
+    },
+    {
+        id: 'apex', name: 'The top of the flight',
+        q: 'What is the vertical velocity at the highest point? Compare the time up with the time down.',
+        p: { u: 25, ang: 60, h: 0, g: 9.81 }, markers: [{ apex: true }, { land: true }], sign: 1
+    },
+    {
+        id: 'up', name: 'Straight up and back',
+        q: 'A ball is thrown straight up at 15 m/s. What are its displacement and its velocity when it comes back down to the hand?',
+        p: { u: 15, ang: 90, h: 0, g: 9.81 }, markers: [{ apex: true }, { land: true }], sign: 1
+    },
+    {
+        id: 'drag', name: 'Air resistance',
+        q: 'Switch air resistance on and off. What happens to the range, the time of flight and the height?',
+        p: { u: 40, ang: 40, h: 0, g: 9.81 }, markers: [{ apex: true }, { land: true }], sign: 1, drag: 0.004
+    }
+];
+/* MODEL:END */
+
+/* ============================================================
+   DRAW — the 2D canvas. Takes a context and plain data, so the
+   test can run every frame against a recording context.
+   ============================================================ */
+/* DRAW:BEGIN */
+function niceStep(span, n) {
+    const raw = span / n;
+    if (!(raw > 0) || !isFinite(raw)) return 1;
+    const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const f = raw / mag;
+    return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * mag;
+}
+function tickText(v, step) {
+    const dec = Math.max(0, -Math.floor(Math.log10(step) + 1e-9));
+    return v.toFixed(Math.min(dec, 6));
+}
+function fitView(L, W, H, lockS) {
+    const padL = 96, padR = 44, padT = 56, padB = 64;
+    let ww = Math.max(L.range, 0), wh = Math.max(L.apexY, 0);
+    if (ww <= 0 && wh <= 0) ww = wh = 1;
+    ww = Math.max(ww, wh * 0.3);
+    wh = Math.max(wh, ww * 0.12);
+    let s = Math.min((W - padL - padR) / ww, (H - padT - padB) / wh);
+    if (!(s > 0)) s = 1;
+    if (lockS) s = Math.min(s, lockS);
+    return { s, ox: padL, oy: H - padB, W, H, padL, padR, padT, padB };
+}
+function toScreen(v, x, y) { return [v.ox + x * v.s, v.oy - y * v.s]; }
+
+/* the t on the path whose screen position is nearest (px,py) */
+function nearestT(L, v, px, py) {
+    if (L.T <= 0) return { t: 0, d: Math.hypot(px - v.ox, py - (v.oy - L.h * v.s)) };
+    const dist = t => { const p = posAt(L, t), q = toScreen(v, p.x, p.y); return Math.hypot(q[0] - px, q[1] - py); };
+    let best = 0, bd = Infinity;
+    const N = 400;
+    for (let i = 0; i <= N; i++) { const t = L.T * i / N, d = dist(t); if (d < bd) { bd = d; best = t; } }
+    const lo = Math.max(0, best - L.T / N), hi = Math.min(L.T, best + L.T / N);
+    for (let i = 0; i <= 40; i++) { const t = lo + (hi - lo) * i / 40, d = dist(t); if (d < bd) { bd = d; best = t; } }
+    return { t: best, d: bd };
+}
+
+function drawScene(ctx, st) {
+    const { W, H, v, L, th, D } = st;
+    const fs = st.fs, mr = fs + 4;
+    const P = (x, y) => toScreen(v, x, y);
+    ctx.setTransform(st.dpr, 0, 0, st.dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = th.sky; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = th.ground; ctx.fillRect(0, v.oy, W, H - v.oy);
+
+    /* grid and axis labels */
+    const visW = (W - v.ox - 12) / v.s, visH = (v.oy - 16) / v.s;
+    const sx = niceStep(visW, 7), sy = niceStep(visH, 5);
+    ctx.font = fs + 'px system-ui, sans-serif';
+    ctx.lineWidth = 1; ctx.strokeStyle = th.grid; ctx.fillStyle = th.muted;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    for (let i = 0; i < 200 && i * sx <= visW; i++) {
+        const px = P(i * sx, 0)[0];
+        ctx.beginPath(); ctx.moveTo(px, 16); ctx.lineTo(px, v.oy); ctx.stroke();
+        ctx.fillText(tickText(i * sx, sx), px, v.oy + 8);
+    }
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    for (let i = 0; i < 200 && i * sy <= visH; i++) {
+        const py = P(0, i * sy)[1];
+        ctx.beginPath(); ctx.moveTo(v.ox - 70, py); ctx.lineTo(W, py); ctx.stroke();
+        ctx.fillText(tickText(i * sy, sy), v.ox - 76, py);
+    }
+    ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+    ctx.fillText('distance / m', W - 10, H - 8);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText('height / m', 10, 8);
+    ctx.strokeStyle = th.ink; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0, v.oy); ctx.lineTo(W, v.oy); ctx.stroke();
+
+    /* what the launch stands on, and any props */
+    if (L.h > 0) {
+        const pw = Math.min(v.padL - 14, 64), top = P(0, L.h)[1];
+        ctx.fillStyle = th.plat; ctx.fillRect(v.ox - pw, top, pw, v.oy - top);
+        ctx.fillStyle = th.ink; ctx.fillRect(v.ox - pw, top, pw, 3);
+    }
+    (st.props || []).forEach(pr => {
+        if (pr.type !== 'tree') return;
+        const [bx, by] = P(pr.x, 0), [, ty] = P(pr.x, pr.h);
+        const hh = by - ty, cr = Math.max(hh * 0.22, 8);
+        ctx.fillStyle = th.trunk; ctx.fillRect(bx - Math.max(hh * 0.025, 3), ty + cr, Math.max(hh * 0.05, 6), hh - cr);
+        ctx.fillStyle = th.leaf; ctx.beginPath(); ctx.arc(bx, ty + cr, cr, 0, 2 * Math.PI); ctx.fill();
+    });
+
+    /* the segment the matrix is about */
+    if (st.seg && L.T > 0) {
+        const { t0, t1 } = st.seg;
+        const a = posAt(L, t0), b = posAt(L, t1);
+        ctx.strokeStyle = th.hl; ctx.lineWidth = 12; ctx.lineCap = 'round';
+        ctx.beginPath();
+        for (let i = 0; i <= 60; i++) { const p = posAt(L, t0 + (t1 - t0) * i / 60), q = P(p.x, p.y); i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); }
+        ctx.stroke(); ctx.lineCap = 'butt';
+        const A = P(a.x, a.y), B = P(b.x, a.y), C = P(b.x, b.y);
+        ctx.strokeStyle = th.ink; ctx.lineWidth = 1.5; ctx.setLineDash([5, 5]);
+        ctx.beginPath(); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]); ctx.lineTo(C[0], C[1]); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = th.ink; ctx.textBaseline = 'middle';
+        if (Math.abs(B[0] - A[0]) > 30) { ctx.textAlign = 'center'; ctx.fillText('s', (A[0] + B[0]) / 2 - 4, A[1] + (C[1] < A[1] ? 14 : -14)); ctx.font = (fs - 3) + 'px system-ui'; ctx.fillText('H', (A[0] + B[0]) / 2 + 3, A[1] + (C[1] < A[1] ? 17 : -11)); ctx.font = fs + 'px system-ui'; }
+        if (Math.abs(C[1] - B[1]) > 30) { ctx.textAlign = 'left'; ctx.fillText('s', B[0] + 10, (B[1] + C[1]) / 2); ctx.font = (fs - 3) + 'px system-ui'; ctx.fillText('V', B[0] + 17, (B[1] + C[1]) / 2 + 3); ctx.font = fs + 'px system-ui'; }
+    }
+
+    /* the ideal path */
+    const trace = (f, n) => { for (let i = 0; i <= n; i++) { const p = f(i / n), q = P(p.x, p.y); i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); } };
+    ctx.strokeStyle = th.path; ctx.lineWidth = 3.5; ctx.beginPath();
+    trace(u => posAt(L, L.T * u), 240); ctx.stroke();
+    if (D) {
+        ctx.strokeStyle = th.drag; ctx.lineWidth = 3; ctx.setLineDash([9, 7]); ctx.beginPath();
+        trace(u => dragAt(D, D.T * u), 240); ctx.stroke(); ctx.setLineDash([]);
+        const e = P(D.x1, 0); ctx.beginPath(); ctx.moveTo(e[0] - 6, e[1] - 6); ctx.lineTo(e[0] + 6, e[1] + 6); ctx.moveTo(e[0] + 6, e[1] - 6); ctx.lineTo(e[0] - 6, e[1] + 6); ctx.stroke();
+    }
+
+    /* launch point and markers */
+    const disc = (x, y, col, text, ring, tcol) => {
+        const q = P(x, y);
+        if (ring) { ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(q[0], q[1], mr + 6, 0, 2 * Math.PI); ctx.stroke(); }
+        ctx.fillStyle = col; ctx.beginPath(); ctx.arc(q[0], q[1], mr, 0, 2 * Math.PI); ctx.fill();
+        ctx.fillStyle = tcol || '#fff'; ctx.font = 'bold ' + fs + 'px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(text, q[0], q[1] + 1); ctx.font = fs + 'px system-ui';
+    };
+    const lp = posAt(L, 0);
+    disc(lp.x, lp.y, th.ink, 'L', false, th.sky);
+    st.markers.forEach((t, k) => {
+        if (t == null) return;
+        const p = posAt(L, t), q = P(p.x, p.y);
+        ctx.strokeStyle = th.m[k]; ctx.lineWidth = 1.5; ctx.setLineDash([3, 5]);
+        ctx.beginPath(); ctx.moveTo(q[0], q[1]); ctx.lineTo(q[0], v.oy); ctx.stroke(); ctx.setLineDash([]);
+        disc(p.x, p.y, th.m[k], String(k + 1), st.armed === k);
+        const near = Math.abs(st.t - t);
+        if (st.playing && near < 0.25) { ctx.strokeStyle = th.m[k]; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(q[0], q[1], mr + 6 + near * 60, 0, 2 * Math.PI); ctx.stroke(); }
+    });
+
+    /* the ball, and what it is doing */
+    const bp = posAt(L, Math.min(Math.max(st.t, 0), L.T)), bq = P(bp.x, bp.y);
+    if (D) {
+        const dp = dragAt(D, Math.max(st.t, 0)), dq = P(dp.x, dp.y);
+        ctx.strokeStyle = th.drag; ctx.lineWidth = 3; ctx.fillStyle = th.sky;
+        ctx.beginPath(); ctx.arc(dq[0], dq[1], 8, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+    }
+    if (st.vec && L.T > 0) {
+        const vv = velAt(L, Math.min(Math.max(st.t, 0), L.T));
+        const ref = Math.max(L.u, Math.hypot(L.vx, L.vy - L.g * L.T), 1e-9), k = 90 / ref;
+        const arrow = (dx, dy, col, w) => {
+            const l = Math.hypot(dx, dy); if (l < 2) return;
+            const ex = bq[0] + dx, ey = bq[1] + dy, a = Math.atan2(dy, dx);
+            ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = w;
+            ctx.beginPath(); ctx.moveTo(bq[0], bq[1]); ctx.lineTo(ex, ey); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex - 10 * Math.cos(a - 0.4), ey - 10 * Math.sin(a - 0.4)); ctx.lineTo(ex - 10 * Math.cos(a + 0.4), ey - 10 * Math.sin(a + 0.4)); ctx.closePath(); ctx.fill();
+        };
+        arrow(vv.vx * k, 0, th.m[0], 3);
+        arrow(0, -vv.vy * k, th.m[2], 3);
+        arrow(vv.vx * k, -vv.vy * k, th.ink, 2);
+    }
+    ctx.fillStyle = th.ball; ctx.strokeStyle = th.sky; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(bq[0], bq[1], 9, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+}
+/* DRAW:END */
+
+/* ============================================================
+   PAGE — DOM, input, matrix, tour
+   ============================================================ */
+const $ = id => document.getElementById(id);
+const PARS = [
+    { k: 'u',   sym: 'u', name: 'Launch speed',  unit: 'm/s',  min: 0,   max: 100, step: 0.1 },
+    { k: 'ang', sym: 'θ', name: 'Launch angle',  unit: '°',    min: 0,   max: 90,  step: 1 },
+    { k: 'h',   sym: 'h', name: 'Launch height', unit: 'm',    min: 0,   max: 150, step: 0.1 },
+    { k: 'g',   sym: 'g', name: 'Gravity',       unit: 'm/s²', min: 0.5, max: 30,  step: 0.01 }
+];
+const S = {
+    p: { u: 20, ang: 50, h: 0, g: 9.81 }, markers: [null, null, null], armed: null,
+    from: 0, to: 1, sign: 1, reveal: {}, t: 0, playing: false, speed: 1,
+    drag: { on: false, k: 0.004 }, vec: true, lock: false, props: [], preset: 'free'
+};
+let L = launch(S.p), D = null, view = null, lockS = 0, dragIdx = -1, lastT = 0, raf = 0;
+
+/* ── parameter controls ── */
+$('pars').innerHTML = PARS.map(q =>
+    `<div class="par"><label for="n_${q.k}"><b>${q.sym}</b>${q.name}</label>` +
+    `<div class="inp"><input type="number" id="n_${q.k}" step="any"><span>${q.unit}</span></div>` +
+    `<input type="range" id="s_${q.k}" min="${q.min}" max="${q.max}" step="${q.step}" aria-label="${q.name}"></div>`).join('');
+function clean(x) { return String(+x.toFixed(3)); }
+function angleMin() { return S.p.h > 0 ? -60 : 0; }
+function syncPars() {
+    $('s_ang').min = angleMin();
+    PARS.forEach(q => {
+        const n = $('n_' + q.k), s = $('s_' + q.k);
+        if (document.activeElement !== n) n.value = clean(S.p[q.k]);
+        s.value = S.p[q.k];
+    });
+}
+PARS.forEach(q => {
+    const n = $('n_' + q.k), s = $('s_' + q.k);
+    const apply = x => {
+        if (!isFinite(x)) return;
+        const lo = q.k === 'ang' ? angleMin() : q.min;
+        S.p[q.k] = Math.min(Math.max(x, lo), q.max);
+        S.preset = 'custom';
+        paramsChanged();
+    };
+    s.addEventListener('input', () => { n.value = s.value; apply(parseFloat(s.value)); });
+    n.addEventListener('input', () => apply(parseFloat(n.value)));
+    n.addEventListener('change', () => { n.value = clean(S.p[q.k]); });
+});
+
+function fixLimits() {
+    if (S.p.ang < angleMin()) S.p.ang = angleMin();
+}
+function paramsChanged() {
+    fixLimits();
+    L = launch(S.p);
+    D = S.drag.on ? dragPath(L, S.drag.k) : null;
+    S.markers = S.markers.map(t => t == null ? null : Math.min(Math.max(t, 0), L.T));
+    S.t = Math.min(S.t, L.T);
+    $('scrub').max = L.T;
+    renderAll();
+}
+
+/* ── markers ── */
+function placed() { const ids = [0]; S.markers.forEach((t, i) => { if (t != null) ids.push(i + 1); }); return ids; }
+function tOfPoint(id) { return id === 0 ? 0 : S.markers[id - 1]; }
+function nextFree() { return S.markers.findIndex(t => t == null); }
+function setMarker(k, t) {
+    S.markers[k] = Math.min(Math.max(t, 0), L.T);
+    renderAll();
+}
+function removeMarker(k) {
+    S.markers[k] = null;
+    if (S.armed === k) S.armed = null;
+    renderAll();
+}
+function markerAt(px, py) {
+    let best = -1, bd = 24;
+    S.markers.forEach((t, k) => {
+        if (t == null) return;
+        const p = posAt(L, t), q = toScreen(view, p.x, p.y), d = Math.hypot(q[0] - px, q[1] - py);
+        if (d < bd) { bd = d; best = k; }
+    });
+    return best;
+}
+function canvasXY(e) { const r = $('cv').getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+const cv = $('cv');
+cv.addEventListener('pointerdown', e => {
+    if (!view) return;
+    const [px, py] = canvasXY(e);
+    const hit = markerAt(px, py);
+    if (hit >= 0) { dragIdx = hit; S.armed = null; cv.setPointerCapture(e.pointerId); return; }
+    const n = nearestT(L, view, px, py);
+    if (n.d > 70 || L.T <= 0) return;
+    let k = S.armed != null ? S.armed : nextFree();
+    if (k < 0) { // all three out and none chosen: move the nearest in time
+        k = 0; S.markers.forEach((t, i) => { if (Math.abs(t - n.t) < Math.abs(S.markers[k] - n.t)) k = i; });
+    }
+    S.armed = null;
+    setMarker(k, n.t);
+    dragIdx = k; cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove', e => {
+    if (!view) return;
+    const [px, py] = canvasXY(e);
+    if (dragIdx >= 0) { setMarker(dragIdx, nearestT(L, view, px, py).t); return; }
+    cv.style.cursor = (markerAt(px, py) >= 0 || nearestT(L, view, px, py).d < 40) ? 'pointer' : 'default';
+});
+['pointerup', 'pointercancel'].forEach(ev => cv.addEventListener(ev, () => { dragIdx = -1; }));
+cv.addEventListener('dblclick', e => { const k = markerAt(...canvasXY(e)); if (k >= 0) removeMarker(k); });
+
+$('chips').addEventListener('click', e => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    const k = +b.dataset.k;
+    S.armed = S.armed === k ? null : k;
+    renderAll();
+});
+
+/* ── typed placement ── */
+$('mrows').innerHTML = [0, 1, 2].map(k =>
+    `<div class="mrow" data-k="${k}"><span class="dot">${k + 1}</span>` +
+    `<label>t <input type="number" step="any" data-f="t"> s</label><label>x <input type="number" step="any" data-f="x"> m</label>` +
+    `<button class="mini" data-a="apex">top</button><button class="mini" data-a="land">ground</button><button class="mini" data-a="clear">✕</button></div>`).join('');
+$('mrows').addEventListener('input', e => {
+    const f = e.target.dataset.f; if (!f) return;
+    const k = +e.target.closest('.mrow').dataset.k, x = parseFloat(e.target.value);
+    if (!isFinite(x)) return;
+    const t = f === 't' ? x : timeAtX(L, x);
+    if (t != null) setMarker(k, t);
+});
+$('mrows').addEventListener('click', e => {
+    const a = e.target.dataset.a; if (!a) return;
+    const k = +e.target.closest('.mrow').dataset.k;
+    if (a === 'clear') removeMarker(k); else setMarker(k, a === 'apex' ? L.apexT : L.T);
+});
+function renderTyped() {
+    document.querySelectorAll('.mrow').forEach(row => {
+        const k = +row.dataset.k, t = S.markers[k];
+        const [ti, xi] = row.querySelectorAll('input');
+        xi.disabled = L.vx <= 0;
+        if (document.activeElement !== ti) ti.value = t == null ? '' : clean(t);
+        if (document.activeElement !== xi) xi.value = t == null ? '' : clean(posAt(L, t).x);
+        row.querySelector('[data-a=apex]').disabled = L.vy <= 0;
+    });
+}
+
+/* ── the matrix ── */
+function pair() {
+    const ids = placed();
+    if (ids.length < 2) { S.from = 0; S.to = null; return null; }
+    if (!ids.includes(S.from)) S.from = ids[0];
+    if (S.to == null || !ids.includes(S.to) || S.to === S.from) S.to = ids.find(i => i !== S.from);
+    let a = S.from, b = S.to, swapped = false;
+    if (tOfPoint(b) < tOfPoint(a)) { [a, b] = [b, a]; swapped = true; }
+    return { a, b, swapped, t0: tOfPoint(a), t1: tOfPoint(b) };
+}
+const ptName = id => id === 0 ? 'Launch' : 'Marker ' + id;
+function renderSelects() {
+    pair(); // settles S.from / S.to before the menus are built
+    const ids = placed();
+    const opts = ids.map(i => `<option value="${i}">${ptName(i)}</option>`).join('');
+    $('selFrom').innerHTML = opts; $('selTo').innerHTML = opts;
+    $('selFrom').value = S.from; if (S.to != null) $('selTo').value = S.to;
+    $('selTo').disabled = $('selFrom').disabled = ids.length < 2;
+}
+$('selFrom').addEventListener('change', e => { S.from = +e.target.value; if (S.to === S.from) S.to = null; renderAll(); });
+$('selTo').addEventListener('change', e => { S.to = +e.target.value; if (S.from === S.to) S.from = placed().find(i => i !== S.to); renderAll(); });
+$('signUp').addEventListener('click', () => { S.sign = 1; renderAll(); });
+$('signDown').addEventListener('click', () => { S.sign = -1; renderAll(); });
+
+function renderMatrix() {
+    const pr = pair();
+    $('matrixBtns').style.display = pr ? '' : 'none';
+    if (!pr) {
+        $('segNote').textContent = '';
+        $('matrix').innerHTML = '<div class="empty">Click the path to place a marker. Then choose two points above and fill in the matrix for the flight between them.</div>';
+        return;
+    }
+    const m = segment(L, pr.t0, pr.t1, S.sign);
+    $('segNote').textContent = pr.swapped ? `Time runs forwards, so this is ${ptName(pr.a)} → ${ptName(pr.b)}.` : '';
+    const cell = (dir, name, unit) => {
+        const key = `${pr.a}-${pr.b}-${dir}${name}`, on = !!S.reveal[key];
+        return `<button class="cell ${on ? 'on' : ''}" data-key="${key}" aria-pressed="${on}"><span class="row"><span class="lab">${name}</span>` +
+            `<span class="box"><span class="val">${on ? fmt(m[dir][name]) : '?'}</span><span class="unit">${unit}</span></span></span>` +
+            (on ? `<span class="how">${howText(dir, name, pr.a === 0, S.sign)}</span>` : '') + '</button>';
+    };
+    const col = d => CELLS.filter(c => c[0] === d).map(c => cell(c[0], c[1], c[2])).join('');
+    $('matrix').innerHTML =
+        `<div class="mx"><div class="vcol"><div class="mh">Vertical (${S.sign > 0 ? '↑' : '↓'} +)</div>${col('v')}</div>` +
+        `<div class="hcol"><div class="mh">Horizontal</div>${col('h')}</div></div>`;
+}
+$('matrix').addEventListener('click', e => {
+    const b = e.target.closest('.cell'); if (!b) return;
+    S.reveal[b.dataset.key] = !S.reveal[b.dataset.key];
+    renderMatrix();
+});
+function setAll(on) {
+    const pr = pair(); if (!pr) return;
+    CELLS.forEach(c => { S.reveal[`${pr.a}-${pr.b}-${c[0]}${c[1]}`] = on; });
+    renderMatrix();
+}
+$('revealAll').addEventListener('click', () => setAll(true));
+$('hideAll').addEventListener('click', () => setAll(false));
+
+/* ── drag (air resistance) ── */
+$('dragChk').addEventListener('change', () => { S.drag.on = $('dragChk').checked; paramsChanged(); });
+$('dragK').addEventListener('input', () => { S.drag.k = parseFloat($('dragK').value); paramsChanged(); });
+function renderDrag() {
+    $('dragBox').classList.toggle('on', S.drag.on);
+    $('dragLbl').textContent = 'k = ' + S.drag.k;
+    const note = $('dragNote');
+    note.classList.toggle('on', S.drag.on);
+    if (!S.drag.on || !D) { note.innerHTML = ''; return; }
+    note.innerHTML =
+        `<b>Dashed path: with air resistance.</b><br>` +
+        `Range ${fmt(L.range)} m → ${fmt(D.x1)} m · time ${fmt(L.T)} s → ${fmt(D.T)} s` +
+        `<ul><li><b>Horizontal:</b> drag acts against the motion, so the speed falls and s = ut gets smaller.</li>` +
+        `<li><b>Up:</b> drag and weight both pull down, so the deceleration is bigger and the time shortens.</li></ul>` +
+        `<span class="fine">The matrix assumes constant acceleration, so it describes the path with no drag.</span>`;
+}
+
+/* ── playback ── */
+function updatePlay() { $('play').textContent = S.playing ? '❚❚ Pause' : (S.t > 0 && S.t < L.T ? '▶ Resume' : '▶ Fire'); }
+function updateTime() { $('scrub').value = S.t; $('tLbl').textContent = 't = ' + S.t.toFixed(2) + ' s'; }
+function tick(ts) {
+    if (!S.playing) { raf = 0; return; }
+    S.t = Math.min(S.t + (ts - lastT) / 1000 * S.speed, L.T); lastT = ts;
+    if (S.t >= L.T) S.playing = false;
+    updatePlay(); updateTime(); redraw();
+    raf = S.playing ? requestAnimationFrame(tick) : 0;
+}
+function play() {
+    if (L.T <= 0) return;
+    if (S.playing) { S.playing = false; updatePlay(); return; }
+    if (S.t >= L.T) S.t = 0;
+    S.playing = true; lastT = performance.now(); updatePlay();
+    if (!raf) raf = requestAnimationFrame(tick);
+}
+$('play').addEventListener('click', play);
+$('restart').addEventListener('click', () => { S.playing = false; S.t = 0; updatePlay(); updateTime(); redraw(); });
+$('scrub').addEventListener('input', () => { S.playing = false; S.t = parseFloat($('scrub').value); updatePlay(); updateTime(); redraw(); });
+$('speed').addEventListener('change', () => { S.speed = parseFloat($('speed').value); });
+$('vecChk').addEventListener('change', () => { S.vec = $('vecChk').checked; redraw(); });
+$('lockChk').addEventListener('change', () => { S.lock = $('lockChk').checked; lockS = 0; redraw(); });
+document.addEventListener('keydown', e => {
+    if (e.code === 'Space' && document.activeElement === document.body && !$('tour').classList.contains('on')) { e.preventDefault(); play(); }
+});
+
+/* ── examples ── */
+$('preset').innerHTML = PRESETS.map(p => `<option value="${p.id}">${p.id === 'free' ? 'Example: free play' : p.name}</option>`).join('');
+$('preset').addEventListener('change', () => loadPreset($('preset').value));
+function loadPreset(id) {
+    const p = PRESETS.find(x => x.id === id) || PRESETS[0];
+    S.p = Object.assign({}, p.p); S.sign = p.sign; S.reveal = {}; S.armed = null; S.playing = false; S.t = 0;
+    S.props = p.props || [];
+    S.drag.on = p.drag != null; if (p.drag != null) S.drag.k = p.drag;
+    $('dragChk').checked = S.drag.on; $('dragK').value = S.drag.k;
+    S.preset = p.id; $('preset').value = p.id;
+    L = launch(S.p);
+    S.markers = [null, null, null];
+    p.markers.forEach((s, i) => { S.markers[i] = resolveSpec(L, s); });
+    S.from = 0; S.to = null; lockS = 0;
+    const q = $('qbox');
+    q.hidden = !p.q;
+    q.innerHTML = p.q ? `<button aria-label="Close">×</button>${p.q}` : '';
+    paramsChanged();
+    updatePlay(); updateTime();
+}
+$('qbox').addEventListener('click', e => { if (e.target.tagName === 'BUTTON') $('qbox').hidden = true; });
+
+/* ── drawing ── */
+const ctx = cv.getContext('2d');
+let W = 0, H = 0, dpr = 1;
+function resize() {
+    const r = $('stage').getBoundingClientRect();
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = Math.max(Math.round(r.width), 10); H = Math.max(Math.round(r.height), 10);
+    cv.width = W * dpr; cv.height = H * dpr;
+    redraw();
+}
+function theme() {
+    const cs = getComputedStyle(document.documentElement), g = n => cs.getPropertyValue(n).trim();
+    return {
+        sky: g('--sky'), ground: g('--ground'), grid: g('--grid'), muted: g('--muted'), ink: g('--ink'),
+        path: g('--accent'), drag: g('--muted'), plat: g('--plat'), trunk: g('--trunk'), leaf: g('--leaf'),
+        ball: g('--ball'), hl: g('--hl'), m: [g('--m1'), g('--m2'), g('--m3')]
+    };
+}
+function redraw() {
+    if (!W) return;
+    view = fitView(L, W, H, S.lock ? lockS : 0);
+    if (S.lock) lockS = view.s;
+    const pr = pair();
+    drawScene(ctx, {
+        W, H, dpr, v: view, L, D, th: theme(), fs: Math.round(Math.max(12, Math.min(20, W / 55))),
+        markers: S.markers, armed: S.armed, t: S.t, playing: S.playing, vec: S.vec, props: S.props,
+        seg: pr ? { t0: pr.t0, t1: pr.t1 } : null
+    });
+}
+new ResizeObserver(resize).observe($('stage'));
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', redraw);
+
+function renderChips() {
+    document.querySelectorAll('.chip').forEach((b, k) => {
+        b.classList.toggle('placed', S.markers[k] != null);
+        b.classList.toggle('armed', S.armed === k);
+        b.title = S.markers[k] != null ? 'Marker ' + (k + 1) + ': click, then click the path to move it' : 'Click, then click the path to place marker ' + (k + 1);
+    });
+    $('hint').textContent = L.T <= 0 ? 'Give it some speed or height' :
+        S.armed != null ? `Click the path to put marker ${S.armed + 1} there` :
+        placed().length === 1 ? 'Click the path to place a marker' :
+        'Drag a marker to move it · double-click to remove';
+}
+function renderAll() {
+    syncPars(); renderChips(); renderSelects(); renderMatrix(); renderTyped(); renderDrag();
+    $('signUp').classList.toggle('on', S.sign > 0); $('signDown').classList.toggle('on', S.sign < 0);
+    updatePlay(); updateTime(); redraw();
+}
+
+/* ── tour ── */
+const TOUR = [
+    { sel: '#stage', title: 'The path', text: 'A projectile moves along a curve. Horizontally it keeps one constant speed; vertically gravity changes the speed by g every second. The teal arrow is the horizontal velocity, the purple one the vertical, and the dark one the two together.' },
+    { sel: '#pars', title: 'Launch it', text: 'Set the launch speed, angle, height and g with a slider, or type a number. A launch height above 0 puts the launch point on a wall or table. The default g is 9.81 m/s².' },
+    { sel: '#markerRow', title: 'Markers', text: 'Click a numbered marker, then click the path to put it there. Or just click the path and the next free marker lands there. Drag a marker to move it and double-click it to remove it. You can place up to three.', before: ensureMarkers },
+    { sel: '#fromTo', title: 'Choose a flight', text: 'The matrix is for the flight between two points. Pick where it starts and where it ends from Launch and your markers. The highlighted part of the path, and the dashed right-angled triangle, show the stretch you are working on and its horizontal and vertical displacement.', before: ensureMarkers },
+    { sel: '#matrix', title: 'The matrix', text: 'The left column holds the vertical s, u, v, a, t and the right holds the horizontal s, u, t. The time is the same in both, so it is your bridge between them. Work a box out on paper first, then click it to check. A hint at the bottom of each box says how it is found.', before: ensureMarkers },
+    { sel: '#side', title: 'Reveal, hide, and signs', text: 'Reveal all and Hide all do the whole matrix at once. Switch between up is positive and down is positive and watch every vertical sign change; the horizontal side never does.', before: ensureMarkers },
+    { sel: '#playRow', title: 'Fire it', text: 'Press Fire to watch the ball go through each marker, or drag the time slider to scrub. Markers keep their time when you change the launch, so a marker slides along the new path.' },
+    { sel: '#dragBoxWrap', title: 'Air resistance', text: 'Tick this to add a dashed path with air resistance, to compare with the ideal one. The notes in the side panel explain why the range and the time of flight both get shorter. The matrices always describe the no-drag path.' },
+    { sel: '#preset', title: 'Worked examples', text: 'These load a question with its markers already placed, so you can predict the answer, then reveal it. Choose Free play to go back to a blank sheet.' }
+];
+let tourI = -1;
+function ensureMarkers() {
+    if (placed().length < 2 && L.T > 0) {
+        if (S.markers[0] == null) S.markers[0] = L.vy > 0 ? L.apexT : L.T / 2;
+        if (S.markers[1] == null) S.markers[1] = L.T;
+        renderAll();
+    }
+}
+function showTour(i) {
+    tourI = i;
+    const tour = $('tour');
+    if (i < 0 || i >= TOUR.length) { tour.classList.remove('on'); tourI = -1; return; }
+    tour.classList.add('on');
+    const s = TOUR[i];
+    if (s.before) s.before();
+    $('tTitle').textContent = s.title; $('tText').textContent = s.text;
+    $('tN').textContent = (i + 1) + ' of ' + TOUR.length;
+    $('tPrev').style.visibility = i ? 'visible' : 'hidden';
+    $('tNext').textContent = i === TOUR.length - 1 ? 'Done' : 'Next';
+    const el = document.querySelector(s.sel), spot = $('spot'), card = $('tcard');
+    el.scrollIntoView({ block: 'nearest' });
+    const r = el.getBoundingClientRect(), pad = 6;
+    spot.style.left = (r.left - pad) + 'px'; spot.style.top = (r.top - pad) + 'px';
+    spot.style.width = (r.width + 2 * pad) + 'px'; spot.style.height = (r.height + 2 * pad) + 'px';
+    const cw = card.offsetWidth, ch = card.offsetHeight, vw = innerWidth, vh = innerHeight, m = 12;
+    const tries = [
+        [r.left, r.bottom + m], [r.left, r.top - ch - m], [r.right + m, r.top], [r.left - cw - m, r.top]
+    ];
+    let pos = tries.find(([x, y]) => x >= 0 && y >= 0 && x + cw <= vw && y + ch <= vh);
+    if (!pos) pos = [Math.max(m, r.left + 20), Math.max(m, Math.min(r.bottom - ch - 20, vh - ch - m))];
+    card.style.left = Math.min(Math.max(pos[0], m), vw - cw - m) + 'px';
+    card.style.top = Math.min(Math.max(pos[1], m), vh - ch - m) + 'px';
+}
+$('tourBtn').addEventListener('click', () => { showTour(0); });
+$('tNext').addEventListener('click', () => showTour(tourI + 1));
+$('tPrev').addEventListener('click', () => showTour(tourI - 1));
+$('tSkip').addEventListener('click', () => showTour(-1));
+document.addEventListener('keydown', e => {
+    if (tourI < 0) return;
+    if (e.key === 'Escape') showTour(-1);
+    else if (e.key === 'ArrowRight') showTour(tourI + 1);
+    else if (e.key === 'ArrowLeft' && tourI > 0) showTour(tourI - 1);
+});
+addEventListener('resize', () => { if (tourI >= 0) showTour(tourI); });
+
+loadPreset('cannon');
+</script>
+</body>
+</html>
