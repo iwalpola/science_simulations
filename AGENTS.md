@@ -18,6 +18,8 @@ human_anatomy/heart/        heart, valves and double circulation, 3D over the Z-
                             heart-viewer.html, the same heart to inspect: beat paused/slowed, cut at any angle (+ test-heart-viewer.js)
 human_anatomy/respiration/  the respiration equation: glucose in through the real gut, oxygen through the real airways,
                             villi, alveoli, three diffusing walls, a muscle cell, the atoms rearranged (+ test-respiration.js)
+human_anatomy/digestion/    starch, sugars, proteins, lipids: food tests, lock and key, juices down the real ducts,
+                            emulsifying, every enzyme on its own bond, villi, colon, building (+ test-digestion.js)
 mechanics/                  projectiles: launch, up to three markers, a click-to-reveal s u v a t matrix (+ test-projectiles.js)
 genetics/                   cell → chromosome → DNA → gene → base, mitosis + the cell cycle, meiosis + fertilisation: three.js stories (+ test-genetics.js, test-mitosis.js, test-meiosis.js)
 tools/                      one-off colour-migration scripts (animcolour.mjs, colourfix.mjs)
@@ -68,6 +70,7 @@ cd human_anatomy/reflex-arc && node test-reflex-arc-3d.js  # 3D story: routes, t
 cd human_anatomy/heart      && node test-heart.js        # the cut, valves, one-way flow, vessel routes, every frame
 cd human_anatomy/heart      && node test-heart-viewer.js # viewer's copied code is still heart.html's (--sync re-copies), any-angle cuts, picking
 cd human_anatomy/respiration && node test-respiration.js # food and air routes, grown bronchioles, diffusion directions, atoms balance, labels clear of the HTML
+cd human_anatomy/digestion   && node test-digestion.js   # gut and colon routes, ducts, every cut by a docked enzyme that fits, emulsion surface, food-test colours
 cd genetics         && node test-genetics.js   # pairs, band position, base pairing, flat ladder, quoted figures, every frame
 cd genetics         && node test-mitosis.js    # copying, one copy of each chromosome per daughter, half volume, pie times, tissue, every frame
 cd genetics         && node test-meiosis.js    # pairing, crossing over, one of each pair per cell, four different gametes, fertilisation
@@ -383,6 +386,45 @@ terms each chapter lights (`Ch.eq`). The chapter's material preset is
   the equation bar (top middle), the key (below it, right) and the buttons
   (bottom middle), on the 920 x 720 stage a 1280 x 720 screen leaves. They
   are timed to appear once each shot's camera has settled.
+
+## Digestion: blocks, bonds, and enzymes cut to fit
+
+`human_anatomy/digestion/digestion.html` is a three.js story in the
+respiration shell (panel, nav, key, cue sheet, packed `ANATOMY` from
+`digestion.recipe.json`). The bar across the top is the three breakdowns
+(`carb`, `prot`, `lip`), lit by `Ch.eq`; the material preset is `Ch.view`.
+
+- **The gut is the respiration route, carried on through the colon.** The
+  colon parts are hollow WALLS closed at each seam (no holes to march
+  between), so `recentre()` starts from a straight guide seam to seam and
+  pulls every point to the middle of the ring of wall round it. The test
+  checks every colon point has wall all round it, using triangle centres
+  too: the decimated sigmoid is too sparse for vertices alone.
+- **Juices go down the real ducts** (parotid, submandibular, bile,
+  pancreatic). The cystic duct is missing from the atlas and is drawn from
+  the gall bladder's neck to the nearest point of the bile duct; the page
+  says so.
+- **Molecules are blocks, not atoms**: a glucose a gold hexagon (the
+  respiration story's gold), fructose a pentagon, an amino acid a bead,
+  glycerol a bar, a fatty acid a zigzag. A molecule is units + bonds; an
+  instance gives it a pose and cut times, and every unit's place is a closed
+  form of `t` (`unitOff`): each cut pushes the two sides apart, the smaller
+  side drifts off. No per-frame state.
+- **An enzyme's active site is the shape of its bond.** `POCKET` is the
+  upper outline of the blocks either side of the bond, plus clearance; the
+  rest of the enzyme is a blob. An enzyme docking from the far side turns
+  over (`rx`) rather than half-turning, because the lipase and sucrase
+  pockets are not symmetric. `enzyme().job(I, k, t)` both schedules the
+  dock and cuts the bond, so no bond breaks without an enzyme on it; the
+  test also checks the docked blocks sit under the enzyme's underside, that
+  maltase only splits a maltose and sucrase a sucrose, and that two enzymes
+  never crowd one stretch of chain. If you add a molecule or move a chain,
+  run it: a bent chain or a neighbour drifting into the way fails there.
+- **The emulsion's numbers are derived.** Each split keeps the volume, so
+  generation g has radius `R0/2^(g/3)`; the surface factor the caption and
+  the pills quote is computed from that, and the lipase at work follows it.
+- **Bile is never an enzyme.** The test greps that the captions say so and
+  never say bile digests anything.
 
 ## Mitosis: one cell's clock, and a nucleus that is never pinched
 
