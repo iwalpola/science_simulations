@@ -28,7 +28,7 @@ const path = require('path');
 const vm = require('vm');
 
 const HERE = __dirname;
-const FILES = ['energy-physical-change.html', 'energy-chemical-change.html'];
+const FILES = ['energy-physical-change.html', 'energy-chemical-change.html', 'specific-heat-capacity.html'];
 
 let checks = 0, fails = 0;
 function chk(ok, msg) {
@@ -486,6 +486,105 @@ function chemical() {
 }
 
 /* ===================================================================
+   2c. MODEL  specific heat capacity: pans, the equation, the practical
+   The MODEL block of the page has no DOM in it, so it is run whole.
+   =================================================================== */
+function heatCapacity() {
+  section('MODEL  specific heat capacity: the pans, E = m c ΔT, the practical and its losses');
+  const f = 'specific-heat-capacity.html';
+  const js = scriptOf(read(f));
+  const a = js.indexOf('/* MODEL:BEGIN'), b = js.indexOf('/* MODEL:END */');
+  chk(a >= 0 && b > a, f + ': no MODEL:BEGIN / MODEL:END block');
+  if (!(a >= 0 && b > a)) return;
+  const model = js.slice(a, b);
+  chk(!/document\.|ctx\.|getContext|window\./.test(model), f + ': the MODEL block reaches for the DOM or the canvas');
+  const box = { Math };
+  vm.createContext(box);
+  let threw = null;
+  try {
+    vm.runInContext(model + ';this.M={MAT,HOB,PANS,panRise,panTemp,panDepth,drawnMolecules,REAL_PER_DRAWN,' +
+      'blocksPerDegree,J_PER_BLOCK,RIG,rigState,readings,FACTS};', box, { filename: f + ' MODEL' });
+  } catch (e) { threw = e; }
+  chk(!threw, f + ': MODEL block threw: ' + (threw && threw.message));
+  if (threw) return;
+  const M = box.M;
+  const near = (x, y, tol) => Math.abs(x - y) <= (tol || 1e-9) * Math.max(1, Math.abs(y));
+
+  /* data book values */
+  chk(M.MAT.water.c === 4200, f + ': water must be 4200 J/kg °C');
+  chk(M.MAT.aluminium.c === 900, f + ': aluminium must be 900 J/kg °C');
+  chk(M.MAT.oil.c > 1600 && M.MAT.oil.c < 2200, f + ': oil c is not a data-book value');
+
+  /* every pan: E = m c ΔT gives back the energy the hob supplied */
+  ['mass', 'material'].forEach(set => M.PANS[set].forEach(p => {
+    const r = M.panRise(p, M.HOB.E);
+    chk(near(p.m * M.MAT[p.mat].c * r, M.HOB.E), f + ': ' + set + ' pan does not satisfy E = m c ΔT');
+    chk(near(M.panTemp(p, 0), M.HOB.T0), f + ': a pan does not start at ' + M.HOB.T0 + ' °C');
+    chk(M.panTemp(p, M.HOB.E) < 100, f + ': a pan would boil, and the straight line would be wrong');
+  }));
+  /* chapter 1: same material, twice the mass, half the rise -- and twice the molecules drawn */
+  const [s, l] = M.PANS.mass;
+  chk(s.mat === l.mat, f + ': the mass chapter changes the material too');
+  chk(near(l.m, 2 * s.m), f + ': the mass chapter should double the mass');
+  chk(near(M.panRise(s, M.HOB.E), 2 * M.panRise(l, M.HOB.E)), f + ': twice the mass should give half the rise');
+  chk(M.drawnMolecules(l) === 2 * M.drawnMolecules(s), f + ': twice the mass should draw twice the molecules');
+  chk(near(M.panDepth(l), 2 * M.panDepth(s)), f + ': twice the water should stand twice as deep');
+  /* REAL_PER_DRAWN: 1 kg of water is 55.6 mol */
+  chk(near(M.REAL_PER_DRAWN * 20, 1 / 0.018 * 6.022e23, 1e-6), f + ': molecules per drawn molecule is wrong');
+  /* chapter 2: same mass, different material; rise inversely as c */
+  const [w, o] = M.PANS.material;
+  chk(w.m === o.m && w.mat !== o.mat, f + ': the material chapter should keep the mass and change the material');
+  chk(near(M.panRise(o, M.HOB.E) / M.panRise(w, M.HOB.E), M.MAT[w.mat].c / M.MAT[o.mat].c),
+    f + ': the rises should be in inverse ratio to c');
+  chk(M.panDepth(o) > M.panDepth(w), f + ': a kilogram of oil should stand taller than a kilogram of water');
+  ['water', 'oil'].forEach(m => chk(Number.isInteger(M.blocksPerDegree(m)),
+    f + ': the ' + m + ' pile is not a whole number of ' + M.J_PER_BLOCK + ' J blocks'));
+
+  /* the practical */
+  const R = M.RIG;
+  chk(near(R.P, R.V * R.I), f + ': P is not V × I');
+  const mc = R.m * M.MAT[R.mat].c;
+  ['bare', 'lagged'].forEach(kind => {
+    const k = R.k[kind];
+    /* the closed form really is the solution of mc dT/dt = P - k (T - Troom) */
+    for (let ts = 10; ts < R.tRun; ts += 37) {
+      const h = 0.01, s0 = M.rigState(ts - h, k), s1 = M.rigState(ts + h, k), sm = M.rigState(ts, k);
+      const dTdt = (s1.T - s0.T) / (2 * h);
+      chk(near(mc * dTdt, R.P - k * (sm.T - R.Troom), 1e-5), f + ': ' + kind + ' block at ' + ts + ' s does not obey Newton cooling');
+      chk(near(sm.E, sm.kept + sm.lost), f + ': energy does not add up at ' + ts + ' s');
+      chk(sm.lost >= 0 && sm.T <= sm.ideal + 1e-9, f + ': the block gained more than the heater supplied');
+    }
+    chk(near(M.rigState(0, k).T, R.Troom), f + ': the block does not start at room temperature');
+    /* the lost energy only grows */
+    let prev = -1, mono = true;
+    for (let ts = 0; ts <= R.tRun; ts += 20) { const L = M.rigState(ts, k).lost; if (L < prev - 1e-9) mono = false; prev = L; }
+    chk(mono, f + ': ' + kind + ' block un-loses energy');
+    /* c worked out from the rounded readings is the c the card shows */
+    const rd = M.readings(k);
+    chk(near(rd.dT, Math.round((rd.Tf - rd.Ti) * 10) / 10), f + ': ΔT is not Tf − Ti');
+    chk(Math.abs(rd.E / (rd.m * rd.dT) - rd.cShown) <= 5, f + ': the c shown is not E ÷ (m ΔT) from the readings shown');
+    chk(rd.cShown > M.MAT[R.mat].c, f + ': losses should make the measured c too big (' + kind + ')');
+  });
+  /* with no losses the method gives the data-book value back */
+  const ideal = M.rigState(R.tRun, 0);
+  chk(near(ideal.E / (R.m * ideal.rise), M.MAT[R.mat].c), f + ': with no losses the method should recover c');
+  /* insulation helps, but does not cure */
+  const bare = M.readings(R.k.bare), lag = M.readings(R.k.lagged);
+  chk(lag.lost < bare.lost, f + ': insulation should lose less');
+  chk(lag.cShown < bare.cShown && lag.cShown > M.MAT[R.mat].c, f + ': insulated c should be between bare and the data book');
+  chk(bare.lostPc >= 5 && bare.lostPc <= 25, f + ': the bare block loses an implausible share (' + bare.lostPc + '%)');
+
+  /* the numbers are derived, not typed: no measured value appears as a literal outside the model */
+  const rest = js.slice(0, a) + js.slice(b);
+  const strings = (rest.match(/'[^'\n]*'/g) || []).join(' ');
+  [bare.cShown, lag.cShown, bare.Tf, lag.Tf, bare.E, M.HOB.E, M.FACTS.perDrawn].forEach(v => {
+    chk(strings.indexOf(String(v)) < 0, f + ': ' + v + ' is typed into a caption instead of derived');
+  });
+  /* energy is transferred, never "used up"/"produced" */
+  chk(!/energy (is )?(used up|produced|made|destroyed)'/.test(js), f + ': a caption says energy is used up or produced');
+}
+
+/* ===================================================================
    3. RENDER  drive every frame of every chapter
    =================================================================== */
 function render() {
@@ -628,7 +727,8 @@ function renderOne(f) {
   const next = els.get('#next');
   let n = 0;
   for (; ;) {
-    if (!run('chapter ' + n, 9)) break;
+    /* the practical's chapters play for 20 s before their results appear */
+    if (!run('chapter ' + n, f === 'specific-heat-capacity.html' ? 30 : 9)) break;
     if (n > 0 && /again/i.test(String(next.textContent))) break;
     if (n > 20) { chk(false, f + ': Next never wrapped round after 20 chapters'); break; }
     if (typeof next.onclick !== 'function') { chk(false, f + ': no Next handler'); break; }
@@ -638,7 +738,7 @@ function renderOne(f) {
   chk(n >= 5, f + ': expected at least 6 chapters, walked ' + (n + 1));
 
   /* every button the page wires up must survive being pressed */
-  ['#replay', '#minBtn', '#tHeat', '#tCool', '#q1check', '#q2check'].forEach(sel => {
+  ['#replay', '#minBtn', '#tHeat', '#tCool', '#q1check', '#q2check', '#tBare', '#tLag'].forEach(sel => {
     const e = els.get(sel);
     if (!e || typeof e.onclick !== 'function') return;
     let t = null;
@@ -670,6 +770,7 @@ function renderOne(f) {
 text();
 physical();
 chemical();
+heatCapacity();
 render();
 console.log('\n' + checks + ' checks, ' + fails + ' failure' + (fails === 1 ? '' : 's'));
 process.exit(fails ? 1 : 0);
