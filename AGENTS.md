@@ -11,7 +11,7 @@ index.html                  the catalogue everything is listed in
 reactionbuilder/            drag-and-drop reaction builder (+ test.js)
 3dreactionscenes/           15 three.js scenes, one per GCSE reaction type
 particles/                  particle-theory scenes (Brownian motion, melting)
-energy/                     energy stores and transfers (+ test-energy-scenes.js)
+energy/                     energy stores and transfers, specific heat capacity (+ test-energy-scenes.js)
 electricity/                conduction and resistance (+ test-wire.js)
 human_anatomy/reflex-arc/   2D reflex arc story over a baked 3D model (+ bake-backdrop.js, test-reflex-arc.js)
 human_anatomy/heart/        heart, valves and double circulation, 3D over the Z-Anatomy heart (+ test-heart.js);
@@ -156,6 +156,17 @@ What they do share with the rest of the repo, and must keep:
   title, Back/Next, replay and at most one per-chapter control. If you find
   yourself wanting a paragraph, find a way to draw it instead; if you genuinely
   cannot, that is worth raising rather than reinstating the panel.
+
+`specific-heat-capacity.html` is a third page in the same shell (seven chapters:
+mass and material on two identical hobs, `E = m c ΔT`, the joulemeter practical with
+the heater and thermometer drawn inside a cut-away aluminium block, then heat losses
+and insulation). Its physics is a `/* MODEL:BEGIN */ … /* MODEL:END */` block with no
+DOM, run whole by `test-energy-scenes.js`. The pans ignore losses and say so; the
+block loses `k (T − Troom)` watts, solved in closed form (`rigState`), so the
+measured c being too big **emerges** from the losses rather than being typed. The
+card's c is worked out from the readings as rounded on screen; the test checks
+that, checks the closed form against the differential equation, and fails if a
+result appears as a literal in a caption.
 
 The one trap specific to these two: the stage is a fixed 1000 × 620 space
 scaled into whatever the bar and the key leave free, so **lay things out in
