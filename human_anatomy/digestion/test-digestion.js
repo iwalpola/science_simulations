@@ -48,11 +48,37 @@ const path = require('path');
 const vm = require('vm');
 
 const HERE = __dirname, ROOT = path.resolve(HERE, '..', '..');
-const FILE = 'digestion.html';
+
+/* TWO COURSES, ONE SOURCE. digestion-ks3.html is digestion.html with LEVEL
+   set to 'ks3' and its own <title>; nothing else differs. --sync writes it.
+   With no file named, this runs itself once for each page. */
+const GCSE_FILE = 'digestion.html', KS3_FILE = 'digestion-ks3.html';
+const toKS3 = src => src
+  .replace("const LEVEL = 'gcse';", "const LEVEL = 'ks3';")
+  .replace('<title>Digestion — the 3D story</title>', '<title>Digestion (KS3) — the 3D story</title>');
+if (process.argv.includes('--sync')) {
+  fs.writeFileSync(path.join(HERE, KS3_FILE), toKS3(fs.readFileSync(path.join(HERE, GCSE_FILE), 'utf8')));
+  console.log('wrote ' + KS3_FILE + ' from ' + GCSE_FILE);
+}
+const named = process.argv.slice(2).find(a => a.endsWith('.html'));
+if (!named) {
+  let bad = 0;
+  for (const f of [GCSE_FILE, KS3_FILE]) {
+    console.log('\n======== ' + f);
+    bad += require('child_process').spawnSync(process.execPath, [__filename, f], { stdio: 'inherit' }).status ? 1 : 0;
+  }
+  process.exit(bad ? 1 : 0);
+}
+const FILE = named;
 let checks = 0, fails = 0;
 function chk(ok, msg) { checks++; if (!ok) { fails++; console.log('    ✗ ' + msg); } }
 function section(s) { console.log('\n' + s); }
 const html = fs.readFileSync(path.join(HERE, FILE), 'utf8');
+const IS_KS3 = FILE === KS3_FILE;
+if (IS_KS3) {
+  const want = toKS3(fs.readFileSync(path.join(HERE, GCSE_FILE), 'utf8'));
+  if (html !== want) { console.log('    ✗ ' + KS3_FILE + ' is not ' + GCSE_FILE + ' with LEVEL = \'ks3\'; run node test-digestion.js --sync'); process.exit(1); }
+}
 
 /* --- three.js, the cached copy the particle tests fetched --------------- */
 function three() {
@@ -88,7 +114,7 @@ function dom() {
     return {
       id, width: 300, height: 150, innerHTML: '', textContent: '', hidden: false, dataset: {},
       style: { setProperty() {} }, classList: { toggle() {}, add() {}, remove() {} },
-      addEventListener() {}, appendChild() {}, setPointerCapture() {},
+      addEventListener() {}, appendChild() {}, setPointerCapture() {}, setAttribute() {},
       clientWidth: STAGE_W, clientHeight: STAGE_H, title: '',
       getContext: () => ctx2d()
     };
@@ -120,7 +146,7 @@ const js = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 const expose = ['frame', 'enterChapter', 'CH', 'camera', 'renderer', 'worldAt', 'shotAt', 'ROUTE', 'LM', 'FACTS', 'COLON', 'COLON_PARTS',
   'DUCT', 'CUES', 'BOLUS', 'solid', 'insideOf', 'ANATOMY', 'S_FOOD', 'FOOD_MOUTH', 'FOOD_DUO', 'FOOD_COLON', 'KEY', 'polyOf', 'part', 'centroid',
   'MAT', 'GROUP', 'LOOK', 'ENZ', 'ENZ_GEO', 'POCKET', 'U', 'UNIT_GEO', 'TAIL_BEADS', 'KEYS', 'LK', 'ST', 'LU', 'EM', 'TS', 'TT', 'BU', 'SH',
-  'enzAt', 'bondAt', 'unitAt', 'ARRIVE', 'LEAVE', 'CLR', 'S5', 'testColour'].join(',');
+  'enzAt', 'bondAt', 'unitAt', 'ARRIVE', 'LEAVE', 'CLR', 'S5', 'testColour', 'LEVEL', 'C', 'ORDER', 'DUCTS'].join(',');
 let S;
 const t0 = Date.now();
 try {
@@ -214,7 +240,10 @@ for (let c = 0; c < S.CH.length; c++) {
 }
 console.log('    every frame of ' + S.CH.length + ' chapters in ' + ((Date.now() - tFrames) / 1000).toFixed(1) + ' s');
 chk(problems.size === 0, 'labels or markers out of place:\n        ' + [...problems].map(([k, v]) => k + ' ' + v).join('\n        '));
-const want = [['macro'], ['shelf'], ['tests'], ['enz'], ['macro'], ['macro', 'stom'], ['macro'], ['emul'], ['lumen'], ['villi'], ['macro'], ['build']];
+const WORLD_OF = { system: ['macro'], molecules: ['shelf'], tests: ['tests'], enzymes: ['enz'], mouth: ['macro'], stomach: ['macro', 'stom'],
+  juices: ['macro'], emulsion: ['emul'], intestine: ['lumen'], villi: ['villi'], colon: ['macro'], building: ['build'] };
+chk(S.CH.map(c => c.id).join() === S.ORDER.join() && S.ORDER.every((id, i) => S.C[id] === i), 'the chapters are not in ORDER');
+const want = S.CH.map(c => WORLD_OF[c.id]);
 want.forEach((w, c) => chk(WORLDS_SEEN[c] && w.join() === WORLDS_SEEN[c].join(), 'chapter ' + c + ' shows ' + (WORLDS_SEEN[c] || []).join('+') + ', not ' + w.join('+')));
 chk(S.CH.every(c => !/undefined|NaN/.test(c.text + c.title + (c.look || '') + (c.scale || '') + JSON.stringify(c.terms))), 'a caption has "undefined" or NaN in it');
 chk(S.CH.every(c => c.key.every(k => S.KEY[k])), 'a chapter asks for a key entry that does not exist');
@@ -399,7 +428,8 @@ for (const [wname, insts, list] of [['stomach', S.ST.P, S.ST.pe], ['small intest
   });
 }
 /* the small intestine: by the end, everything is single blocks */
-const lenLU = S.CH[8].len;
+const CHof = id => S.CH[S.C[id]];
+const lenLU = CHof('intestine').len;
 const lumenLeft = S.LU.insts.filter(I => I.mol.bonds.length && !I.mol.units.every((u, i) => S.LU.insts && I.free[i] < lenLU - 1));
 chk(lumenLeft.length === 0, 'the small intestine: ' + lumenLeft.length + ' molecules are not fully digested by the end');
 /* the stomach: proteins only shortened, starch untouched */
@@ -409,13 +439,19 @@ const K = S.KEYS;
 const kc = [...K.I.cut].filter(isFinite).length;
 chk(kc === 2, 'lock and key: ' + kc + ' bonds cut, not 2');
 chk(K.E.jobs.filter(j => j.miss).every(j => !isFinite(K.I.cut[j.k])), 'lock and key: the denatured enzyme cut a bond');
-chk([...K.P.cut].every(c => !isFinite(c)), 'lock and key: the protein was cut by amylase');
-let closest = Infinity;
-for (let t = S.LK.miss - 2; t < S.LK.miss + 2; t += 0.05) {
-  const e = S.enzAt(K.E, t);
-  K.P.mol.units.forEach((u, i) => { closest = Math.min(closest, d3(S.unitAt(K.P, i, t).p, e.p)); });
+if (IS_KS3) {
+  /* KS3 is an enzyme simply as a catalyst: no protein that does not fit, no denaturing */
+  chk(!K.P && !K.E.jobs.some(j => j.miss), 'KS3: the lock and key still has the protein or the denatured enzyme in it');
+  chk(K.E.jobs.every(j => j.t < CHof('enzymes').len - 2), 'KS3: amylase is still cutting when the chapter ends');
+} else {
+  chk([...K.P.cut].every(c => !isFinite(c)), 'lock and key: the protein was cut by amylase');
+  let closest = Infinity;
+  for (let t = S.LK.miss - 2; t < S.LK.miss + 2; t += 0.05) {
+    const e = S.enzAt(K.E, t);
+    K.P.mol.units.forEach((u, i) => { closest = Math.min(closest, d3(S.unitAt(K.P, i, t).p, e.p)); });
+  }
+  chk(closest > S.U.AR + 0.1, 'lock and key: the protein gets into amylase’s active site (' + closest.toFixed(2) + ')');
 }
-chk(closest > S.U.AR + 0.1, 'lock and key: the protein gets into amylase’s active site (' + closest.toFixed(2) + ')');
 /* each enzyme's active site differs */
 const shapes = Object.keys(S.POCKET).map(k => S.ENZ_GEO[k].userData.pocket.map(p => p[1].toFixed(2)).join());
 chk(new Set(shapes).size === shapes.length, 'two enzymes have the same active site');
@@ -429,7 +465,7 @@ chk(String(Math.round(E.AREA[E.GENS] * 10) / 10) === S.FACTS.emX && S.FACTS.emN 
 chk(E.atWork(0) === E.PER && E.atWork(40) === E.NL && E.NL === Math.round(E.PER * E.AREA[E.GENS]), 'the lipase at work does not follow the surface');
 let workBack = false; for (let t = 0; t < 20; t += 0.05) if (E.atWork(t + 0.05) < E.atWork(t)) workBack = true;
 chk(!workBack, 'the lipase at work goes down as the surface grows');
-const endT = S.CH[7].len, leaves = Array.from({ length: E.N }, (_, k) => E.centre(k, endT));
+const endT = 18, leaves = Array.from({ length: E.N }, (_, k) => E.centre(k, endT));
 let overlap = 0; for (let a = 0; a < E.N; a++) for (let b = a + 1; b < E.N; b++) if (d3(leaves[a], leaves[b]) < 2 * E.r(E.GENS) * 0.98) overlap++;
 chk(overlap === 0, overlap + ' pairs of final droplets overlap');
 console.log('    1 drop of radius ' + E.R0 + ' into ' + E.N + ' of radius ' + E.r(E.GENS).toFixed(2) + ': ' + S.FACTS.emX + ' times the surface; lipase at work ' + E.atWork(0) + ' to ' + E.NL);
@@ -456,13 +492,32 @@ chk(S.TT.every(t => { const [a, , u] = S.testColour(t, t.add); return u === 0 &&
 section('WORDS');
 const all = S.CH.map(c => c.text + ' ' + c.look + ' ' + c.scale + ' ' + JSON.stringify(c.terms)).join(' ');
 chk(S.CH.every(c => !/(produc|mak|creat)\w* (the )?energy|energy (is )?(produced|made|created)/i.test(c.text + c.look + c.scale)), 'a caption says energy is produced or made; it is transferred');
-chk(!/bile (digests|breaks down|is an enzyme)/i.test(all) && /Bile is not an enzyme/.test(all), 'a caption says bile digests fat, or never says it is not an enzyme');
-chk(/glycerol/.test(S.CH[8].text) && /fatty acids/.test(S.CH[8].text) && /maltose/.test(S.CH[8].text) && /amino acids/.test(S.CH[8].text), 'chapter 9 does not name every product');
-chk(/denatured/.test(S.CH[3].text) && /active site/.test(S.CH[3].text) && /substrate/.test(S.CH[3].text), 'chapter 4 does not teach the active site, the substrate and denaturing');
-chk(S.CH[4].look.includes(S.FACTS.oesCm + ' cm'), 'chapter 5 does not quote the oesophagus length');
-chk(S.CH[10].look.includes(S.FACTS.colonCm + ' cm'), 'chapter 11 does not quote the colon length');
-chk(S.CH[7].text.includes(S.FACTS.emN + ' droplets') && S.CH[7].text.includes(S.FACTS.emX + ' times'), 'chapter 8 does not quote the emulsion figures');
-chk(S.CH[6].scale.includes(S.DUCT.cysticMm + ' mm'), 'chapter 7 does not quote the drawn cystic duct');
+const intestine = CHof('intestine').text;
+chk(/glycerol/.test(intestine) && /fatty acids/.test(intestine) && /maltose/.test(intestine) && /amino acids/.test(intestine), 'the small intestine chapter does not name every product');
+chk(CHof('mouth').look.includes(S.FACTS.oesCm + ' cm'), 'the mouth chapter does not quote the oesophagus length');
+chk(CHof('colon').look.includes(S.FACTS.colonCm + ' cm'), 'the colon chapter does not quote the colon length');
+/* every label any chapter shows */
+const labels = S.CUES.filter(cu => cu.ch.some(c => c != null && c < S.CH.length)).flatMap(cu => { const t = []; cu.obj.traverse(o => { if (o.userData.text) t.push(o.userData.text); }); return t; }).join(' | ');
+if (IS_KS3) {
+  /* no gall bladder and no bile, anywhere: captions, labels, the drawn ducts, the body */
+  chk(!/bile|gall/i.test(all + ' ' + labels), 'KS3: a caption or label mentions bile or the gall bladder: ' + ((all + ' ' + labels).match(/[^.|]*(bile|gall)[^.|]*/i) || [''])[0].trim());
+  chk(!S.C.emulsion && !/emulsif/i.test(all + labels), 'KS3: there is still an emulsifying chapter');
+  chk(!/denatur|active site|substrate/i.test(all + labels), 'KS3: lock and key or denaturing is still taught');
+  chk(/biological catalyst/.test(CHof('enzymes').text) && /catalyst/.test(labels), 'KS3: enzymes are not taught as biological catalysts');
+  chk(/bacteria/.test(CHof('colon').text) && /bacteria/.test(labels), 'KS3: the gut’s bacteria are missing');
+  chk(/balanced diet/.test(CHof('molecules').text) && ['vitamins', 'minerals', 'fibre', 'water'].every(w => CHof('molecules').text.includes(w)), 'KS3: the rest of a balanced diet is missing');
+  let gallShown = false;
+  for (let c = 0; c < S.CH.length; c++) { S.enterChapter(c); if (S.GROUP.gall.some(m => m.visible)) gallShown = true; }
+  chk(!gallShown, 'KS3: the gall bladder is drawn');
+  const dc = S.DUCTS.geometry.attributes.color.array, bc = new THREE.Color(0x8fbf3c).convertSRGBToLinear();
+  let green = 0; for (let i = 0; i < dc.length; i += 3) if (Math.abs(dc[i] - bc.r) + Math.abs(dc[i + 1] - bc.g) + Math.abs(dc[i + 2] - bc.b) < 1e-4) green++;
+  chk(green === 0, 'KS3: the bile duct or cystic duct is drawn');
+} else {
+  chk(!/bile (digests|breaks down|is an enzyme)/i.test(all) && /Bile is not an enzyme/.test(all), 'a caption says bile digests fat, or never says it is not an enzyme');
+  chk(/denatured/.test(CHof('enzymes').text) && /active site/.test(CHof('enzymes').text) && /substrate/.test(CHof('enzymes').text), 'the enzymes chapter does not teach the active site, the substrate and denaturing');
+  chk(CHof('emulsion').text.includes(S.FACTS.emN + ' droplets') && CHof('emulsion').text.includes(S.FACTS.emX + ' times'), 'the emulsifying chapter does not quote the emulsion figures');
+  chk(CHof('juices').scale.includes(S.DUCT.cysticMm + ' mm'), 'the bile chapter does not quote the drawn cystic duct');
+}
 /* every number in a caption is a measured one, or one the curriculum gives */
 const allowed = new Set([String(S.FACTS.oesCm), String(S.FACTS.colonCm), String(S.FACTS.emN), S.FACTS.emX, String(S.DUCT.cysticMm),
   '20',               // kinds of amino acid

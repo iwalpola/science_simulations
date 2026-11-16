@@ -180,9 +180,10 @@
 
 <div id="side">
   <div>
-    <h1>Digestion</h1>
+    <h1 id="pageTitle">Digestion</h1>
     <p class="byline">Starch, sugars, proteins and lipids: follow each through a real body, watch the enzymes that break them down, and see where the pieces go.</p>
     <div class="links">
+      <a id="otherLevel" href="digestion-ks3.html">KS3 version</a>
       <a href="../respiration/respiration.html">Respiration</a>
       <a href="../index.html">← Human anatomy</a>
       <a href="../../index.html">All simulations</a>
@@ -198,9 +199,9 @@
     <dl class="terms" id="sTerms"></dl>
   </div>
 
-  <div class="credit">Skeleton, mouth, salivary glands, gut, liver, gall bladder, pancreas and their ducts:
+  <div class="credit">Skeleton, mouth, salivary glands, gut, liver, <span id="creditGall">gall bladder, </span>pancreas and their ducts:
     <a href="https://github.com/Z-Anatomy/Models-of-human-anatomy">Z-Anatomy</a>, CC BY-SA 4.0
-    (from BodyParts3D, CC BY-SA 2.1 JP). The cystic duct, villi, cells, molecules and enzymes are drawn in.</div>
+    (from BodyParts3D, CC BY-SA 2.1 JP). The <span id="creditCystic">cystic duct, </span>villi, cells, molecules and enzymes are drawn in.</div>
 </div>
 
 <div id="eq">
@@ -276,6 +277,21 @@ const ANATOMY = {"source":{"glb":"digestion.glb","bytes":920220,"recipe":"digest
    the smaller side drifts off: every block's place is a closed form of the
    chapter's clock t, so scrubbing is exact.
 =========================================================================== */
+
+/* WHICH COURSE. digestion-ks3.html is this file with LEVEL = 'ks3', written
+   by `node test-digestion.js --sync` (never edit it by hand; the test fails
+   until the two agree). For KS3: no gall bladder, no bile and so no
+   emulsifying; enzymes simply as biological catalysts (no active site, no
+   denaturing); the rest of a balanced diet, and the gut's bacteria, added.
+   Chapters are named, not numbered (C.mouth, C.colon...), because the two
+   courses have different lists. */
+const LEVEL = 'gcse';
+const KS3 = LEVEL === 'ks3';
+const pick = (gcse, ks3) => KS3 ? ks3 : gcse;
+const ORDER = KS3
+  ? ['system', 'molecules', 'tests', 'enzymes', 'mouth', 'stomach', 'juices', 'intestine', 'villi', 'colon', 'building']
+  : ['system', 'molecules', 'tests', 'enzymes', 'mouth', 'stomach', 'juices', 'emulsion', 'intestine', 'villi', 'colon', 'building'];
+const C = Object.fromEntries(ORDER.map((id, i) => [id, i]));
 
 /* ----------------------------------------------------------------- helpers */
 const clamp = (v,a,b) => v<a?a:(v>b?b:v);
@@ -1298,9 +1314,9 @@ const DUCTS = (function(){
   const fat = (rad, f, m) => rad.map(r => Math.max(m, r*f));
   const add = (names, hex) => { const c = lin(hex); for(const n of names){ const R = part(n).rec; R.cl.forEach((pts, i) => tubeInto(out, smoothThrough(pts, 3), fat(smoothRad(R.rad[i], 3), 1.6, 0.0009), 8, c)); } };
   add(['Parotid duct.l', 'Parotid duct.r', 'Submandibular duct.l', 'Submandibular duct.r'], TISSUE.gland);
-  add(['Bile duct'], COL.bile);
+  if(!KS3) add(['Bile duct'], COL.bile);
   add(['Pancreatic duct', 'Accessory pancreatic duct'], TISSUE.pancreas);
-  tubeInto(out, DUCT.cystic, DUCT.cystic.map(() => 0.0016), 8, lin(COL.bile));      // drawn in
+  if(!KS3) tubeInto(out, DUCT.cystic, DUCT.cystic.map(() => 0.0016), 8, lin(COL.bile));      // drawn in
   const mesh = new THREE.Mesh(geoOf(out), MAT.duct);
   mesh.userData.group = 'duct';
   macro.add(mesh); (GROUP.duct = GROUP.duct || []).push(mesh);
@@ -1318,7 +1334,7 @@ const LOOK = {
 function setLook(name){
   const L = LOOK[name];
   for(const g in GROUP){
-    const a = L[g] != null ? L[g] : 0.2;
+    const a = KS3 && g === 'gall' ? 0 : L[g] != null ? L[g] : 0.2;      // KS3 has no gall bladder
     for(const m of GROUP[g]){
       m.visible = a > 0.01;
       m.material.opacity = a;
@@ -1381,7 +1397,7 @@ const FOOD_MOUTH = knots([0, 1.0, 3.2, 4.4, 10.4, 12.2, 16], [0, 0, S_FOOD.oral,
 const FOOD_DUO   = knots([0, 1.0, 3.4, 5.2, 18], [S_FOOD.inStomach, S_FOOD.inStomach, S_FOOD.pylorus, S_FOOD.papilla, S_FOOD.papilla + 0.012]);
 const FOOD_COLON = knots([0, 2.0, 13.5, 16], [S_FOOD.colon - 0.12, S_FOOD.colon - 0.04, S_FOOD.end, S_FOOD.end]);
 /* the juices: bile comes out of the gall bladder, pancreatic juice down its duct */
-const JT = {bileIn:[0.6, 3.6], bileOut:[5.6, 11.5], panc:[6.6, 12.5]};
+const JT = {bileIn:[0.6, 3.6], bileOut:[5.6, 11.5], panc:pick([6.6, 12.5], [3.4, 9.5])};    // KS3: no bile to wait for
 
 /* =========================================================================
    THE FOUR MOLECULES  (micro world, at SHELF_O)
@@ -1520,19 +1536,21 @@ const KEYS = (function(){
   const geo = ENZ_GEO.long.clone(), src = ENZ_GEO.long;
   const E = enzyme(enzw, 'amylase', home, {geo, amp:0.2});
   E.job(I, 1, LK.cut1).job(I, 3, LK.cut2);              // two glucoses off each time: maltose
-  E.job(I, 6, LK.try, true);
+  /* KS3 stops there: an enzyme simply as a catalyst. GCSE goes on to the
+     protein that does not fit and the denatured enzyme */
+  if(!KS3) E.job(I, 6, LK.try, true);
   /* the protein: comes to the enzyme where it is waiting, stops short, goes */
   const pr = protein(6, 9);
-  const P = inst(pr, {pose:t => {
+  const P = KS3 ? null : inst(pr, {pose:t => {
     const e = wander(E, LK.miss), b = pr.bonds[2];
     const a = e.a - Math.atan2(b.dir[1], b.dir[0]);
     const at = vsub(vadd(e.p, rotZ(e.a, [0, -0.62, 0])), rotZ(a, b.mid));
     const u = ss(LK.miss - 2.2, LK.miss, t)*(1 - ss(LK.miss + 0.8, LK.miss + 2.8, t));
     return {p:vadd(at, vmul([2.6, -3.6, 0], 1 - u)), a:a + 0.5*(1 - u)};
   }, show:t => ss(LK.miss - 2.6, LK.miss - 2.0, t)*(1 - ss(LK.miss + 2.6, LK.miss + 3.2, t))});
-  const layer = molLayer(enzw, [I, P]);
+  const layer = molLayer(enzw, P ? [I, P] : [I]);
   function update(t){
-    denatureInto(geo, src, ss(LK.den[0], LK.den[1], t));
+    if(!KS3) denatureInto(geo, src, ss(LK.den[0], LK.den[1], t));
     layer.update(t);
     placeEnzyme(E, t);
   }
@@ -2035,55 +2053,59 @@ const fixed = (ch, text, a, b, opt, f, t0, o) =>
   cue(ch, screenSized(lbl(macro, text, V(0,0,0), opt), f), t0, Object.assign({at:beside(a, b)}, o || {}));
 const HEX = n => hexCss(n);
 
-/* chapter 0: the body, organ by organ */
+/* the body, organ by organ */
 const SC0 = 0.036;
-const organ = (text, anchor, off, col, t0) => tagged(macro, 0, text, anchor, VA(vadd(anchor, off)), {scale:SC0, color:col, line:parseInt(col.slice(1), 16)}, t0);
+const organ = (text, anchor, off, col, t0) => tagged(macro, C.system, text, anchor, VA(vadd(anchor, off)), {scale:SC0, color:col, line:parseInt(col.slice(1), 16)}, t0);
 organ('mouth', LM.lips, [0.2, -0.05, 0.05], '#f6c3b6', 1.0);
 organ('salivary glands', [-LM.parotid[0], LM.parotid[1], LM.parotid[2]], [-0.24, -0.02, 0.02], '#f4b2c4', 1.8);
 organ('oesophagus', along(ROUTE.food, lerp(S_FOOD.oes, S_FOOD.cardia, 0.45)), [-0.26, 0.05, 0.05], '#f6c3b6', 2.6);
 organ('stomach', LM.stomach, [0.26, 0.06, 0.05], '#f6c3b6', 3.4);
 organ('liver', vadd(LM.liver, [-0.04, 0.02, 0.06]), [-0.28, 0.04, 0.05], '#e08a78', 4.2);
-organ('gall bladder', LM.gall, [-0.3, -0.06, 0.06], '#b2d67a', 5.0);
+if(!KS3) organ('gall bladder', LM.gall, [-0.3, -0.06, 0.06], '#b2d67a', 5.0);
 organ('pancreas', LM.pancreas, [0.3, -0.04, 0.05], '#f2cfa6', 5.8);
 organ('small intestine', along(ROUTE.food, S_FOOD.jej + 0.9), [0.28, -0.1, 0.05], '#f6c3b6', 6.6);
 organ('large intestine', centroid('Ascending colon'), [-0.28, -0.1, 0.05], '#e7b39b', 7.4);
-fixed(0, 'glands make digestive juices; the gut carries the food through', 0, -0.66, pill({color:'#ffd9a0'}), 0.03, 9.0);
+fixed(C.system, pick('glands make digestive juices; the gut carries the food through', 'some organs make digestive juices; the gut carries the food through'), 0, -0.66, pill({color:'#ffd9a0'}), 0.03, 9.0);
 
-/* chapters 4 and 10: a pill names whatever the food is in */
+/* the mouth and the colon: a pill names whatever the food is in */
 function tFor(sOf, s){ for(let t=0;t<40;t+=0.02) if(sOf(t) >= s - 1e-6) return t; return 40; }   // the first time a timeline reaches s
 function routeTag(ch, text, sOf, s0, s1){
   return fixed(ch, text, 0.62, -0.5, pill({color:'#ffd2b0'}), 0.04, () => tFor(sOf, s0), {t1:s1 == null ? null : () => tFor(sOf, s1) - 0.5});
 }
-routeTag(4, 'mouth: teeth and saliva', FOOD_MOUTH, 0, S_FOOD.oral + 0.002);
-routeTag(4, 'pharynx (throat)', FOOD_MOUTH, S_FOOD.oral + 0.004, S_FOOD.oes);
-routeTag(4, 'oesophagus', FOOD_MOUTH, S_FOOD.oes + 0.002, S_FOOD.cardia);
-routeTag(4, 'stomach', FOOD_MOUTH, S_FOOD.cardia + 0.003, null);
-fixed(4, 'saliva: amylase starts digesting starch', 0, -0.66, pill({color:'#9fd3ff'}), 0.034, 0.9, {t1:4.0});
-routeTag(10, 'end of the small intestine', FOOD_COLON, 0, S_FOOD.colon);
-routeTag(10, 'ascending colon', FOOD_COLON, S_FOOD.colon + 0.002, S_FOOD.trans);
-routeTag(10, 'transverse colon', FOOD_COLON, S_FOOD.trans + 0.002, S_FOOD.desc);
-routeTag(10, 'descending colon', FOOD_COLON, S_FOOD.desc + 0.002, S_FOOD.sigm);
-routeTag(10, 'sigmoid colon, then the rectum', FOOD_COLON, S_FOOD.sigm + 0.002, null);
-fixed(10, 'water is absorbed into the blood here', 0, -0.66, pill({color:'#9fd0ff'}), 0.032, 4.0);
+routeTag(C.mouth, 'mouth: teeth and saliva', FOOD_MOUTH, 0, S_FOOD.oral + 0.002);
+routeTag(C.mouth, 'pharynx (throat)', FOOD_MOUTH, S_FOOD.oral + 0.004, S_FOOD.oes);
+routeTag(C.mouth, 'oesophagus', FOOD_MOUTH, S_FOOD.oes + 0.002, S_FOOD.cardia);
+routeTag(C.mouth, 'stomach', FOOD_MOUTH, S_FOOD.cardia + 0.003, null);
+fixed(C.mouth, 'saliva: amylase starts digesting starch', 0, -0.66, pill({color:'#9fd3ff'}), 0.034, 0.9, {t1:4.0});
+routeTag(C.colon, 'end of the small intestine', FOOD_COLON, 0, S_FOOD.colon);
+routeTag(C.colon, 'ascending colon', FOOD_COLON, S_FOOD.colon + 0.002, S_FOOD.trans);
+routeTag(C.colon, 'transverse colon', FOOD_COLON, S_FOOD.trans + 0.002, S_FOOD.desc);
+routeTag(C.colon, 'descending colon', FOOD_COLON, S_FOOD.desc + 0.002, S_FOOD.sigm);
+routeTag(C.colon, 'sigmoid colon, then the rectum', FOOD_COLON, S_FOOD.sigm + 0.002, null);
+fixed(C.colon, 'water is absorbed into the blood here', 0, -0.66, pill({color:'#9fd0ff'}), 0.032, 4.0, KS3 ? {t1:8.0} : {});
+if(KS3) fixed(C.colon, 'helpful bacteria live here too', 0, -0.66, pill({color:'#b8e6a0'}), 0.032, 8.6);
 
-/* chapter 5: the stomach, first from outside */
-fixed(5, 'the stomach churns food with acid and enzymes', 0, -0.66, pill({color:'#ffd2b0'}), 0.032, 0.6, {t1:3.4});
+/* the stomach, first from outside */
+fixed(C.stomach, 'the stomach churns food with acid and enzymes', 0, -0.66, pill({color:'#ffd2b0'}), 0.032, 0.6, {t1:3.4});
 
-/* chapter 6: the glands and their ducts */
+/* the glands and their ducts; KS3 has only the pancreas */
 const SC6 = 0.0085;
-const j6 = (text, anchor, off, col, t0) => tagged(macro, 6, text, anchor, VA(vadd(anchor, off)), {scale:SC6, color:col, line:parseInt(col.slice(1), 16)}, t0);
-j6('liver: makes bile', DUCT.bile.pts[0], [-0.035, 0.03, 0.03], '#e08a78', 0.6);
-j6('gall bladder: stores bile', LM.gall, [-0.05, 0.012, 0.03], '#b2d67a', 2.4);
-j6('bile duct', along(polyOf(DUCT.bile.pts), polyOf(DUCT.bile.pts).L*0.7), [-0.06, -0.012, 0.03], '#b2d67a', 4.8);
-j6('pancreas', vadd(LM.pancreas, [0.02, 0, 0.01]), [0.02, 0.03, 0.03], '#f2cfa6', 6.2);
+const j6 = (text, anchor, off, col, t0) => tagged(macro, C.juices, text, anchor, VA(vadd(anchor, off)), {scale:SC6, color:col, line:parseInt(col.slice(1), 16)}, t0);
+if(!KS3){
+  j6('liver: makes bile', DUCT.bile.pts[0], [-0.035, 0.03, 0.03], '#e08a78', 0.6);
+  j6('gall bladder: stores bile', LM.gall, [-0.05, 0.012, 0.03], '#b2d67a', 2.4);
+  j6('bile duct', along(polyOf(DUCT.bile.pts), polyOf(DUCT.bile.pts).L*0.7), [-0.06, -0.012, 0.03], '#b2d67a', 4.8);
+}
+j6('pancreas', vadd(LM.pancreas, [0.02, 0, 0.01]), [0.02, 0.03, 0.03], '#f2cfa6', pick(6.2, 2.0));
 j6('duodenum', DUCT.papilla, [-0.035, -0.032, 0.03], '#f6c3b6', 3.0);
-fixed(6, 'pancreatic juice: amylase, protease and lipase', 0, -0.52, pill({color:'#f3e4bd'}), 0.03, 7.0);
-fixed(6, 'bile is alkaline: it neutralises the stomach acid', 0, -0.66, pill({color:'#c4e07a'}), 0.03, 9.0);
+if(KS3) j6('pancreatic duct', along(polyOf(DUCT.pan.pts), polyOf(DUCT.pan.pts).L*0.35), [0.01, -0.035, 0.03], '#f2cfa6', 4.0);
+fixed(C.juices, 'pancreatic juice: amylase, protease and lipase', 0, pick(-0.52, -0.66), pill({color:'#f3e4bd'}), 0.03, pick(7.0, 6.0));
+if(!KS3) fixed(C.juices, 'bile is alkaline: it neutralises the stomach acid', 0, -0.66, pill({color:'#c4e07a'}), 0.03, 9.0);
 
-/* chapter 1: the four molecules. Headers, what each is made of, and what it
-   is broken down into, in the frame of CAM.shelf */
+/* the four molecules. Headers, what each is made of, and what it is
+   broken down into, in the frame of CAM.shelf */
 const SL = {scale:0.62};
-const shelfL = (text, x, y, opt, t0, t1) => cue(1, lbl(shelf, text, V(x, y, 0.5), Object.assign({}, SL, opt)), t0, t1 != null ? {t1} : {});
+const shelfL = (text, x, y, opt, t0, t1) => cue(C.molecules, lbl(shelf, text, V(x, y, 0.5), Object.assign({}, SL, opt)), t0, t1 != null ? {t1} : {});
 const HEADS = [['starch', HEX(COL.glucose)], ['sugars', '#f6a865'], ['a protein', '#ec7fa3'], ['a lipid', '#d6dc7e']];
 const MADE = ['a chain of glucoses', 'one or two sugars', 'a chain of amino acids', 'glycerol + 3 fatty acids'];
 const FOODS = ['bread, rice, potatoes', 'fruit, sweets, drinks', 'meat, fish, eggs, beans', 'butter, oil, nuts'];
@@ -2095,40 +2117,43 @@ HEADS.forEach(([h, c], i) => {
   shelfL(FOODS[i], x, -3.45, Object.assign({scale:0.42}, NOTE), SHELF_T[i] + 0.6);
   shelfL(INTO[i], x, -4.3, pill({scale:0.5, color:c}), 10.0 + 0.5*i);
 });
-cue(1, lbl(shelf, 'starch, proteins and lipids are too big to get into the blood: they must be digested', V(0, -5.4, 0.5), pill({scale:0.48, color:'#ffd9a0'})), 13.0);
+cue(C.molecules, lbl(shelf, 'starch, proteins and lipids are too big to get into the blood: they must be digested', V(0, -5.4, 0.5), pill({scale:0.48, color:'#ffd9a0'})), 13.0);
 
-/* chapter 2: the food tests, under each tube */
+/* the food tests, under each tube */
 TT.forEach((T, i) => {
-  cue(2, lbl(tests, T.food, V(T.x, TUBE.y0 - 1.2, 0.8), {scale:0.42, color:'#f0e6d0'}), 0.6 + 0.2*i);
-  cue(2, lbl(tests, T.reagent, V(T.x, TUBE.y0 - 1.75, 0.8), {scale:0.38, color:DIM}), 0.8 + 0.2*i);
-  cue(2, lbl(tests, T.result, V(T.x, TUBE.y0 - 2.4, 0.8), pill({scale:0.36, color:'#ffd9a0'})), T.change[1] - 0.4);
+  cue(C.tests, lbl(tests, T.food, V(T.x, TUBE.y0 - 1.2, 0.8), {scale:0.42, color:'#f0e6d0'}), 0.6 + 0.2*i);
+  cue(C.tests, lbl(tests, T.reagent, V(T.x, TUBE.y0 - 1.75, 0.8), {scale:0.38, color:DIM}), 0.8 + 0.2*i);
+  cue(C.tests, lbl(tests, T.result, V(T.x, TUBE.y0 - 2.4, 0.8), pill({scale:0.36, color:'#ffd9a0'})), T.change[1] - 0.4);
 });
-cue(2, lbl(tests, 'heated in a hot water bath', V(TT[1].x, TUBE.y0 + TUBE.h + 0.7, 0.8), Object.assign({scale:0.34}, NOTE)), TT[1].bath[0] + 0.6, {t1:TT[1].bath[1] - 0.4});
+cue(C.tests, lbl(tests, 'heated in a hot water bath', V(TT[1].x, TUBE.y0 + TUBE.h + 0.7, 0.8), Object.assign({scale:0.34}, NOTE)), TT[1].bath[0] + 0.6, {t1:TT[1].bath[1] - 0.4});
 
-/* chapter 3: lock and key, in the frame of CAM.enz */
-const KL = (text, x, y, opt, t0, t1) => cue(3, lbl(enzw, text, V(x, y, 1), Object.assign({scale:0.42}, opt)), t0, t1 != null ? {t1} : {});
+/* lock and key (KS3: a catalyst, cutting twice), in the frame of CAM.enz */
+const KL = (text, x, y, opt, t0, t1) => cue(C.enzymes, lbl(enzw, text, V(x, y, 1), Object.assign({scale:0.42}, opt)), t0, t1 != null ? {t1} : {});
 const kHome = KEYS.home;
-tagged(enzw, 3, 'amylase: an enzyme', vadd(kHome, [-1.4, 1.2, 0]), V(-4.3, 3.4, 1), {scale:0.46, color:HEX(COL.amylase), line:COL.amylase}, 0.4, {t1:5.0});
-tagged(enzw, 3, 'its active site', vadd(kHome, [0.6, 0.3, 0.4]), V(3.4, 1.4, 1), {scale:0.42, color:'#cfe0ff', line:0xcfe0ff}, 1.4, {t1:5.0});
+tagged(enzw, C.enzymes, 'amylase: an enzyme', vadd(kHome, [-1.4, 1.2, 0]), V(-4.3, 3.4, 1), {scale:0.46, color:HEX(COL.amylase), line:COL.amylase}, 0.4, {t1:5.0});
+if(!KS3) tagged(enzw, C.enzymes, 'its active site', vadd(kHome, [0.6, 0.3, 0.4]), V(3.4, 1.4, 1), {scale:0.42, color:'#cfe0ff', line:0xcfe0ff}, 1.4, {t1:5.0});
 KL('starch: a chain of glucoses', -3.6, -2.4, {color:'#f2c14e'}, 3.0, 5.2);
-KL('it fits the active site, like a key in a lock', 0, -3.0, pill({color:'#ffd9a0', scale:0.4}), 5.0, 8.2);
+KL(pick('it fits the active site, like a key in a lock', 'the starch fits into the enzyme'), 0, -3.0, pill({color:'#ffd9a0', scale:0.4}), 5.0, 8.2);
 KL('a bond breaks: maltose is cut off', 0, -3.0, pill({color:'#f2c14e', scale:0.4}), 8.4, 9.0);
 KL('the enzyme is not used up: it does it again', 0, -3.0, pill({color:'#cfe0ff', scale:0.4}), 9.4, 11.0);
-KL('a protein does not fit amylase’s active site', 0, -3.0, pill({color:'#ec7fa3', scale:0.4}), 11.6, 14.4);
-KL('heat or the wrong pH changes the shape of the active site: it is denatured', 0, -3.0, pill({color:'#ffb090', scale:0.36}), 14.9, 17.4);
-KL('the starch no longer fits: nothing happens', 0, -3.0, pill({color:'#ffb090', scale:0.4}), 17.8);
+if(KS3) KL('an enzyme is a biological catalyst: it speeds up a reaction without being used up', 0, -3.0, pill({color:'#cfe0ff', scale:0.34}), 11.4);
+else {
+  KL('a protein does not fit amylase’s active site', 0, -3.0, pill({color:'#ec7fa3', scale:0.4}), 11.6, 14.4);
+  KL('heat or the wrong pH changes the shape of the active site: it is denatured', 0, -3.0, pill({color:'#ffb090', scale:0.36}), 14.9, 17.4);
+  KL('the starch no longer fits: nothing happens', 0, -3.0, pill({color:'#ffb090', scale:0.4}), 17.8);
+}
 
-/* chapter 5: inside the stomach, in the frame of CAM.stom */
+/* inside the stomach, in the frame of CAM.stom */
 const S5 = 3.8;
-const stL = (text, x, y, opt, t0, t1) => cue(5, lbl(stom, text, V(x, y, 2), Object.assign({scale:0.55}, opt)), t0, t1 != null ? {t1} : {});
-stL('protease (pepsin) cuts proteins into shorter chains', -2.4, -4.9, pill({color:'#c9a8f0', scale:0.5}), S5 + 1.0);
+const stL = (text, x, y, opt, t0, t1) => cue(C.stomach, lbl(stom, text, V(x, y, 2), Object.assign({scale:0.55}, opt)), t0, t1 != null ? {t1} : {});
+stL(pick('protease (pepsin) cuts proteins into shorter chains', 'protease cuts proteins into shorter chains'), -2.4, -4.9, pill({color:'#c9a8f0', scale:0.5}), S5 + 1.0);
 stL('hydrochloric acid: pH 2', -5.8, 5.6, pill({color:'#ff9a8a', scale:0.48}), S5 + 0.4);
-stL('amylase from saliva: denatured by the acid', 5.2, -4.4, {color:'#a9c4ff', scale:0.44}, S5 + 3.0);
+stL(pick('amylase from saliva: denatured by the acid', 'amylase from saliva: stopped by the acid'), 5.2, -4.4, {color:'#a9c4ff', scale:0.44}, S5 + 3.0);
 stL('starch: not digested here', 5.2, 2.5, {color:'#f2c14e', scale:0.44}, S5 + 4.0);
 stL('fat: not digested yet', -7.2, -4.4, {color:'#e2d98a', scale:0.44}, S5 + 5.0);
 
-/* chapter 7: emulsifying, in the frame of CAM.emul */
-const emL = (text, x, y, opt, t0, t1) => cue(7, lbl(emul, text, V(x, y, 1), Object.assign({scale:0.5}, opt)), t0, t1 != null ? {t1} : {});
+/* emulsifying (GCSE only: KS3 has no bile), in the frame of CAM.emul */
+const emL = (text, x, y, opt, t0, t1) => { if(!KS3) cue(C.emulsion, lbl(emul, text, V(x, y, 1), Object.assign({scale:0.5}, opt)), t0, t1 != null ? {t1} : {}); };
 emL('a big drop of fat', -3.4, 2.6, {color:'#e2d98a'}, 0.4, 2.6);
 emL('bile', -5.2, 1.6, {color:'#b2d67a'}, 1.2, 4.0);
 emL('bile breaks it into smaller and smaller droplets: it emulsifies the fat', 0, -3.9, pill({color:'#c4e07a', scale:0.36}), 3.6, 10.2);
@@ -2142,8 +2167,8 @@ emL('lipase works on the surface: more surface, faster digestion', 0, -3.9, pill
 emL('fatty acids and glycerol', -4.6, -2.6, {color:'#d6dc7e', scale:0.42}, 12.0);
 emL('bile is not an enzyme: it digests nothing itself', 0, -3.9, pill({color:'#c4e07a', scale:0.36}), 15.6);
 
-/* chapter 8: the four lanes, in the frame of CAM.lumen */
-const luL = (text, x, y, opt, t0, t1) => cue(8, lbl(lumen, text, V(x, y, 1.5), Object.assign({scale:0.5}, opt)), t0, t1 != null ? {t1} : {});
+/* the four lanes, in the frame of CAM.lumen */
+const luL = (text, x, y, opt, t0, t1) => cue(C.intestine, lbl(lumen, text, V(x, y, 1.5), Object.assign({scale:0.5}, opt)), t0, t1 != null ? {t1} : {});
 const LANE_H = [['starch', '#f2c14e', 'amylase, then maltase'], ['sugars', '#f6a865', 'sucrase'], ['protein', '#ec7fa3', 'proteases'], ['lipids', '#d6dc7e', 'lipase']];
 LANE_H.forEach(([h, c, e], i) => {
   luL(h, LANE[i] + (i === 3 ? 0.3 : 0), 5.35, {color:c, scale:0.6}, 0.4 + 0.25*i);
@@ -2155,28 +2180,28 @@ luL('amino acids', LANE[2], -6.2, pill({color:'#ec7fa3', scale:0.44}), 15.0);
 luL('glycerol + fatty acids', LANE[3] + 0.2, -6.2, pill({color:'#d6dc7e', scale:0.44}), 16.2);
 luL('maltose', LANE[0] + 2.0, 2.4, {color:'#f2c14e', scale:0.38}, 5.6, 8.4);
 
-/* chapter 9: the villi. The hero's labels are placed in the frame of
-   CAM.villus: a column down each side, clear of the key at the top right */
+/* the villi. The hero's labels are placed in the frame of CAM.villus: a
+   column down each side, clear of the key at the top right */
 const VL = (opt) => Object.assign({scale:0.17}, opt);
 const HV = (x, y) => VA(vadd(HERO, [x, y, 0]));
-cue(9, lbl(villi, 'zoomed in: the inside wall of the small intestine', V(-0.8, 3.0, -1), {color:DIM, scale:0.32}), 0.5, {t1:4.4});
-tagged(villi, 9, 'villi', [-3, 2.4, -0.5], V(-4.6, 3.3, 0.5), VL({color:'#f6c3b6', line:0xf6c3b6, scale:0.42}), 1.2, {t1:4.4});
-tagged(villi, 9, 'one villus, cut in half', vadd(HERO, [-0.25*HERO_S, 2.45*HERO_S, 0]), HV(-1.75, 3.05), VL({color:'#f6c3b6', line:0xf6c3b6, scale:0.2}), 6.9);
-tagged(villi, 9, 'lacteal: fatty acids, glycerol', vadd(HERO, [0, 1.8*HERO_S, 0]), HV(-2.0, 2.45), VL({color:'#f6efd8', line:0xf6efd8}), 7.4);
-tagged(villi, 9, 'wall: one layer of cells', vadd(HERO, [-villusR(0.7)*HERO_S, 0.7*HERO_S, 0]), HV(-2.1, 0.75), VL({color:'#f6c3b6', line:0xf6c3b6}), 8.6);
-tagged(villi, 9, 'capillaries: glucose, amino acids', vadd(HERO, vmul(VI.LOOPS[3][14], HERO_S)), HV(2.0, 2.1), VL({color:'#ff9a8a', line:0xff9a8a}), 9.2);
-cue(9, lbl(villi, 'the blood takes them to the liver, then round the body', HV(1.85, 0.55), pill({scale:0.13, color:'#ffd9a0'})), 10.5);
+cue(C.villi, lbl(villi, 'zoomed in: the inside wall of the small intestine', V(-0.8, 3.0, -1), {color:DIM, scale:0.32}), 0.5, {t1:4.4});
+tagged(villi, C.villi, 'villi', [-3, 2.4, -0.5], V(-4.6, 3.3, 0.5), VL({color:'#f6c3b6', line:0xf6c3b6, scale:0.42}), 1.2, {t1:4.4});
+tagged(villi, C.villi, 'one villus, cut in half', vadd(HERO, [-0.25*HERO_S, 2.45*HERO_S, 0]), HV(-1.75, 3.05), VL({color:'#f6c3b6', line:0xf6c3b6, scale:0.2}), 6.9);
+tagged(villi, C.villi, 'lacteal: fatty acids, glycerol', vadd(HERO, [0, 1.8*HERO_S, 0]), HV(-2.0, 2.45), VL({color:'#f6efd8', line:0xf6efd8}), 7.4);
+tagged(villi, C.villi, pick('wall: one layer of cells', 'thin wall: one cell thick'), vadd(HERO, [-villusR(0.7)*HERO_S, 0.7*HERO_S, 0]), HV(-2.1, 0.75), VL({color:'#f6c3b6', line:0xf6c3b6}), 8.6);
+tagged(villi, C.villi, 'capillaries: glucose, amino acids', vadd(HERO, vmul(VI.LOOPS[3][14], HERO_S)), HV(2.0, 2.1), VL({color:'#ff9a8a', line:0xff9a8a}), 9.2);
+cue(C.villi, lbl(villi, 'the blood takes them to the liver, then round the body', HV(1.85, 0.55), pill({scale:0.13, color:'#ffd9a0'})), 10.5);
 
-/* chapter 11: building, in the frame of CAM.build */
-const buL = (text, x, y, opt, t0, t1) => cue(11, lbl(build, text, V(x, y, 1.5), Object.assign({scale:0.5}, opt)), t0, t1 != null ? {t1} : {});
+/* building, in the frame of CAM.build */
+const buL = (text, x, y, opt, t0, t1) => cue(C.building, lbl(build, text, V(x, y, 1.5), Object.assign({scale:0.5}, opt)), t0, t1 != null ? {t1} : {});
 buL('a new protein', BX[0], 4.6, {color:'#ec7fa3', scale:0.62}, 0.6);
-buL('built on a ribosome', BX[0], 3.95 - 0.05, {color:DIM, scale:0.4}, 1.0);
+buL(pick('built on a ribosome', 'for growth and repair'), BX[0], 3.95 - 0.05, {color:DIM, scale:0.4}, 1.0);
 buL('glycogen: a store', BX[1] - 0.4, 4.6, {color:'#f2c14e', scale:0.62}, 3.0);
 buL('in the liver and muscles', BX[1] - 0.4, 3.95 - 0.05, {color:DIM, scale:0.4}, 3.4);
 buL('respiration: energy transferred', BU.mitoAt[0], BU.mitoAt[1] - 1.5, pill({color:'#e0847f', scale:0.4}), 4.0);
 buL('lipids again', BX[2], 4.6, {color:'#d6dc7e', scale:0.62}, 3.4);
 buL('stored as fat, or in membranes', BX[2], 3.0, {color:DIM, scale:0.4}, 3.8);
-cue(11, lbl(build, 'the products of digestion are used to build the body’s own molecules', V(0, -5.4, 1.5), pill({scale:0.48, color:'#ffd9a0'})), 13.0);
+cue(C.building, lbl(build, pick('the products of digestion are used to build the body’s own molecules', 'the small molecules are used for energy, growth and repair'), V(0, -5.4, 1.5), pill({scale:0.48, color:'#ffd9a0'})), 13.0);
 
 linearise(macro); [shelf, tests, enzw, stom, emul, lumen, villi, build].forEach(linearise);
 
@@ -2192,9 +2217,9 @@ const followRoute = (poly, sOf, o) => t => {
   return {dist:Math.exp(lerp(Math.log(o.d0), Math.log(o.d1), u)), az:lerp(o.az0, o.az1, u), el:lerp(o.el0, o.el1, u), look};
 };
 
-const CH = [
+const CH_GCSE = [
   {
-    part:'The digestive system', len:15, view:'body',
+    id:'system', part:'The digestive system', len:15, view:'body',
     shots:[{world:'macro', from:CAM.start, to:CAM.wide, dur:7.0}],
     eq:['carb', 'prot', 'lip'],
     title:'An organ system that breaks food down',
@@ -2207,7 +2232,7 @@ const CH = [
     key:['food', 'gut', 'gland', 'pancreas', 'gall']
   },
   {
-    part:'Four food molecules', len:17,
+    id:'molecules', part:'Four food molecules', len:17,
     shots:[{world:'shelf', from:CAM.shelfIn, to:CAM.shelf, dur:3.0}],
     eq:['carb', 'prot', 'lip'],
     title:'Starch, sugars, proteins and lipids',
@@ -2220,7 +2245,7 @@ const CH = [
     key:['glucoseU', 'fructoseU', 'aminoU', 'glycerolU', 'fattyU']
   },
   {
-    part:'The food tests', len:20,
+    id:'tests', part:'The food tests', len:20,
     shots:[{world:'tests', from:CAM.testsIn, to:CAM.tests, dur:2.4}],
     eq:['carb', 'prot', 'lip'],
     title:'Testing food for each one',
@@ -2233,7 +2258,7 @@ const CH = [
     key:['glucoseU', 'aminoU', 'fattyU']
   },
   {
-    part:'Lock and key', len:21,
+    id:'enzymes', part:'Lock and key', len:21,
     shots:[{world:'enz', from:CAM.enzIn, to:CAM.enz, dur:2.6}],
     eq:['carb'],
     title:'Enzymes and their active sites',
@@ -2246,7 +2271,7 @@ const CH = [
     key:['amylase', 'glucoseU', 'aminoU']
   },
   {
-    part:'Mouth to stomach', len:16, view:'mouth',
+    id:'mouth', part:'Mouth to stomach', len:16, view:'mouth',
     shots:[{world:'macro', from:CAM.torso, to:CAM.head, dur:1.6, until:3.4},
            {world:'macro', follow:followRoute(ROUTE.food, FOOD_MOUTH, {t0:3.4, t1:10, d0:0.34, d1:0.4, az0:1.15, az1:0.3, el0:0.12, el1:0.16})}],
     eq:['carb'],
@@ -2260,7 +2285,7 @@ const CH = [
     key:['food', 'saliva', 'gland', 'gut']
   },
   {
-    part:'The stomach', len:18, view:'stomach',
+    id:'stomach', part:'The stomach', len:18, view:'stomach',
     shots:[{world:'macro', from:CAM.stomach, to:{dist:0.24, az:0.3, el:0.12, look:CAM.stomach.look}, dur:3.6, until:S5},
            {world:'stom', from:CAM.stomIn, to:CAM.stom, dur:2.6}],
     eq:['prot'],
@@ -2274,7 +2299,7 @@ const CH = [
     key:['protease', 'amylase', 'aminoU', 'acid', 'fat']
   },
   {
-    part:'Bile and pancreatic juice', len:16, view:'juices',
+    id:'juices', part:'Bile and pancreatic juice', len:16, view:'juices',
     shots:[{world:'macro', from:CAM.stomach, to:CAM.juices, dur:2.6}],
     eq:['carb', 'prot', 'lip'],
     title:'Juices from the liver and the pancreas',
@@ -2287,7 +2312,7 @@ const CH = [
     key:['bile', 'juice', 'food', 'pancreas', 'gall']
   },
   {
-    part:'Emulsifying fat', len:18,
+    id:'emulsion', part:'Emulsifying fat', len:18,
     shots:[{world:'emul', from:CAM.emulIn, to:CAM.emul, dur:3.2}],
     eq:['lip'],
     title:'Big drops into small droplets',
@@ -2300,7 +2325,7 @@ const CH = [
     key:['fat', 'bileSalt', 'lipase', 'fattyU', 'glycerolU']
   },
   {
-    part:'The small intestine', len:20,
+    id:'intestine', part:'The small intestine', len:20,
     shots:[{world:'lumen', from:CAM.lumenIn, to:CAM.lumen, dur:2.6}],
     eq:['carb', 'prot', 'lip'],
     title:'Finishing the job',
@@ -2313,7 +2338,7 @@ const CH = [
     key:['amylase', 'maltase', 'sucrase', 'protease', 'lipase']
   },
   {
-    part:'Into the blood', len:16,
+    id:'villi', part:'Into the blood', len:16,
     shots:[{world:'villi', from:CAM.villiW, to:CAM.villiW, dur:0.1, until:4.6},
            {world:'villi', from:CAM.villiW, to:CAM.villus, dur:2.2}],
     eq:['carb', 'prot', 'lip'],
@@ -2327,7 +2352,7 @@ const CH = [
     key:['glucoseU', 'aminoU', 'fattyU', 'oxyBlood', 'lacteal']
   },
   {
-    part:'The large intestine', len:16, view:'colon',
+    id:'colon', part:'The large intestine', len:16, view:'colon',
     shots:[{world:'macro', follow:followRoute(ROUTE.food, FOOD_COLON, {t0:0, t1:4, d0:0.42, d1:0.5, az0:0.2, az1:0.12, el0:0.1, el1:0.1}), until:13.0},
            {world:'macro', from:{dist:0.5, az:0.12, el:0.1, look:along(ROUTE.food, FOOD_COLON(13.0))}, to:CAM.colon, dur:2.6}],
     eq:['carb'],
@@ -2340,7 +2365,7 @@ const CH = [
     key:['food', 'colon', 'gut']
   },
   {
-    part:'Building', len:18,
+    id:'building', part:'Building', len:18,
     shots:[{world:'build', from:CAM.buildIn, to:CAM.build, dur:3.0}],
     eq:['carb', 'prot', 'lip'],
     title:'New molecules from old',
@@ -2352,6 +2377,90 @@ const CH = [
     key:['aminoU', 'glucoseU', 'fattyU', 'mito']
   }
 ];
+
+/* KS3: what changes, chapter by chapter. Everything not named here (the
+   shots, the camera, the view, the bar) is the GCSE chapter's. */
+const KS3_CH = {
+  system:{
+    part:'The digestive system',
+    title:'The organs that digest food',
+    text:'Your <b>digestive system</b> is made of <b>organs</b> that work together to break food down and take it into your body. Food passes along the <b>gut</b>: the mouth, the oesophagus, the stomach, the small intestine and the large intestine.<br><br>Some organs make <b>digestive juices</b> and pour them into the gut: the <b>salivary glands</b> and the <b>pancreas</b>. Most of the digested food goes to the <b>liver</b> first, once it is in the blood.<br><br>Most of the food you eat is made of <b>large molecules</b>, far too big to get into your blood. Digestion breaks them into <b>small molecules</b> that can.',
+    scale:'The model has no skin. The liver is drawn see-through so the organs behind it show.',
+    terms:[['Organ','a group of different tissues working together to do a job.'],
+           ['Digestion','breaking large food molecules into small ones that can get into the blood.'],
+           ['Digestive juice','a liquid an organ makes and pours into the gut. It contains enzymes.']],
+    key:['food', 'gut', 'gland', 'pancreas']
+  },
+  molecules:{
+    title:'What food is made of',
+    text:'Three of the nutrients in food are made of large molecules:<br><br>• <b>Carbohydrates</b>. <b>Starch</b> is a long chain of <b>glucose</b> molecules; bread, rice, pasta and potatoes are full of it. <b>Sugars</b> are small: glucose is one sugar, and table sugar (<b>sucrose</b>) is two different sugars joined together.<br>• <b>Proteins</b>: long chains of <b>amino acids</b>, folded up. Meat, fish, eggs and beans are rich in protein.<br>• <b>Lipids</b> (fats and oils): each is a <b>glycerol</b> joined to three <b>fatty acids</b>. Butter, oil and nuts are rich in lipids.<br><br>A <b>balanced diet</b> also needs <b>vitamins</b>, <b>minerals</b>, <b>fibre</b> and <b>water</b>. These are small already, or, like fibre, are not digested at all.',
+    terms:[['Carbohydrates','starch and sugars. They give you energy.'],
+           ['Proteins','made of amino acids. Needed for growth and repair.'],
+           ['Lipids','fats and oils. A store of energy, and they keep you warm.']]
+  },
+  tests:{
+    scale:'Benedict’s shows sugars such as glucose; table sugar (sucrose) leaves it blue. Some schools test for lipids by rubbing the food on paper (a see-through grease spot) or with ethanol (a cloudy white mixture).'
+  },
+  enzymes:{
+    part:'Enzymes', len:15, eq:['carb'],
+    title:'Enzymes: biological catalysts',
+    text:'Digestion is done by <b>enzymes</b>. An enzyme is a <b>biological catalyst</b>: a substance made by living things that <b>speeds up</b> a reaction without being used up.<br><br>Each digestive enzyme breaks down one kind of large molecule. <b>Amylase</b> breaks starch into a sugar called <b>maltose</b>. The starch fits into the enzyme, a bond breaks, and the pieces leave. The same enzyme then does it again, and again.<br><br>Without enzymes, digestion would be far too slow to keep you alive.',
+    look:'The blue enzyme is amylase. Watch it cut two glucoses off the starch chain, twice.',
+    scale:'Drawn flat, as blocks. A real enzyme is a large protein molecule, folded up.',
+    terms:[['Enzyme','a protein that speeds up a reaction in a living thing.'],
+           ['Catalyst','a substance that speeds up a reaction without being used up.']],
+    key:['amylase', 'glucoseU']
+  },
+  mouth:{
+    terms:[['Salivary glands','glands that make saliva, which contains amylase.'],
+           ['Amylase','an enzyme in saliva that breaks starch down into the sugar maltose.'],
+           ['Peristalsis','waves of muscle squeezing that push food along the gut.']]
+  },
+  stomach:{
+    text:'The stomach wall is muscle: it <b>churns</b> the food and mixes it with digestive juice for a few hours. The juice contains <b>hydrochloric acid</b> and a <b>protease</b> enzyme.<br><br>The protease starts breaking <b>proteins</b> into shorter chains. The acid helps it work, and kills most of the microorganisms swallowed with the food.<br><br>The acid stops the amylase from the saliva working, so starch is not digested here — and fats are not digested yet.',
+    look:'Purple enzymes cut the protein chains in places. The blue amylases are bent out of shape by the acid and do nothing to the starch beside them.',
+    terms:[['Hydrochloric acid','the acid the stomach makes. It helps the protease work and kills microorganisms.'],
+           ['Protease','an enzyme that breaks proteins down into amino acids.']]
+  },
+  juices:{
+    part:'The pancreas',
+    title:'More enzymes from the pancreas',
+    text:'From the stomach, food is let into the first part of the small intestine, the <b>duodenum</b>, a little at a time.<br><br>The <b>pancreas</b> makes <b>pancreatic juice</b>, which flows down a duct into the duodenum. It contains all three kinds of digestive enzyme: <b>amylase</b> for starch, <b>protease</b> for proteins and <b>lipase</b> for lipids.',
+    look:'Cream: pancreatic juice running along the real duct through the middle of the pancreas and into the duodenum.',
+    scale:'The liver is drawn see-through.',
+    terms:[['Pancreas','an organ that makes digestive enzymes and pours them into the small intestine.'],
+           ['Lipase','an enzyme that breaks lipids down into fatty acids and glycerol.']],
+    key:['juice', 'food', 'pancreas', 'gut']
+  },
+  intestine:{
+    text:'In the small intestine, the enzymes from the pancreas, and more on the surface of the intestine’s lining, finish digestion:<br><br>• <b>Starch</b>: amylase cuts it into <b>maltose</b>, then maltase splits that into <b>glucose</b>.<br>• <b>Sugars</b>: sucrase splits sucrose into <b>glucose</b> and <b>fructose</b>. Glucose needs no digesting at all.<br>• <b>Proteins</b>: proteases cut them into <b>amino acids</b>.<br>• <b>Lipids</b>: lipase breaks them into <b>glycerol</b> and <b>fatty acids</b>.<br><br>Each enzyme works on only one kind of molecule.',
+    look:'Watch which molecule each enzyme goes to: amylase and maltase to starch, sucrase to sucrose, proteases to the protein, lipase to the lipids.',
+    terms:[['Carbohydrase','an enzyme that breaks carbohydrates down into sugars. Amylase is one.'],
+           ['Soluble','able to dissolve. The products of digestion are small and soluble.']]
+  },
+  villi:{
+    title:'Into the blood',
+    text:'The small molecules now pass through the wall of the small intestine into the blood. The wall is covered in millions of tiny <b>villi</b>, which make it good at this:<br><br>• they give it a huge <b>surface area</b>;<br>• their walls are very <b>thin</b>, one cell thick;<br>• they have a good <b>blood supply</b>, which carries the food molecules away.<br><br><b>Glucose</b> and <b>amino acids</b> go into the blood. <b>Fatty acids</b> and <b>glycerol</b> go into a vessel up the middle of each villus, the lacteal, and reach the blood later.',
+    scale:'Drawn, not from the model. A real villus is only about a millimetre long.',
+    terms:[['Villi','tiny finger-like folds of the small intestine wall that absorb digested food.'],
+           ['Absorption','small molecules moving from the gut into the blood.']]
+  },
+  colon:{
+    title:'The large intestine',
+    text:'Not everything in food can be digested. <b>Fibre</b> — mostly the walls of plant cells — goes straight through, and helps food move along the gut.<br><br>In the <b>large intestine</b>, <b>water</b> is absorbed into the blood. Billions of <b>bacteria</b> live here too, and they are helpful: they break down some of the fibre, make some vitamins, and leave less room for harmful microorganisms.<br><br>What is left — <b>faeces</b> — is stored in the rectum and leaves through the anus. This is <b>egestion</b>.',
+    terms:[['Fibre','the parts of plant foods that cannot be digested. It helps food move along the gut.'],
+           ['Gut bacteria','helpful microorganisms that live in the large intestine.'],
+           ['Egestion','getting rid of undigested food, as faeces.']]
+  },
+  building:{
+    part:'Using the food',
+    title:'What the body uses them for',
+    text:'Once they are in the blood, the small molecules are carried all round the body and used:<br><br>• <b>Glucose</b> is used in <b>respiration</b>, which transfers the energy your cells need. Spare glucose is stored as <b>glycogen</b> in the liver and muscles.<br>• <b>Amino acids</b> are joined into new <b>proteins</b>, for <b>growth and repair</b>.<br>• <b>Fatty acids</b> and <b>glycerol</b> are joined back into <b>lipids</b>: a store of energy, a layer that keeps you warm, and part of every cell membrane.',
+    terms:[['Respiration','a reaction in every cell that transfers energy from glucose.'],
+           ['Glycogen','a store of glucose in the liver and muscles.']]
+  }
+};
+const CH = ORDER.map(id => Object.assign({}, CH_GCSE.find(c => c.id === id), KS3 ? KS3_CH[id] : null));
 
 const ball = c => '<span class="dot" style="background:'+hexCss(c)+'"></span>';
 const sq = c => '<span class="sq" style="background:'+hexCss(c)+'"></span>';
@@ -2469,44 +2578,46 @@ function updateBody(t){
   const tSize = onScreen(0.05), small = onScreen(0.026);
   const all = [BOLUS, BOLUS_CORE, ...STREAM, ...SALIVA.flat(), ...BILE, ...JUICE, ...GLAND_GLOW, GALL_GLOW, PANC_GLOW, LIVER_GLOW];
   all.forEach(s => { s.visible = false; });
-  if(cur === 0){
+  if(cur === C.system){
     /* food all the way along, running all the time */
     STREAM.forEach((s, k) => {
       const u = ((t*0.035 + k/STREAM.length) % 1);
       place(s, along(ROUTE.food, u*ROUTE.food.L), small, ss(0, 0.03, u)*(1 - ss(0.95, 1, u))*ss(0.5, 1.5, t));
     });
     GLAND_GLOW.forEach(s => place(s, s.position.toArray(), onScreen(0.04), 0.35*ss(1.8, 2.4, t)*(0.7 + 0.3*Math.sin(t*2.4))));
-    place(GALL_GLOW, LM.gall, onScreen(0.045), 0.35*ss(5.0, 5.6, t)*(0.7 + 0.3*Math.sin(t*2.4)));
+    if(!KS3) place(GALL_GLOW, LM.gall, onScreen(0.045), 0.35*ss(5.0, 5.6, t)*(0.7 + 0.3*Math.sin(t*2.4)));
     place(PANC_GLOW, LM.pancreas, onScreen(0.06), 0.3*ss(5.8, 6.4, t)*(0.7 + 0.3*Math.sin(t*2.4)));
   }
-  if(cur === 4){
+  if(cur === C.mouth){
     const s = FOOD_MOUTH(t), chew = 1 + 0.25*Math.sin(t*9)*(1 - ss(2.6, 3.2, t));
     place(BOLUS, along(ROUTE.food, s), tSize*1.3*chew, 0.9);
     place(BOLUS_CORE, along(ROUTE.food, s), tSize*0.45, 0.9);
     SALIVA.forEach((list, d) => streamAlong(list, DUCT.saliva[d].poly, t, 0.4 + 0.3*d, 6.5, onScreen(0.02), 0.45));
     GLAND_GLOW.forEach(s => place(s, s.position.toArray(), onScreen(0.03), 0.4*ss(0.2, 0.8, t)*(1 - ss(6.0, 7.0, t))));
   }
-  if(cur === 5){
+  if(cur === C.stomach){
     /* the food in the stomach, churned round */
     const c = along(ROUTE.food, S_FOOD.inStomach), r = 0.012;
     const p = vadd(c, [r*Math.cos(t*1.6), r*0.6*Math.sin(t*1.6), r*0.5*Math.sin(t*0.8)]);
     place(BOLUS, p, onScreen(0.08)*(1 + 0.12*Math.sin(t*3.2)), 0.85);
     place(BOLUS_CORE, p, onScreen(0.03), 0.8);
   }
-  if(cur === 6){
+  if(cur === C.juices){
     const s = FOOD_DUO(t);
     place(BOLUS, along(ROUTE.food, s), onScreen(0.05), 0.85);
     place(BOLUS_CORE, along(ROUTE.food, s), onScreen(0.018), 0.85);
-    place(LIVER_GLOW, DUCT.bile.pts[0], onScreen(0.07), 0.35*ss(0.3, 0.9, t)*(1 - ss(4, 5, t)));
-    streamAlong(BILE.slice(0, 5), DUCT.route.bileIn, t, JT.bileIn[0], JT.bileIn[1], onScreen(0.022), 0.55);
-    streamAlong(BILE.slice(5), DUCT.route.bileOut, t, JT.bileOut[0], 15, onScreen(0.022), 0.32);
+    if(!KS3){
+      place(LIVER_GLOW, DUCT.bile.pts[0], onScreen(0.07), 0.35*ss(0.3, 0.9, t)*(1 - ss(4, 5, t)));
+      streamAlong(BILE.slice(0, 5), DUCT.route.bileIn, t, JT.bileIn[0], JT.bileIn[1], onScreen(0.022), 0.55);
+      streamAlong(BILE.slice(5), DUCT.route.bileOut, t, JT.bileOut[0], 15, onScreen(0.022), 0.32);
+      /* the gall bladder squeezes when the bile goes */
+      const sq = ss(JT.bileOut[0] - 0.4, JT.bileOut[0] + 0.6, t)*(1 - ss(JT.bileOut[1], JT.bileOut[1] + 1.5, t));
+      place(GALL_GLOW, LM.gall, onScreen(0.06), 0.25 + 0.35*sq);
+    }
     streamAlong(JUICE, DUCT.route.panc, t, JT.panc[0], 15, onScreen(0.022), 0.22);
-    /* the gall bladder squeezes when the bile goes */
-    const sq = ss(JT.bileOut[0] - 0.4, JT.bileOut[0] + 0.6, t)*(1 - ss(JT.bileOut[1], JT.bileOut[1] + 1.5, t));
-    place(GALL_GLOW, LM.gall, onScreen(0.06), 0.25 + 0.35*sq);
     place(PANC_GLOW, LM.pancreas, onScreen(0.08), 0.35*ss(JT.panc[0] - 1, JT.panc[0], t));
   }
-  if(cur === 10){
+  if(cur === C.colon){
     const s = FOOD_COLON(t);
     place(BOLUS, along(ROUTE.food, s), tSize*1.1, 0.85);
     place(BOLUS_CORE, along(ROUTE.food, s), tSize*0.4, 0.85);
@@ -2594,6 +2705,16 @@ function resize(){
 }
 window.addEventListener('resize', resize);
 resize();
+
+/* the words around the stage that differ between the two courses */
+if(KS3){
+  document.getElementById('pageTitle').textContent = 'Digestion (KS3)';
+  const other = document.getElementById('otherLevel');
+  other.textContent = 'GCSE version'; other.setAttribute('href', 'digestion.html');
+  document.getElementById('creditGall').textContent = '';
+  document.getElementById('creditCystic').textContent = '';
+  document.querySelectorAll('#eq .col[data-k="lip"] .s').forEach(s => { s.textContent = 'lipases'; });
+}
 
 enterChapter(0);
 requestAnimationFrame(animate);

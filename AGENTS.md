@@ -19,7 +19,8 @@ human_anatomy/heart/        heart, valves and double circulation, 3D over the Z-
 human_anatomy/respiration/  the respiration equation: glucose in through the real gut, oxygen through the real airways,
                             villi, alveoli, three diffusing walls, a muscle cell, the atoms rearranged (+ test-respiration.js)
 human_anatomy/digestion/    starch, sugars, proteins, lipids: food tests, lock and key, juices down the real ducts,
-                            emulsifying, every enzyme on its own bond, villi, colon, building (+ test-digestion.js)
+                            emulsifying, every enzyme on its own bond, villi, colon, building (+ test-digestion.js);
+                            digestion-ks3.html, the KS3 version, generated from it (test-digestion.js --sync)
 mechanics/                  projectiles: launch, up to three markers, a click-to-reveal s u v a t matrix (+ test-projectiles.js)
 genetics/                   cell → chromosome → DNA → gene → base, mitosis + the cell cycle, meiosis + fertilisation: three.js stories (+ test-genetics.js, test-mitosis.js, test-meiosis.js)
 tools/                      one-off colour-migration scripts (animcolour.mjs, colourfix.mjs)
@@ -70,7 +71,7 @@ cd human_anatomy/reflex-arc && node test-reflex-arc-3d.js  # 3D story: routes, t
 cd human_anatomy/heart      && node test-heart.js        # the cut, valves, one-way flow, vessel routes, every frame
 cd human_anatomy/heart      && node test-heart-viewer.js # viewer's copied code is still heart.html's (--sync re-copies), any-angle cuts, picking
 cd human_anatomy/respiration && node test-respiration.js # food and air routes, grown bronchioles, diffusion directions, atoms balance, labels clear of the HTML
-cd human_anatomy/digestion   && node test-digestion.js   # gut and colon routes, ducts, every cut by a docked enzyme that fits, emulsion surface, food-test colours
+cd human_anatomy/digestion   && node test-digestion.js   # both levels: gut and colon routes, ducts, every cut by a docked enzyme that fits, emulsion surface, food-test colours, KS3 has no bile (--sync rewrites the KS3 page)
 cd genetics         && node test-genetics.js   # pairs, band position, base pairing, flat ladder, quoted figures, every frame
 cd genetics         && node test-mitosis.js    # copying, one copy of each chromosome per daughter, half volume, pie times, tissue, every frame
 cd genetics         && node test-meiosis.js    # pairing, crossing over, one of each pair per cell, four different gametes, fertilisation
@@ -436,6 +437,19 @@ respiration shell (panel, nav, key, cue sheet, packed `ANATOMY` from
   the pills quote is computed from that, and the lipase at work follows it.
 - **Bile is never an enzyme.** The test greps that the captions say so and
   never say bile digests anything.
+- **The KS3 version is generated, never edited.** `digestion-ks3.html` is
+  `digestion.html` with `LEVEL = 'ks3'` and its own `<title>`; after any
+  edit to `digestion.html`, run `node test-digestion.js --sync`, and the
+  test fails until you do. Everything that differs is a branch on `KS3` in
+  the one source: no gall bladder (hidden, though still packed), no bile
+  duct, cystic duct, bile labels or emulsifying chapter; enzymes simply as
+  biological catalysts (the protein that does not fit and the denaturing
+  are not built); a balanced diet and the gut's bacteria added. Chapter
+  text that differs lives in `KS3_CH`, laid over the GCSE chapter of the
+  same id. Chapters are addressed by id (`C.mouth`, `C.colon`), never by
+  number, because the two lists differ. The test runs both pages and
+  checks no KS3 caption or label says bile or gall bladder, and that none
+  teaches the active site or denaturing.
 
 ## Mitosis: one cell's clock, and a nucleus that is never pinched
 
