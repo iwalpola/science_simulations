@@ -1,0 +1,2342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Leaf structure and photosynthesis — a 3D story</title>
+<style>
+  :root{
+    --ink:#eef2f7;
+    --dim:#93a2b6;
+    --panel:rgba(10,14,21,.78);
+    --line:rgba(147,162,182,.22);
+    --side:360px;
+    --glu:#f2c14e;
+    --oxy:#8fa6ff;
+    --co2:#b3bcc6;
+    --wat:#7cc6ee;
+    --lit:#ffe45c;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;background:#080b11;color:var(--ink);overflow:hidden;
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  #stage{position:fixed;top:0;right:0;bottom:0;left:var(--side);}
+  canvas{display:block;}
+  #overlay{position:fixed;top:0;right:0;bottom:0;left:var(--side);pointer-events:none;z-index:1;overflow:hidden;}
+  #overlay svg{position:absolute;left:0;top:0;width:100%;height:100%;}
+  #fade{position:fixed;top:0;right:0;bottom:0;left:var(--side);background:#080b11;
+    opacity:0;pointer-events:none;z-index:2;}
+
+  .lab{position:absolute;left:0;top:0;white-space:nowrap;opacity:0;
+    font-size:16px;font-weight:650;letter-spacing:.2px;color:#f3f6fb;
+    text-shadow:0 1px 6px rgba(0,0,0,.95),0 0 2px rgba(0,0,0,.9);}
+  .lab .sub{display:block;font-size:12.5px;font-weight:450;color:#b9c5d6;margin-top:1px;}
+  .lab.gold{color:#ffd277;}
+  .lab.co2{color:#c9d2dc;} .lab.oxy{color:#a9bbff;} .lab.wat{color:#9ad6f5;} .lab.lit{color:#ffe873;}
+
+  #side{
+    position:fixed;top:0;left:0;bottom:0;width:var(--side);
+    background:var(--panel);backdrop-filter:blur(16px);
+    border-right:1px solid var(--line);
+    padding:20px 22px 16px;
+    display:flex;flex-direction:column;gap:14px;
+    overflow-y:auto;
+  }
+  #side h1{
+    margin:0;
+    font-family:"Iowan Old Style","Charter","Palatino Linotype",Georgia,serif;
+    font-weight:600;font-size:19px;letter-spacing:.2px;line-height:1.25;
+  }
+  #side .byline{margin:4px 0 0;font-size:12px;line-height:1.5;color:var(--dim);}
+  #side a{color:var(--dim);text-decoration:none;font-size:12px;
+    border-bottom:1px solid rgba(147,162,182,.3);}
+  #side a:hover{color:var(--ink);}
+  .links{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;}
+  .story{flex:1;min-height:0;}
+  .story .step{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:700;}
+  .story h2{
+    margin:3px 0 0;font-family:"Iowan Old Style","Charter",Georgia,serif;
+    font-size:17px;font-weight:600;letter-spacing:.2px;
+  }
+  .story p{margin:8px 0 0;font-size:13.5px;line-height:1.62;color:#cbd5e1;}
+  .story p b{color:#ffd9a0;font-weight:600;}
+  .story .look{
+    margin-top:10px;font-size:12.5px;line-height:1.5;color:#a9c7ee;
+    border-left:2px solid rgba(127,176,255,.45);padding-left:10px;
+  }
+  .story .look b{color:#d6e6ff;font-weight:600;}
+  .story .scale{
+    margin-top:10px;font-size:12px;line-height:1.5;color:#c9b8e0;
+    border-left:2px solid rgba(190,150,240,.45);padding-left:10px;
+  }
+  .terms{
+    margin:12px 0 0;padding:10px 12px;
+    background:rgba(255,217,160,.05);border:1px solid rgba(255,217,160,.18);border-radius:10px;
+  }
+  .terms .hd{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#d9b98a;font-weight:700;margin-bottom:6px;}
+  .terms dt{font-size:12.5px;font-weight:700;color:#ffd9a0;}
+  .terms dd{margin:1px 0 7px;font-size:12.5px;line-height:1.5;color:#cbd5e1;}
+  .terms dd:last-child{margin-bottom:0;}
+  .credit{font-size:10.5px;line-height:1.5;color:#6c7a8e;}
+
+  /* the limiting-factor controls, shown in one chapter only */
+  #ctrl{margin-top:12px;padding:10px 12px;border:1px solid rgba(127,176,255,.25);border-radius:10px;
+    background:rgba(127,176,255,.05);}
+  #ctrl[hidden]{display:none;}
+  #ctrl label{display:block;font-size:12px;color:#cbd5e1;margin-top:8px;}
+  #ctrl label:first-child{margin-top:0;}
+  #ctrl .row{display:flex;justify-content:space-between;gap:8px;}
+  #ctrl .v{color:#ffd9a0;font-weight:600;}
+  #ctrl input[type=range]{width:100%;margin:3px 0 0;accent-color:#7fb0ff;}
+  #ctrl .read{margin-top:9px;font-size:12.5px;line-height:1.5;color:#cbd5e1;}
+  #ctrl .read b{color:#ffd9a0;}
+  #graph{display:block;width:100%;height:auto;margin-top:8px;}
+
+  .nav{
+    position:fixed;left:var(--side);right:0;bottom:20px;z-index:5;
+    margin:0 auto;width:fit-content;max-width:calc(100% - var(--side) - 32px);
+    display:flex;align-items:center;gap:8px;flex-wrap:nowrap;justify-content:center;
+    background:var(--panel);backdrop-filter:blur(16px);
+    border:1px solid var(--line);border-radius:999px;
+    padding:9px 12px;white-space:nowrap;
+  }
+  .nav button{
+    font:inherit;font-size:12.5px;font-weight:500;color:var(--dim);
+    background:rgba(255,255,255,.05);border:1px solid var(--line);
+    border-radius:999px;padding:7px 14px;cursor:pointer;
+    transition:background .15s ease,color .15s ease,opacity .15s ease;
+  }
+  .nav button:hover:not(:disabled){background:rgba(255,255,255,.12);color:var(--ink);}
+  .nav button:disabled{opacity:.32;cursor:default;}
+  .nav button.primary{background:rgba(127,176,255,.2);color:#dce9ff;border-color:rgba(127,176,255,.35);}
+  .dots{display:flex;gap:6px;padding:0 4px;}
+  .dots i{
+    width:7px;height:7px;border-radius:50%;background:rgba(147,162,182,.3);
+    cursor:pointer;transition:background .2s ease,transform .2s ease;
+  }
+  .dots i.on{background:var(--ink);transform:scale(1.25);}
+
+  #eq{
+    position:fixed;top:14px;left:var(--side);right:0;z-index:5;
+    margin:0 auto;width:fit-content;max-width:calc(100% - var(--side) - 24px);
+    background:var(--panel);backdrop-filter:blur(16px);
+    border:1px solid var(--line);border-radius:14px;
+    padding:8px 18px 7px;text-align:center;pointer-events:none;
+  }
+  #eq[hidden]{display:none;}
+  #eq .w{font-family:"Iowan Old Style","Charter",Georgia,serif;font-size:19px;font-weight:600;letter-spacing:.2px;white-space:nowrap;}
+  #eq .s{margin-top:2px;font-size:12.5px;color:var(--dim);letter-spacing:.3px;white-space:nowrap;}
+  #eq .op{color:#6c7a8e;padding:0 5px;}
+  #eq .t{opacity:.38;transition:opacity .35s ease,text-shadow .35s ease;}
+  #eq .t.on{opacity:1;}
+  #eq .t[data-k="co2"]{color:var(--co2);}
+  #eq .t[data-k="water"]{color:var(--wat);}
+  #eq .t[data-k="glucose"]{color:var(--glu);}
+  #eq .t[data-k="oxygen"]{color:var(--oxy);}
+  #eq .arw{display:inline-flex;flex-direction:column;align-items:center;line-height:1;vertical-align:-2px;padding:0 8px;}
+  #eq .t[data-k="light"]{color:var(--lit);font-size:11.5px;font-weight:500;letter-spacing:.4px;margin-bottom:-1px;}
+  #eq .t.on[data-k="glucose"]{text-shadow:0 0 12px rgba(242,193,78,.55);}
+  #eq .t.on[data-k="oxygen"]{text-shadow:0 0 12px rgba(143,166,255,.55);}
+  #eq .t.on[data-k="co2"]{text-shadow:0 0 12px rgba(179,188,198,.45);}
+  #eq .t.on[data-k="water"]{text-shadow:0 0 12px rgba(124,198,238,.5);}
+  #eq .t.on[data-k="light"]{text-shadow:0 0 12px rgba(255,233,160,.6);}
+
+  #key{
+    position:fixed;top:18px;right:20px;z-index:5;
+    background:var(--panel);backdrop-filter:blur(16px);
+    border:1px solid var(--line);border-radius:12px;
+    padding:11px 14px;
+    font-size:11.5px;line-height:1.75;color:var(--dim);
+  }
+  body.haseq #key{top:92px;}
+  #key:empty{display:none;}
+  #key div{display:flex;align-items:center;gap:8px;}
+  .dot{width:11px;height:11px;border-radius:50%;flex:none;
+    box-shadow:inset -2px -2px 3px rgba(0,0,0,.45);}
+  .sq{width:11px;height:11px;border-radius:2px;flex:none;}
+  .hint{
+    position:fixed;right:20px;bottom:20px;z-index:3;
+    font-size:11px;color:#5a687d;pointer-events:none;
+  }
+  @media (max-width:1100px){
+    #eq .w{font-size:16px;} #eq .s{font-size:11.5px;}
+  }
+  @media (max-width:860px){
+    :root{--side:0px;}
+    #stage,#overlay,#fade{left:0;bottom:44vh;}
+    #side{
+      top:auto;left:0;right:0;bottom:0;width:auto;height:44vh;
+      border-right:none;border-top:1px solid var(--line);
+      padding:14px 16px;gap:11px;
+    }
+    #side h1{font-size:16px;}
+    #side .byline{display:none;}
+    .nav{
+      left:0;right:0;bottom:44vh;
+      width:auto;max-width:none;margin:0;
+      border-radius:0;border-width:1px 0 0;
+      flex-wrap:wrap;white-space:normal;justify-content:center;
+    }
+    #key{top:14px;right:14px;padding:8px 10px;font-size:11px;line-height:1.6;}
+    body.haseq #key{top:70px;}
+    #eq{top:8px;padding:6px 10px;max-width:calc(100% - 16px);}
+    #eq .w{font-size:13px;} #eq .s{font-size:10.5px;}
+    .lab{font-size:13px;}
+    .lab .sub{font-size:11px;}
+    .hint{display:none;}
+  }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="overlay"><svg id="lines"></svg><div id="labels"></div></div>
+<div id="fade"></div>
+<div id="side">
+  <div>
+    <h1>Leaf structure and photosynthesis</h1>
+    <p class="byline">A leaf is an organ built for photosynthesis. Cut a piece out of one, look at the cut face tissue by tissue, then go inside a palisade cell to see the reaction it was built for.</p>
+    <div class="links">
+      <a href="./index.html">← Plants</a>
+      <a href="../index.html">All simulations</a>
+    </div>
+  </div>
+  <div class="story">
+    <div class="step" id="sStep"></div>
+    <h2 id="sTitle"></h2>
+    <p id="sText"></p>
+    <div class="look" id="sLook"></div>
+    <div class="scale" id="sScale"></div>
+    <div id="ctrl" hidden>
+      <label><span class="row"><span>Distance of lamp</span><span class="v" id="vD"></span></span>
+        <input type="range" id="inD" min="10" max="50" step="1" value="20"></label>
+      <label><span class="row"><span>Carbon dioxide in the air</span><span class="v" id="vC"></span></span>
+        <input type="range" id="inC" min="0.01" max="0.16" step="0.01" value="0.04"></label>
+      <label><span class="row"><span>Temperature</span><span class="v" id="vT"></span></span>
+        <input type="range" id="inT" min="0" max="50" step="1" value="20"></label>
+      <div class="read" id="lfRead"></div>
+      <svg id="graph" viewBox="0 0 300 180"></svg>
+    </div>
+    <dl class="terms" id="sTerms"></dl>
+  </div>
+  <div class="credit">Every part of this leaf is generated by the page: the outline, the veins, every cell and every
+    stoma. Cells and layers are to scale with each other, like a privet leaf; molecules and light are drawn far too big
+    to see otherwise. Real cells are not these colours.</div>
+</div>
+
+<div id="eq" hidden>
+  <div class="w"><span class="t" data-k="co2">carbon dioxide</span><span class="op">+</span><span class="t" data-k="water">water</span><span class="op arw"><span class="t" data-k="light">light</span><span>⟶</span></span><span class="t" data-k="glucose">glucose</span><span class="op">+</span><span class="t" data-k="oxygen">oxygen</span></div>
+  <div class="s" id="eqSym"></div>
+</div>
+
+<!-- outside #side: its backdrop-filter would otherwise pin fixed children to the column -->
+<div class="nav">
+  <button id="back">← Back</button>
+  <button id="next" class="primary">Next →</button>
+  <button id="replay">Replay</button>
+  <div class="dots" id="dots"></div>
+</div>
+<div id="key"></div>
+<div class="hint">drag to orbit · scroll to zoom</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="../cell_biology/organelles.js"></script>
+<script>
+/* ===========================================================================
+   LEAF STRUCTURE AND PHOTOSYNTHESIS — the 3D story
+
+   Three worlds, swapped behind a fade:
+
+     leaf   the whole leaf at the origin: its outline, the midrib, the side
+            veins and the net of small veins (the edges of a Voronoi diagram
+            scattered over the blade, which is what the areoles of a real leaf
+            look like).
+     block  a block cut out of the blade (BLOCK_O), 1 unit = 10 micrometres,
+            every tissue at its real thickness: cuticle, upper epidermis,
+            palisade, spongy mesophyll, a small vein, lower epidermis with
+            stomata. Four clipping planes cut it out of a slightly larger
+            piece, so every cell that crosses a face is shown CUT.
+     cell   one palisade cell (CELL_O), cut down the middle, for the reaction.
+
+   SECTIONS. Every solid here is a closed mesh drawn twice: its outside, and
+   its back faces in a flat pale colour. Where a clipping plane opens a solid,
+   you look in at its back faces, and they read as the cut surface; anything
+   inside the cell (chloroplasts) sits in front of them and shows. This is
+   the heart page's trick, and it is why nothing here is a picture of a
+   section: it is a section of a 3D model.
+
+   PROCEDURAL, NOT IMPORTED. There is no glTF. Epidermal cells are the cells
+   of a Voronoi diagram, extruded; palisade cells are a jittered hexagonal
+   packing of columns; spongy cells are dart-thrown and grow an arm towards
+   each near neighbour, so the air spaces between them are whatever is left.
+   The ways gas takes from a stoma to a palisade cell are SEARCHED through
+   those air spaces (Dijkstra on a voxel grid), not drawn.
+
+   EVERYTHING IS A PURE FUNCTION OF THE CHAPTER CLOCK t. Molecules sit at
+   arc length (v t + k L/N) mod L along their paths; light falls at a fixed
+   speed; the stomata open on a schedule whose integral is closed form, so
+   gas moves only while they are open. The one exception is the limiting
+   factors chapter: moving a slider stores the phase reached so far, so the
+   flow does not jump.
+
+   THE NUMBERS ARE DERIVED. Leaf thickness and block size come from the
+   layer table Y; chloroplasts per cell, stomata per mm squared and how much
+   of each layer is air are counted in the model; the equation's molecule
+   counts drive the cell's flows. FIG holds them all and test-leaf.js checks
+   that no caption quotes anything else.
+=========================================================================== */
+
+/* ----------------------------------------------------------------- helpers */
+const clamp = (v,a,b) => v<a?a:(v>b?b:v);
+const lerp  = (a,b,u) => a + (b-a)*u;
+const ss = (a,b,x) => { const u = clamp((x-a)/(b-a),0,1); return u*u*(3-2*u); };
+/* the integral of ss(a,b,.) from -infinity to x: closed form */
+const ssInt = (a,b,x) => { if(x <= a) return 0; if(x >= b) return (b-a)*0.5 + (x-b);
+  const u = (x-a)/(b-a); return (b-a)*(u*u*u - 0.5*u*u*u*u); };
+const hexCss = n => '#'+n.toString(16).padStart(6,'0');
+function rng(seed){
+  let a = seed >>> 0;
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const hash = i => { const x = Math.sin(i*127.1 + 311.7)*43758.5453; return x - Math.floor(x); };
+const V3 = THREE.Vector3;
+const mod = (a, n) => ((a % n) + n) % n;
+
+/* =========================================================================
+   DATA
+========================================================================= */
+const UM = 10;                         // micrometres per unit in the block world
+/* the layers, bottom to top, in units (10 um). A privet leaf is about 0.2 mm thick. */
+const Y = {le0:0, le1:1.5, sp1:10.6, pa1:18.6, ue1:20.2, cu1:20.6};
+const BX = 18, BZ = 12, MARGIN = 3;    // the block is 2BX by 2BZ; cells are grown MARGIN beyond it
+const VEIN = {x:7, y:10.4, r:3.6};     // a small vein, running front to back (along z)
+const PAL = {spacing:2.05, r:0.93, chl:30};
+const SPO = {gap:2.7, r:1.45, chl:10};
+const STO = {spacing:6.0, a:1.45, tube:0.5, open:0.34, shut:0.03, yc:0.72};
+const EPI = {spacing:3.1};
+/* two stomata the camera visits: one cut through by the front face, one whole */
+const FEAT_CUT  = {x:-7, z:BZ,       rot:Math.PI/2};
+const FEAT_VIEW = {x:-1, z:BZ - 3.6, rot:0.35};
+
+const LEAF = {L:9, W:2.3};             // cm: a privet-sized leaf
+const PIECE = {s:0.45, v:0.42, w:0.36, d:0.24};   // where the block comes from, and the square drawn round it (cm)
+
+/* the element palette every scene in this repo shares */
+const EL = {
+  O: {name:'oxygen',   col:0x2f47b8, r:0.50},
+  H: {name:'hydrogen', col:0xd8402f, r:0.34},
+  C: {name:'carbon',   col:0x4d5560, r:0.58},
+  N: {name:'nitrogen', col:0x8f6fd8, r:0.54}
+};
+/* molecules: atoms in a molecule's own frame, in units of the oxygen radius */
+const MOL = {
+  CO2:{name:'carbon dioxide', atoms:[['O',-1.15,0,0],['C',0,0,0],['O',1.15,0,0]]},
+  H2O:{name:'water',          atoms:[['O',0,0,0],['H',0.66,0.5,0],['H',-0.66,0.5,0]]},
+  O2: {name:'oxygen',         atoms:[['O',-0.55,0,0],['O',0.55,0,0]]},
+  NO3:{name:'nitrate ion',    atoms:[['N',0,0,0],['O',1.05,0,0],['O',-0.525,0.909,0],['O',-0.525,-0.909,0]]}
+};
+/* what the formula of each species is (glucose is drawn as a gold hexagon, not as atoms) */
+const FORMULA = {CO2:{C:1,O:2}, H2O:{H:2,O:1}, GLU:{C:6,H:12,O:6}, O2:{O:2}};
+const EQN = {lhs:[['CO2',6],['H2O',6]], rhs:[['GLU',1],['O2',6]]};
+const coef = sp => (EQN.lhs.concat(EQN.rhs).find(x => x[0] === sp) || [0,0])[1];
+
+const COL = {
+  leafTop:0x3f7d2c, leafBot:0x86ad5e, vein:0xc5d98c, petiole:0x6f9a3e, twig:0x6b4a2e,
+  cuticle:0xe8f2b8, epi:0xd5e4c1, epiCut:0xf1f5e6,
+  pal:0x7db55a, palCut:0xe8f1d4, spo:0x9dc77c, spoCut:0xedf3de,
+  chl:0x74b354, chlCut:0x2f6b22,
+  guard:0x8cc466, guardCut:0xe0eecb,
+  sheath:0xb9d69c, sheathCut:0xeef4e2,
+  xyl:0xb98545, xylCut:0xecd8b5, spiral:0x7e5122,
+  phl:0xe6c49d, phlCut:0xf7eadb, plate:0x9a6a3c, comp:0xc99566, paren:0xcfe0b6,
+  light:0xffe45c, glucose:0xf2c14e, starch:0xf6f3e8, oil:0xf3dd6a, protein:0xd9667a,
+  wall:0x8ac46a, wallCut:0xd6ead0, cyto:0xf4efc4, cytoCut:0xf1ecc6, vac:0xdfeef4, vacCut:0xeef6f8,
+  membrane:0xe0664a
+};
+
+/* ------------------------------------------------------------------ three */
+const stage = document.getElementById('stage');
+const fadeEl = document.getElementById('fade');
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio||1));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.08;
+renderer.clippingPlanes = [];
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x080b11);
+const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 2000);
+
+scene.add(new THREE.HemisphereLight(0xc9dcff, 0x1a2216, 0.62));
+const keyL = new THREE.DirectionalLight(0xffffff, 0.95); keyL.position.set(5,12,8); scene.add(keyL);
+const fillL = new THREE.DirectionalLight(0x9ec3ff, 0.40); fillL.position.set(-8,4,-6); scene.add(fillL);
+const rimL  = new THREE.DirectionalLight(0xffd9b0, 0.30); rimL.position.set(0,3,-10); scene.add(rimL);
+const lowL  = new THREE.DirectionalLight(0xdfe8ff, 0.32); lowL.position.set(2,-10,5); scene.add(lowL);
+
+(function environment(){
+  const env = new THREE.Scene();
+  const box = new THREE.BoxGeometry(1,1,1);
+  env.add(new THREE.Mesh(new THREE.BoxGeometry(30,18,30),
+    new THREE.MeshBasicMaterial({color:0x1d2634, side:THREE.BackSide})));
+  const panel=(hex,gain,x,y,z,sx,sy,sz)=>{
+    const m=new THREE.Mesh(box,new THREE.MeshBasicMaterial({color:hex}));
+    m.material.color.multiplyScalar(gain);
+    m.position.set(x,y,z); m.scale.set(sx,sy,sz); env.add(m);
+  };
+  panel(0xffffff,1.1,  0, 8.4,  0, 14,0.1,14);
+  panel(0xbcd6ff,1.3,-11, 1.5,  0, 0.1,11,20);
+  panel(0xffd7b0,0.9, 11, 1.5,  2, 0.1,11,20);
+  panel(0x8fb0e0,0.5,  0, 0.0,-12, 22,11,0.1);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(env, 0.04).texture;
+  pmrem.dispose();
+})();
+
+function linearise(root){
+  root.traverse(o=>{
+    if(!o.material) return;
+    (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{
+      if(!m || m.userData.__lin) return;
+      m.userData.__lin = true;
+      if(m.color)    m.color.convertSRGBToLinear();
+      if(m.emissive) m.emissive.convertSRGBToLinear();
+    });
+  });
+}
+
+const BLOCK_O = new V3(0, 400, 0), CELL_O = new V3(0, -400, 0);
+const WL = new THREE.Group(), WB = new THREE.Group(), WC = new THREE.Group();
+WB.position.copy(BLOCK_O); WC.position.copy(CELL_O);
+scene.add(WL, WB, WC);
+const B = (x,y,z) => new V3(x, y, z).add(BLOCK_O);       // block local -> world
+const Cw = (x,y,z) => new V3(x, y, z).add(CELL_O);       // cell local -> world
+
+/* ------------------------------------------------ materials and the dimmer */
+const std = (hex, o) => new THREE.MeshStandardMaterial(Object.assign({color:hex, roughness:0.6, metalness:0, envMapIntensity:0.3}, o||{}));
+const cutMat = hex => new THREE.MeshBasicMaterial({color:hex, side:THREE.BackSide});
+/* every block material belongs to a tissue group; a chapter can dim the
+   groups it is not about. Colours are animated, so each keeps its own
+   linear base and is rewritten from it (never from its current value). */
+const GROUPS = {};
+function grp(name, mat){ (GROUPS[name] = GROUPS[name] || []).push(mat); return mat; }
+function captureBases(){
+  Object.values(GROUPS).forEach(list => list.forEach(m => { m.userData.base = m.color.clone(); }));
+}
+const DIM = 0.26;
+function setDims(f){
+  Object.keys(GROUPS).forEach(g => {
+    const k = f[g] === undefined ? 1 : f[g];
+    GROUPS[g].forEach(m => { m.color.copy(m.userData.base).multiplyScalar(lerp(DIM, 1, k)); });
+  });
+}
+
+/* a closed solid, drawn as its outside and its pale cut surface */
+function solid(geo, front, back, parent){
+  const a = new THREE.Mesh(geo, front), b = new THREE.Mesh(geo, back);
+  parent.add(a, b);
+  return [a, b];
+}
+function solidInstanced(geo, front, back, n, parent){
+  const a = new THREE.InstancedMesh(geo, front, n);
+  const b = new THREE.InstancedMesh(geo, back, n);
+  b.instanceMatrix = a.instanceMatrix;          // one set of matrices, two draws
+  /* three culls an InstancedMesh by its geometry's bounding sphere, not by
+     where its instances are, so never let it cull these */
+  a.frustumCulled = b.frustumCulled = false;
+  parent.add(a, b);
+  return [a, b];
+}
+
+/* merge indexed or non-indexed geometries that carry position and normal */
+function mergeGeos(geos){
+  let nv = 0, ni = 0;
+  geos.forEach(g => { nv += g.attributes.position.count; ni += g.index ? g.index.count : g.attributes.position.count; });
+  const pos = new Float32Array(nv*3), nor = new Float32Array(nv*3);
+  const idx = new (nv > 65535 ? Uint32Array : Uint16Array)(ni);
+  let ov = 0, oi = 0;
+  geos.forEach(g => {
+    const p = g.attributes.position, n = g.attributes.normal;
+    pos.set(p.array.subarray(0, p.count*3), ov*3);
+    nor.set(n.array.subarray(0, p.count*3), ov*3);
+    if(g.index) for(let i=0;i<g.index.count;i++) idx[oi++] = g.index.array[i] + ov;
+    else for(let i=0;i<p.count;i++) idx[oi++] = i + ov;
+    ov += p.count;
+  });
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  out.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  out.setIndex(new THREE.BufferAttribute(idx, 1));
+  return out;
+}
+
+/* A TUBE whose radius varies along it, written in place (from the genetics
+   pages): rings carried by parallel transport so it does not twist. */
+function makeTube(n, radial){
+  const g = new THREE.BufferGeometry();
+  const vn = n*(radial+1);
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vn*3), 3));
+  g.setAttribute('normal',   new THREE.BufferAttribute(new Float32Array(vn*3), 3));
+  const idx = new (vn > 65535 ? Uint32Array : Uint16Array)((n-1)*radial*6);
+  let o = 0;
+  for(let i=0;i<n-1;i++) for(let k=0;k<radial;k++){
+    const a = i*(radial+1)+k, b = a+radial+1;
+    idx[o++]=a; idx[o++]=a+1; idx[o++]=b;
+    idx[o++]=a+1; idx[o++]=b+1; idx[o++]=b;
+  }
+  g.setIndex(new THREE.BufferAttribute(idx, 1));
+  g.userData.tube = {n, radial};
+  return g;
+}
+function writeTube(g, P, R, ref){
+  const {n, radial} = g.userData.tube;
+  const pos = g.attributes.position.array, nor = g.attributes.normal.array;
+  const T = new V3(), N = new V3(), Bn = new V3(), d = new V3();
+  for(let i=0;i<n;i++){
+    T.subVectors(P[Math.min(n-1,i+1)], P[Math.max(0,i-1)]).normalize();
+    if(i === 0){
+      N.copy(ref || new V3(0,0,1)).cross(T);
+      if(N.lengthSq() < 1e-6) N.set(1,0,0).cross(T);
+      N.normalize();
+    } else N.addScaledVector(T, -N.dot(T)).normalize();
+    Bn.crossVectors(T, N);
+    for(let k=0;k<=radial;k++){
+      const th = k/radial*Math.PI*2, c = Math.cos(th), s = Math.sin(th);
+      d.set(N.x*c + Bn.x*s, N.y*c + Bn.y*s, N.z*c + Bn.z*s);
+      const o = (i*(radial+1)+k)*3;
+      pos[o] = P[i].x + d.x*R[i]; pos[o+1] = P[i].y + d.y*R[i]; pos[o+2] = P[i].z + d.z*R[i];
+      nor[o] = d.x; nor[o+1] = d.y; nor[o+2] = d.z;
+    }
+  }
+  g.attributes.position.needsUpdate = true;
+  g.attributes.normal.needsUpdate = true;
+}
+
+/* a capsule-like column: y in [-0.5, 0.5], radius 1, flat-sided for p > 2 */
+function columnProfile(rows, p, r, h, reverse){
+  const pts = [];
+  for(let i=0;i<=rows;i++){
+    const a = -Math.PI/2 + Math.PI*i/rows, s = Math.sin(a);
+    let rr = Math.pow(Math.max(0, 1 - Math.pow(Math.abs(s), p)), 1/p);
+    if(i === 0 || i === rows) rr = 0;
+    pts.push(new THREE.Vector2(rr*r, 0.5*s*h));
+  }
+  return reverse ? pts.reverse() : pts;
+}
+const columnGeo = (rows, seg, p, r, h, reverse) => new THREE.LatheGeometry(columnProfile(rows, p, r, h, reverse), seg);
+/* is (dx, dy) inside such a column of radius r, height h, centred on 0? */
+function inColumn(rad, dy, r, h, p){
+  const u = Math.abs(2*dy/h);
+  if(u >= 1) return false;
+  return rad < r*Math.pow(1 - Math.pow(u, p), 1/p);
+}
+
+/* =========================================================================
+   WORLD 1: the leaf
+========================================================================= */
+function leafHalfW(s){ return s <= 0 || s >= 1 ? 0 : LEAF.W*Math.pow(Math.sin(Math.PI*Math.pow(s, 0.72)), 0.9); }
+function leafY(x, z){
+  const s = x/LEAF.L;
+  return -0.05*LEAF.L*s*s + 0.10*z*z/LEAF.W + 0.03*Math.sin(1.7*x + 0.8*z);
+}
+const leafPt = (x, z, dy) => new V3(x, leafY(x, z) + (dy || 0), z);
+const LEAF_VEINS = {mid:null, side:[], net:0};
+let PIECE_LINE = null;
+(function buildLeaf(){
+  const NS = 96, NV = 36;
+  const g = new THREE.PlaneGeometry(1, 1, NS, NV);
+  const p = g.attributes.position;
+  for(let i=0;i<p.count;i++){
+    const s = p.getX(i) + 0.5, v = p.getY(i)*2;
+    const x = s*LEAF.L, z = v*leafHalfW(s);
+    p.setXYZ(i, x, leafY(x, z), z);
+  }
+  g.computeVertexNormals();
+  const top = new THREE.Mesh(g, std(COL.leafTop, {roughness:0.45, envMapIntensity:0.45, side:THREE.FrontSide}));
+  /* PlaneGeometry faces +z before bending; mapped as above they face down or up
+     depending on winding, so draw the underside from a copy facing the other way */
+  const nz = g.attributes.normal.getY(Math.floor(p.count/2));
+  const g2 = g.clone(); const p2 = g2.attributes.position;
+  for(let i=0;i<p2.count;i++) p2.setY(i, p2.getY(i) - 0.025);
+  const bot = new THREE.Mesh(g2, std(COL.leafBot, {roughness:0.7, envMapIntensity:0.25, side:THREE.BackSide}));
+  if(nz < 0){ top.material.side = THREE.BackSide; bot.material.side = THREE.FrontSide; }
+  WL.add(top, bot);
+
+  /* the midrib and the side veins, as tubes half sunk into the blade */
+  const veinMat = std(COL.vein, {roughness:0.5, envMapIntensity:0.35});
+  function tube(pts, r0, r1){
+    const g = makeTube(pts.length, 8);
+    writeTube(g, pts, pts.map((_, i) => lerp(r0, r1, i/(pts.length-1))), new V3(0,1,0));
+    g.computeBoundingSphere();
+    WL.add(new THREE.Mesh(g, veinMat));
+  }
+  const mid = [];
+  for(let i=0;i<=60;i++){ const x = 0.985*LEAF.L*i/60; mid.push(leafPt(x, 0, -0.005)); }
+  tube(mid, 0.075, 0.012);
+  LEAF_VEINS.mid = mid;
+  for(const side of [-1, 1]) for(let i=0;i<7;i++){
+    const s0 = 0.08 + 0.12*i, pts = [];
+    for(let k=0;k<=24;k++){
+      const u = k/24;
+      const s = s0 + 0.2*Math.pow(u, 1.2) + 0.05*u;
+      if(s >= 0.985) break;
+      const v = side*0.86*Math.pow(Math.sin(u*Math.PI/2), 0.9);
+      pts.push(leafPt(s*LEAF.L, v*leafHalfW(s), 0));
+    }
+    /* run on towards the tip close to the margin, so each loops into the next */
+    const sEnd = s0 + 0.25;
+    for(let k=1;k<=6 && sEnd + 0.02*k < 0.98;k++){
+      const s = sEnd + 0.02*k, v = side*(0.86 - 0.025*k);
+      pts.push(leafPt(s*LEAF.L, v*leafHalfW(s), 0));
+    }
+    if(pts.length > 3){ tube(pts, 0.028, 0.008); LEAF_VEINS.side.push(pts); }
+  }
+  /* the net of small veins: edges of a Voronoi diagram over the blade */
+  const R = rng(71), sites = [];
+  for(let x=0.15;x<LEAF.L;x+=0.34) for(let z=-LEAF.W;z<=LEAF.W;z+=0.34){
+    const sx = x + (R()-0.5)*0.26, sz = z + (R()-0.5)*0.26;
+    if(Math.abs(sz) < 0.97*leafHalfW(sx/LEAF.L)) sites.push({x:sx, z:sz});
+  }
+  const polys = voronoi(sites, 1.2), seen = new Set(), rib = [];
+  const okPt = q => { const s = q[0]/LEAF.L; return s > 0.015 && s < 0.985 && Math.abs(q[1]) < 0.94*leafHalfW(s); };
+  polys.forEach(poly => poly.forEach((a, k) => {
+    const b = poly[(k+1) % poly.length];
+    const key = [a, b].map(q => q[0].toFixed(3)+','+q[1].toFixed(3)).sort().join('|');
+    if(seen.has(key)) return; seen.add(key);
+    if(okPt(a) && okPt(b)) rib.push([a, b]);
+  }));
+  const pos = [], W = 0.011;
+  rib.forEach(([a, b]) => {
+    const dx = b[0]-a[0], dz = b[1]-a[1], l = Math.hypot(dx, dz) || 1, nx = -dz/l*W, nz2 = dx/l*W;
+    for(const dy of [0.006, -0.031]){
+      const A = leafPt(a[0]+nx, a[1]+nz2, dy), Bq = leafPt(b[0]+nx, b[1]+nz2, dy);
+      const Cq = leafPt(b[0]-nx, b[1]-nz2, dy), D = leafPt(a[0]-nx, a[1]-nz2, dy);
+      pos.push(A.x,A.y,A.z, Bq.x,Bq.y,Bq.z, Cq.x,Cq.y,Cq.z, A.x,A.y,A.z, Cq.x,Cq.y,Cq.z, D.x,D.y,D.z);
+    }
+  });
+  const rg = new THREE.BufferGeometry();
+  rg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  rg.computeVertexNormals();
+  WL.add(new THREE.Mesh(rg, std(COL.vein, {roughness:0.6, envMapIntensity:0.25, side:THREE.DoubleSide})));
+  LEAF_VEINS.net = rib.length;
+
+  /* the leaf stalk and a bit of twig */
+  const pet = [];
+  for(let i=0;i<=12;i++){ const u = i/12; pet.push(new V3(-1.6*(1-u), -0.35*(1-u)*(1-u), 0)); }
+  pet.push(leafPt(0.12, 0, 0));
+  const pg = makeTube(pet.length, 10);
+  writeTube(pg, pet, pet.map(() => 0.075), new V3(0,1,0)); pg.computeBoundingSphere();
+  WL.add(new THREE.Mesh(pg, std(COL.petiole, {roughness:0.55})));
+  const twig = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.13, 4.2, 14), std(COL.twig, {roughness:0.8, envMapIntensity:0.2}));
+  twig.position.set(-1.72, -0.4, 0); twig.rotation.set(0, 0, 0.22);
+  WL.add(twig);
+
+  /* the square the block comes from */
+  const px = PIECE.s*LEAF.L, pz = PIECE.v*leafHalfW(PIECE.s);
+  const sq = [[-1,-1],[1,-1],[1,1],[-1,1]].map(([a, b]) => leafPt(px + a*PIECE.w/2, pz + b*PIECE.d/2, 0.02));
+  const sg = new THREE.BufferGeometry().setFromPoints(sq);
+  PIECE_LINE = new THREE.LineLoop(sg, new THREE.LineBasicMaterial({color:0xffffff, transparent:true, opacity:0}));
+  WL.add(PIECE_LINE);
+  PIECE.at = leafPt(px, pz, 0);
+})();
+
+/* Voronoi cells by clipping a square round each site by the bisector with
+   every nearby site. Returns one convex polygon [[x,z],...] per site. */
+function clipHalf(poly, nx, nz, c){        // keep nx*x + nz*z <= c
+  const out = [];
+  for(let k=0;k<poly.length;k++){
+    const a = poly[k], b = poly[(k+1) % poly.length];
+    const fa = nx*a[0] + nz*a[1] - c, fb = nx*b[0] + nz*b[1] - c;
+    if(fa <= 0) out.push(a);
+    if((fa <= 0) !== (fb <= 0)){
+      const u = fa/(fa - fb);
+      out.push([a[0] + (b[0]-a[0])*u, a[1] + (b[1]-a[1])*u]);
+    }
+  }
+  return out;
+}
+function voronoi(sites, reach){
+  const H = reach*3, cell = reach*2, grid = new Map();
+  const key = (x, z) => Math.floor(x/cell)+','+Math.floor(z/cell);
+  sites.forEach((s, i) => { const k = key(s.x, s.z); if(!grid.has(k)) grid.set(k, []); grid.get(k).push(i); });
+  return sites.map((s, i) => {
+    let poly = [[s.x-H, s.z-H], [s.x+H, s.z-H], [s.x+H, s.z+H], [s.x-H, s.z+H]];
+    const gx = Math.floor(s.x/cell), gz = Math.floor(s.z/cell);
+    for(let a=-2;a<=2;a++) for(let b=-2;b<=2;b++){
+      const list = grid.get((gx+a)+','+(gz+b));
+      if(list) list.forEach(j => {
+        if(j === i) return;
+        const o = sites[j], dx = o.x - s.x, dz = o.z - s.z;
+        poly = clipHalf(poly, dx, dz, (dx*(s.x+o.x) + dz*(s.z+o.z))/2);
+      });
+    }
+    return poly;
+  });
+}
+
+/* =========================================================================
+   WORLD 2: the block of leaf
+========================================================================= */
+const MAT = {
+  cuticle: grp('epi', std(COL.cuticle, {roughness:0.12, envMapIntensity:1.0, transparent:true, opacity:0.32, depthWrite:false, side:THREE.DoubleSide})),
+  epi:     grp('epi', std(COL.epi, {roughness:0.35, envMapIntensity:0.35})),
+  epiCut:  grp('epi', cutMat(COL.epiCut)),
+  low:     grp('low', std(COL.epi, {roughness:0.4, envMapIntensity:0.3})),
+  lowCut:  grp('low', cutMat(COL.epiCut)),
+  pal:     grp('pal', std(COL.pal, {roughness:0.55})),
+  palCut:  grp('pal', cutMat(COL.palCut)),
+  spo:     grp('spo', std(COL.spo, {roughness:0.6})),
+  spoCut:  grp('spo', cutMat(COL.spoCut)),
+  chl:     grp('chl', std(COL.chl, {roughness:0.5, envMapIntensity:0.35, emissive:0x1e3d14, emissiveIntensity:0.6})),
+  chlCut:  grp('chl', cutMat(COL.chlCut)),
+  guard:   grp('guard', std(COL.guard, {roughness:0.5})),
+  guardCut:grp('guard', cutMat(COL.guardCut)),
+  sheath:  grp('vein', std(COL.sheath, {roughness:0.6})),
+  sheathCut:grp('vein', cutMat(COL.sheathCut)),
+  xyl:     grp('vein', std(COL.xyl, {roughness:0.5, envMapIntensity:0.35})),
+  xylCut:  grp('vein', cutMat(COL.xylCut)),
+  spiral:  grp('vein', std(COL.spiral, {roughness:0.5})),
+  phl:     grp('vein', std(COL.phl, {roughness:0.6})),
+  phlCut:  grp('vein', cutMat(COL.phlCut)),
+  plate:   grp('vein', std(COL.plate, {roughness:0.6, side:THREE.DoubleSide, alphaTest:0.5})),
+  comp:    grp('vein', std(COL.comp, {roughness:0.6})),
+  compCut: grp('vein', cutMat(0xe6c7a6)),
+  paren:   grp('vein', std(COL.paren, {roughness:0.6})),
+  parenCut:grp('vein', cutMat(0xeef3e2))
+};
+
+/* ---------------------------------------------------------------- stomata */
+const STOMATA = (function(){
+  const R = rng(5), list = [Object.assign({feat:'cut'}, FEAT_CUT), Object.assign({feat:'view'}, FEAT_VIEW)];
+  for(let i=0;i<4000 && list.length < 60;i++){
+    const x = (R()*2 - 1)*(BX + MARGIN), z = (R()*2 - 1)*(BZ + MARGIN);
+    if(Math.abs(x - VEIN.x) < VEIN.r + 1.8) continue;          // not over the vein
+    if(list.some(s => Math.hypot(s.x - x, s.z - z) < STO.spacing)) continue;
+    list.push({x, z, rot:R()*Math.PI});
+  }
+  list.forEach(s => { s.c = Math.cos(s.rot); s.s = Math.sin(s.rot); });
+  return list;
+})();
+/* a point in a stoma's own frame: lx along the pore, lz across it */
+function stomaLocal(s, x, z){
+  const dx = x - s.x, dz = z - s.z;
+  return {lx: dx*s.c - dz*s.s, lz: dx*s.s + dz*s.c};
+}
+function stomaWorld(s, lx, ly, lz){
+  return new V3(s.x + lx*s.c + lz*s.s, ly, s.z - lx*s.s + lz*s.c);
+}
+
+/* ------------------------------------------------------------- epidermis */
+function addPrism(acc, poly, y0, y1, outerUp){
+  const n = poly.length;
+  let cx = 0, cz = 0; poly.forEach(p => { cx += p[0]; cz += p[1]; }); cx /= n; cz /= n;
+  const shrink = (p, d) => { const dx = p[0]-cx, dz = p[1]-cz, l = Math.hypot(dx, dz) || 1, k = Math.max(0.1, 1 - d/l); return [cx + dx*k, cz + dz*k]; };
+  const P0 = poly.map(p => shrink(p, 0.06)), P2 = poly.map(p => shrink(p, 0.4));
+  const yIn = outerUp ? y0 : y1, yOut = outerUp ? y1 : y0, sg = outerUp ? 1 : -1;
+  const yBev = yOut - sg*0.3, apex = yOut + sg*0.16;
+  const mid = new V3(cx, (y0 + y1)/2, cz);
+  const tri = (a, b, c) => {
+    const e1 = new V3().subVectors(b, a), e2 = new V3().subVectors(c, a), nn = e1.cross(e2);
+    const cen = new V3().add(a).add(b).add(c).multiplyScalar(1/3).sub(mid);
+    if(nn.dot(cen) < 0){ const t = b; b = c; c = t; nn.negate(); }
+    nn.normalize();
+    for(const v of [a, b, c]){ acc.pos.push(v.x, v.y, v.z); acc.nor.push(nn.x, nn.y, nn.z); }
+  };
+  const v = (p, y) => new V3(p[0], y, p[1]);
+  const cIn = new V3(cx, yIn, cz), cOut = new V3(cx, apex, cz);
+  for(let k=0;k<n;k++){
+    const a = P0[k], b = P0[(k+1)%n], a2 = P2[k], b2 = P2[(k+1)%n];
+    tri(cIn, v(a, yIn), v(b, yIn));                          // inner face
+    tri(v(a, yIn), v(b, yIn), v(b, yBev)); tri(v(a, yIn), v(b, yBev), v(a, yBev));   // side
+    tri(v(a, yBev), v(b, yBev), v(b2, yOut)); tri(v(a, yBev), v(b2, yOut), v(a2, yOut)); // bevel
+    tri(v(a2, yOut), v(b2, yOut), cOut);                     // outer dome
+  }
+}
+/* the cell round a stoma: its Voronoi polygon with an oval hole in it that
+   the guard cells sit in, so the epidermis has no gaps round the pair */
+const STOMA_HOLE = {a:1.55, b:1.12};
+function addRingPrism(acc, poly, s, y0, y1){
+  const M = 36, outer = [], inner = [];
+  for(let k=0;k<M;k++){
+    const th = k/M*Math.PI*2;
+    const lx = STOMA_HOLE.a*Math.cos(th), lz = STOMA_HOLE.b*Math.sin(th);
+    const pi = stomaWorld(s, lx, 0, lz);
+    /* where a ray from the stoma's centre through that point leaves the polygon */
+    const dx = pi.x - s.x, dz = pi.z - s.z;
+    let best = Infinity;
+    for(let e=0;e<poly.length;e++){
+      const a = poly[e], b = poly[(e+1) % poly.length];
+      const ex = b[0]-a[0], ez = b[1]-a[1], den = dx*ez - dz*ex;
+      if(Math.abs(den) < 1e-12) continue;
+      const u = ((a[0]-s.x)*ez - (a[1]-s.z)*ex)/den, v = ((a[0]-s.x)*dz - (a[1]-s.z)*dx)/den;
+      if(u > 0 && v >= -1e-9 && v <= 1 + 1e-9) best = Math.min(best, u);
+    }
+    if(!isFinite(best)) best = 1.3;
+    const k2 = Math.max(1.05, best - 0.06/Math.hypot(dx, dz));     /* the wall groove, as addPrism */
+    outer.push([s.x + dx*k2, s.z + dz*k2]); inner.push([pi.x, pi.z]);
+  }
+  const quad = (a, b, c, d, ref) => {
+    for(const [p, q, r] of [[a, b, c], [a, c, d]]){
+      const n = new V3().subVectors(q, p).cross(new V3().subVectors(r, p));
+      let P = [p, q, r];
+      if(n.dot(ref) < 0){ P = [p, r, q]; n.negate(); }
+      n.normalize();
+      P.forEach(v => { acc.pos.push(v.x, v.y, v.z); acc.nor.push(n.x, n.y, n.z); });
+    }
+  };
+  const v = (p, y) => new V3(p[0], y, p[1]);
+  for(let k=0;k<M;k++){
+    const o0 = outer[k], o1 = outer[(k+1)%M], i0 = inner[k], i1 = inner[(k+1)%M];
+    const mid = [(o0[0] + i0[0])/2 - s.x, (o0[1] + i0[1])/2 - s.z];
+    const out = new V3(mid[0], 0, mid[1]);
+    quad(v(i0, y1), v(o0, y1), v(o1, y1), v(i1, y1), new V3(0, 1, 0));
+    quad(v(i0, y0), v(o0, y0), v(o1, y0), v(i1, y0), new V3(0, -1, 0));
+    quad(v(o0, y0), v(o1, y0), v(o1, y1), v(o0, y1), out);
+    quad(v(i0, y0), v(i1, y0), v(i1, y1), v(i0, y1), out.clone().negate());
+  }
+}
+function epidermis(seed, y0, y1, outerUp, withStomata){
+  const R = rng(seed), sites = [];
+  const ex = BX + MARGIN + 2, ez = BZ + MARGIN + 2;
+  for(let x=-ex;x<=ex;x+=EPI.spacing) for(let z=-ez;z<=ez;z+=EPI.spacing*0.92){
+    const sx = x + (R()-0.5)*1.6, sz = z + (R()-0.5)*1.6;
+    if(withStomata && STOMATA.some(s => Math.hypot(s.x - sx, s.z - sz) < 2.6)) continue;
+    sites.push({x:sx, z:sz});
+  }
+  const nCells = sites.length;
+  if(withStomata) STOMATA.forEach(s => sites.push({x:s.x, z:s.z, stoma:true}));
+  const polys = voronoi(sites, EPI.spacing*1.3);
+  const acc = {pos:[], nor:[]};
+  for(let i=0;i<nCells;i++) addPrism(acc, polys[i], y0, y1, outerUp);
+  if(withStomata) STOMATA.forEach((s, k) => addRingPrism(acc, polys[nCells + k], s, y0 + 0.08, y1 - 0.1));
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(acc.pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(acc.nor, 3));
+  return {geo:g, sites, polys, nCells};
+}
+const UPPER = epidermis(17, Y.pa1, Y.ue1, true, false);
+const LOWER = epidermis(19, Y.le0, Y.le1, false, true);
+solid(UPPER.geo, MAT.epi, MAT.epiCut, WB);
+solid(LOWER.geo, MAT.low, MAT.lowCut, WB);
+const cuticle = new THREE.Mesh(new THREE.BoxGeometry(2*(BX+MARGIN), Y.cu1 - Y.ue1 + 0.1, 2*(BZ+MARGIN)), MAT.cuticle);
+cuticle.position.set(0, (Y.cu1 + Y.ue1 - 0.1)/2, 0); cuticle.renderOrder = 5;
+WB.add(cuticle);
+
+/* ------------------------------------------------------------- palisade */
+const veinTopAt = x => { const dx = Math.max(0, Math.abs(x - VEIN.x) - 0.55*PAL.r); return dx < VEIN.r ? VEIN.y + Math.sqrt(VEIN.r*VEIN.r - dx*dx) : -Infinity; };
+const PALS = (function(){
+  const R = rng(23), list = [];
+  const ex = BX + MARGIN, ez = BZ + MARGIN, dz = PAL.spacing*Math.sqrt(3)/2;
+  let row = 0;
+  for(let z=-ez;z<=ez;z+=dz, row++) for(let x=-ex + (row%2)*PAL.spacing/2;x<=ex;x+=PAL.spacing){
+    const r = PAL.r*(0.94 + 0.08*R());
+    const cx = x + (R()-0.5)*0.16, cz = z + (R()-0.5)*0.16;
+    const top = Y.pa1 - 0.12 - 0.25*R();
+    const bot = Math.max(Y.sp1 + 0.15 + 0.45*R(), veinTopAt(cx) + 0.25);
+    if(top - bot < 2.4) continue;
+    list.push({x:cx, z:cz, r, bot, top, h:top - bot, y:(top + bot)/2,
+               tx:(R()-0.5)*0.06, tz:(R()-0.5)*0.06});
+  }
+  return list;
+})();
+const PAL_P = 5;
+const palGeo = columnGeo(22, 14, PAL_P, 1, 1);
+const [palMesh] = solidInstanced(palGeo, MAT.pal, MAT.palCut, PALS.length, WB);
+(function(){
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler();
+  PALS.forEach((c, i) => {
+    q.setFromEuler(e.set(c.tx, 0, c.tz));
+    c.q = q.clone();
+    m.compose(new V3(c.x, c.y, c.z), q, new V3(c.r, c.h, c.r));
+    palMesh.setMatrixAt(i, m);
+  });
+  palMesh.instanceMatrix.needsUpdate = true;
+})();
+const PAL_HASH = new Map(), PH = 2.5;
+PALS.forEach(c => { const k = Math.floor(c.x/PH)+','+Math.floor(c.z/PH); if(!PAL_HASH.has(k)) PAL_HASH.set(k, []); PAL_HASH.get(k).push(c); });
+function palNear(x, z){
+  const gx = Math.floor(x/PH), gz = Math.floor(z/PH), out = [];
+  for(let a=-1;a<=1;a++) for(let b=-1;b<=1;b++){ const l = PAL_HASH.get((gx+a)+','+(gz+b)); if(l) out.push(...l); }
+  return out;
+}
+function inPalisade(p, grow){
+  const g = grow || 0;
+  if(p.y < Y.sp1 - 0.5 || p.y > Y.pa1 + 0.5) return null;
+  for(const c of palNear(p.x, p.z)){
+    const dx = p.x - c.x, dz = p.z - c.z;
+    if(dx*dx + dz*dz > (c.r + 0.3 + g)*(c.r + 0.3 + g)) continue;
+    if(inColumn(Math.hypot(dx, dz), p.y - c.y, c.r + g, c.h + 2*g, PAL_P)) return c;
+  }
+  return null;
+}
+
+/* ---------------------------------------------------------------- spongy */
+const LOBE_W = 0.12;
+const SPOS = (function(){
+  const R = rng(29), list = [];
+  const ex = BX + MARGIN - 0.5, ez = BZ + MARGIN - 0.5, y0 = Y.le1 + 1.15, y1 = Y.sp1 - 1.0;
+  for(let i=0;i<9000;i++){
+    const p = new V3((R()*2-1)*ex, lerp(y0, y1, R()), (R()*2-1)*ez);
+    if(Math.hypot(p.x - VEIN.x, p.y - VEIN.y) < VEIN.r + 0.95) continue;
+    if(STOMATA.some(s => Math.hypot(s.x - p.x, s.z - p.z) < 2.0 && p.y < Y.le1 + 2.7)) continue;
+    if(list.some(c => c.p.distanceToSquared(p) < SPO.gap*SPO.gap)) continue;
+    list.push({p, rb:SPO.r*(0.9 + 0.22*R()), lobes:[]});
+  }
+  /* each cell reaches an arm half way to each of its nearest neighbours */
+  list.forEach(c => {
+    const near = list.filter(o => o !== c && o.p.distanceTo(c.p) < 4.1)
+      .sort((a, b) => a.p.distanceTo(c.p) - b.p.distanceTo(c.p)).slice(0, 4);
+    near.forEach(o => {
+      const d = o.p.distanceTo(c.p), m = new V3().addVectors(o.p, c.p).multiplyScalar(0.5);
+      if(Math.hypot(m.x - VEIN.x, m.y - VEIN.y) < VEIN.r + 0.2) return;
+      const amp = d/2 + 0.15 - c.rb;
+      if(amp > 0.05) c.lobes.push({n:new V3().subVectors(o.p, c.p).normalize(), a:amp});
+    });
+    if(c.p.y - Y.le1 < 2.6) c.lobes.push({n:new V3(0,-1,0), a:Math.max(0, c.p.y - Y.le1 + 0.1 - c.rb)});
+    if(Y.sp1 - c.p.y < 2.6)
+      c.lobes.push({n:new V3(0,1,0), a:Math.max(0, Y.sp1 + 0.35 - c.p.y - c.rb)});
+  });
+  return list;
+})();
+function spoRadius(c, dx, dy, dz){         // dir must be unit
+  let r = c.rb;
+  for(const L of c.lobes) r += L.a*Math.exp(-(1 - (dx*L.n.x + dy*L.n.y + dz*L.n.z))/LOBE_W);
+  return r;
+}
+const SPO_HASH = new Map(), SH = 4.5;
+const shKey = (x, y, z) => Math.floor(x/SH)+','+Math.floor(y/SH)+','+Math.floor(z/SH);
+SPOS.forEach(c => { const k = shKey(c.p.x, c.p.y, c.p.z); if(!SPO_HASH.has(k)) SPO_HASH.set(k, []); SPO_HASH.get(k).push(c); });
+function inSpongy(p, grow){
+  const g = grow || 0;
+  const gx = Math.floor(p.x/SH), gy = Math.floor(p.y/SH), gz = Math.floor(p.z/SH);
+  for(let a=-1;a<=1;a++) for(let b=-1;b<=1;b++) for(let e=-1;e<=1;e++){
+    const list = SPO_HASH.get((gx+a)+','+(gy+b)+','+(gz+e));
+    if(!list) continue;
+    for(const c of list){
+      const dx = p.x - c.p.x, dy = p.y - c.p.y, dz = p.z - c.p.z, d = Math.hypot(dx, dy, dz);
+      if(d > 4) continue;
+      if(d < 1e-6 || d < spoRadius(c, dx/d, dy/d, dz/d) + g) return c;
+    }
+  }
+  return null;
+}
+(function buildSpongy(){
+  const W = 22, H = 14, geos = [];
+  SPOS.forEach(c => {
+    const g = new THREE.SphereGeometry(1, W, H), p = g.attributes.position;
+    for(let i=0;i<p.count;i++){
+      const x = p.getX(i), y = p.getY(i), z = p.getZ(i), r = spoRadius(c, x, y, z);
+      p.setXYZ(i, c.p.x + x*r, c.p.y + y*r, c.p.z + z*r);
+    }
+    g.computeVertexNormals();
+    /* the sphere's seam and poles are duplicated vertices: give them one normal */
+    const n = g.attributes.normal, avg = list => {
+      let x = 0, y = 0, z = 0; list.forEach(i => { x += n.getX(i); y += n.getY(i); z += n.getZ(i); });
+      const l = Math.hypot(x, y, z) || 1; list.forEach(i => n.setXYZ(i, x/l, y/l, z/l));
+    };
+    for(let iy=0;iy<=H;iy++) avg([iy*(W+1), iy*(W+1) + W]);
+    avg(Array.from({length:W+1}, (_, i) => i)); avg(Array.from({length:W+1}, (_, i) => H*(W+1) + i));
+    g.deleteAttribute('uv');
+    geos.push(g);
+  });
+  solid(mergeGeos(geos), MAT.spo, MAT.spoCut, WB);
+})();
+
+/* ----------------------------------------------------------- chloroplasts */
+const CHLS = [];      // {p, basis:[a,b,c] unit axes, s:[sa,sb,sc]} and which cell
+/* Cells are opaque, so a chloroplast can only ever be seen in a cell that one
+   of the cuts opens (the four faces of the block, and the cut along the
+   vein). Every cell is given its chloroplasts (c.chl, which FIG counts);
+   only those in a cell that is cut are drawn. */
+const isCut = (x, z, r) => Math.abs(Math.abs(x) - BX) < r || Math.abs(Math.abs(z) - BZ) < r || Math.abs(x - VEIN.x) < r;
+(function(){
+  const R = rng(37);
+  const hMean = PALS.reduce((s, c) => s + c.h, 0)/PALS.length;
+  PALS.forEach((c, ci) => {
+    const n = Math.max(8, Math.round(PAL.chl*Math.min(1, c.h/hMean)));
+    c.chl = n;
+    const up = new V3(0,1,0).applyQuaternion(c.q);
+    for(let k=0;k<n;k++){
+      const th = k*2.39996 + R()*0.4, yy = (((k + 0.5)/n) - 0.5)*0.78*c.h + (R()-0.5)*0.2;
+      const rad = new V3(Math.cos(th), 0, Math.sin(th)).applyQuaternion(c.q);
+      const tan = new V3().crossVectors(up, rad).normalize();
+      const p = new V3(c.x, c.y, c.z).addScaledVector(up, yy).addScaledVector(rad, 0.74*c.r);
+      if(isCut(c.x, c.z, c.r + 0.15)) CHLS.push({p, axes:[tan, up.clone(), rad], s:[0.21, 0.32, 0.11], cell:'pal', ci});
+    }
+  });
+  SPOS.forEach((c, ci) => {
+    let n = 0;
+    for(let k=0;k<60 && n < SPO.chl;k++){
+      const yy = 1 - 2*(k + 0.5)/60, rr = Math.sqrt(1 - yy*yy), th = k*2.39996;
+      const d = new V3(rr*Math.cos(th), yy, rr*Math.sin(th));
+      if(c.lobes.some(L => d.dot(L.n) > 0.75)) continue;
+      if(R() < 0.35) continue;
+      const r = spoRadius(c, d.x, d.y, d.z);
+      const t1 = new V3().crossVectors(d, Math.abs(d.y) < 0.9 ? new V3(0,1,0) : new V3(1,0,0)).normalize();
+      const t2 = new V3().crossVectors(d, t1);
+      if(isCut(c.p.x, c.p.z, r + 0.15)) CHLS.push({p:c.p.clone().addScaledVector(d, 0.76*r), axes:[t1, t2, d], s:[0.2, 0.3, 0.1], cell:'spo', ci});
+      n++;
+    }
+    c.chl = n;
+  });
+})();
+const chlGeo = new THREE.SphereGeometry(1, 8, 5);
+const [chlMesh] = solidInstanced(chlGeo, MAT.chl, MAT.chlCut, CHLS.length, WB);
+(function(){
+  const m = new THREE.Matrix4();
+  CHLS.forEach((c, i) => {
+    const [a, b, n] = c.axes;
+    m.makeBasis(a.clone().multiplyScalar(c.s[0]), b.clone().multiplyScalar(c.s[1]), n.clone().multiplyScalar(c.s[2]));
+    m.setPosition(c.p);
+    chlMesh.setMatrixAt(i, m);
+  });
+  chlMesh.instanceMatrix.needsUpdate = true;
+})();
+
+/* -------------------------------------------------------------- guard cells */
+/* One guard cell is a tube round half an ellipse; its partner is the same
+   tube turned half round. The pore between them is STO.open wide (half
+   width) when the cells are swollen and STO.shut when they are limp. */
+const GC_N = 30, GC_RAD = 12;
+const gcGeo = makeTube(GC_N, GC_RAD);
+const [gcMesh] = solidInstanced(gcGeo, MAT.guard, MAT.guardCut, STOMATA.length*2, WB);
+const GC_CHL = 5;
+const [gcChlMesh] = solidInstanced(chlGeo, MAT.chl, MAT.chlCut, STOMATA.length*2*GC_CHL, WB);
+function guardShape(op){
+  const w = lerp(STO.shut, STO.open, op), tr = STO.tube*(0.92 + 0.12*op);
+  const P = [], Rr = [];
+  for(let i=0;i<GC_N;i++){
+    const u = i/(GC_N-1), ph = -0.22 + (Math.PI + 0.44)*u, s = Math.max(0, Math.sin(ph));
+    P.push(new V3(STO.a*Math.cos(ph), 0, (w + tr)*Math.sin(ph)));
+    Rr.push((i === 0 || i === GC_N-1) ? 0.001 : tr*(0.52 + 0.48*s));
+  }
+  return {P, R:Rr, w, tr};
+}
+let gcLastOp = -1;
+function updateGuards(op){
+  if(Math.abs(op - gcLastOp) < 1e-4) return;
+  gcLastOp = op;
+  const G = guardShape(op);
+  writeTube(gcGeo, G.P, G.R, new V3(0,1,0));
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), half = new THREE.Quaternion().setFromAxisAngle(new V3(0,1,0), Math.PI);
+  let k = 0;
+  STOMATA.forEach((s, i) => {
+    q.setFromAxisAngle(new V3(0,1,0), s.rot);
+    for(let side=0;side<2;side++){
+      const qq = side ? q.clone().multiply(half) : q;
+      m.compose(new V3(s.x, STO.yc, s.z), qq, new V3(1,1,1));
+      gcMesh.setMatrixAt(2*i + side, m);
+      for(let j=0;j<GC_CHL;j++){
+        const ph = 0.45 + (Math.PI - 0.9)*j/(GC_CHL-1);
+        const loc = new V3(STO.a*Math.cos(ph)*0.95, (j%2 ? 0.12 : -0.12), (G.w + G.tr)*Math.sin(ph));
+        loc.applyQuaternion(qq).add(new V3(s.x, STO.yc, s.z));
+        const mm = new THREE.Matrix4().compose(loc, qq, new V3(0.17, 0.12, 0.09));
+        gcChlMesh.setMatrixAt(k++, mm);
+      }
+    }
+  });
+  gcMesh.instanceMatrix.needsUpdate = true;
+  gcChlMesh.instanceMatrix.needsUpdate = true;
+}
+
+/* ----------------------------------------------------------------- the vein */
+/* a hollow tube along z: outside, inside (facing in) and end rings, closed */
+function annulusGeo(rOut, rIn, z0, z1, seg){
+  const outer = new THREE.CylinderGeometry(rOut, rOut, z1 - z0, seg, 1, true);
+  const inner = new THREE.CylinderGeometry(rIn, rIn, z1 - z0, seg, 1, true);
+  /* turn the inner wall inside out */
+  const ii = inner.index.array;
+  for(let i=0;i<ii.length;i+=3){ const t = ii[i+1]; ii[i+1] = ii[i+2]; ii[i+2] = t; }
+  const nn = inner.attributes.normal;
+  for(let i=0;i<nn.count;i++) nn.setXYZ(i, -nn.getX(i), -nn.getY(i), -nn.getZ(i));
+  const rings = [z1 - z0, -(z1 - z0)].map((h, k) => {
+    const g = new THREE.RingGeometry(rIn, rOut, seg, 1);
+    g.rotateX(k ? Math.PI/2 : -Math.PI/2); g.translate(0, h/2, 0);
+    return g;
+  });
+  [outer, inner].concat(rings).forEach(g => g.deleteAttribute('uv'));
+  const g = mergeGeos([outer, inner].concat(rings));
+  g.rotateX(Math.PI/2); g.translate(0, 0, (z0 + z1)/2);
+  return g;
+}
+const VZ0 = -BZ - MARGIN, VZ1 = BZ + MARGIN;
+const SIEVE_GAP = 3.2;            // sieve plates along a sieve tube, every 32 um
+const BUNDLE = (function(){
+  const R = rng(41);
+  const sheath = [], xylem = [], phloem = [], comp = [], paren = [];
+  const NS = 12, rs = 0.78;
+  for(let i=0;i<NS;i++){
+    const a = i/NS*Math.PI*2 + 0.13;
+    sheath.push({x:(VEIN.r - rs)*Math.cos(a), y:(VEIN.r - rs)*Math.sin(a), r:rs*(0.92 + 0.12*R())});
+  }
+  /* xylem on the upper side: vessels in short rows fanning out from the middle */
+  [[-1.05, 0.85, 0.52], [0.05, 1.25, 0.6], [1.1, 0.8, 0.5], [-0.5, 0.2, 0.4], [0.6, 0.25, 0.42], [0.05, -0.15, 0.3]]
+    .forEach(([x, y, r]) => xylem.push({x, y, r, wall:0.13}));
+  /* phloem on the lower side: sieve tubes, each with a companion cell beside it */
+  [[-0.95, -1.05, 0.42], [0.25, -1.45, 0.45], [1.25, -0.85, 0.38]].forEach(([x, y, r], i) => {
+    phloem.push({x, y, r, wall:0.06});
+    const a = i*1.9 + 0.6;
+    comp.push({x:x + (r + 0.2)*Math.cos(a), y:y + (r + 0.2)*Math.sin(a), r:0.18});
+  });
+  /* fill what is left inside the sheath with small cells */
+  const inner = VEIN.r - 2*rs, taken = xylem.concat(phloem, comp);
+  for(let i=0;i<600 && paren.length < 14;i++){
+    const a = R()*Math.PI*2, d = Math.sqrt(R())*(inner - 0.25), x = d*Math.cos(a), y = d*Math.sin(a), r = 0.22 + 0.12*R();
+    if(taken.concat(paren).some(c => Math.hypot(c.x - x, c.y - y) < c.r + r + 0.04)) continue;
+    paren.push({x, y, r});
+  }
+  return {sheath, xylem, phloem, comp, paren};
+})();
+(function buildVein(){
+  const L = VZ1 - VZ0;
+  const rod = c => { const g = new THREE.CylinderGeometry(c.r, c.r, L, 14); g.rotateX(Math.PI/2); g.translate(VEIN.x + c.x, VEIN.y + c.y, (VZ0 + VZ1)/2); g.deleteAttribute('uv'); return g; };
+  solid(mergeGeos(BUNDLE.sheath.map(rod)), MAT.sheath, MAT.sheathCut, WB);
+  solid(mergeGeos(BUNDLE.comp.map(rod)), MAT.comp, MAT.compCut, WB);
+  solid(mergeGeos(BUNDLE.paren.map(rod)), MAT.paren, MAT.parenCut, WB);
+  const tubeAt = c => { const g = annulusGeo(c.r, c.r - c.wall, VZ0, VZ1, 20); g.translate(VEIN.x + c.x, VEIN.y + c.y, 0); return g; };
+  solid(mergeGeos(BUNDLE.xylem.map(tubeAt)), MAT.xyl, MAT.xylCut, WB);
+  solid(mergeGeos(BUNDLE.phloem.map(tubeAt)), MAT.phl, MAT.phlCut, WB);
+  /* lignin: a spiral thickening round the inside of every vessel */
+  const spirals = BUNDLE.xylem.map(c => {
+    const pitch = 0.42, turns = Math.ceil(L/pitch), N = turns*14, P = [];
+    const r = c.r - c.wall - 0.05;
+    for(let i=0;i<=N;i++){ const a = i/14*Math.PI*2; P.push(new V3(VEIN.x + c.x + r*Math.cos(a), VEIN.y + c.y + r*Math.sin(a), VZ0 + L*i/N)); }
+    const g = makeTube(P.length, 5); writeTube(g, P, P.map(() => 0.05), new V3(1,0,0));
+    return g;
+  });
+  const sp = new THREE.Mesh(mergeGeos(spirals), MAT.spiral); sp.frustumCulled = false; WB.add(sp);
+  /* sieve plates: a perforated disc every SIEVE_GAP along each sieve tube */
+  const cv = document.createElement('canvas'); cv.width = cv.height = 64;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(32, 32, 31, 0, Math.PI*2); ctx.fill();
+  ctx.globalCompositeOperation = 'destination-out';
+  for(let i=0;i<9;i++){ const a = i*2.4, d = i ? 9 + (i%3)*6 : 0; ctx.beginPath(); ctx.arc(32 + d*Math.cos(a), 32 + d*Math.sin(a), 4.2, 0, Math.PI*2); ctx.fill(); }
+  const tex = new THREE.CanvasTexture(cv); tex.encoding = THREE.sRGBEncoding;
+  MAT.plate.map = tex; MAT.plate.alphaMap = null; MAT.plate.transparent = false;
+  const plates = [];
+  BUNDLE.phloem.forEach(c => {
+    for(let z=VZ0 + 1;z<VZ1;z+=SIEVE_GAP){
+      const g = new THREE.CircleGeometry(c.r - c.wall, 20); g.translate(VEIN.x + c.x, VEIN.y + c.y, z); plates.push(g);
+    }
+  });
+  const pg = mergeGeosUV(plates);
+  WB.add(new THREE.Mesh(pg, MAT.plate));
+})();
+function mergeGeosUV(geos){
+  const g = mergeGeos(geos);
+  let n = 0; const uv = new Float32Array(g.attributes.position.count*2);
+  geos.forEach(s => { uv.set(s.attributes.uv.array, n*2); n += s.attributes.position.count; });
+  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  return g;
+}
+function inVein(p, grow){ return Math.hypot(p.x - VEIN.x, p.y - VEIN.y) < VEIN.r + (grow || 0); }
+
+/* --------------------------------------------- what is solid, what is air */
+function inEpidermis(p){
+  if(p.y >= Y.pa1 && p.y <= Y.cu1) return true;
+  if(p.y < Y.le0 || p.y > Y.le1) return false;
+  for(const s of STOMATA){
+    const l = stomaLocal(s, p.x, p.z);
+    if(Math.abs(l.lx) < STO.a*0.8 && Math.abs(l.lz) < 0.45) return false;   // the pore (open)
+  }
+  return true;
+}
+function isSolid(p){
+  if(p.y < Y.le0) return false;
+  return inEpidermis(p) || inVein(p) || !!inPalisade(p) || !!inSpongy(p);
+}
+
+/* how much of each layer is air, counted in the model */
+const AIR = (function(){
+  const R = rng(53), N = 6000;
+  const frac = (y0, y1, test) => {
+    let air = 0, n = 0;
+    while(n < N){
+      const p = new V3((R()*2-1)*BX, lerp(y0, y1, R()), (R()*2-1)*BZ);
+      if(Math.abs(p.x - VEIN.x) < VEIN.r + 0.5) continue;      // leave the vein out of both layers
+      n++;
+      if(!test(p)) air++;
+    }
+    return air/N;
+  };
+  return {
+    spo: frac(Y.le1, Y.sp1, p => !!inSpongy(p) || !!inPalisade(p)),
+    pal: frac(Y.sp1 + 0.4, Y.pa1 - 0.4, p => !!inPalisade(p) || !!inSpongy(p))
+  };
+})();
+
+/* ------------------------------------------- the ways gas goes: searched */
+/* Dijkstra on a voxel grid of the air near the front face, from under a
+   stoma up through its pore to the first air next to the bottom of a
+   palisade cell. A small cost for going deeper keeps paths in view. */
+const GRID = {h:0.35, x0:-BX + 0.2, x1:BX - 0.2, y0:-2.6, y1:Y.sp1 + 1.4, z0:BZ - 6, z1:BZ - 0.15};
+const AIRGRID = (function(){
+  const G = GRID;
+  const nx = Math.floor((G.x1 - G.x0)/G.h) + 1, ny = Math.floor((G.y1 - G.y0)/G.h) + 1, nz = Math.floor((G.z1 - G.z0)/G.h) + 1;
+  const solidA = new Uint8Array(nx*ny*nz), target = new Uint8Array(nx*ny*nz);
+  const p = new V3(), q = new V3();
+  for(let k=0;k<nz;k++) for(let j=0;j<ny;j++) for(let i=0;i<nx;i++){
+    p.set(G.x0 + i*G.h, G.y0 + j*G.h, G.z0 + k*G.h);
+    const id = i + nx*(j + ny*k);
+    /* a little clearance round cells, so a molecule's middle is not on a wall */
+    const s = p.y >= Y.le0 && (inEpidermis(p) || inVein(p, 0.12) || inPalisade(p, 0.1) || inSpongy(p, 0.1));
+    solidA[id] = s ? 1 : 0;
+    if(!s && p.y > Y.sp1 - 0.8 && p.z > BZ - 2.2){
+      q.set(p.x, p.y + 0.45, p.z);
+      if(inPalisade(q)) target[id] = 1;
+    }
+  }
+  return {nx, ny, nz, solid:solidA, target};
+})();
+function searchPath(sx, sz){
+  const G = GRID, A = AIRGRID, nx = A.nx, ny = A.ny, nz = A.nz, N = nx*ny*nz;
+  const dist = new Float64Array(N).fill(Infinity), prev = new Int32Array(N).fill(-1);
+  const heap = [], push = (id, d) => { heap.push([d, id]); let i = heap.length-1;
+    while(i > 0){ const pa = (i-1) >> 1; if(heap[pa][0] <= heap[i][0]) break; [heap[pa], heap[i]] = [heap[i], heap[pa]]; i = pa; } };
+  const pop = () => { const top = heap[0], last = heap.pop();
+    if(heap.length){ heap[0] = last; let i = 0;
+      for(;;){ const l = 2*i+1, r = l+1; let m = i;
+        if(l < heap.length && heap[l][0] < heap[m][0]) m = l;
+        if(r < heap.length && heap[r][0] < heap[m][0]) m = r;
+        if(m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } }
+    return top; };
+  const i0 = Math.round((sx - G.x0)/G.h), k0 = Math.round((sz - G.z0)/G.h);
+  if(i0 < 0 || i0 >= nx || k0 < 0 || k0 >= nz) return null;
+  const s0 = i0 + nx*(0 + ny*k0);
+  dist[s0] = 0; push(s0, 0);
+  let found = -1;
+  while(heap.length){
+    const [d, id] = pop();
+    if(d > dist[id]) continue;
+    if(A.target[id]){ found = id; break; }
+    const i = id % nx, j = Math.floor(id/nx) % ny, k = Math.floor(id/(nx*ny));
+    const z = G.z0 + k*G.h;
+    const step = 1 + 0.35*(BZ - z);
+    for(const [di, dj, dk] of [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]]){
+      const a = i+di, b = j+dj, c = k+dk;
+      if(a < 0 || a >= nx || b < 0 || b >= ny || c < 0 || c >= nz) continue;
+      const nid = a + nx*(b + ny*c);
+      if(A.solid[nid]) continue;
+      /* below the leaf, only go straight up: the air under it is outside */
+      if(G.y0 + b*G.h < Y.le0 - 0.2 && (di || dk)) continue;
+      const nd = d + step*(dj > 0 ? 0.8 : 1);
+      if(nd < dist[nid]){ dist[nid] = nd; prev[nid] = id; push(nid, nd); }
+    }
+  }
+  if(found < 0) return null;
+  const pts = [];
+  for(let id=found; id>=0; id=prev[id]){
+    const i = id % nx, j = Math.floor(id/nx) % ny, k = Math.floor(id/(nx*ny));
+    pts.push(new V3(G.x0 + i*G.h, G.y0 + j*G.h, G.z0 + k*G.h));
+  }
+  return pts.reverse();
+}
+/* smooth a voxel path (Chaikin), keeping every point in the air */
+function smoothPath(pts){
+  let P = pts;
+  for(let it=0;it<4;it++){
+    const Q = [P[0]];
+    for(let i=0;i<P.length-1;i++){
+      const a = P[i], b = P[i+1];
+      const q1 = a.clone().lerp(b, 0.25), q2 = a.clone().lerp(b, 0.75);
+      Q.push(isSolid(q1) ? a.clone().lerp(b, 0.5) : q1, isSolid(q2) ? a.clone().lerp(b, 0.5) : q2);
+    }
+    Q.push(P[P.length-1]);
+    P = Q;
+  }
+  return makePath(P);
+}
+function makePath(P){
+  const cum = [0];
+  for(let i=1;i<P.length;i++) cum.push(cum[i-1] + P[i].distanceTo(P[i-1]));
+  return {P, cum, L:cum[cum.length-1]};
+}
+function pathAt(path, s, out){
+  const {P, cum, L} = path;
+  s = clamp(s, 0, L);
+  let lo = 0, hi = cum.length - 1;
+  while(hi - lo > 1){ const m = (lo + hi) >> 1; if(cum[m] <= s) lo = m; else hi = m; }
+  const u = (s - cum[lo])/Math.max(1e-9, cum[hi] - cum[lo]);
+  return (out || new V3()).lerpVectors(P[lo], P[hi], u);
+}
+const GAS = (function(){
+  const order = STOMATA.filter(s => s.z > BZ - 5.5 && s.z <= BZ && Math.abs(s.x) < BX - 1.5)
+    .sort((a, b) => (a.feat ? -1 : 0) - (b.feat ? -1 : 0) || b.z - a.z);
+  const paths = [];
+  for(const s of order){
+    if(paths.length >= 5) break;
+    /* start under the middle of the pore, on the side of the face we keep */
+    const sz = s.feat === 'cut' ? BZ - 0.55 : s.z;
+    const raw = searchPath(s.x, sz);
+    if(raw) paths.push(Object.assign(smoothPath(raw), {stoma:s}));
+  }
+  return paths;
+})();
+
+/* ------------------------------------------------- molecules, any world */
+function MolLayer(parent, scale, max){
+  this.scale = scale; this.mesh = {};
+  const sph = new THREE.SphereGeometry(1, 14, 10);
+  Object.keys(EL).forEach(e => {
+    const m = new THREE.InstancedMesh(sph, std(EL[e].col, {roughness:0.35, envMapIntensity:0.5,
+      emissive:EL[e].col, emissiveIntensity:0.22}), max);
+    m.count = 0; m.frustumCulled = false; parent.add(m); this.mesh[e] = m;
+  });
+  const hex = new THREE.CylinderGeometry(1, 1, 0.42, 6); hex.rotateX(Math.PI/2);
+  this.glu = new THREE.InstancedMesh(hex, std(COL.glucose, {roughness:0.4, emissive:COL.glucose, emissiveIntensity:0.18}), max);
+  this.glu.count = 0; this.glu.frustumCulled = false; parent.add(this.glu);
+  this.n = {};
+  this._m = new THREE.Matrix4(); this._q = new THREE.Quaternion(); this._e = new THREE.Euler(); this._v = new V3();
+}
+MolLayer.prototype.begin = function(){ Object.keys(this.mesh).forEach(e => this.n[e] = 0); this.n.glu = 0; };
+MolLayer.prototype.add = function(sp, p, k, t, size){
+  const s = this.scale*(size === undefined ? 1 : size);
+  if(s < 1e-4) return;
+  this._q.setFromEuler(this._e.set(0.7*t + k*1.3, 0.9*t + k*2.1, 0.5*t + k*0.7));
+  if(sp === 'GLU'){
+    if(this.n.glu >= this.glu.instanceMatrix.count) return;
+    this._m.compose(p, this._q, this._v.set(1.4*s, 1.4*s, 1.4*s));
+    this.glu.setMatrixAt(this.n.glu++, this._m);
+    return;
+  }
+  for(const [e, x, y, z] of MOL[sp].atoms){
+    const m = this.mesh[e];
+    if(this.n[e] >= m.instanceMatrix.count) continue;
+    const off = this._v.set(x, y, z).multiplyScalar(s*EL.O.r).applyQuaternion(this._q).add(p);
+    const r = EL[e].r*s;
+    this._m.makeScale(r, r, r).setPosition(off);
+    m.setMatrixAt(this.n[e]++, this._m);
+  }
+};
+MolLayer.prototype.end = function(){
+  Object.keys(this.mesh).forEach(e => { this.mesh[e].count = this.n[e]; this.mesh[e].instanceMatrix.needsUpdate = true; });
+  this.glu.count = this.n.glu; this.glu.instanceMatrix.needsUpdate = true;
+};
+const MOLB = new MolLayer(WB, 0.3, 400);
+
+/* ------------------------------------------------------- light, falling */
+/* Light is a stream of short gold dashes. As it is absorbed a dash gets
+   thinner and shorter rather than fainter: added light would vanish against
+   the pale cut faces, so these are opaque. */
+function LightLayer(parent, n, len, r){
+  const g = new THREE.CylinderGeometry(r, r, len, 6);
+  this.mesh = new THREE.InstancedMesh(g, new THREE.MeshBasicMaterial({color:COL.light, toneMapped:false}), n);
+  this.mesh.frustumCulled = false; this.mesh.count = 0; this.mesh.renderOrder = 8;
+  this._m = new THREE.Matrix4();
+  parent.add(this.mesh);
+}
+LightLayer.prototype.begin = function(){ this.k = 0; };
+LightLayer.prototype.add = function(x, y, z, b){
+  if(b < 0.06 || this.k >= this.mesh.instanceMatrix.count) return;
+  const w = Math.sqrt(b);
+  this._m.makeScale(w, 0.35 + 0.65*b, w).setPosition(x, y, z);
+  this.mesh.setMatrixAt(this.k++, this._m);
+};
+LightLayer.prototype.end = function(){
+  this.mesh.count = this.k; this.mesh.instanceMatrix.needsUpdate = true;
+};
+const LIGHTB = new LightLayer(WB, 120, 1.6, 0.085);
+/* how much light is left at height y: none is lost in the clear epidermis;
+   the palisade absorbs most of it, the spongy layer most of the rest */
+const LIGHT_FALL = 2.6;
+function lightLeft(y){ return y >= Y.pa1 ? 1 : Math.exp(-(Y.pa1 - y)/LIGHT_FALL); }
+const LIGHT_TOP = 27, LIGHT_BOT = 3, LIGHT_V = 9;
+function updateBlockLight(t, on){
+  LIGHTB.begin();
+  if(on > 0.01) for(let k=0;k<110;k++){
+    const front = k % 3 !== 0;
+    const x = lerp(-BX + 1, BX - 1, hash(k)), z = front ? BZ - 0.2 - 1.6*hash(k + 101) : lerp(-BZ + 1, BZ - 1, hash(k + 211));
+    const span = LIGHT_TOP - LIGHT_BOT;
+    const y = LIGHT_TOP - mod(t*LIGHT_V + hash(k + 7)*span, span);
+    LIGHTB.add(x, y, z, on*lightLeft(y)*ss(LIGHT_TOP, LIGHT_TOP - 2, y));
+  }
+  LIGHTB.end();
+}
+
+/* ------------------------------------------- flows in the block, per frame */
+const XYL_V = 1.1, PHL_V = 0.8;
+function updateBlockFlows(t, F, gasT){
+  MOLB.begin();
+  if(F.gas){
+    GAS.forEach((path, pi) => {
+      const L = path.L;
+      const inN = 7, outN = 5;
+      for(let k=0;k<inN;k++){                         // carbon dioxide, in
+        const s = mod(gasT*1.5 + (k + 0.37*pi)*L/inN, L);
+        MOLB.add('CO2', pathAt(path, s, _p1).add(jitter(pi*31 + k, t, 0.08)), k + pi*7, t, F.gas*ss(0, 0.8, s)*ss(L, L - 0.8, s));
+      }
+      if(F.gas2) for(let k=0;k<outN;k++){              // oxygen and water vapour, out
+        const s = L - mod(gasT*1.4 + (k + 0.5 + 0.21*pi)*L/outN, L);
+        const sp = k % 2 ? 'H2O' : 'O2';
+        MOLB.add(sp, pathAt(path, s, _p1).add(jitter(pi*53 + k + 17, t, 0.08)), k + pi*5 + 40, t, F.gas2*ss(0, 0.8, s)*ss(L, L - 0.8, s));
+      }
+    });
+  }
+  if(F.xyl){
+    const L = VZ1 - VZ0;
+    BUNDLE.xylem.forEach((c, i) => { for(let k=0;k<6;k++){
+      const z = VZ1 - mod(t*XYL_V + (k + 0.3*i)*L/6, L);
+      MOLB.add('H2O', _p1.set(VEIN.x + c.x, VEIN.y + c.y, z), i*9 + k, t, F.xyl*0.85);
+    }});
+  }
+  if(F.phl){
+    const L = VZ1 - VZ0;
+    BUNDLE.phloem.forEach((c, i) => { for(let k=0;k<5;k++){
+      const z = VZ0 + mod(t*PHL_V + (k + 0.4*i)*L/5, L);
+      MOLB.add('GLU', _p1.set(VEIN.x + c.x, VEIN.y + c.y, z), i*11 + k, t*0.4, F.phl*0.55);
+    }});
+  }
+  MOLB.end();
+}
+const _p1 = new V3(), _jit = new V3();
+function jitter(k, t, a){
+  return _jit.set(Math.sin(1.7*t + k), Math.sin(2.3*t + 2.1*k), Math.sin(1.9*t + 0.7*k)).multiplyScalar(a);
+}
+
+/* =========================================================================
+   WORLD 3: one palisade cell, cut down the middle
+========================================================================= */
+const CELL = {r:2.8, h:16, wall:0.2, p:5};
+const CY = {r:CELL.r - CELL.wall - 0.03, h:CELL.h - 2*CELL.wall - 0.06};   // the cytoplasm fills the wall
+const VAC = {r:1.55, h:11.4};
+const RC = 2.14;                        // chloroplasts sit at this distance from the axis
+const CMAT = {
+  wall: std(COL.wall, {roughness:0.5, envMapIntensity:0.35}), wallCut: cutMat(COL.wallCut),
+  cyto: std(COL.cyto, {roughness:0.7}), cytoCut: cutMat(COL.cytoCut),
+  vac: std(COL.vac, {roughness:0.3, envMapIntensity:0.5}), vacCut: cutMat(COL.vacCut),
+  chlCut: cutMat(COL.chlCut), epi: std(COL.epi, {roughness:0.35}), epiCut: cutMat(COL.epiCut),
+  starch: std(COL.starch, {roughness:0.4}), oil: std(COL.oil, {roughness:0.2, envMapIntensity:0.8}),
+  protein: std(COL.protein, {roughness:0.45}),
+  membrane: new THREE.LineBasicMaterial({color:COL.membrane}),
+  spo: std(COL.spo, {roughness:0.6}), spoCut: cutMat(COL.spoCut)
+};
+function inCellCyto(p){     // p in cell-local coordinates
+  const rad = Math.hypot(p.x, p.z);
+  return inColumn(rad, p.y, CY.r, CY.h, CELL.p) && !inColumn(rad, p.y, VAC.r, VAC.h, CELL.p);
+}
+function cellParts(cx, withOrganelles){
+  const g = new THREE.Group(); g.position.x = cx;
+  const outer = columnGeo(40, 28, CELL.p, CELL.r, CELL.h), inner = columnGeo(40, 28, CELL.p, CELL.r - CELL.wall, CELL.h - 2*CELL.wall, true);
+  outer.deleteAttribute('uv'); inner.deleteAttribute('uv');
+  solid(mergeGeos([outer, inner]), CMAT.wall, CMAT.wallCut, g);
+  solid(columnGeo(40, 28, CELL.p, CY.r, CY.h), CMAT.cyto, CMAT.cytoCut, g);
+  solid(columnGeo(36, 28, CELL.p, VAC.r, VAC.h), CMAT.vac, CMAT.vacCut, g);
+  /* the membrane, drawn as its line where the cut goes through it */
+  const prof = columnProfile(60, CELL.p, CY.r + 0.015, CY.h);
+  const mpts = prof.map(v => new V3(v.x, v.y, -0.01)).concat(prof.slice().reverse().map(v => new V3(-v.x, v.y, -0.01)));
+  g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(mpts), CMAT.membrane));
+  WC.add(g);
+  return g;
+}
+const CELLS = [cellParts(0, true), cellParts(-(2*CELL.r + 0.25)), cellParts(2*CELL.r + 0.25)];
+CELLS[0].userData.chlMat = Organelles.materials.chloroplast;     // read by the tests
+/* the places glucose is taken to, round the visible (back) half of the cell */
+const atAngle = (th, y, r) => new V3((r || RC)*Math.cos(th), y, (r || RC)*Math.sin(th));
+const SITES = {
+  T:      atAngle(-1.57, -0.6),            // the chloroplast the story follows
+  starch: atAngle(-1.0, 3.4),              // a chloroplast storing starch
+  mito:   atAngle(-2.25, 2.4),
+  wall:   atAngle(-2.05, -4.6, CY.r - 0.22),
+  oil:    atAngle(-0.72, -3.9),
+  protein:atAngle(-2.35, 5.6),
+  nucleus:atAngle(-0.62, 5.7, 2.05)
+};
+const makeChl = Organelles.chloroplastMaker({length:0.40, width:0.22});
+const CHL_K = 1.6;
+const CELL_CHL = [];
+(function(){
+  const R = rng(61);
+  const avoid = Object.values(SITES);
+  const place = (g, p, roll, tag) => {
+    const c = makeChl();
+    c.scale.multiplyScalar(CHL_K);
+    /* long axis up the wall, flat side against it: a right-handed basis
+       (up, tan, up x tan), so the quaternion it gives is a true rotation */
+    const out = new V3(p.x, 0, p.z).normalize(), up = new V3(0,1,0), tan = new V3().crossVectors(up, out);
+    const m = new THREE.Matrix4().makeBasis(up, tan, new V3().crossVectors(up, tan));
+    c.quaternion.setFromRotationMatrix(m);
+    c.rotateX(roll);
+    c.position.copy(p);
+    const back = new THREE.Mesh(c.geometry, CMAT.chlCut); c.add(back);
+    g.add(c);
+    if(tag) c.userData.tag = tag;
+    return c;
+  };
+  CELLS.forEach((g, ci) => {
+    let n = 0;
+    for(let i=0;i<300 && n < (ci ? 26 : 48);i++){
+      const th = -Math.PI*R() - (ci ? 0 : 0) , y = (R()*2-1)*(CY.h/2 - 1.6);
+      const p = atAngle(th, y);
+      if(!ci && avoid.some(a => a.distanceTo(p) < 1.15)) continue;
+      if(CELL_CHL.some(c => c.g === g && c.p.distanceTo(p) < 1.15)) continue;
+      place(g, p, (R()-0.5)*0.5);
+      CELL_CHL.push({g, p}); n++;
+    }
+  });
+  CELL_CHL.T = place(CELLS[0], SITES.T, 0, 'T');
+  CELL_CHL.S = place(CELLS[0], SITES.starch, 0.2, 'S');
+  CELL_CHL.push({g:CELLS[0], p:SITES.T}, {g:CELLS[0], p:SITES.starch});
+  const nuc = Organelles.nucleus({radius:0.5, nucleolusSize:0.3});
+  nuc.position.copy(SITES.nucleus); CELLS[0].add(nuc);
+  const makeMito = Organelles.mitochondrionMaker({length:0.42, width:0.17});
+  [SITES.mito, atAngle(-0.35, 0.8), atAngle(-2.7, -2.0)].forEach((p, i) => {
+    const m = makeMito(i*1.3); m.position.copy(p);
+    m.rotation.set(0, -Math.atan2(p.z, p.x) + Math.PI/2, 1.2 + 0.3*i);
+    CELLS[0].add(m);
+  });
+})();
+const CELL_TOP = CELL.h/2;
+/* the upper epidermis above, and some spongy cells and an air space below */
+(function(){
+  const ep = new THREE.BoxGeometry(3*(2*CELL.r + 0.25) + 2, 1.7, 7); ep.deleteAttribute('uv');
+  ep.translate(0, CELL_TOP + 0.15 + 0.85, 0);
+  solid(ep, CMAT.epi, CMAT.epiCut, WC);
+  const cu = new THREE.Mesh(new THREE.BoxGeometry(3*(2*CELL.r + 0.25) + 2, 0.35, 7), MAT.cuticle.clone());
+  cu.position.y = CELL_TOP + 1.85 + 0.17; WC.add(cu);
+  [[-4.5, -CELL_TOP - 3.4], [1.2, -CELL_TOP - 3.9], [6.4, -CELL_TOP - 3.2]].forEach(([x, y], i) => {
+    const g = new THREE.SphereGeometry(1, 20, 14); g.scale(2.1 + 0.3*i, 1.6, 2.0); g.translate(x, y, -0.4); g.deleteAttribute('uv');
+    solid(g, CMAT.spo, CMAT.spoCut, WC);
+  });
+})();
+/* starch grains, an oil droplet, a cellulose strand and a protein chain:
+   each grows with how much glucose has reached it */
+const GROW = {};
+(function(){
+  const s = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), CMAT.starch);
+  /* on the chloroplast's inner face, which faces the camera: inside it would be hidden */
+  s.position.copy(SITES.starch).multiplyScalar((RC - 0.2)/RC); CELLS[0].add(s); GROW.starch = s;
+  const o = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), CMAT.oil);
+  o.position.copy(SITES.oil); CELLS[0].add(o); GROW.oil = o;
+  GROW.cellulose = new THREE.InstancedMesh(new THREE.CylinderGeometry(1, 1, 0.42, 6).rotateX(Math.PI/2),
+    std(COL.glucose, {roughness:0.4}), 16);
+  GROW.protein = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 12, 9), CMAT.protein, 16);
+  [GROW.cellulose, GROW.protein].forEach(m => { m.count = 0; m.frustumCulled = false; CELLS[0].add(m); });
+})();
+
+/* the ways molecules go in and out of the cell: smooth curves through the
+   cytoplasm, which the test checks never cross the vacuole */
+const curvePath = (pts, n) => makePath(new THREE.CatmullRomCurve3(pts).getSpacedPoints(n || 80));
+const shell = (th, y, r) => atAngle(th, y, r === undefined ? RC + 0.1 : r);
+const CPATH = {
+  CO2: curvePath([shell(-2.0, -1.6, 5.6), shell(-2.0, -1.4, 3.6), shell(-1.95, -1.3, 2.25), shell(-1.75, -0.9), SITES.T.clone().add(new V3(-0.25, -0.1, 0.2))]),
+  H2O: curvePath([shell(-1.25, -CELL_TOP - 3, 1.7), shell(-1.3, -CELL_TOP + 0.3, 1.8), shell(-1.35, -5.6), shell(-1.45, -3.0), SITES.T.clone().add(new V3(0.2, -0.3, 0.2))]),
+  O2:  curvePath([SITES.T.clone().add(new V3(0.2, 0.3, 0.2)), shell(-1.3, 0.6), shell(-1.15, 1.4, 2.3), shell(-1.1, 1.7, 3.6), shell(-1.05, 2.4, 5.8)]),
+  GLU: curvePath([SITES.T.clone().add(new V3(0, 0.1, 0.35)), shell(-1.6, 1.0, 2.0), shell(-1.8, 2.2, 2.0)])
+};
+const USE = ['respiration', 'starch', 'cellulose', 'oil', 'protein', 'phloem'];
+const UPATH = {
+  respiration: curvePath([SITES.T, shell(-1.8, 0.6), shell(-2.1, 1.7), SITES.mito]),
+  starch:      curvePath([SITES.T, shell(-1.35, 1.0), shell(-1.1, 2.5), SITES.starch]),
+  cellulose:   curvePath([SITES.T, shell(-1.8, -2.0), shell(-2.0, -3.6), SITES.wall]),
+  oil:         curvePath([SITES.T, shell(-1.25, -1.8), shell(-0.9, -3.0), SITES.oil]),
+  protein:     curvePath([SITES.T, shell(-2.0, 1.5), shell(-2.3, 3.8), SITES.protein]),
+  phloem:      curvePath([SITES.T, shell(-1.6, -3.0), shell(-1.55, -6.0), shell(-1.5, -CELL_TOP + 0.4, 1.6), shell(-1.5, -CELL_TOP - 3.2, 1.3)])
+};
+const NITRATE_PATH = curvePath([shell(-2.6, -CELL_TOP - 3.2, 1.6), shell(-2.55, -CELL_TOP + 0.4, 1.8), shell(-2.5, -4.0), shell(-2.45, 1.5), SITES.protein]);
+const MOLC = new MolLayer(CELLS[0], 0.42, 200);
+const LIGHTC = new LightLayer(CELLS[0], 80, 1.4, 0.07);
+
+/* ---------------------------------------- the reaction, cycle by cycle */
+/* In one cycle the chloroplast takes in the left-hand side of EQN and gives
+   out the right-hand side. u is the time in the cycle, in cycles. */
+const CYC = {inSpan:0.55, stagger:0.06, make:0.82, gluOut:[0.95, 1.75], outSpan:0.7};
+function cellCycle(phi, t, F){
+  const n1 = Math.floor(phi);
+  for(let n=n1-1;n<=n1;n++){
+    if(n < 0) continue;
+    const u = phi - n;
+    if(F.react){
+      ['CO2', 'H2O'].forEach((sp, si) => {
+        for(let k=0;k<coef(sp);k++){
+          const a = k*CYC.stagger + si*0.03, f = (u - a)/CYC.inSpan;
+          if(f < 0 || f > 1) continue;
+          MOLC.add(sp, pathAt(CPATH[sp], f*CPATH[sp].L, _p1), n*13 + k + si*7, t, F.react*ss(0, 0.08, f)*(1 - ss(0.9, 1, f)));
+        }
+      });
+      for(let k=0;k<coef('O2');k++){
+        const a = CYC.make + k*CYC.stagger, f = (u - a)/CYC.outSpan;
+        if(f < 0 || f > 1) continue;
+        MOLC.add('O2', pathAt(CPATH.O2, f*CPATH.O2.L, _p1), n*17 + k, t, F.react*ss(0, 0.06, f)*(1 - ss(0.88, 1, f)));
+      }
+    }
+    for(let k=0;k<coef('GLU');k++){
+      /* the glucose: made at the chloroplast, then sent where the chapter says */
+      if(u < CYC.make || u > CYC.gluOut[1]) continue;
+      const grow = ss(CYC.make, CYC.gluOut[0], u), f = clamp((u - CYC.gluOut[0])/(CYC.gluOut[1] - CYC.gluOut[0]), 0, 1);
+      const path = F.uses ? UPATH[USE[n % USE.length]] : CPATH.GLU;
+      const fadeEnd = F.uses ? 1 - ss(0.92, 1, f) : 1 - ss(0.7, 1, f);
+      MOLC.add('GLU', pathAt(path, f*path.L, _p1), n, t*0.5, (F.uses || F.react)*0.5*grow*fadeEnd);
+    }
+  }
+}
+/* how many glucose have reached use j by phase phi */
+function arrived(phi, j){
+  const m = Math.floor(phi - CYC.gluOut[1]);
+  return m < j ? 0 : Math.floor((m - j)/USE.length) + 1;
+}
+function updateUses(phi, t, on){
+  const nS = arrived(phi, 1), nC = arrived(phi, 2), nO = arrived(phi, 3), nP = arrived(phi, 4);
+  GROW.starch.visible = on > 0 && nS > 0;
+  GROW.starch.scale.setScalar(Math.min(0.24, 0.1 + 0.045*nS));
+  GROW.oil.visible = on > 0 && nO > 0;
+  GROW.oil.scale.setScalar(Math.min(0.55, 0.2 + 0.08*nO));
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion();
+  GROW.cellulose.count = on > 0 ? Math.min(16, 2*nC) : 0;
+  for(let i=0;i<GROW.cellulose.count;i++){
+    const th = -2.05 + 0.13*(i - 7.5)/1.0;
+    const p = atAngle(th, SITES.wall.y + 0.05*Math.sin(i), CY.r - 0.22);
+    q.setFromAxisAngle(new V3(0,1,0), -th);
+    m.compose(p, q, new V3(0.17, 0.17, 0.17)); GROW.cellulose.setMatrixAt(i, m);
+  }
+  GROW.cellulose.instanceMatrix.needsUpdate = true;
+  GROW.protein.count = on > 0 ? Math.min(16, Math.min(nP, nitrateIn(t))*2) : 0;
+  for(let i=0;i<GROW.protein.count;i++){
+    const p = SITES.protein.clone().add(new V3(0.26*Math.cos(i*0.9), -0.26*i + 0.8, 0.26*Math.sin(i*0.9)).multiplyScalar(0.9));
+    m.makeScale(0.14, 0.14, 0.14).setPosition(p); GROW.protein.setMatrixAt(i, m);
+  }
+  GROW.protein.instanceMatrix.needsUpdate = true;
+}
+const NITRATE_GAP = 1.6, NITRATE_SPAN = 2.4;
+const nitrateIn = t => Math.max(0, Math.floor((t - 1 - NITRATE_SPAN)/NITRATE_GAP) + 1);
+function nitrates(t){
+  for(let k=0;k<40;k++){
+    const f = (t - 1 - k*NITRATE_GAP)/NITRATE_SPAN;
+    if(f < 0) break;
+    if(f > 1) continue;
+    MOLC.add('NO3', pathAt(NITRATE_PATH, f*NITRATE_PATH.L, _p1), 90 + k, t, 0.85*ss(0, 0.1, f)*(1 - ss(0.9, 1, f)));
+  }
+}
+/* light into the cell: from above, each ray stopping at a chloroplast */
+const LIGHT_HITS = CELL_CHL.filter(c => c.g === CELLS[0] && c.p.y > -3).map(c => c.p);
+function updateCellLight(t, on, I){
+  LIGHTC.begin();
+  if(on > 0.01) for(let k=0;k<LIGHT_HITS.length*2;k++){
+    if(hash(k + 900) > I) continue;           // fewer rays in dimmer light
+    const tgt = LIGHT_HITS[k % LIGHT_HITS.length];
+    const top = CELL_TOP + 6, span = top - tgt.y + 0.3;
+    const y = top - mod(t*7 + hash(k + 3)*span*3, span*1.6);
+    if(y < tgt.y) continue;
+    LIGHTC.add(tgt.x + 0.08*Math.sin(k), y, tgt.z + 0.3, on*ss(top, top - 1.5, y));
+  }
+  LIGHTC.end();
+}
+
+/* ------------------------------------------- limiting factors: the model */
+/* A simple model of the rate: the smallest of what light, carbon dioxide and
+   temperature would each allow (Blackman's limiting factors), as a share of
+   the fastest this cell can go. Light intensity falls off as 1/d^2. */
+const LF = {d0:10, dMin:10, dMax:50, co2Full:0.10, Topt:30, Tden:45};
+const lightIntensity = d => Math.pow(LF.d0/d, 2);
+function tempFactor(T){ return T <= LF.Topt ? Math.max(0, T/LF.Topt) : Math.max(0, (LF.Tden - T)/(LF.Tden - LF.Topt)); }
+function rateOf(d, c, T){
+  const parts = {light:lightIntensity(d), co2:Math.min(1, c/LF.co2Full), temp:tempFactor(T)};
+  let lim = 'light';
+  Object.keys(parts).forEach(k => { if(parts[k] < parts[lim]) lim = k; });
+  return {rate:Math.min(parts.light, parts.co2, parts.temp, 1), lim, parts};
+}
+const LIM_NAME = {light:'light intensity', co2:'carbon dioxide concentration', temp:'temperature'};
+const lfState = {d:20, c:0.04, T:20, phi0:0, t0:0, tNow:0};
+const CYCLE_S = 3.2;                     // seconds per cycle at the fastest rate
+function lfPhase(t){ return lfState.phi0 + rateOf(lfState.d, lfState.c, lfState.T).rate*(t - lfState.t0)/CYCLE_S; }
+
+/* =========================================================================
+   FIGURES THE CAPTIONS QUOTE — all worked out from the model
+========================================================================= */
+const FIG = (function(){
+  const inBlock = s => Math.abs(s.x) <= BX && Math.abs(s.z) <= BZ;
+  const areaMm2 = (2*BX*UM/1000)*(2*BZ*UM/1000);
+  const pals = PALS.filter(c => Math.abs(c.x) < BX && Math.abs(c.z) < BZ);
+  return {
+    leafCm: LEAF.L,
+    thickMm: ((Y.cu1 - Y.le0)*UM/1000).toFixed(1),
+    thickUm: Math.round((Y.cu1 - Y.le0)*UM/10)*10,
+    blockW: 2*BX*UM, blockD: 2*BZ*UM,
+    pieceX: Math.round(PIECE.w/(2*BX*UM/1e4)),
+    palChl: Math.round(pals.reduce((s, c) => s + c.chl, 0)/pals.length),
+    spoChl: Math.round(SPOS.reduce((s, c) => s + c.chl, 0)/SPOS.length),
+    spoAir: Math.round(100*AIR.spo), palAir: Math.round(100*AIR.pal),
+    stomaTop: 0,
+    stomaDens: Math.round(STOMATA.filter(inBlock).length/areaMm2/10)*10,
+    poreUm: Math.round(2*STO.open*UM),
+    scaleUm: 100,
+    co2Air: 0.04, Topt: LF.Topt, Tden: LF.Tden
+  };
+})();
+
+/* ------------------------------------------------------------- the camera */
+/* az turns round y from the front (+z), el lifts; all in world coordinates */
+const CAM = {};
+function buildCams(){
+  const portrait = camera.aspect < 1.1, k = portrait ? 1.35 : 1;
+  const c = (look, az, el, dist, fov) => ({look:[look.x, look.y, look.z], az, el, dist:dist*k, fov:fov || (portrait ? 58 : 42)});
+  const P = PIECE.at;
+  CAM.leafWide0 = c(new V3(4.0, -0.3, 0.2), -0.45, 0.62, 19);
+  CAM.leafWide  = c(new V3(3.9, -0.2, 0.1), -0.22, 0.78, 14.5);
+  CAM.leafVeins = c(new V3(4.6, -0.2, 0.9), -0.12, 1.02, 6.5);
+  CAM.leafPiece = c(P, -0.05, 1.25, 1.3);
+  CAM.blockFar  = c(B(0, 9, 0), 0.62, 0.62, 170);
+  CAM.block     = c(B(0, 9.5, 1), 0.52, 0.42, 74);
+  CAM.front     = c(B(-2, 10.5, BZ), 0.22, 0.14, 44);
+  CAM.epi       = c(B(-6.5, 19.2, BZ - 1), 0.42, 0.42, 15);
+  CAM.pal       = c(B(-6, 14.6, BZ), 0.22, 0.12, 19);
+  CAM.spo       = c(B(-6, 6.2, BZ), 0.22, 0.06, 19);
+  CAM.under     = c(B(FEAT_VIEW.x, 0, FEAT_VIEW.z), 0.35, -1.0, 15);
+  CAM.stomaCut  = c(B(FEAT_CUT.x, 2.2, BZ), 0.12, 0.08, 12.5);
+  CAM.gas       = c(B(-4, 6.5, BZ), 0.25, 0.08, 30);
+  CAM.veinEnd   = c(B(VEIN.x, VEIN.y, BZ), 0.2, 0.1, 16);
+  CAM.veinCut   = c(B(VEIN.x, VEIN.y, 3), 1.2, 0.26, 25);
+  CAM.slide     = c(B(-1, 10.3, BZ), 0, 0, 290, portrait ? 11 : 7.6);
+  CAM.together  = c(B(-1, 9, 3), 0.46, 0.3, 60);
+  CAM.cellWide  = c(Cw(0, 0.5, 0), 0.32, 0.18, 33);
+  CAM.cell      = c(Cw(0, 0.3, -0.5), 0.12, 0.1, 24);
+  CAM.chl       = c(Cw(0, -0.4, -1.4), 0.05, 0.1, 10);
+  CAM.uses      = c(Cw(0, 0.6, -1.2), 0.14, 0.1, 22);
+  CAM.limit     = c(Cw(0, 1.2, -1), 0.2, 0.15, 27);
+}
+const FADE = 0.32;
+function lerpCam(a, b, u){
+  return {
+    dist: Math.exp(lerp(Math.log(a.dist), Math.log(b.dist), u)),
+    az: lerp(a.az, b.az, u), el: lerp(a.el, b.el, u), fov: lerp(a.fov, b.fov, u),
+    look:[lerp(a.look[0],b.look[0],u), lerp(a.look[1],b.look[1],u), lerp(a.look[2],b.look[2],u)]
+  };
+}
+function shotAt(C, t){
+  let i = 0;
+  while(i < C.shots.length-1 && t >= C.shots[i].until) i++;
+  const sh = C.shots[i], ks = sh.keys;
+  const start = i ? C.shots[i-1].until : 0, end = i < C.shots.length-1 ? sh.until : Infinity;
+  let cam;
+  if(t <= ks[0][0]) cam = CAM[ks[0][1]];
+  else {
+    let j = 0;
+    while(j < ks.length-1 && t >= ks[j+1][0]) j++;
+    cam = j === ks.length-1 ? CAM[ks[j][1]] : lerpCam(CAM[ks[j][1]], CAM[ks[j+1][1]], ss(ks[j][0], ks[j+1][0], t));
+  }
+  let fade = 1 - clamp((t - start)/FADE, 0, 1);
+  if(isFinite(end)) fade = Math.max(fade, 1 - clamp((end - t)/FADE, 0, 1));
+  return {world:sh.world, cam, fade, i};
+}
+let dragAz = 0, dragEl = 0, zoomAdj = 0;
+function applyCamera(c){
+  const az = c.az + dragAz, el = clamp(c.el + dragEl, -1.35, 1.35);
+  const d = Math.max(0.2, c.dist*Math.exp(zoomAdj));
+  camera.position.set(
+    c.look[0] + d*Math.cos(el)*Math.sin(az),
+    c.look[1] + d*Math.sin(el),
+    c.look[2] + d*Math.cos(el)*Math.cos(az));
+  camera.up.set(0, 1, 0);
+  camera.lookAt(c.look[0], c.look[1], c.look[2]);
+  camera.fov = c.fov;
+  camera.near = d/300; camera.far = d*20 + 200;
+  camera.updateProjectionMatrix();
+}
+
+/* ------------------------------------------------------------- clipping */
+const PL = {
+  front: new THREE.Plane(new V3(0,0,-1), BZ), back: new THREE.Plane(new V3(0,0,1), BZ),
+  right: new THREE.Plane(new V3(-1,0,0), BX), left: new THREE.Plane(new V3(1,0,0), BX),
+  vein:  new THREE.Plane(new V3(-1,0,0), BX),
+  cell:  new THREE.Plane(new V3(0,0,-1), 0)
+};
+const CLIP_BLOCK = [PL.front, PL.back, PL.right, PL.left, PL.vein], CLIP_CELL = [PL.cell], CLIP_NONE = [];
+
+/* =========================================================================
+   THE STORY
+========================================================================= */
+/* anchors for labels, in world coordinates */
+const nearestPal = (x, z) => PALS.filter(c => Math.abs(c.z - z) < 1.2).sort((a, b) => Math.abs(a.x - x) - Math.abs(b.x - x))[0];
+const nearestSpo = (x, y) => (SPOS.some(c => c.p.z < BZ && c.p.z > BZ - c.rb) ? SPOS.filter(c => c.p.z < BZ && c.p.z > BZ - c.rb) : SPOS).sort((a, b) => Math.hypot(a.p.x - x, a.p.y - y) - Math.hypot(b.p.x - x, b.p.y - y))[0];
+function airNear(x, y){
+  let best = null, bd = Infinity;
+  for(let dx=-3;dx<=3;dx+=0.25) for(let dy=-2;dy<=2;dy+=0.25){
+    const p = new V3(x + dx, y + dy, BZ - 0.05);
+    if(p.y < Y.le1 + 0.5 || p.y > Y.sp1 - 0.5) continue;
+    if(isSolid(p) || inSpongy(p, 0.35)) continue;
+    const d = Math.hypot(dx, dy);
+    if(d < bd){ bd = d; best = p; }
+  }
+  return best || new V3(x, y, BZ);
+}
+const gasPt = (i, f) => GAS.length ? pathAt(GAS[Math.min(i, GAS.length-1)], f*GAS[Math.min(i, GAS.length-1)].L).add(BLOCK_O) : B(FEAT_CUT.x, -1, BZ);
+const ANCH = (function(){
+  const pc = nearestPal(-6.5, BZ), sc = nearestSpo(-5, 5.5);
+  const chlOfPal = CHLS.filter(c => c.cell === 'pal' && PALS[c.ci] === pc && c.p.z < BZ - 0.1).sort((a, b) => b.p.z - a.p.z)[0];
+  const gw = guardShape(1);
+  const xy = BUNDLE.xylem[1], ph = BUNDLE.phloem[1];
+  return {
+    cuticle: B(-6, Y.cu1 - 0.05, BZ), upEpi: B(-8.5, (Y.pa1 + Y.ue1)/2, BZ), lowEpi: B(-2.5, Y.le1/2, BZ),
+    pal: B(pc.x, pc.y + 1.5, BZ), palChl: chlOfPal ? chlOfPal.p.clone().add(BLOCK_O) : B(pc.x, pc.y, BZ),
+    spo: B(sc.p.x, sc.p.y, BZ), air: airNear(-3.5, 4.8).add(BLOCK_O),
+    vein: B(VEIN.x, VEIN.y + VEIN.r, BZ),
+    xyl: B(VEIN.x + xy.x, VEIN.y + xy.y, BZ), phl: B(VEIN.x + ph.x, VEIN.y + ph.y, BZ),
+    xylLong: B(VEIN.x + xy.x - xy.r + 0.15, VEIN.y + xy.y, 1), phlLong: B(VEIN.x + ph.x - ph.r + 0.1, VEIN.y + ph.y, -1),
+    plate: B(VEIN.x + ph.x - 0.1, VEIN.y + ph.y, VZ0 + 1 + SIEVE_GAP*Math.round((4 - VZ0 - 1)/SIEVE_GAP)),
+    stomaCut: B(FEAT_CUT.x, STO.yc, BZ), guardL: B(FEAT_CUT.x - (gw.w + gw.tr), STO.yc, BZ), guardR: B(FEAT_CUT.x + (gw.w + gw.tr), STO.yc, BZ),
+    stomaView: B(FEAT_VIEW.x, 0, FEAT_VIEW.z),
+    guardView: stomaWorld(FEAT_VIEW, 0, 0.1, gw.w + gw.tr).add(BLOCK_O),
+    chamber: B(FEAT_CUT.x, Y.le1 + 1.1, BZ),
+    top: B(-4, Y.cu1, -2), bottom: B(4, 0, 6),
+    gasIn: gasPt(0, 0.07), gasOut: gasPt(0, 0.22), gasMid: gasPt(0, 0.55)
+  };
+})();
+const CA = {
+  T: () => Cw(SITES.T.x, SITES.T.y, SITES.T.z), wall: () => Cw(-CELL.r + 0.1, -2.5, -0.05), membrane: () => Cw(CY.r, 3.5, -0.02),
+  vac: () => Cw(-0.5, -1.5, -0.6), nucleus: () => Cw(SITES.nucleus.x, SITES.nucleus.y, SITES.nucleus.z),
+  cyto: () => Cw(-1.9, 6.5, -0.3),
+  co2: () => pathAt(CPATH.CO2, CPATH.CO2.L*0.3).add(CELL_O), h2o: () => pathAt(CPATH.H2O, CPATH.H2O.L*0.88).add(CELL_O),
+  o2: () => pathAt(CPATH.O2, CPATH.O2.L*0.85).add(CELL_O), glu: () => pathAt(CPATH.GLU, CPATH.GLU.L*0.5).add(CELL_O),
+  light: () => Cw(LIGHT_HITS[0].x, CELL_TOP + 3, LIGHT_HITS[0].z),
+  mito: () => Cw(SITES.mito.x, SITES.mito.y, SITES.mito.z), starch: () => Cw(SITES.starch.x, SITES.starch.y, SITES.starch.z),
+  cellulose: () => Cw(SITES.wall.x, SITES.wall.y, SITES.wall.z), oil: () => Cw(SITES.oil.x, SITES.oil.y, SITES.oil.z),
+  protein: () => Cw(SITES.protein.x, SITES.protein.y, SITES.protein.z),
+  phloem: () => pathAt(UPATH.phloem, UPATH.phloem.L*0.55).add(CELL_O),
+  nitrate: () => pathAt(NITRATE_PATH, NITRATE_PATH.L*0.5).add(CELL_O)
+};
+
+const KEYS = {
+  epi:   '<div><span class="sq" style="background:'+hexCss(COL.epi)+'"></span>epidermis</div>',
+  pal:   '<div><span class="sq" style="background:'+hexCss(COL.pal)+'"></span>palisade cell</div>',
+  spo:   '<div><span class="sq" style="background:'+hexCss(COL.spo)+'"></span>spongy cell</div>',
+  chl:   '<div><span class="dot" style="background:'+hexCss(COL.chl)+'"></span>chloroplast</div>',
+  guard: '<div><span class="sq" style="background:'+hexCss(COL.guard)+'"></span>guard cell</div>',
+  xyl:   '<div><span class="sq" style="background:'+hexCss(COL.xyl)+'"></span>xylem</div>',
+  phl:   '<div><span class="sq" style="background:'+hexCss(COL.phl)+'"></span>phloem</div>',
+  air:   '<div><span class="sq" style="background:#05070b;border:1px solid #445"></span>air space</div>',
+  light: '<div><span class="sq" style="background:'+hexCss(COL.light)+'"></span>light</div>',
+  co2:   '<div><span class="dot" style="background:'+hexCss(EL.C.col)+'"></span><span class="dot" style="background:'+hexCss(EL.O.col)+'"></span>carbon dioxide</div>',
+  o2:    '<div><span class="dot" style="background:'+hexCss(EL.O.col)+'"></span><span class="dot" style="background:'+hexCss(EL.O.col)+'"></span>oxygen</div>',
+  h2o:   '<div><span class="dot" style="background:'+hexCss(EL.O.col)+'"></span><span class="dot" style="background:'+hexCss(EL.H.col)+'"></span>water</div>',
+  glu:   '<div><span class="sq" style="background:'+hexCss(COL.glucose)+'"></span>glucose (sugar)</div>',
+  no3:   '<div><span class="dot" style="background:'+hexCss(EL.N.col)+'"></span>nitrate ion</div>',
+  wall:  '<div><span class="sq" style="background:'+hexCss(COL.wall)+'"></span>cell wall</div>',
+  vac:   '<div><span class="sq" style="background:'+hexCss(COL.vac)+'"></span>vacuole</div>',
+  cyto:  '<div><span class="sq" style="background:'+hexCss(COL.cyto)+'"></span>cytoplasm</div>',
+  vein:  '<div><span class="sq" style="background:'+hexCss(COL.vein)+'"></span>vein</div>'
+};
+
+/* a chapter in the block says which tissues to keep bright, what moves and
+   where the cuts are */
+const ALL_ON = {epi:1, low:1, pal:1, spo:1, chl:1, guard:1, vein:1};
+const focusOnly = list => { const f = {}; Object.keys(ALL_ON).forEach(g => f[g] = list.includes(g) ? 1 : 0); return f; };
+/* the stomata chapter: open, closing from SHUT.a to SHUT.b s, open again from SHUT.c to SHUT.d s */
+const SHUT = {a:6, b:8, c:11, d:13};
+const stomaCycle = t => 1 - ss(SHUT.a, SHUT.b, t) + ss(SHUT.c, SHUT.d, t);
+const stomaCycleInt = t => t - ssInt(SHUT.a, SHUT.b, t) + ssInt(SHUT.c, SHUT.d, t);
+
+const CH = [
+  {
+    id:'leaf', part:'Leaf', len:13,
+    shots:[{world:'leaf', keys:[[0,'leafWide0'],[6,'leafWide']]}],
+    title:'A leaf is an organ',
+    text:'A leaf is a plant <b>organ</b>: several <b>tissues</b> working together to do a job. The main job of a leaf is <b>photosynthesis</b> — using light to make glucose, the plant\'s food.<br><br>Its shape suits that job. It is <b>broad and flat</b>, so it has a large surface to catch light. It is <b>thin</b>, so gases only have a short distance to diffuse in and out.',
+    look:'The paler lines are <b>veins</b>. The thickest, down the middle, is the <b>midrib</b>.',
+    scale:'Drawn as a leaf about '+FIG.leafCm+' cm long, like a privet leaf. Its blade is only about '+FIG.thickMm+' mm thick.',
+    terms:[['Organ','a group of tissues working together to do a particular job.'],
+           ['Tissue','a group of similar cells with a similar structure and function.']],
+    key:['vein'],
+    labels:[
+      {text:'Leaf blade', world:'leaf', at:()=>[leafPt(6.3, -1.0, 0)], dx:40, dy:95, t0:2.5},
+      {text:'Midrib', world:'leaf', at:()=>[LEAF_VEINS.mid[34]], dx:80, dy:-70, t0:4},
+      {text:'Vein', world:'leaf', at:()=>[LEAF_VEINS.side[9][8]], dx:-80, dy:-70, t0:5.5},
+      {text:'Leaf stalk', world:'leaf', at:()=>[new V3(-0.9, -0.12, 0)], dx:-60, dy:60, t0:7}
+    ]
+  },
+  {
+    id:'veins', part:'Veins', len:14,
+    shots:[{world:'leaf', keys:[[0,'leafWide'],[1,'leafWide'],[5,'leafVeins']]}],
+    leaf:{piece:t=>ss(9, 10, t)},
+    title:'Veins reach every part of the leaf',
+    text:'The midrib branches into side veins, and they branch again and again into a <b>network</b> of tiny veins that reaches every part of the blade.<br><br>Every vein has two transport tissues in it. <b>Xylem</b> brings <b>water and mineral ions</b> up from the roots. <b>Phloem</b> carries <b>dissolved sugars</b> made in the leaf away to the rest of the plant. Veins also stiffen the leaf, holding it out flat to the light.',
+    look:'No part of the blade is far from a vein. The white square marks a piece we are going to cut out.',
+    scale:'The square is drawn '+FIG.pieceX+' times bigger than the real piece, which is only '+FIG.blockW+' µm (micrometres) across.',
+    terms:[['Xylem','tissue that carries water and mineral ions from the roots to the leaves.'],
+           ['Phloem','tissue that carries dissolved sugars from the leaves to the rest of the plant.']],
+    key:['vein'],
+    labels:[
+      {text:'Midrib', world:'leaf', at:()=>[LEAF_VEINS.mid[26]], dx:-90, dy:-60, t0:5.5},
+      {text:'Side vein', world:'leaf', at:()=>[LEAF_VEINS.side[10][10]], dx:70, dy:-60, t0:6.5},
+      {text:'Network of tiny veins', world:'leaf', at:()=>[leafPt(5.3, 1.35, 0)], dx:60, dy:50, t0:7.5},
+      {text:'Cut out a piece', world:'leaf', at:()=>[PIECE.at], dx:-90, dy:70, t0:10}
+    ]
+  },
+  {
+    id:'section', part:'Section', len:16,
+    shots:[{world:'leaf', keys:[[0,'leafVeins'],[0.6,'leafVeins'],[3,'leafPiece']], until:3.4},
+           {world:'block', keys:[[3.4,'blockFar'],[3.6,'blockFar'],[7.5,'block']]}],
+    leaf:{piece:()=>1},
+    blk:{light:()=>0},
+    title:'Cut out a piece: a section',
+    text:'Cut a tiny block out of the leaf and look at the cut faces. This is a <b>section</b>: a slice through the leaf, so the tissues inside it show.<br><br>From top to bottom there are four layers: the <b>upper epidermis</b>, the <b>palisade mesophyll</b>, the <b>spongy mesophyll</b> and the <b>lower epidermis</b>. A <b>vein</b> runs through the middle, and the lower surface has tiny pores called <b>stomata</b>.',
+    look:'Each layer is a tissue: a group of similar cells. The next chapters take them one at a time.',
+    scale:'This block is '+FIG.blockW+' µm by '+FIG.blockD+' µm and about '+FIG.thickUm+' µm thick. Its cells are drawn to scale with each other.',
+    terms:[['Section','a thin slice cut through something so you can see inside it.'],
+           ['Mesophyll','the tissue in the middle of a leaf, between the two epidermis layers.']],
+    key:['epi','pal','spo','vein'],
+    labels:[
+      {text:'Upper epidermis', world:'block', at:()=>[ANCH.upEpi], dx:-80, dy:-45, t0:8},
+      {text:'Palisade mesophyll', world:'block', at:()=>[ANCH.pal], dx:-110, dy:-10, t0:9},
+      {text:'Spongy mesophyll', world:'block', at:()=>[ANCH.spo], dx:-110, dy:20, t0:10},
+      {text:'Lower epidermis', world:'block', at:()=>[ANCH.lowEpi], dx:-70, dy:55, t0:11},
+      {text:'Vein', world:'block', at:()=>[ANCH.vein], dx:70, dy:-55, t0:12},
+      {text:'Stoma', world:'block', at:()=>[ANCH.stomaCut], dx:60, dy:65, t0:13}
+    ]
+  },
+  {
+    id:'epidermis', part:'Epidermis', len:14,
+    shots:[{world:'block', keys:[[0,'block'],[0.8,'block'],[4.5,'epi']]}],
+    blk:{focus:focusOnly(['epi']), light:t=>ss(5, 6, t)},
+    title:'The upper epidermis: a clear, waxy skin',
+    text:'The top layer is the <b>upper epidermis</b>: a single layer of flat cells, fitted together like paving stones with no gaps between them.<br><br>Its cells have <b>no chloroplasts</b>, so they are <b>transparent</b>: light passes straight through them to the cells below. On top is a <b>waxy cuticle</b>. Wax is waterproof, so the cuticle <b>reduces water loss</b> from the leaf.',
+    look:'Watch the light pass through the epidermis without fading.',
+    terms:[['Epidermis','the layer of cells covering a leaf, top and bottom.'],
+           ['Waxy cuticle','a waterproof layer on top of the epidermis that reduces water loss.']],
+    key:['epi','light'],
+    labels:[
+      {text:'Waxy cuticle', world:'block', at:()=>[ANCH.cuticle], dx:-80, dy:-60, t0:5.5},
+      {text:'Upper epidermis cell<span class="sub">no chloroplasts: clear</span>', world:'block', at:()=>[ANCH.upEpi], dx:-110, dy:45, t0:7},
+      {text:'Light', cls:'lit', world:'block', at:()=>[B(-4.5, 23.5, BZ - 0.6)], dx:70, dy:-30, t0:8}
+    ]
+  },
+  {
+    id:'palisade', part:'Palisade', len:15,
+    shots:[{world:'block', keys:[[0,'epi'],[0.6,'epi'],[4,'pal']]}],
+    blk:{focus:focusOnly(['pal','chl']), light:t=>ss(2, 3, t)},
+    title:'Palisade mesophyll: catching the light',
+    text:'Under the epidermis are the <b>palisade cells</b>: tall, column-shaped cells standing upright, side by side, packed closely together like the posts of a fence (a palisade).<br><br>They are at the top of the leaf, where the light is brightest, and they are packed with <b>chloroplasts</b>, which absorb light for photosynthesis. Most of a leaf\'s photosynthesis happens here. Standing upright packs the most cells — and so the most chloroplasts — under each bit of the leaf\'s surface.',
+    look:'The cut has opened some palisade cells, so you can see their chloroplasts lining the walls. Watch the light fade as it is absorbed on the way down.',
+    scale:'In this model each palisade cell has about '+FIG.palChl+' chloroplasts and each spongy cell about '+FIG.spoChl+'. Real palisade cells often have more.',
+    terms:[['Palisade mesophyll','a layer of tall cells near the top of the leaf, full of chloroplasts.'],
+           ['Chloroplast','where photosynthesis happens; contains chlorophyll, which absorbs light.']],
+    key:['pal','chl','light'],
+    labels:[
+      {text:'Palisade cell', world:'block', at:()=>[ANCH.pal], dx:-110, dy:-40, t0:5},
+      {text:'Chloroplasts', world:'block', at:()=>[ANCH.palChl], dx:-110, dy:50, t0:6.5},
+      {text:'Light fades as it is absorbed', cls:'lit', world:'block', at:()=>[B(-2.4, 13.5, BZ - 0.4)], dx:80, dy:-50, t0:8}
+    ]
+  },
+  {
+    id:'spongy', part:'Spongy', len:15,
+    shots:[{world:'block', keys:[[0,'pal'],[0.6,'pal'],[4,'spo']]}],
+    blk:{focus:focusOnly(['spo','chl']), gas:t=>ss(5, 6, t)},
+    title:'Spongy mesophyll: air spaces for gas exchange',
+    text:'Below the palisade layer is the <b>spongy mesophyll</b>. Its cells are irregular in shape and loosely packed, with large <b>air spaces</b> between them.<br><br>The air spaces join up all through the leaf, so gases can <b>diffuse</b> through them: carbon dioxide reaches the cells that need it, and oxygen and water vapour can get out. With so much of each cell\'s surface touching air, gas exchange is fast. Spongy cells have chloroplasts too, but fewer than palisade cells.',
+    look:'In this model about '+FIG.spoAir+'% of the spongy layer is air, against only '+FIG.palAir+'% of the palisade layer.',
+    scale:'The molecules are drawn many thousands of times too big. Each one really wanders at random; these follow the way most of them go overall.',
+    terms:[['Spongy mesophyll','loosely packed cells with air spaces between them, below the palisade layer.'],
+           ['Diffusion','the spreading out of particles from where they are more concentrated to where they are less concentrated.']],
+    key:['spo','air','co2'],
+    labels:[
+      {text:'Spongy mesophyll cell', world:'block', at:()=>[ANCH.spo], dx:-110, dy:-45, t0:5},
+      {text:'Air space', world:'block', at:()=>[ANCH.air], dx:-100, dy:50, t0:6.2},
+      {text:'Carbon dioxide', cls:'co2', world:'block', at:()=>[ANCH.gasMid], dx:90, dy:40, t0:7.5}
+    ]
+  },
+  {
+    id:'stomata', part:'Stomata', len:17,
+    shots:[{world:'block', keys:[[0,'spo'],[0.5,'spo'],[3.5,'under'],[8,'under'],[10.5,'stomaCut']]}],
+    blk:{focus:focusOnly(['low','guard','chl']), gas:()=>1, gas2:()=>1, open:stomaCycle, gasT:stomaCycleInt},
+    title:'Stomata and guard cells',
+    text:'The lower epidermis has tiny pores called <b>stomata</b> (one is a <b>stoma</b>). Each stoma is between two <b>guard cells</b>, which open and close it.<br><br>When the guard cells take in water they swell and bend apart, and the stoma opens. When they lose water they go limp, and the stoma closes. Open, it lets <b>carbon dioxide</b> diffuse in for photosynthesis, and <b>oxygen</b> and <b>water vapour</b> diffuse out. Closing it — at night, or when the plant is short of water — <b>reduces water loss</b>.',
+    look:'Watch the guard cells close between '+SHUT.a+' and '+SHUT.b+' seconds and open again: gas exchange stops while they are shut. This leaf, like privet, has '+(FIG.stomaTop ? FIG.stomaTop : 'no')+' stomata on its upper surface and about '+FIG.stomaDens+' per mm² underneath.',
+    scale:'Unlike the other cells of the epidermis, guard cells have chloroplasts. Open, this pore is about '+FIG.poreUm+' µm wide.',
+    terms:[['Stomata','pores in the lower surface of a leaf that let gases in and out.'],
+           ['Guard cells','a pair of cells round each stoma that control gas exchange and water loss by opening and closing it.']],
+    key:['guard','chl','co2','o2','h2o'],
+    labels:[
+      {text:'Stoma', world:'block', at:()=>[ANCH.stomaView], dx:90, dy:-50, t0:4.5, t1:9.5},
+      {text:'Guard cell', world:'block', at:()=>[ANCH.guardView], dx:-100, dy:-40, t0:5.5, t1:9.5},
+      {text:'Guard cells', world:'block', at:()=>[ANCH.guardL, ANCH.guardR], dx:-90, dy:70, t0:12},
+      {text:'Air space', world:'block', at:()=>[ANCH.chamber], dx:-110, dy:-30, t0:13},
+      {text:'Carbon dioxide in', cls:'co2', world:'block', at:()=>[ANCH.gasIn], dx:-100, dy:-25, t0:14},
+      {text:'Oxygen and water vapour out', cls:'oxy', world:'block', at:()=>[ANCH.gasOut], dx:90, dy:60, t0:15}
+    ]
+  },
+  {
+    id:'vein', part:'Xylem and phloem', len:17,
+    shots:[{world:'block', keys:[[0,'stomaCut'],[0.5,'stomaCut'],[4,'veinEnd'],[7.5,'veinEnd'],[11,'veinCut']]}],
+    blk:{focus:focusOnly(['vein']), veinCut:t=>ss(7.5, 10, t), xyl:t=>ss(2, 3, t), phl:t=>ss(2, 3, t)},
+    title:'Inside a vein: xylem and phloem',
+    text:'Cut along the vein and its two transport tissues show. <b>Xylem</b> is on the upper side: long, <b>hollow tubes</b> made of dead cells, with walls strengthened by <b>lignin</b>. It carries <b>water and mineral ions</b> from the roots.<br><br><b>Phloem</b> is on the lower side: tubes of long, <b>living cells</b> joined end to end, with pores in the end walls (<b>sieve plates</b>) so the sap can pass from one cell to the next. It carries <b>dissolved sugars</b> from the leaf to the rest of the plant — this is called <b>translocation</b>.',
+    look:'Water (red and blue) moves along the xylem; sugar (gold) moves the other way along the phloem. The spiral inside each xylem tube is lignin.',
+    terms:[['Lignin','a strong substance in the walls of xylem that holds the tubes open.'],
+           ['Translocation','the movement of dissolved sugars through the phloem.']],
+    key:['xyl','phl','h2o','glu'],
+    labels:[
+      {text:'Xylem', world:'block', at:()=>[ANCH.xyl], dx:90, dy:-55, t0:4.5, t1:9},
+      {text:'Phloem', world:'block', at:()=>[ANCH.phl], dx:90, dy:55, t0:5.5, t1:9},
+      {text:'Xylem<span class="sub">hollow tubes, lignin spiral</span>', world:'block', at:()=>[ANCH.xylLong], dx:-120, dy:-70, t0:11.5},
+      {text:'Phloem', world:'block', at:()=>[ANCH.phlLong], dx:-110, dy:70, t0:12.5},
+      {text:'Sieve plate', world:'block', at:()=>[ANCH.plate], dx:80, dy:80, t0:13.5}
+    ]
+  },
+  {
+    id:'slide', part:'Microscope', len:15,
+    shots:[{world:'block', keys:[[0,'veinCut'],[0.6,'veinCut'],[5,'slide']]}],
+    blk:{scope:t=>ss(4, 5.5, t)},
+    title:'Under the microscope',
+    text:'This is the cut face seen straight on — what you see when you look at a prepared slide of a leaf section under a light microscope. A slide holds a slice thin enough for light to shine through it.<br><br>Practise picking out the layers: the epidermis top and bottom, the palisade cells in a close row, the loose spongy cells with air spaces between them, the vein with its xylem and phloem, and a stoma cut through its two guard cells.',
+    look:'The scale bar is '+FIG.scaleUm+' µm long: a tenth of a millimetre.',
+    scale:'Real slides are usually stained, so the colours you see down a microscope will be different from these.',
+    terms:[['Light microscope','uses light and lenses to magnify a thin specimen, such as a slide of a leaf section.']],
+    key:['epi','pal','spo','xyl','phl','guard'],
+    labels:[
+      {text:'Waxy cuticle', world:'block', at:()=>[ANCH.cuticle], dx:-120, dy:-20, t0:6, op:t=>ss(5.5, 6.5, t)},
+      {text:'Upper epidermis', world:'block', at:()=>[ANCH.upEpi], dx:-120, dy:10, t0:6.5},
+      {text:'Palisade mesophyll', world:'block', at:()=>[ANCH.pal], dx:-130, dy:5, t0:7},
+      {text:'Spongy mesophyll', world:'block', at:()=>[ANCH.spo], dx:-120, dy:0, t0:7.5},
+      {text:'Lower epidermis', world:'block', at:()=>[ANCH.lowEpi], dx:-140, dy:25, t0:8},
+      {text:'Xylem', world:'block', at:()=>[ANCH.xyl], dx:90, dy:-30, t0:8.5},
+      {text:'Phloem', world:'block', at:()=>[ANCH.phl], dx:90, dy:25, t0:9},
+      {text:'Guard cells', world:'block', at:()=>[ANCH.guardL, ANCH.guardR], dx:50, dy:55, t0:9.5}
+    ]
+  },
+  {
+    id:'photo', part:'Photosynthesis', len:19,
+    shots:[{world:'block', keys:[[0,'slide'],[0.6,'slide'],[2.6,'pal']], until:3.0},
+           {world:'cell', keys:[[3.0,'cellWide'],[3.4,'cellWide'],[7,'cell'],[12.2,'cell'],[14.8,'chl']]}],
+    blk:{light:()=>1},
+    cell:{react:t=>ss(7, 8, t), phi:t=>Math.max(0, (t - 7.5)/CYCLE_S), light:t=>ss(5, 6, t)},
+    eq:['co2','water','light','glucose','oxygen'],
+    title:'Photosynthesis in a palisade cell',
+    text:'Inside a palisade cell, cut in half. Its chloroplasts contain <b>chlorophyll</b>, a green substance that <b>absorbs light</b>. In the chloroplasts, energy transferred by light is used to turn <b>carbon dioxide</b> and <b>water</b> into <b>glucose</b> and <b>oxygen</b>.<br><br>Carbon dioxide diffuses in from the air spaces. Water comes up from the roots through the xylem. The oxygen diffuses out, and leaves the leaf through the stomata.',
+    look:'Photosynthesis is <b>endothermic</b>: energy is transferred from the environment to the chloroplasts by light.',
+    scale:'Every turn of the cycle here takes in '+coef('CO2')+' carbon dioxide and '+coef('H2O')+' water and gives out '+coef('GLU')+' glucose and '+coef('O2')+' oxygen — the balanced equation.',
+    terms:[['Photosynthesis','carbon dioxide + water → glucose + oxygen, using energy transferred by light.'],
+           ['Chlorophyll','the green substance in chloroplasts that absorbs light.'],
+           ['Endothermic','a reaction that takes in energy from its surroundings.']],
+    key:['wall','cyto','vac','chl','co2','h2o','glu','o2'],
+    labels:[
+      {text:'Cell wall', world:'cell', at:CA_(['wall']), dx:-100, dy:-40, t0:7.5, t1:12.4},
+      {text:'Vacuole', world:'cell', at:CA_(['vac']), dx:-120, dy:60, t0:8.5, t1:12.4},
+      {text:'Nucleus', world:'cell', at:CA_(['nucleus']), dx:90, dy:-35, t0:9.2, t1:12.4},
+      {text:'Chloroplast', world:'cell', at:CA_(['T']), dx:110, dy:20, t0:10, t1:12.4},
+      {text:'Carbon dioxide', cls:'co2', world:'cell', at:CA_(['co2']), dx:-110, dy:-30, t0:15.2},
+      {text:'Water', cls:'wat', world:'cell', at:CA_(['h2o']), dx:110, dy:-5, t0:15.7},
+      {text:'Oxygen', cls:'oxy', world:'cell', at:CA_(['o2']), dx:-100, dy:-40, t0:16.2},
+      {text:'Glucose', cls:'gold', world:'cell', at:CA_(['glu']), dx:-100, dy:-75, t0:16.7}
+    ]
+  },
+  {
+    id:'uses', part:'Uses of glucose', len:18,
+    shots:[{world:'cell', keys:[[0,'chl'],[0.5,'chl'],[4,'uses']]}],
+    cell:{uses:()=>1, phi:t=>Math.max(0, (t - 1)/1.0), light:()=>1, nitrate:()=>1},
+    eq:['glucose'],
+    title:'What the plant does with its glucose',
+    text:'The glucose made in photosynthesis is used in several ways:<br>• for <b>respiration</b>, which transfers the energy the cell needs;<br>• turned into <b>insoluble starch</b>, for storage;<br>• turned into <b>fats or oils</b>, for storage (mostly in seeds);<br>• to make <b>cellulose</b>, which strengthens the cell wall;<br>• to make <b>amino acids</b> for building <b>proteins</b> — for these, the plant also needs <b>nitrate ions</b> taken in from the soil.<br><br>Sugar is also carried away in the phloem, to the parts of the plant that cannot photosynthesise.',
+    look:'Starch is stored because it is <b>insoluble</b>: it does not affect water moving into and out of the cell by osmosis, as dissolved glucose would.',
+    terms:[['Starch','an insoluble store of glucose.'],['Cellulose','the substance cell walls are made of, built from glucose.']],
+    key:['glu','no3','chl'],
+    labels:[
+      {text:'Respiration', world:'cell', at:CA_(['mito']), dx:-110, dy:-40, t0:5},
+      {text:'Starch, for storage', world:'cell', at:CA_(['starch']), dx:90, dy:-50, t0:6},
+      {text:'Cellulose for the cell wall', world:'cell', at:CA_(['cellulose']), dx:-110, dy:40, t0:7},
+      {text:'Fats and oils', world:'cell', at:CA_(['oil']), dx:100, dy:40, t0:8},
+      {text:'Amino acids → proteins', world:'cell', at:CA_(['protein']), dx:-110, dy:-50, t0:9},
+      {text:'Nitrate ions, from the soil', world:'cell', at:CA_(['nitrate']), dx:-110, dy:20, t0:10},
+      {text:'To the phloem', cls:'gold', world:'cell', at:CA_(['phloem']), dx:100, dy:-10, t0:11}
+    ]
+  },
+  {
+    id:'limit', part:'Limiting factors', len:16, ctrl:true,
+    shots:[{world:'cell', keys:[[0,'uses'],[0.5,'uses'],[4,'limit']]}],
+    cell:{react:()=>1, phi:t=>lfPhase(t), light:()=>1, lf:true},
+    eq:['co2','water','light','glucose','oxygen'],
+    title:'What limits the rate of photosynthesis?',
+    text:'The rate of photosynthesis can be limited by <b>light intensity</b>, <b>carbon dioxide concentration</b>, <b>temperature</b> and the <b>amount of chlorophyll</b>. Whichever is in shortest supply is the <b>limiting factor</b>: increasing the others makes no difference until it is increased too.<br><br>Move the lamp, and change the carbon dioxide and the temperature. Light intensity is <b>inversely proportional to the square of the distance</b> from the lamp: halve the distance and the light is four times as intense.',
+    look:'Photosynthesis is controlled by enzymes. Warming speeds it up until about '+FIG.Topt+' °C; above that the enzymes start to denature, and by '+FIG.Tden+' °C it has stopped.',
+    scale:'A simple model, with the rate set by whichever factor is in shortest supply. Normal air is about '+FIG.co2Air+'% carbon dioxide.',
+    terms:[['Limiting factor','the factor in shortest supply, which stops the rate going any higher.'],
+           ['Inverse square law','light intensity ∝ 1 / distance²']],
+    key:['light','co2','o2','glu'],
+    labels:[]
+  },
+  {
+    id:'together', part:'Together', len:16,
+    shots:[{world:'cell', keys:[[0,'limit'],[0.5,'limit'],[2.6,'cellWide']], until:3.0},
+           {world:'block', keys:[[3.0,'front'],[3.4,'front'],[8,'together']]}],
+    blk:{light:()=>1, gas:t=>ss(4, 5, t), gas2:t=>ss(4, 5, t), xyl:()=>1, phl:()=>1},
+    eq:['co2','water','light','glucose','oxygen'],
+    title:'A leaf, built for photosynthesis',
+    text:'Put it all together and every part of the leaf\'s structure helps:<br>• <b>broad and flat</b>: a large surface to absorb light;<br>• <b>thin</b>: a short distance for gases to diffuse;<br>• <b>clear epidermis</b> and a <b>waxy cuticle</b>: light gets in, water stays in;<br>• <b>palisade cells</b> at the top, packed with chloroplasts;<br>• <b>air spaces</b> in the spongy mesophyll, for gas exchange;<br>• <b>stomata</b> with guard cells, to control gas exchange and water loss;<br>• <b>veins</b>: xylem brings water, phloem takes sugar away.',
+    look:'Everything at once: light from above, carbon dioxide in and oxygen out through the stomata, water along the xylem and sugar along the phloem.',
+    terms:[],
+    key:['light','co2','o2','h2o','glu'],
+    labels:[
+      {text:'Light', cls:'lit', world:'block', at:()=>[B(-10, 24, BZ - 1)], dx:-70, dy:-20, t0:9},
+      {text:'Carbon dioxide in', cls:'co2', world:'block', at:()=>[ANCH.gasIn], dx:-110, dy:50, t0:10},
+      {text:'Oxygen out', cls:'oxy', world:'block', at:()=>[ANCH.gasOut], dx:70, dy:70, t0:11},
+      {text:'Water in the xylem', cls:'wat', world:'block', at:()=>[ANCH.xyl], dx:90, dy:-70, t0:12},
+      {text:'Sugar in the phloem', cls:'gold', world:'block', at:()=>[ANCH.phl], dx:100, dy:60, t0:13}
+    ]
+  }
+];
+function CA_(names){ return () => names.map(n => CA[n]()); }
+const CHI = {}; CH.forEach((c, i) => { CHI[c.id] = i; });
+
+/* ----------------------------------------------- the equation bar */
+const EQ_SPANS = Array.from(document.querySelectorAll('#eq .t'));
+document.getElementById('eqSym').innerHTML = '6CO<sub>2</sub> + 6H<sub>2</sub>O → C<sub>6</sub>H<sub>12</sub>O<sub>6</sub> + 6O<sub>2</sub>';
+
+/* ---------------------------------------------------- labels with leaders */
+const labelLayer = document.getElementById('labels');
+const linesSvg = document.getElementById('lines');
+const ALL_LABELS = [];
+CH.forEach((C, ch) => C.labels.forEach(L => {
+  L.ch = ch;
+  L.el = document.createElement('div');
+  L.el.className = 'lab' + (L.cls ? ' ' + L.cls : '');
+  L.el.innerHTML = L.text;
+  labelLayer.appendChild(L.el);
+  ALL_LABELS.push(L);
+}));
+function measureLabels(){
+  ALL_LABELS.forEach(L => { L.w = L.el.offsetWidth || 0; L.h = L.el.offsetHeight || 0; });
+}
+let VW = 1, VH = 1;
+const _pv = new V3();
+function toScreen(v){
+  _pv.copy(v).project(camera);
+  return {x:(_pv.x + 1)/2*VW, y:(1 - _pv.y)/2*VH, z:_pv.z, ok:_pv.z > -1 && _pv.z < 1};
+}
+function labelOpacity(L, t){
+  return ss(L.t0, L.t0 + 0.6, t)*(L.t1 ? 1 - ss(L.t1 - 0.5, L.t1, t) : 1)*(L.op ? L.op(t) : 1);
+}
+const LAYOUT = [];
+const SCOPE = {}, SCALE_X = -8;
+function drawOverlay(ch, t, world){
+  let svg = '';
+  LAYOUT.length = 0;
+  const C = CH[ch];
+  /* the microscope's round field of view, and a scale bar measured in the scene */
+  const sc = world === 'block' && C.blk && C.blk.scope ? C.blk.scope(t) : 0;
+  if(sc > 0.01){
+    const cx = VW/2, cy = VH/2, r = Math.min(VW, VH)*0.46;
+    Object.assign(SCOPE, {cx, cy, r});
+    svg += '<path fill-rule="evenodd" fill="rgba(4,6,9,'+(0.94*sc).toFixed(3)+')" d="M0,0H'+VW+'V'+VH+'H0Z M'+(cx-r)+','+cy+
+           'a'+r+','+r+' 0 1,0 '+(2*r)+',0a'+r+','+r+' 0 1,0 '+(-2*r)+',0Z"/>'+
+           '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="rgba(200,210,225,'+(0.35*sc).toFixed(3)+')" stroke-width="2"/>';
+    const a = toScreen(B(SCALE_X, -1.6, BZ)), b = toScreen(B(SCALE_X + FIG.scaleUm/UM, -1.6, BZ));
+    Object.assign(SCOPE, {bar:[a, b]});
+    const col = 'rgba(240,244,250,'+sc.toFixed(3)+')';
+    svg += '<line x1="'+a.x.toFixed(1)+'" y1="'+a.y.toFixed(1)+'" x2="'+b.x.toFixed(1)+'" y2="'+b.y.toFixed(1)+'" stroke="'+col+'" stroke-width="4"/>'+
+           '<text x="'+((a.x+b.x)/2).toFixed(1)+'" y="'+(a.y + 22).toFixed(1)+'" text-anchor="middle" fill="'+col+'" '+
+           'style="font:600 14px ui-sans-serif,Segoe UI,Arial,sans-serif;paint-order:stroke;stroke:rgba(8,11,17,.85);stroke-width:4px">'+FIG.scaleUm+' µm</text>';
+  }
+  ALL_LABELS.forEach(L => {
+    const op = L.ch === ch && L.world === world ? labelOpacity(L, t) : 0;
+    if(op < 0.01){ if(L.shown){ L.el.style.opacity = 0; L.shown = false; } return; }
+    L.shown = true;
+    const pts = L.at().map(toScreen).filter(p => p.ok);
+    if(!pts.length){ L.el.style.opacity = 0; return; }
+    const ax = pts.reduce((s, p) => s + p.x, 0)/pts.length, ay = pts.reduce((s, p) => s + p.y, 0)/pts.length;
+    const bx = ax + L.dx, by = ay + L.dy;
+    let left = L.dx >= 0 ? bx : bx - L.w, top = by - L.h/2;
+    left = clamp(left, 8, Math.max(8, VW - L.w - 8));
+    top  = clamp(top, 8, Math.max(8, VH - L.h - 8));
+    L.el.style.opacity = op.toFixed(3);
+    L.el.style.transform = 'translate(' + left.toFixed(1) + 'px,' + top.toFixed(1) + 'px)';
+    LAYOUT.push({L, left, top, pts});
+    const ex = L.dx >= 0 ? left - 4 : left + L.w + 4, ey = top + L.h/2;
+    pts.forEach(p => {
+      svg += '<line x1="'+ex.toFixed(1)+'" y1="'+ey.toFixed(1)+'" x2="'+p.x.toFixed(1)+'" y2="'+p.y.toFixed(1)+
+             '" stroke="rgba(232,238,247,'+(0.8*op).toFixed(3)+'" stroke-width="1.3"/>'+
+             '<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="2.8" fill="rgba(255,255,255,'+(0.9*op).toFixed(3)+')"/>';
+    });
+  });
+  linesSvg.innerHTML = svg;
+}
+
+/* ---------------------------------------------------------------- a frame */
+let cur = 0;
+const STATE = {};          // what the last frame did (read by the tests)
+function frame(t){
+  const C = CH[cur];
+  const shot = shotAt(C, t);
+  applyCamera(shot.cam);
+  fadeEl.style.opacity = shot.fade.toFixed(3);
+  WL.visible = shot.world === 'leaf';
+  WB.visible = shot.world === 'block';
+  WC.visible = shot.world === 'cell';
+  renderer.clippingPlanes = shot.world === 'block' ? CLIP_BLOCK : shot.world === 'cell' ? CLIP_CELL : CLIP_NONE;
+  if(WL.visible){
+    const pc = C.leaf && C.leaf.piece ? C.leaf.piece(t) : 0;
+    PIECE_LINE.material.opacity = pc; PIECE_LINE.visible = pc > 0.01;
+  }
+  if(WB.visible){
+    const K = C.blk || {};
+    const f = {};
+    Object.keys(ALL_ON).forEach(g => { f[g] = K.focus ? lerp(1, K.focus[g], ss(0.4, 1.6, t)) : 1; });
+    setDims(f);
+    const op = K.open ? K.open(t) : 1;
+    updateGuards(op);
+    PL.vein.constant = K.veinCut ? lerp(BX + MARGIN + 1, VEIN.x, K.veinCut(t)) : BX + MARGIN + 1;
+    const light = K.light ? K.light(t) : 0;
+    updateBlockLight(t, light);
+    const gasT = K.gasT ? K.gasT(t) : t;
+    updateBlockFlows(t, {gas:K.gas ? K.gas(t) : 0, gas2:K.gas2 ? K.gas2(t) : 0, xyl:K.xyl ? K.xyl(t) : 0, phl:K.phl ? K.phl(t) : 0}, gasT);
+    Object.assign(STATE, {open:op, light, gasT, veinCut:PL.vein.constant});
+  }
+  if(WC.visible){
+    const K = C.cell || {};
+    const phi = K.phi ? K.phi(t) : 0;
+    const I = K.lf ? Math.min(1, lightIntensity(lfState.d)) : 1;
+    MOLC.begin();
+    cellCycle(phi, t, {react:K.react ? K.react(t) : 0, uses:K.uses ? K.uses(t) : 0});
+    if(K.nitrate) nitrates(t);
+    MOLC.end();
+    updateUses(phi, t, K.uses ? 1 : 0);
+    updateCellLight(t, K.light ? K.light(t) : 0, I);
+    Object.assign(STATE, {phi});
+    if(K.lf) lfState.tNow = t;
+  }
+  scene.updateMatrixWorld();
+  camera.updateMatrixWorld();
+  drawOverlay(cur, t, shot.world);
+  renderer.render(scene, camera);
+  return shot;
+}
+
+/* ------------------------------------------------- limiting-factor panel */
+const lfEls = {d:document.getElementById('inD'), c:document.getElementById('inC'), T:document.getElementById('inT')};
+function lfReadout(){
+  const r = rateOf(lfState.d, lfState.c, lfState.T);
+  document.getElementById('vD').textContent = lfState.d + ' cm';
+  document.getElementById('vC').textContent = lfState.c.toFixed(2) + '%';
+  document.getElementById('vT').textContent = lfState.T + ' °C';
+  const I = lightIntensity(lfState.d);
+  document.getElementById('lfRead').innerHTML = 'Light intensity: <b>' + I.toFixed(2) + '×</b> what it is at ' + LF.d0 + ' cm' +
+    '<br>Rate: <b>' + Math.round(100*r.rate) + '%</b> of the fastest' +
+    '<br>Limiting factor: <b>' + (r.rate <= 0 ? 'temperature (the enzymes have denatured)' : LIM_NAME[r.lim]) + '</b>';
+  drawGraph();
+}
+/* rate against light intensity at the current carbon dioxide and temperature */
+function drawGraph(){
+  const W = 300, H = 180, x0 = 38, y0 = 150, w = 246, h = 128;
+  const r = rateOf(lfState.d, lfState.c, lfState.T);
+  const cap = Math.min(r.parts.co2, r.parts.temp, 1);
+  const X = I => x0 + w*I, Yp = v => y0 - h*v;
+  let path = '';
+  for(let i=0;i<=60;i++){ const I = i/60; path += (i ? 'L' : 'M') + X(I).toFixed(1) + ',' + Yp(Math.min(I, cap)).toFixed(1); }
+  const I = Math.min(1, lightIntensity(lfState.d));
+  let s = '<rect x="0" y="0" width="'+W+'" height="'+H+'" fill="none"/>' +
+    '<line x1="'+x0+'" y1="'+y0+'" x2="'+(x0+w)+'" y2="'+y0+'" stroke="#93a2b6"/><line x1="'+x0+'" y1="'+y0+'" x2="'+x0+'" y2="'+(y0-h)+'" stroke="#93a2b6"/>' +
+    '<text x="'+(x0+w/2)+'" y="'+(y0+22)+'" fill="#93a2b6" font-size="11" text-anchor="middle">light intensity →</text>' +
+    '<text x="12" y="'+(y0-h/2)+'" fill="#93a2b6" font-size="11" text-anchor="middle" transform="rotate(-90 12 '+(y0-h/2)+')">rate →</text>' +
+    '<path d="'+path+'" fill="none" stroke="#ffd277" stroke-width="2.2"/>';
+  if(cap < 0.999) s += '<text x="'+(x0+w-4)+'" y="'+(Yp(cap)-6).toFixed(1)+'" fill="#cbd5e1" font-size="10.5" text-anchor="end">limited by '+
+    (r.parts.co2 <= r.parts.temp ? 'carbon dioxide' : 'temperature')+'</text>';
+  s += '<circle cx="'+X(I).toFixed(1)+'" cy="'+Yp(Math.min(I, cap)).toFixed(1)+'" r="5" fill="#7fb0ff" stroke="#fff" stroke-width="1.5"/>';
+  document.getElementById('graph').innerHTML = s;
+}
+function lfChange(){
+  /* keep the flow where it has got to, then carry on at the new rate */
+  const t = lfState.tNow;
+  lfState.phi0 = lfPhase(t); lfState.t0 = t;
+  lfState.d = +lfEls.d.value || lfState.d;
+  lfState.c = +lfEls.c.value || lfState.c;
+  lfState.T = lfEls.T.value === undefined || lfEls.T.value === '' ? lfState.T : +lfEls.T.value;
+  lfReadout();
+}
+Object.values(lfEls).forEach(el => el.addEventListener('input', lfChange));
+
+/* --------------------------------------------------------------- chapters */
+let chStart = null;
+function enterChapter(i){
+  cur = i; chStart = null;
+  dragAz = dragEl = zoomAdj = 0;
+  const C = CH[i];
+  document.getElementById('sStep').textContent = (i+1)+' / '+CH.length+' · '+C.part;
+  document.getElementById('sTitle').innerHTML = C.title;
+  document.getElementById('sText').innerHTML = C.text;
+  const lk = document.getElementById('sLook');
+  lk.innerHTML = C.look ? 'Look for: '+C.look : ''; lk.hidden = !C.look;
+  const sc = document.getElementById('sScale');
+  sc.textContent = C.scale || ''; sc.hidden = !C.scale;
+  const tm = document.getElementById('sTerms');
+  tm.innerHTML = C.terms.length
+    ? '<div class="hd">Key words</div>' + C.terms.map(x => '<dt>'+x[0]+'</dt><dd>'+x[1]+'</dd>').join('')
+    : '';
+  tm.hidden = !C.terms.length;
+  document.getElementById('ctrl').hidden = !C.ctrl;
+  if(C.ctrl){ lfState.phi0 = 0; lfState.t0 = 0; lfState.tNow = 0; lfReadout(); }
+  const eq = document.getElementById('eq');
+  eq.hidden = !C.eq;
+  document.body.classList.toggle('haseq', !!C.eq);
+  EQ_SPANS.forEach(s => s.classList.toggle('on', !!C.eq && C.eq.includes(s.dataset.k)));
+  document.getElementById('key').innerHTML = C.key.map(k => KEYS[k]).join('');
+  document.getElementById('back').disabled = i === 0;
+  document.getElementById('next').disabled = i === CH.length-1;
+  document.querySelectorAll('#dots i').forEach((d, k) => d.classList.toggle('on', k === i));
+  ALL_LABELS.forEach(L => { L.el.style.opacity = 0; L.shown = false; });
+}
+function animate(now){
+  requestAnimationFrame(animate);
+  if(chStart === null) chStart = now;
+  frame((now - chStart)/1000);
+}
+
+/* ------------------------------------------------------------------ wiring */
+linearise(scene);
+captureBases();
+
+const cv = renderer.domElement;
+cv.style.touchAction = 'none';
+cv.style.cursor = 'grab';
+let dragging = false, lastX = 0, lastY = 0;
+cv.addEventListener('pointerdown', e => {
+  dragging = true; lastX = e.clientX; lastY = e.clientY;
+  cv.style.cursor = 'grabbing';
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove', e => {
+  if(!dragging) return;
+  dragAz -= (e.clientX - lastX)*0.006;
+  dragEl = clamp(dragEl + (e.clientY - lastY)*0.004, -0.9, 0.9);
+  lastX = e.clientX; lastY = e.clientY;
+});
+['pointerup','pointercancel'].forEach(ev =>
+  cv.addEventListener(ev, () => { dragging = false; cv.style.cursor = 'grab'; }));
+cv.addEventListener('wheel', e => {
+  e.preventDefault();
+  zoomAdj = clamp(zoomAdj + e.deltaY*0.001, -1.2, 1.2);
+}, {passive:false});
+
+const dotsEl = document.getElementById('dots');
+CH.forEach((c, i) => {
+  const d = document.createElement('i');
+  d.title = c.part;
+  d.addEventListener('click', () => enterChapter(i));
+  dotsEl.appendChild(d);
+});
+document.getElementById('next').addEventListener('click', () => { if(cur < CH.length-1) enterChapter(cur+1); });
+document.getElementById('back').addEventListener('click', () => { if(cur > 0) enterChapter(cur-1); });
+document.getElementById('replay').addEventListener('click', () => enterChapter(cur));
+window.addEventListener('keydown', e => {
+  if(e.target && e.target.tagName === 'INPUT') return;
+  if(e.key === 'ArrowRight' && cur < CH.length-1) enterChapter(cur+1);
+  if(e.key === 'ArrowLeft'  && cur > 0) enterChapter(cur-1);
+});
+
+function resize(){
+  VW = stage.clientWidth || window.innerWidth;
+  VH = stage.clientHeight || window.innerHeight;
+  renderer.setSize(VW, VH);
+  camera.aspect = VW/VH;
+  camera.updateProjectionMatrix();
+  buildCams();
+  measureLabels();
+}
+window.addEventListener('resize', resize);
+resize();
+
+enterChapter(0);
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

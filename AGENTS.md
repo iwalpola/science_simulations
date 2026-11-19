@@ -23,6 +23,7 @@ human_anatomy/digestion/    starch, sugars, proteins, lipids: food tests, lock a
                             digestion-ks3.html, the KS3 version, generated from it (test-digestion.js --sync)
 mechanics/                  projectiles: launch, up to three markers, a click-to-reveal s u v a t matrix (+ test-projectiles.js)
 genetics/                   cell → chromosome → DNA → gene → base, mitosis + the cell cycle, meiosis + fertilisation: three.js stories (+ test-genetics.js, test-mitosis.js, test-meiosis.js)
+plants/                     leaf structure and photosynthesis: a procedural leaf, a cut-open block of its tissues, one palisade cell (+ test-leaf.js)
 tools/                      one-off colour-migration scripts (animcolour.mjs, colourfix.mjs)
 tools/anatomy/              build .glb files of named body parts from Z-Anatomy (see its README.md)
 ```
@@ -33,7 +34,7 @@ tools/anatomy/              build .glb files of named body parts from Z-Anatomy 
 
 `index.html` shows one card per category folder (`electricity/`, `waves/`, `mechanics/`,
 `energy/`, `particles/`, `3dreactionscenes/`, `reactionbuilder/`,
-`chemsheet_help/`, `cell_biology/`, `human_anatomy/`, `genetics/`). Each folder has its own `index.html` that
+`chemsheet_help/`, `cell_biology/`, `human_anatomy/`, `genetics/`, `plants/`). Each folder has its own `index.html` that
 lists its sims. A sim lives in the one folder that fits best; other folders link
 to it with a relative `../` path rather than holding a copy.
 
@@ -75,6 +76,7 @@ cd human_anatomy/digestion   && node test-digestion.js   # both levels: gut and 
 cd genetics         && node test-genetics.js   # pairs, band position, base pairing, flat ladder, quoted figures, every frame
 cd genetics         && node test-mitosis.js    # copying, one copy of each chromosome per daughter, half volume, pie times, tissue, every frame
 cd genetics         && node test-meiosis.js    # pairing, crossing over, one of each pair per cell, four different gametes, fertilisation
+cd plants           && node test-leaf.js       # layers, cells in their tissues, stomata underneath, gas paths through air only, the equation, limiting factors, labels
 node tools/anatomy/test-anatomy.js              # anatomy catalogue, recipes, licence, built .glb files
 ```
 
@@ -518,6 +520,54 @@ particular to it:
   woman's own parents).
 
 ---
+
+## The leaf: procedural, and every picture of it is a section
+
+`plants/leaf-photosynthesis-3d-story.html` is a three.js story in the genetics
+shell (panel, nav, key, labels with leaders), plus the respiration page's
+equation bar. Nothing in it is imported: the user asked for procedural over
+glTF, and a leaf's tissues are regular enough to generate.
+
+- **Three worlds.** `leaf` at the origin (outline `leafHalfW`, midrib, side
+  veins, and a net of small veins that is the edge set of a Voronoi diagram
+  over the blade — areoles look like that); `block`, a piece of blade at
+  `BLOCK_O`, 1 unit = 10 µm, every layer at its real depth (`Y`); `cell`, one
+  palisade cell at `CELL_O`.
+- **Sections, not pictures of sections.** Every solid is a closed mesh drawn
+  twice, its outside and its back faces in a flat pale colour
+  (`solid()`/`solidInstanced()`); a global clipping plane opens it and the
+  back faces read as the cut surface, with what is inside the cell in front
+  of them. The block is grown `MARGIN` past four planes, so cells crossing a
+  face are cut; a fifth plane cuts along the vein in that chapter. Keep any
+  new solid CLOSED, or its cut shows a hole. `renderer.clippingPlanes` is
+  switched per world in `frame()`.
+- **The tissues are generated, the air is what is left.** Epidermis: extruded
+  Voronoi cells (a stoma's own cell is a ring round its guard cells);
+  palisade: a jittered hex packing of columns, shortened over the vein;
+  spongy: dart-thrown, each growing an arm half way to its near neighbours.
+  `isSolid()` is the inside test for all of them, and `AIR` measures how much
+  of each layer is air — the caption quotes that, never a typed figure.
+- **Gas paths are searched** (Dijkstra on a voxel grid of the air near the
+  front face, `searchPath`), from under a stoma, up through its pore, to the
+  bottom of a palisade cell. The test asserts no point is inside a cell. Use
+  a Float64Array for the distances: Float32 rounding made every node look
+  stale and the search found nothing.
+- **Only cut cells get chloroplasts drawn** (`isCut`): cells are opaque, so
+  the rest could never be seen. Every cell still has its count (`c.chl`).
+- **Gas moves only while stomata are open**: the stomata chapter's gas clock
+  is the closed-form integral of the opening (`ssInt`), so it is still a
+  pure function of `t`.
+- **Limiting factors** are a min() model (Blackman), light as `1/d²` from the
+  lamp distance. Moving a slider stores the phase reached (`lfState.phi0`) so
+  the flow does not jump — the one piece of state, and it changes only on
+  input.
+- The cell world uses `cell_biology/organelles.js` (chloroplast, nucleus,
+  mitochondrion) as the mitosis page does. A chloroplast's basis must be
+  right-handed before `setFromRotationMatrix`; a mirrored one gives a wrong
+  rotation with no NaN to show for it, and the test checks the orientation.
+- `test-leaf.js` loads three.js from `.three-cache/`; cdnjs is not always
+  reachable from a sandbox, and `npm pack three@0.128.0` gives the same
+  `build/three.min.js`.
 
 ## Colour management — read this before touching any material
 
