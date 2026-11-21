@@ -502,16 +502,19 @@ const LM = (function(){
     return null;
   };
 
-  /* THE FRONTAL CUT, for the chambers and valves: a plane parallel to the
-     chest (its normal is the body's front, +z), at the average depth of the
-     four cavities -- the frontal cut that opens them most evenly. The heart
-     lies tilted in the chest, so the left atrium is mostly behind it and the
-     right ventricle mostly in front: a frontal cut only just opens those
-     two. The part kept is the side away from n (the back), seen from the
-     front. */
+  /* THE FOUR-CHAMBER CUT, for the chambers, the valves and the trip through
+     the heart: the plane that best fits the middles of the four cavities and
+     of the two rings between atria and ventricles, so it opens every chamber
+     through its middle and crosses both of those valves. The heart lies
+     tilted in the chest (the left atrium at the back, the right ventricle at
+     the front), so this plane is tilted too: no cut parallel to the chest
+     opens all four. What matters here is that a pupil sees four chambers in
+     one picture. The part kept is the side away from n (the back and the
+     underside), seen from in front and above. */
   {
-    const n = [0, 0, 1];
-    L.cut = {n, d:['RA','RV','LA','LV'].reduce((s, k) => s + vdot(n, L[k]), 0)/4};
+    const f = fitPlane(['RA','RV','LA','LV'].map(k => L.inside[k]).concat([L.tricuspid.c, L.mitral.c]));
+    const n = f.n[2] < 0 ? vmul(f.n, -1) : f.n;
+    L.cut = {n, d:vdot(n, f.c)};
   }
   L.onCut = {};
   for(const k in CHAMBERS) L.onCut[k] = hollowOn(k, L.cut);
@@ -1122,7 +1125,7 @@ function setSection(n, d){
 }
 const planeThrough = (a, b, c, up) => { let n = vnorm(vcross(vsub(b, a), vsub(c, a))); if(vdot(n, up) < 0) n = vmul(n, -1); return {n, d:vdot(n, a)}; };
 const PRESETS = [
-  {label:'Chambers (story)', title:'heart.html: the frontal cut of the chambers, valves and trip chapters', n:LM.cut.n, d:LM.cut.d},
+  {label:'Chambers (story)', title:'heart.html: the four-chamber cut of the chambers, valves and trip chapters', n:LM.cut.n, d:LM.cut.d},
   {label:'Walls (story)', title:'heart.html: the short-axis cut of the walls chapter', n:LM.short.n, d:LM.short.d},
   {label:'Semilunar valves (story)', title:'heart.html: the plane just downstream of the semilunar valves', n:SL_N, d:SL_D},
   Object.assign({label:'Apex + AV rings', title:'through the apex and the middles of both atrioventricular rings, seen from above'},

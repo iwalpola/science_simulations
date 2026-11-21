@@ -32,7 +32,8 @@
  *             body's, and the vessels are coloured by the blood they carry.
  *   THE CELL  the cell we follow visits every stop in order, changes colour
  *             in the lungs, and never jumps.
- *   WORDS     the numbers the captions quote are the measured ones.
+ *   WORDS     the numbers the captions quote are the measured ones, and every
+ *             teaching point of the GCSE specification is said somewhere.
  *   LICENCE   the packed anatomy is the manifest's, carries its licence, and
  *             holds no part the licence rules block.
  *
@@ -108,7 +109,7 @@ const expose = ['frame', 'enterChapter', 'CH', 'camera', 'renderer', 'CUES', 'sh
   'DRAWN', 'FACTS', 'BLOOD', 'REAL_T', 'TAG', 'tagAt', 'stopOf', 'STOPS4', 'TAG_LBL', 'TAG_SPR', 'CHAMBERS', 'LEAFLETS',
   'inCavity', 'rayHits', 'ringFrame', 'along', 'OXY', 'DEOXY', 'isPulArt', 'isPulVein', 'SYS_ART', 'SYS_VEIN',
   'MAT', 'matsFor', 'frac', 'COL', 'ringRadiusAt', 'CH4', 'NETWORK', 'NET', 'FLOWS', 'cellSize', 'radiusAlong', 'inLineage',
-  'asCentreline', 'isCardiacVein'].join(',');
+  'asCentreline', 'isCardiacVein', 'STENT', 'radiusOf', 'isCoronary'].join(',');
 let S;
 try {
   S = new Function('THREE', 'document', 'window', 'performance', 'requestAnimationFrame', 'atob',
@@ -123,6 +124,10 @@ try {
 const d3 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+const mul = (a, s) => [a[0] * s, a[1] * s, a[2] * s];
+const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const norm = a => mul(a, 1 / Math.hypot(a[0], a[1], a[2]));
 const finite = a => { for (let i = 0; i < a.length; i++) if (!Number.isFinite(a[i])) return false; return true; };
 const seq = poly => poly.parts.filter((p, i) => i === 0 || p !== poly.parts[i - 1]);
 const LM = S.LM, R = S.ROUTE;
@@ -231,46 +236,79 @@ chk(dot(LM.pulmonary.n, sub(LM.trunkTop, LM.pulmonary.c)) > 0, 'the pulmonary va
 chk(d3(LM.tricuspid.c, LM.RA) < d3(LM.tricuspid.c, LM.LA) && d3(LM.mitral.c, LM.LA) < d3(LM.mitral.c, LM.RA), 'an AV ring is on the wrong side of the heart');
 chk(LM.tricuspid.c[0] < LM.mitral.c[0], 'the tricuspid valve should be on the body\'s right (-x) of the mitral');
 for (const k in S.CHAMBERS) chk(S.inCavity(S.CHAMBERS[k], LM.inside[k]), 'the point found inside the ' + S.CHAMBERS[k] + ' is not in its cavity');
-for (const k in S.CHAMBERS) chk(!!LM.onCut[k], 'the frontal cut does not open the ' + S.CHAMBERS[k] + ' at all');
-/* THE FRONTAL CUT faces the front of the body, and sits at the depth that
-   opens the four chambers most evenly a frontal cut can: measured here, the
-   smallest of the four cavities' cut areas is at least as big as 5 mm in
-   front or behind. (The heart lies tilted, so no frontal cut opens the left
-   atrium and right ventricle much; this is the best it gets.) */
+for (const k in S.CHAMBERS) chk(!!LM.onCut[k], 'the four-chamber cut does not open the ' + S.CHAMBERS[k] + ' at all');
+/* THE FOUR-CHAMBER CUT is there so a pupil sees all four chambers, and the
+   two valves between atria and ventricles, in ONE picture. That is what is
+   asserted, not how the plane was found: every cavity is cut wide open (the
+   frontal cut this replaced opened the left atrium 1.4 cm2 and the right
+   ventricle 4 cm2), the plane crosses both rings, and from the camera the
+   chapters use, every chamber's opening is big, in the frame, and laid out
+   as in a textbook. */
 const onPlane = p => Math.abs(dot(LM.cut.n, p) - LM.cut.d);
-chk(LM.cut.n[0] === 0 && LM.cut.n[1] === 0 && LM.cut.n[2] === 1, 'the cut for the chambers is not frontal: its normal should be the body\'s front, +z');
+chk(Math.abs(Math.hypot(...LM.cut.n) - 1) < 1e-9, 'the four-chamber cut\'s normal is not a unit vector');
+for (const k of ['tricuspid', 'mitral']) chk(onPlane(LM[k].c) < LM[k].r * 0.75, 'the four-chamber cut misses the ' + k + ' ring: its middle is ' + (onPlane(LM[k].c) * 1000).toFixed(0) + ' mm from the plane');
+for (const k in S.CHAMBERS) if (LM.onCut[k]) chk(onPlane(LM.onCut[k]) < 1e-6, 'the point found on the cut in the ' + S.CHAMBERS[k] + ' is not on the cut');
 {
-  const cavityArea = (k, z) => {
-    const P = S.PARTS[S.CHAMBERS[k]], step = 0.003;
-    let lo = [Infinity, Infinity], hi = [-Infinity, -Infinity];
-    for (let i = 0; i < P.pos.length; i += 3) for (let j = 0; j < 2; j++) { lo[j] = Math.min(lo[j], P.pos[i + j]); hi[j] = Math.max(hi[j], P.pos[i + j]); }
-    const D = [0, 1, 2, 3, 4, 5, 6, 7].map(i => { const a = i / 8 * 2 * Math.PI + 0.1; return [Math.cos(a), Math.sin(a), 0]; });
-    let n = 0;
-    for (let x = lo[0]; x <= hi[0]; x += step) for (let y = lo[1]; y <= hi[1]; y += step) {
-      let f = 0, h = 0;
-      for (const d of D) { const r = S.rayHits(P, [x, y, z], d); if (!r.length) continue; h++; if (r[0].front) f++; }
-      if (h >= 6 && f >= h - 1) n++;
-    }
-    return n * step * step * 1e4;
+  const c = S.CAM.four, wide = S.CAM.fourWide;
+  const camOf = c => {
+    const cam = new THREE.PerspectiveCamera(40, 16 / 9, 0.001, 10);
+    cam.position.set(c.look[0] + c.dist * Math.cos(c.el) * Math.sin(c.az), c.look[1] + c.dist * Math.sin(c.el), c.look[2] + c.dist * Math.cos(c.el) * Math.cos(c.az));
+    cam.lookAt(c.look[0], c.look[1], c.look[2]); cam.updateMatrixWorld(); cam.updateProjectionMatrix();
+    return cam;
   };
-  const minArea = z => Math.min(...Object.keys(S.CHAMBERS).map(k => cavityArea(k, z)));
-  const here = minArea(LM.cut.d), front = minArea(LM.cut.d + 0.005), back = minArea(LM.cut.d - 0.005);
-  console.log('    frontal cut ' + (LM.cut.d * 1000).toFixed(1) + ' mm: the smallest chamber opening is ' + here.toFixed(1) + ' cm2 (' + front.toFixed(1) + ' cm2 5 mm in front, ' + back.toFixed(1) + ' cm2 5 mm behind)');
-  chk(here > 0 && here >= front - 0.2 && here >= back - 0.2, 'the frontal cut is not at the depth that opens all four chambers best');
-}
-/* the textbook view from the front: right atrium top left, atria above
-   ventricles, apex down */
-{
-  const cam = new THREE.PerspectiveCamera(40, 16 / 9, 0.001, 10), c = S.CAM.four;
-  chk(Math.abs(c.az) < 1e-9 && Math.abs(c.el) < 1e-9, 'the camera for the chambers should look straight at the front of the body');
-  cam.position.set(c.look[0] + c.dist * Math.cos(c.el) * Math.sin(c.az), c.look[1] + c.dist * Math.sin(c.el), c.look[2] + c.dist * Math.cos(c.el) * Math.cos(c.az));
-  cam.lookAt(c.look[0], c.look[1], c.look[2]); cam.updateMatrixWorld(); cam.updateProjectionMatrix();
-  const P = k => new THREE.Vector3(...LM.inside[k]).project(cam);
-  const ra = P('RA'), rv = P('RV'), la = P('LA'), lv = P('LV');
-  chk(ra.x < la.x && rv.x < lv.x, 'seen from the front, the heart\'s right side is not on the viewer\'s left');
-  chk(ra.y > rv.y && la.y > lv.y, 'seen from the front, the atria are not above the ventricles');
-  const apex = new THREE.Vector3(...LM.apex).project(cam);
-  chk(apex.y < Math.min(rv.y, lv.y), 'seen from the front, the apex does not point down');
+  const cam = camOf(c), camW = camOf(wide);
+  const toCam = [Math.cos(c.el) * Math.sin(c.az), Math.sin(c.el), Math.cos(c.el) * Math.cos(c.az)];
+  const facing = dot(LM.cut.n, toCam);
+  /* the hollow of each chamber on the plane: points from which rays along
+     the plane meet the inner face of its wall all round */
+  const n = LM.cut.n, e1 = norm(cross(n, [0, 1, 0])), e2 = cross(n, e1), step = 0.003;
+  const D = [0, 1, 2, 3, 4, 5, 6, 7].map(i => { const a = i / 8 * 2 * Math.PI + 0.1; return add(mul(e1, Math.cos(a)), mul(e2, Math.sin(a))); });
+  const opening = k => {
+    const P = S.PARTS[S.CHAMBERS[k]], o = sub(LM[k], mul(n, dot(n, LM[k]) - LM.cut.d));
+    let cnt = 0, out = 0, outW = 0;
+    for (let a = -0.06; a <= 0.06; a += step) for (let b = -0.06; b <= 0.06; b += step) {
+      const p = add(o, add(mul(e1, a), mul(e2, b)));
+      let f = 0, h = 0;
+      for (const d of D) { const r = S.rayHits(P, p, d); if (!r.length) continue; h++; if (r[0].front) f++; }
+      if (!(h >= 6 && f >= h - 1)) continue;
+      cnt++;
+      const q = new THREE.Vector3(...p).project(cam), w = new THREE.Vector3(...p).project(camW);
+      if (Math.abs(q.x) > 0.95 || Math.abs(q.y) > 0.95) out++;
+      if (Math.abs(w.x) > 0.95 || Math.abs(w.y) > 0.95) outW++;
+    }
+    return { cm2: cnt * step * step * 1e4, out, outW };
+  };
+  const open = {};
+  for (const k in S.CHAMBERS) open[k] = opening(k);
+  console.log('    four-chamber cut, normal (' + n.map(x => x.toFixed(2)).join(', ') + '): opens ' + Object.keys(open).map(k => k + ' ' + open[k].cm2.toFixed(1)).join(', ') + ' cm2; the camera sees ' + (facing * 100).toFixed(0) + '% of that');
+  for (const k in open) {
+    chk(open[k].cm2 >= 9, 'the four-chamber cut opens only ' + open[k].cm2.toFixed(1) + ' cm2 of the ' + S.CHAMBERS[k]);
+    chk(open[k].cm2 * facing >= 8, 'from the chapters\' camera only ' + (open[k].cm2 * facing).toFixed(1) + ' cm2 of the ' + S.CHAMBERS[k] + ' is seen');
+    chk(open[k].out === 0, 'part of the opened ' + S.CHAMBERS[k] + ' is outside the frame in the chambers and valves chapters');
+    chk(open[k].outW === 0, 'part of the opened ' + S.CHAMBERS[k] + ' is outside the frame in the trip through the heart');
+  }
+  chk(Math.max(...Object.values(open).map(o => o.cm2)) < 3 * Math.min(...Object.values(open).map(o => o.cm2)), 'one chamber is opened more than three times as much as another');
+  /* the camera is on the side that was cut away, looking at the cut face,
+     and not from so far overhead that the body is no longer upright */
+  chk(facing > 0.85, 'the camera looks at the cut face too obliquely: ' + facing.toFixed(2));
+  chk(c.el > 0 && c.el < 0.95 && Math.abs(c.az) < 0.6, 'the camera for the chambers is not in front of and above the heart');
+  chk(Math.abs(wide.az - c.az) < 1e-9 && Math.abs(wide.el - c.el) < 1e-9, 'the trip through the heart is not seen from the same side as the chambers');
+  /* the textbook layout: right atrium top left, atria above ventricles,
+     apex down, and the two valves between each atrium and its ventricle */
+  const P = p => new THREE.Vector3(...p).project(cam);
+  const ra = P(LM.onCut.RA), rv = P(LM.onCut.RV), la = P(LM.onCut.LA), lv = P(LM.onCut.LV);
+  chk(ra.x < la.x && rv.x < lv.x, 'in the cut view, the heart\'s right side is not on the viewer\'s left');
+  chk(ra.y > rv.y && la.y > lv.y, 'in the cut view, the atria are not above the ventricles');
+  const apex = P(LM.apex);
+  chk(apex.y < Math.min(rv.y, lv.y), 'in the cut view, the apex does not point down');
+  const tri = P(LM.tricuspid.c), mit = P(LM.mitral.c);
+  chk(tri.y < ra.y && tri.y > rv.y && mit.y < la.y && mit.y > lv.y, 'in the cut view, a valve is not between its atrium and its ventricle');
+  chk(tri.x < mit.x, 'in the cut view, the valve of the heart\'s right side is not on the viewer\'s left');
+  /* four separate labels: no two chamber names land on top of each other */
+  const pts = [ra, rv, la, lv];
+  let near = Infinity;
+  for (let i = 0; i < 4; i++) for (let j = i + 1; j < 4; j++) near = Math.min(near, Math.hypot((pts[i].x - pts[j].x) * 16 / 9, pts[i].y - pts[j].y));
+  chk(near > 0.12, 'two chamber names are only ' + near.toFixed(2) + ' of the half-height apart on screen');
 }
 /* the short-axis cut, for the walls: square to the long axis, across both ventricles */
 const onShort = p => Math.abs(dot(LM.short.n, p) - LM.short.d);
@@ -539,6 +577,51 @@ chk(S.FACTS.lengthCm === (LM.length * 100).toFixed(0) && S.CH[0].text.includes(S
 chk(Math.abs(S.CH[0].T - 60 / S.BLOOD.bpm) < 1e-9, 'the first chapter is not beating in real time');
 chk(S.CH[3].look.includes('slowed down about ' + Math.round(S.CH[3].T / S.REAL_T) + ' times'), 'the valves chapter misstates how much it is slowed down');
 for (const c of S.CH) for (const k of c.key) chk(typeof k === 'string', 'a chapter has a bad key entry');
+/* THE SPECIFICATION (AQA GCSE combined science: the heart and blood vessels,
+   coronary heart disease). Each line is a point a pupil is examined on and
+   the words that make it; all of them must be in one chapter's panel. */
+{
+  const plain = S.CH.map(c => (c.text + ' ' + c.terms.map(x => x.join(' ')).join(' ')).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').toLowerCase());
+  const POINTS = [
+    ['the heart is an organ that pumps blood', ['organ', 'pumps blood']],
+    ['a double circulatory system', ['double circulatory system', 'twice']],
+    ['the right ventricle pumps blood to the lungs, where gas exchange takes place', ['right ventricle', 'lungs', 'gas exchange']],
+    ['the left ventricle pumps blood round the rest of the body', ['left ventricle', 'rest of the body']],
+    ['the four vessels of the heart', ['aorta', 'vena cava', 'pulmonary artery', 'pulmonary vein']],
+    ['the coronary arteries supply the heart muscle', ['coronary arteries', 'oxygen', 'heart muscle']],
+    ['valves stop blood flowing backwards', ['valves', 'backwards']],
+    ['the left ventricle has the thicker wall', ['left ventricle', 'higher pressure', 'thick']],
+    ['the pacemaker is a group of cells in the right atrium', ['pacemaker', 'group of cells', 'right atrium']],
+    ['artificial pacemakers are electrical devices that correct an irregular heart rate', ['artificial pacemaker', 'electrical device', 'irregular']],
+    ['arteries: thick muscular elastic walls, high pressure', ['arteries', 'muscle', 'elastic', 'high pressure']],
+    ['veins: thinner walls, low pressure, valves', ['veins', 'thinner walls', 'low pressure', 'valves']],
+    ['capillaries: walls one cell thick, where substances are exchanged', ['capillaries', 'one cell thick', 'diffuse']],
+    ['coronary heart disease: fatty material narrows the coronary arteries', ['coronary heart disease', 'fatty material', 'narrow', 'oxygen']],
+    ['stents keep the coronary arteries open', ['stent', 'open']],
+    ['statins lower blood cholesterol', ['statins', 'cholesterol', 'more slowly']],
+    ['faulty valves: may not open fully or may leak; biological or mechanical replacements', ['faulty valve', 'not open fully', 'leak', 'biological', 'mechanical']],
+    ['heart failure: a donor heart, or heart and lungs', ['heart failure', 'donor heart', 'heart and lungs', 'transplant']],
+    ['artificial hearts: while waiting for a transplant, or to let the heart rest', ['artificial heart', 'wait', 'rest']]
+  ];
+  for (const [point, words] of POINTS)
+    chk(plain.some(t => words.every(w => t.includes(w))), 'no chapter teaches: ' + point + ' (needs: ' + words.join(', ') + ')');
+  chk(!/names? of the valves|tricuspid|bicuspid|mitral/.test(plain.join(' ')), 'a panel names the atrioventricular valves; the specification does not ask for the names');
+}
+/* the stent is on a coronary artery, round it, and on the side of the heart
+   its camera looks at */
+{
+  const name = 'Anterior interventricular artery', cl = S.PARTS[name].rec.cl[0];
+  chk(S.isCoronary(name), 'the stent\'s vessel is not a coronary artery');
+  chk(cl.some(p => d3(p, S.STENT.at) < 1e-9), 'the stent is not on the artery\'s centreline');
+  chk(S.STENT.r > S.radiusOf(name) && S.STENT.r < 3 * S.radiusOf(name), 'the stent is not a little wider than its artery');
+  const i = cl.findIndex(p => d3(p, S.STENT.at) < 1e-9), tan = norm(sub(cl[Math.min(cl.length - 1, i + 1)], cl[Math.max(0, i - 1)]));
+  chk(Math.abs(dot(tan, S.STENT.dir)) > 0.999, 'the stent does not lie along its artery');
+  const c = S.CAM.stent, toCam = [Math.cos(c.el) * Math.sin(c.az), Math.sin(c.el), Math.cos(c.el) * Math.cos(c.az)];
+  chk(dot(sub(S.STENT.at, LM.centre), toCam) > 0.02, 'the stent is not on the side of the heart its camera looks at');
+  const last = S.CH.length - 1;
+  chk(S.CH[last].T === 0, 'the stent is fixed in place, so its chapter must not beat');
+  chk(/drawn in/.test(S.CH[last].scale), 'the page does not say the stent is drawn in');
+}
 
 /* ======================================================================== */
 section('LICENCE');

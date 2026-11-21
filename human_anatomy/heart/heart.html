@@ -484,16 +484,19 @@ const LM = (function(){
     return null;
   };
 
-  /* THE FRONTAL CUT, for the chambers and valves: a plane parallel to the
-     chest (its normal is the body's front, +z), at the average depth of the
-     four cavities -- the frontal cut that opens them most evenly. The heart
-     lies tilted in the chest, so the left atrium is mostly behind it and the
-     right ventricle mostly in front: a frontal cut only just opens those
-     two. The part kept is the side away from n (the back), seen from the
-     front. */
+  /* THE FOUR-CHAMBER CUT, for the chambers, the valves and the trip through
+     the heart: the plane that best fits the middles of the four cavities and
+     of the two rings between atria and ventricles, so it opens every chamber
+     through its middle and crosses both of those valves. The heart lies
+     tilted in the chest (the left atrium at the back, the right ventricle at
+     the front), so this plane is tilted too: no cut parallel to the chest
+     opens all four. What matters here is that a pupil sees four chambers in
+     one picture. The part kept is the side away from n (the back and the
+     underside), seen from in front and above. */
   {
-    const n = [0, 0, 1];
-    L.cut = {n, d:['RA','RV','LA','LV'].reduce((s, k) => s + vdot(n, L[k]), 0)/4};
+    const f = fitPlane(['RA','RV','LA','LV'].map(k => L.inside[k]).concat([L.tricuspid.c, L.mitral.c]));
+    const n = f.n[2] < 0 ? vmul(f.n, -1) : f.n;
+    L.cut = {n, d:vdot(n, f.c)};
   }
   L.onCut = {};
   for(const k in CHAMBERS) L.onCut[k] = hollowOn(k, L.cut);
@@ -1619,6 +1622,11 @@ function VA(a){ return new THREE.Vector3(a[0], a[1], a[2]); }
 const cutN = LM.cut.n;
 const camAlong = (n, look, dist) => ({dist, az:Math.atan2(n[0], n[2]), el:Math.asin(clamp(n[1], -1, 1)), look});
 const fourLook = meanOf(Object.values(LM.onCut).filter(Boolean));
+/* The cut chambers are looked at from part way between square on to the cut
+   (which is from almost overhead) and the front of the body: near enough
+   square on that every chamber is wide open, near enough the front that the
+   body is still the right way up. */
+const fourDir = vnorm(vadd(cutN, [0, 0, 0.6]));
 const shortLook = meanOf([LM.onShort.LV, LM.onShort.RV]);
 /* looking down on the two semilunar valves, from just downstream of them */
 const SL_N = vnorm(vadd(LM.aortic.n, LM.pulmonary.n));
@@ -1628,16 +1636,33 @@ const SL_D = (function(){
   for(const key of ['aortic', 'pulmonary']) for(const L of VALVES[key].leaves) for(let i=0;i<L.rest.length;i+=3) d = Math.max(d, vdot(SL_N, [L.rest[i], L.rest[i+1], L.rest[i+2]]), vdot(SL_N, [L.alt[i], L.alt[i+1], L.alt[i+2]]));
   return d + 0.004;
 })();
+/* A stent, for the last chapter: a mesh tube round a stretch of the
+   coronary artery that runs down the front of the heart, between the
+   ventricles. Drawn in. It sits where the artery is, so that chapter does
+   not beat. */
+const STENT = (function(){
+  const R = part('Anterior interventricular artery').rec, cl = R.cl[0], i = Math.round(0.3*(cl.length-1));
+  const dir = vnorm(vsub(cl[Math.min(cl.length-1, i+1)], cl[Math.max(0, i-1)]));
+  const r = Math.max(0.0012, radiusOf('Anterior interventricular artery'))*1.6, col = 0xffd27a;
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.009, 10, 5, true),
+    new THREE.MeshBasicMaterial({color:col, wireframe:true, depthTest:false, depthWrite:false}));
+  mesh.position.set(cl[i][0], cl[i][1], cl[i][2]);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), new THREE.Vector3(dir[0], dir[1], dir[2]));
+  mesh.renderOrder = 27;
+  world.add(mesh);
+  return {mesh, at:cl[i], dir, r, len:0.009, col};
+})();
 const CAM = {
   wide   : {dist:3.0,  az:0.32, el:0.06, look:[0.0, 0.92, 0.0]},
   chest  : {dist:0.95, az:0.3,  el:0.1,  look:[LM.centre[0], LM.centre[1] + 0.02, LM.centre[2]]},
   heart  : {dist:0.42, az:0.3,  el:0.14, look:LM.centre},
   vessels: {dist:0.62, az:0.42, el:0.12, look:[LM.centre[0] - 0.005, LM.centre[1] + 0.035, LM.centre[2]]},
-  four   : camAlong(cutN, fourLook, 0.3),
-  fourWide: camAlong(cutN, vadd(fourLook, [0, 0.008, 0]), 0.46),
+  four   : camAlong(fourDir, fourLook, 0.3),
+  fourWide: camAlong(fourDir, vadd(fourLook, [0, 0.008, 0]), 0.46),
   valves : camAlong(SL_N, SL_LOOK, 0.13),
   short  : camAlong(LM.short.n, shortLook, 0.2),
-  pace   : {dist:0.36, az:0.05, el:0.2, look:LM.centre}
+  pace   : {dist:0.36, az:0.05, el:0.2, look:LM.centre},
+  stent  : {dist:0.24, az:0.3, el:0.14, look:vmix(LM.centre, STENT.at, 0.6)}
 };
 /* a point in front of a camera, in units of half the height it sees:
    (0,0) is the middle of the view, (1.5, 1) the top right on a wide screen */
@@ -1684,8 +1709,7 @@ const CH1 = {cut0:0.6, cut1:3.4, cam:3.8, labels:[5, 6.4, 7.8, 9.2], septum:10.8
 const onFace = k => vadd(LM.onCut[k], vmul(cutN, 0.004));
 const chamberName = {RA:'right atrium', RV:'right ventricle', LA:'left atrium', LV:'left ventricle'};
 CH4.forEach((k, i) => cue(1, lbl(chamberName[k], VA(onFace(k)), O({scale:hOf(CAM.four)*0.042}, k[0] === 'R' ? PILL_BLUE : PILL_RED)), CH1.labels[i]));
-cue(1, lbl('the heart lies tilted: this cut only just opens the left atrium (at the back)', scr(CAM.four, 0, -0.8), O({scale:hOf(CAM.four)*0.028}, NOTE)), CH1.labels[3] + 1.2);
-cue(1, lbl('and the right ventricle (at the front)', scr(CAM.four, 0, -0.88), O({scale:hOf(CAM.four)*0.028}, NOTE)), CH1.labels[3] + 1.2);
+cue(1, lbl('cut on a slant, through the middle of all four chambers; seen from in front and above', scr(CAM.four, 0, -0.88), O({scale:hOf(CAM.four)*0.028}, NOTE)), CH1.labels[3] + 1.2);
 const septumAt = vmix(LM.onCut.RV, LM.onCut.LV, 0.5);
 tagged(1, 'septum', septumAt, scr(CAM.four, 1.05, -0.45), {scale:hOf(CAM.four)*0.04, color:'#f2d0c8', line:0xf2d0c8}, CH1.septum);
 cue(1, lbl('atria at the top, ventricles below', scr(CAM.four, 0, 0.9), O({scale:hOf(CAM.four)*0.036}, NOTE)), CH1.labels[3] + 0.6);
@@ -1704,7 +1728,7 @@ cue(2, lbl('Arteries carry blood Away from the heart', scr(CAM.vessels, 0.55, -0
 /* chapter 3: valves */
 const CH3 = {T:3.2, cut0:0.4, cut1:2.6, swap:13.5, cut2:15.2};
 for(const key of ['tricuspid', 'mitral']){
-  const at = vadd(LM[key].c, vmul(cutN, 0.003));                  // on the cut face, at the ring's middle
+  const at = vadd(LM[key].c, vmul(cutN, 0.003));                  // the ring's middle, just under the cut
   const out = vadd(at, vmul(vsub(LM[key].c, fourLook), 1.1));      // pushed out from the middle of the view
   tagged(3, 'valve', at, VA(out).add(scr(CAM.four, 0, 0.18).sub(VA(fourLook))), {scale:hOf(CAM.four)*0.036, color:'#fff2d0', line:0xfff2d0}, 3.0, {t1:CH3.swap - 0.6});
 }
@@ -1764,6 +1788,13 @@ tagged(7, 'they branch off the aorta', onVessel('Right coronary artery', 0.04), 
 tagged(7, 'pacemaker cells', LM.sa, scr(CAM.pace, -0.9, 0.62), {scale:hOf(CAM.pace)*0.042, color:'#ffe9a0', line:0xffe070}, CH7.pace + 2.4);
 cue(7, lbl('each beat starts here and spreads', scr(CAM.pace, -0.9, 0.46), O({scale:hOf(CAM.pace)*0.03}, NOTE)), CH7.pace + 3.0);
 
+/* chapter 8: treating heart disease */
+cue(8, STENT.mesh, 2.4);
+tagged(8, 'stent: holds the narrowed artery open', STENT.at, scr(CAM.stent, 0.85, 0.55), {scale:hOf(CAM.stent)*0.04, color:'#ffe9a0', line:STENT.col}, 3.0);
+tagged(8, 'coronary artery', onVessel('Anterior interventricular artery', 0.6), scr(CAM.stent, 1.0, -0.5), {scale:hOf(CAM.stent)*0.036, color:'#ffb4a8', line:0xff8a7a}, 1.2);
+cue(8, lbl('statins: less cholesterol in the blood, so less fatty material builds up', scr(CAM.stent, 0, -0.86), O({scale:hOf(CAM.stent)*0.03}, PILL_DARK)), 5.5);
+cue(8, lbl('stent drawn in', scr(CAM.stent, -1.1, 0.8), O({scale:hOf(CAM.stent)*0.028}, NOTE)), 3.0);
+
 linearise(world);
 
 /* =========================================================================
@@ -1800,7 +1831,7 @@ const CH = [
     title:'Four chambers',
     text:'Cut the heart open and it is <b>hollow</b>, with four spaces called <b>chambers</b>.<br><br>The two at the top are the <b>atria</b> (one <b>atrium</b>). They collect the blood coming back to the heart. The two at the bottom are the <b>ventricles</b>. Their thick muscle walls squeeze to pump blood out of the heart.<br><br>A wall of muscle down the middle, the <b>septum</b>, keeps the right side apart from the left, so the two kinds of blood never mix.',
     look:'The heart is shown as if it belongs to someone <b>facing you</b>, so its <b>right</b> side is on <b>your left</b>.',
-    scale:'This is the real heart, cut straight through from the front. In the chest the heart lies tilted, so a cut like this only just opens the left atrium, at the back, and the right ventricle, at the front. The pale surface is the cut muscle; the faint outline is the half that was cut away.',
+    scale:'This is the real heart. In the chest it lies tilted, with the left atrium at the back and the right ventricle at the front, so it is cut on a slant here, through the middle of all four chambers, and looked at from in front and above. The pale surface is the cut muscle; the faint outline is the part that was cut away, which includes the start of the aorta and the pulmonary artery.',
     terms:[['Atrium','an upper chamber of the heart; it receives blood from veins.'],
            ['Ventricle','a lower chamber of the heart; it pumps blood out into an artery.'],
            ['Septum','the wall of muscle between the right and left sides of the heart.']],
@@ -1811,11 +1842,11 @@ const CH = [
     shots:[{from:CAM.heart, to:CAM.vessels, dur:2.5}],
     vesselOpacity:0.5,
     title:'In through veins, out through arteries',
-    text:'Blood comes <b>into</b> the heart through <b>veins</b> and leaves it through <b>arteries</b>.<br><br>The <b>vena cava</b> brings blood from the body into the <b>right atrium</b>. The <b>pulmonary artery</b> takes it from the <b>right ventricle</b> to the lungs.<br><br>The <b>pulmonary veins</b> bring blood back from the lungs into the <b>left atrium</b>. The <b>aorta</b> carries it from the <b>left ventricle</b> to the rest of the body.',
+    text:'Blood comes <b>into</b> the heart through <b>veins</b> and leaves it through <b>arteries</b>.<br><br>The <b>vena cava</b> brings blood from the body into the <b>right atrium</b>. The <b>pulmonary artery</b> takes it from the <b>right ventricle</b> to the lungs.<br><br>The <b>pulmonary veins</b> bring blood back from the lungs into the <b>left atrium</b>. The <b>aorta</b> carries it from the <b>left ventricle</b> to the rest of the body.<br><br><b>Arteries</b> have thick walls of muscle and elastic tissue, because the blood in them is at high pressure. <b>Veins</b> have thinner walls and a wider space inside. The blood in them is at low pressure, so veins have <b>valves</b> to keep it flowing towards the heart.',
     look:'Blood goes into the top of each atrium and out of the top of each ventricle.',
     scale:'Red means oxygenated blood and blue deoxygenated, as in textbook diagrams. Real blood is always red: deoxygenated blood is a darker red. So the pulmonary artery is blue here, even though it is an artery.',
-    terms:[['Artery','carries blood away from the heart.'],
-           ['Vein','carries blood towards the heart.']],
+    terms:[['Artery','carries blood away from the heart, at high pressure. Thick, muscular, elastic walls.'],
+           ['Vein','carries blood towards the heart, at low pressure. Thinner walls, a wide space inside, and valves.']],
     key:['oxy','deoxy']
   },
   {
@@ -1840,7 +1871,7 @@ const CH = [
     cut:t => sweep(CUTS.four, (t - 0.4)/2.2),
     vesselOpacity:0.55, lungs:0.07,
     title:'One trip through the heart',
-    text:'Follow one bit of blood.<br><br>It comes from the body in the <b>vena cava</b>, into the <b>right atrium</b>, then down into the <b>right ventricle</b>, which pumps it along the <b>pulmonary artery</b> to the <b>lungs</b>. There it picks up oxygen and gets rid of carbon dioxide.<br><br>It comes back along a <b>pulmonary vein</b> into the <b>left atrium</b>, then down into the <b>left ventricle</b>, which pumps it out through the <b>aorta</b> to the rest of the body.',
+    text:'Follow one bit of blood.<br><br>It comes from the body in the <b>vena cava</b>, into the <b>right atrium</b>, then down into the <b>right ventricle</b>, which pumps it along the <b>pulmonary artery</b> to the <b>lungs</b>. There, in the capillaries round the air sacs (<b>alveoli</b>), it picks up oxygen and gets rid of carbon dioxide: <b>gas exchange</b>.<br><br>It comes back along a <b>pulmonary vein</b> into the <b>left atrium</b>, then down into the <b>left ventricle</b>, which pumps it out through the <b>aorta</b> to the rest of the body.',
     look:'The bright cell turns from blue to red in the lungs, where it picks up oxygen.',
     scale:'The route through the lungs was found by searching the model’s blood vessels. The capillaries where the artery ends and the vein begins are far too small for the model; they are drawn in.',
     terms:[['Pulmonary','to do with the lungs.'],
@@ -1853,7 +1884,7 @@ const CH = [
            {from:CAM.chest, to:CAM.wide, dur:3.2}],
     vesselOpacity:0.55, lungs:0.14,
     title:'Two circuits, one heart',
-    text:'The heart is really <b>two pumps</b> side by side. The <b>right side</b> pumps blood to the <b>lungs</b> and back. The <b>left side</b> pumps it round the <b>rest of the body</b> and back.<br><br>So on every complete trip round the body, the blood goes through the heart <b>twice</b>. This is a <b>double circulatory system</b>.<br><br>In the lungs and in every part of the body, blood passes through tiny <b>capillaries</b>, where substances move between the blood and the cells.',
+    text:'The heart is really <b>two pumps</b> side by side. The <b>right ventricle</b> pumps blood to the <b>lungs</b>, where gas exchange takes place, and it comes back to the left side. The <b>left ventricle</b> pumps it round the <b>rest of the body</b>, and it comes back to the right side.<br><br>So on every complete trip round the body, the blood goes through the heart <b>twice</b>. This is a <b>double circulatory system</b>.<br><br>In the lungs and in every part of the body, blood passes through tiny <b>capillaries</b>. Their walls are only <b>one cell thick</b>, so oxygen and glucose can diffuse out of the blood into the cells, and carbon dioxide can diffuse back into the blood.',
     look:'Follow one cell: heart, lungs, heart, body, and back to the heart.',
     scale:'Each route was found by searching the model’s arteries and veins. Capillaries are drawn in where an artery ends and a vein begins.',
     terms:[['Double circulatory system','blood passes through the heart twice for each complete circuit of the body.'],
@@ -1878,12 +1909,25 @@ const CH = [
            {from:CAM.heart, to:CAM.pace, dur:2.4}],
     vesselOpacity:0.85, pace:CH7.pace,
     title:'The heart’s own blood supply, and its pacemaker',
-    text:'Heart muscle works all the time, so it needs its own supply of oxygen. The <b>coronary arteries</b> branch off the aorta just as it leaves the heart and spread over the heart muscle. If fatty material blocks one, the muscle beyond it is starved of oxygen: <b>coronary heart disease</b>.<br><br>The heart sets its own rhythm. A small group of cells in the wall of the <b>right atrium</b> acts as a <b>pacemaker</b>, sending out an electrical impulse that spreads over the atria and then the ventricles, so they contract in turn. If it goes wrong, an <b>artificial pacemaker</b> can be fitted: a small electrical device.',
+    text:'Heart muscle works all the time, so it needs its own supply of oxygen. The <b>coronary arteries</b> branch off the aorta just as it leaves the heart and spread over the heart muscle. In <b>coronary heart disease</b>, layers of <b>fatty material</b> build up inside them and make them narrower. Less blood gets through, so the heart muscle beyond is short of oxygen.<br><br>The heart sets its own rhythm. A small group of cells in the wall of the <b>right atrium</b> acts as a <b>pacemaker</b>, sending out an electrical impulse that spreads over the atria and then the ventricles, so they contract in turn. If the heart rate is irregular, an <b>artificial pacemaker</b> can be fitted: a small electrical device that corrects it.',
     look:'From the pacemaker, a yellow band spreads over the atria, then up the ventricles from the bottom.',
     scale:'The pacemaker cells and the spreading impulse are drawn in; they are too small to be in the model.',
     terms:[['Coronary arteries','supply the heart muscle itself with oxygenated blood.'],
            ['Pacemaker','a group of cells in the right atrium that controls the natural resting heart rate.']],
     key:['oxy','pace']
+  },
+  {
+    part:'Treating heart disease', len:14, T:0,
+    shots:[{from:CAM.heart, to:CAM.stent, dur:2.6}],
+    vesselOpacity:0.85,
+    title:'When the heart goes wrong',
+    text:'In <b>coronary heart disease</b> the coronary arteries are narrowed by fatty material. A <b>stent</b> is a small mesh tube put inside the narrow part to hold the artery open, so blood can flow again. <b>Statins</b> are drugs that lower the cholesterol in the blood, so the fatty material builds up more slowly.<br><br>A <b>faulty valve</b> may not open fully, or may leak and let blood flow backwards. It can be replaced with a <b>biological</b> valve (from a pig, a cow or a human donor) or a <b>mechanical</b> one.<br><br>In <b>heart failure</b> the heart cannot pump enough blood. A patient may be given a <b>donor heart</b>, or a heart and lungs, in a <b>transplant</b>. An <b>artificial heart</b> can keep a patient alive while they wait for one, or let their own heart rest and recover.<br><br>Every treatment has drawbacks as well as benefits. Any operation carries a risk. Statins must be taken for life and can have side effects. A mechanical valve lasts, but needs drugs to stop blood clotting on it; a biological one needs no such drugs but wears out. Donor hearts are scarce, and need drugs to stop the body rejecting them.',
+    look:'The gold mesh tube is a stent, on one of the coronary arteries on the front of the heart.',
+    scale:'The stent is drawn in, and drawn round the artery so that it can be seen: a real one is inside it. The beat is stopped here.',
+    terms:[['Stent','a mesh tube that holds a narrowed coronary artery open.'],
+           ['Statins','drugs that lower blood cholesterol, slowing the build-up of fatty material.'],
+           ['Transplant','replacing a failed organ with one from a donor.']],
+    key:['oxy','stent']
   }
 ];
 
@@ -1895,7 +1939,8 @@ const KEY = {
   drawn    :'<div><span class="sq" style="background:'+hexCss(COL.drawn)+';opacity:.75"></span>valve flap (drawn in)</div>',
   tag      :'<div><span class="dot" style="background:#fff;box-shadow:0 0 6px #fff"></span>the cell we follow</div>',
   capillary:'<div><span class="ln" style="background:linear-gradient(90deg,'+hexCss(COL.oxy)+','+hexCss(COL.deoxy)+')"></span>capillaries (drawn in)</div>',
-  pace     :'<div><span class="ln" style="background:'+hexCss(COL.pace)+'"></span>pacemaker impulse</div>'
+  pace     :'<div><span class="ln" style="background:'+hexCss(COL.pace)+'"></span>pacemaker impulse</div>',
+  stent    :'<div><span class="ln" style="background:'+hexCss(STENT.col)+'"></span>stent (drawn in)</div>'
 };
 
 /* ------------------------------------------------------------- the camera */

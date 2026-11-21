@@ -179,7 +179,7 @@ section('RENDER  every moment of the beat, every setting');
   const setLayers = on => S.LAYERS.forEach(L => { L.on = on(L); });
   const settings = [
     { name: 'as it opens', go() {} },
-    { name: 'cut, frontal', go() { S.setSection(S.PRESETS[0].n, S.PRESETS[0].d); } },
+    { name: 'cut, four-chamber', go() { S.setSection(S.PRESETS[0].n, S.PRESETS[0].d); } },
     { name: 'valves held open, landmarks', go() { S.SHOW.valves = 'open'; S.SHOW.marks = true; } },
     { name: 'valves held shut, no squeeze', go() { S.SHOW.valves = 'shut'; S.SHOW.squeeze = false; } },
     { name: 'everything shown, wireframe, translucent vessels', go() { setLayers(() => true); S.SHOW.wire = true; S.SHOW.vo = 0.3; } },
@@ -219,7 +219,7 @@ section('RENDER  every moment of the beat, every setting');
 section('SECTION  any angle, and the story\'s planes exactly');
 {
   /* the story's planes come back through turn/tilt/depth */
-  const story = [['frontal', LM.cut.n, LM.cut.d], ['short axis', LM.short.n, LM.short.d], ['semilunar', S.SL_N, S.SL_D]];
+  const story = [['four-chamber', LM.cut.n, LM.cut.d], ['short axis', LM.short.n, LM.short.d], ['semilunar', S.SL_N, S.SL_D]];
   for (const [name, n, d] of story) {
     const P = S.PRESETS.find(p => p.n === n);
     chk(!!P && P.d === d, 'no preset is the story\'s ' + name + ' cut');

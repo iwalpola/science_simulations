@@ -1721,7 +1721,10 @@ FACTS.emX = String(Math.round(EM.AREA[EM.GENS]*10)/10);
 ========================================================================= */
 const LUMEN_O = [0, -240, 0];
 const lumen = new THREE.Group(); lumen.position.fromArray(LUMEN_O); scene.add(lumen);
-const LANE = [-8.4, -3.9, 0.6, 4.4];                 // the lipid lane stops short of the key
+/* the lanes are spread wide and each kind of enzyme waits in its own column
+   beside the molecules it works on, so none of them stands on another; the
+   lipids sit low on the right, under the key */
+const LANE = [-13.4, -0.2, 2.9, 10.0];
 const LU = (function(){
   const insts = [], enz = [];
   const side = (I) => (b, k) => vmul(vnorm([hash(k*7 + I) < 0.5 ? -1 : 1, (hash(k*11 + I) - 0.5)*0.8, (hash(k*13 + I) - 0.5)*0.6]), 1);
@@ -1729,26 +1732,31 @@ const LU = (function(){
   const S = inst(starch(7, -Math.PI/2, 0.1), {D:0.25, FAR:1.0, kick:side(1), pose:bob(LANE[0], 0.1, 0.5, 0.1)});
   /* sugars: three sucroses and a glucose that needs nothing */
   const SU = [2.9, 0.6, -1.7].map((y, i) => inst(sucrose(), {D:0.3, FAR:0.9, kick:() => [0, i === 1 ? 0.6 : (i ? -1 : 1), 0.3], pose:bob(LANE[1] - 0.3, y, i*1.3, 0.1)}));
-  const G1 = inst(glucose(), {pose:bob(LANE[1] - 0.4, -3.9, 4, 0.12)});
+  const G1 = inst(glucose(), {pose:bob(LANE[1] - 0.4, -4.2, 4, 0.12)});
   /* a protein, already cut shorter in the stomach: one chain, top to bottom */
   const P = inst(protein(9, 5, -Math.PI/2, 0.2), {D:0.25, FAR:1.0, kick:side(3), pose:bob(LANE[2], 0.0, 1.4, 0.1)});
   /* two lipids; a fatty acid cut off drifts out of the way, towards you, so
-     the lipase can reach the next */
-  const L = [2.0, -2.7].map((y, i) => inst(lipid(), {D:0.3, FAR:1.1, kick:(b, k) => [0.5, [0.5, 0, -0.5][k], 1.1], pose:bob(LANE[3] - 0.9, y, i + 2, 0.1)}));
+     the lipase can reach the next, and not far to the right, where the
+     lipases wait */
+  const L = [-0.6, -5.6].map((y, i) => inst(lipid(), {D:0.3, FAR:1.1, kick:(b, k) => [-0.2, [0.6, 0, -0.6][k], 1.1], pose:bob(LANE[3] - 0.9, y, i + 2, 0.1)}));
   insts.push(S, ...SU, G1, P, ...L);
   const layer = molLayer(lumen, insts);
   /* the enzymes and their jobs; amylase cuts the chain into maltoses, then
      maltase splits each maltose; neighbouring bonds are never cut by two
      enzymes at once */
-  const am = [enzyme(lumen, 'amylase', [LANE[0] + 2.3, 3.2, 0.6], {amp:0.4}), enzyme(lumen, 'amylase', [LANE[0] + 2.3, -3.6, 0.6], {amp:0.4, ph:1})];
-  am[0].job(S, 1, 2.4); am[1].job(S, 5, 3.6); am[0].job(S, 3, 5.2);
-  const ma = [enzyme(lumen, 'maltase', [LANE[0] + 2.0, 1.0, 0.8], {amp:0.4}), enzyme(lumen, 'maltase', [LANE[0] + 2.0, -1.5, 0.8], {amp:0.4, ph:2})];
-  ma[0].job(S, 0, 8.6); ma[1].job(S, 4, 9.2); ma[0].job(S, 2, 11.4);
-  const su = [enzyme(lumen, 'sucrase', [LANE[1] + 1.6, 4.1, 0.6], {amp:0.35}), enzyme(lumen, 'sucrase', [LANE[1] + 1.8, -3.6, 0.8], {amp:0.35, ph:1.5})];
+  /* one amylase, hopping down the chain: it is so long that two docked on
+     one chain would stand on each other. It waits up out of the way, the
+     maltases below it, all well back from the chain */
+  const am = [enzyme(lumen, 'amylase', [LANE[0] + 7.7, 3.2, 0.6], {amp:0.4})];
+  am[0].job(S, 5, 2.4); am[0].job(S, 3, 4.4); am[0].job(S, 1, 6.4);
+  const ma = [enzyme(lumen, 'maltase', [LANE[0] + 8.4, -1.0, 0.8], {amp:0.4}), enzyme(lumen, 'maltase', [LANE[0] + 8.4, -5.0, 0.8], {amp:0.4, ph:2})];
+  ma[1].job(S, 4, 8.4); ma[0].job(S, 2, 9.8); ma[0].job(S, 0, 12.0);
+  const su = [enzyme(lumen, 'sucrase', [LANE[1] + 0.6, 3.9, 0.6], {amp:0.35}), enzyme(lumen, 'sucrase', [LANE[1] + 0.6, -8.0, 0.8], {amp:0.35, ph:1.5})];
   su[0].job(SU[0], 0, 4.0); su[1].job(SU[2], 0, 6.0); su[0].job(SU[1], 0, 8.2);
-  const pr = [0, 1, 2].map(i => enzyme(lumen, 'protease', [LANE[2] + 2.0, 4 - 4*i, 0.6], {amp:0.4, ph:i}));
-  [[0, 0, 5.0], [1, 4, 5.6], [2, 7, 6.4], [0, 2, 8.4], [1, 5, 9.4], [2, 1, 11.0], [0, 6, 12.0], [1, 3, 13.6]].forEach(([e, k, t]) => pr[e].job(P, k, t));
-  const li = [enzyme(lumen, 'lipase', [LANE[3] + 0.4, 4.6, 0.6], {amp:0.4}), enzyme(lumen, 'lipase', [LANE[3] + 0.6, -0.4, 0.8], {amp:0.4, ph:1})];
+  const pr = [0, 1, 2].map(i => enzyme(lumen, 'protease', [LANE[2] + 4.2, [1.65, -1.6, -4.85][i], 0.6], {amp:0.4, ph:i}));
+  /* each protease works the stretch of chain beside where it waits: the top, the middle, the bottom */
+  [[0, 0, 5.0], [2, 7, 5.6], [1, 4, 6.8], [0, 2, 8.8], [1, 5, 9.4], [2, 6, 11.6], [0, 1, 11.6], [1, 3, 13.6]].forEach(([e, k, t]) => pr[e].job(P, k, t));
+  const li = [enzyme(lumen, 'lipase', [LANE[3] + 2.8, -1.3, 0.6], {amp:0.4}), enzyme(lumen, 'lipase', [LANE[3] + 2.8, -6.3, 0.8], {amp:0.4, ph:1})];
   li[0].job(L[0], 0, 7.0); li[1].job(L[1], 0, 8.0); li[0].job(L[0], 2, 10.2); li[1].job(L[1], 2, 11.4); li[0].job(L[0], 1, 13.6); li[1].job(L[1], 1, 14.8);
   enz.push(...am, ...ma, ...su, ...pr, ...li);
   function update(t){ layer.update(t); for(const E of enz) placeEnzyme(E, t); }
@@ -2008,8 +2016,8 @@ const CAM = {
   stomIn : {dist:26,   az:0.15, el:0.1,  look:wpt(STOM_O, [-0.2, 0.3, 0])},
   emul   : {dist:17,   az:0.0,  el:0.06, look:wpt(EMUL_O, [-0.3, 0.0, 0])},
   emulIn : {dist:12,   az:-0.1, el:0.1,  look:wpt(EMUL_O, [-0.3, 0.0, 0])},
-  lumen  : {dist:23,   az:0.0,  el:0.03, look:wpt(LUMEN_O, [0.0, -0.4, 0])},
-  lumenIn: {dist:25,   az:0.1,  el:0.08, look:wpt(LUMEN_O, [0.0, -0.4, 0])},
+  lumen  : {dist:33,   az:0.0,  el:0.03, look:wpt(LUMEN_O, [0.0, -0.4, 0])},
+  lumenIn: {dist:35,   az:0.1,  el:0.08, look:wpt(LUMEN_O, [0.0, -0.4, 0])},
   villiW : {dist:12.5, az:0.25, el:0.42, look:wpt(VILLI_O, [0, 1.0, 0])},
   villus : {dist:6.4,  az:0.08, el:0.12, look:wpt(VILLI_O, [0, 1.7, HERO[2]])},
   build  : {dist:22,   az:0.0,  el:0.04, look:wpt(BUILD_O, [0, 0.0, 0])},
@@ -2167,18 +2175,21 @@ emL('lipase works on the surface: more surface, faster digestion', 0, -3.9, pill
 emL('fatty acids and glycerol', -4.6, -2.6, {color:'#d6dc7e', scale:0.42}, 12.0);
 emL('bile is not an enzyme: it digests nothing itself', 0, -3.9, pill({color:'#c4e07a', scale:0.36}), 15.6);
 
-/* the four lanes, in the frame of CAM.lumen */
-const luL = (text, x, y, opt, t0, t1) => cue(C.intestine, lbl(lumen, text, V(x, y, 1.5), Object.assign({scale:0.5}, opt)), t0, t1 != null ? {t1} : {});
+/* the four lanes, in the frame of CAM.lumen. Labels are a quarter bigger
+   than the molecules' scale would make them, since the camera stands back;
+   the lipids' heading sits under the key */
+const luL = (text, x, y, opt, t0, t1) => cue(C.intestine, lbl(lumen, text, V(x, y, 1.5), Object.assign({}, opt, {scale:1.25*(opt.scale || 0.5)})), t0, t1 != null ? {t1} : {});
 const LANE_H = [['starch', '#f2c14e', 'amylase, then maltase'], ['sugars', '#f6a865', 'sucrase'], ['protein', '#ec7fa3', 'proteases'], ['lipids', '#d6dc7e', 'lipase']];
 LANE_H.forEach(([h, c, e], i) => {
-  luL(h, LANE[i] + (i === 3 ? 0.3 : 0), 5.35, {color:c, scale:0.6}, 0.4 + 0.25*i);
-  luL(e, LANE[i] + (i === 3 ? 0.3 : 0), 4.75, {color:DIM, scale:0.42}, 0.6 + 0.25*i);
+  const x = LANE[i] + [1.0, 0.4, 0.8, 0][i], y = i === 3 ? 3.8 : 8.0;
+  luL(h, x, y, {color:c, scale:0.6}, 0.4 + 0.25*i);
+  luL(e, x, y - 0.62, {color:DIM, scale:0.42}, 0.6 + 0.25*i);
 });
-luL('glucose', LANE[0], -6.2, pill({color:'#f2c14e', scale:0.44}), 13.4);
-luL('glucose + fructose', LANE[1], -6.2, pill({color:'#f6a865', scale:0.44}), 9.4);
-luL('amino acids', LANE[2], -6.2, pill({color:'#ec7fa3', scale:0.44}), 15.0);
-luL('glycerol + fatty acids', LANE[3] + 0.2, -6.2, pill({color:'#d6dc7e', scale:0.44}), 16.2);
-luL('maltose', LANE[0] + 2.0, 2.4, {color:'#f2c14e', scale:0.38}, 5.6, 8.4);
+luL('glucose', LANE[0] + 0.6, -9.3, pill({color:'#f2c14e', scale:0.44}), 13.4);
+luL('glucose + fructose', LANE[1], -9.3, pill({color:'#f6a865', scale:0.44}), 9.4);
+luL('amino acids', LANE[2] + 0.4, -9.3, pill({color:'#ec7fa3', scale:0.44}), 15.0);
+luL('glycerol + fatty acids', LANE[3] - 0.2, -9.3, pill({color:'#d6dc7e', scale:0.44}), 16.2);
+luL('maltose', LANE[0] + 2.2, 2.4, {color:'#f2c14e', scale:0.38}, 6.9, 9.0);
 
 /* the villi. The hero's labels are placed in the frame of CAM.villus: a
    column down each side, clear of the key at the top right */

@@ -287,13 +287,18 @@ geometry when the page loads, and `test-heart.js` checks it is anatomy:
   the opening its cusps sit in. Ring centre, axis (pointing downstream) and
   radius come from those loops.
 - **The cuts.** The chambers, valves and the trip through the heart use a
-  FRONTAL cut (parallel to the chest, seen from the front), at the average
-  depth of the four cavities; the test checks that depth opens all four
-  more evenly than 5 mm either side. The user chose this over the plane
-  through the apex and both AV rings, which opens every chamber through
-  its middle but lies nearly horizontal in the body and has to be looked at
-  from above. The cost, said on screen: the heart lies tilted, so a frontal
-  cut only just opens the left atrium (back) and right ventricle (front).
+  FOUR-CHAMBER cut: the plane fitted to the middles of the four cavities
+  and the two AV ring centres (`LM.cut`), seen from in front and above
+  (`fourDir`, part way between square-on to the cut and the front, so the
+  body still reads as upright). It replaced a FRONTAL cut, which opened
+  only 1.4 cm2 of the left atrium (at the back) and 4 cm2 of the right
+  ventricle (at the front): the user asked for all four chambers in one
+  frame, pedagogy over anatomical accuracy. The test asserts the property,
+  not the fit: every chamber opened at least 9 cm2, inside the frame, laid
+  out as in a textbook (right atrium top left, apex down, each valve
+  between its atrium and ventricle). The cost, said on screen: the cut is
+  on a slant, and the roots of the aorta and pulmonary artery are in the
+  cut-away part.
   The walls chapter uses a SHORT-AXIS cut across both ventricles (thick
   ring, thin crescent), where both free walls can be measured.
   Each is a three.js clipping plane (`renderer.localClippingEnabled`).
@@ -340,6 +345,11 @@ geometry when the page loads, and `test-heart.js` checks it is anatomy:
   share of the picture AND at three quarters of the vessel's radius there.
 - **Colour follows the blood, not the name**: the pulmonary artery is blue.
   The page says real blood is always red.
+- **The specification is a table in the test** (`POINTS` in
+  `test-heart.js`: each AQA teaching point and the words that make it);
+  every one must be said in some chapter's panel. The last chapter
+  (treatments) has a stent drawn in on the anterior interventricular
+  artery (`STENT`); it does not beat, because the stent is fixed in place.
 - **The viewer (`heart-viewer.html`) is a debugging aid, not a lesson.** It
   copies seven blocks of `heart.html` verbatim (anatomy through landmarks,
   the beat, the valves, renderer setup, labels, materials through
