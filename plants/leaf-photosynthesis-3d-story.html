@@ -53,7 +53,9 @@
     border-bottom:1px solid rgba(147,162,182,.3);}
   #side a:hover{color:var(--ink);}
   .links{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;}
-  .story{flex:1;min-height:0;}
+  /* grows with its text and never shrinks: the column scrolls instead, so a
+     long chapter cannot run over the credit underneath it */
+  .story{flex:1 0 auto;}
   .story .step{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:700;}
   .story h2{
     margin:3px 0 0;font-family:"Iowan Old Style","Charter",Georgia,serif;
@@ -346,11 +348,15 @@ const coef = sp => (EQN.lhs.concat(EQN.rhs).find(x => x[0] === sp) || [0,0])[1];
 
 const COL = {
   leafTop:0x3f7d2c, leafBot:0x86ad5e, vein:0xc5d98c, petiole:0x6f9a3e, twig:0x6b4a2e,
+  /* cut faces: the clear epidermis nearly white, the cytoplasm of cells with
+     chloroplasts a pale green (palisade the greenest), so the layers of a
+     section tell apart from the back of a room */
   cuticle:0xe8f2b8, epi:0xd5e4c1, epiCut:0xf1f5e6,
-  pal:0x7db55a, palCut:0xe8f1d4, spo:0x9dc77c, spoCut:0xedf3de,
+  pal:0x7db55a, palCut:0xc6e0a4, spo:0x9dc77c, spoCut:0xdcebc6,
   chl:0x74b354, chlCut:0x2f6b22,
-  guard:0x8cc466, guardCut:0xe0eecb,
-  sheath:0xb9d69c, sheathCut:0xeef4e2,
+  guard:0x8cc466, guardCut:0xa6d07e,
+  sheath:0xb9d69c, sheathCut:0xd9eac4,
+  nuc:0x7e3f9d, nucCut:0xc9a3dc,
   xyl:0xb98545, xylCut:0xecd8b5, spiral:0x7e5122,
   phl:0xe6c49d, phlCut:0xf7eadb, plate:0x9a6a3c, comp:0xc99566, paren:0xcfe0b6,
   light:0xffe45c, glucose:0xf2c14e, starch:0xf6f3e8, oil:0xf3dd6a, protein:0xd9667a,
@@ -425,14 +431,20 @@ const cutMat = hex => new THREE.MeshBasicMaterial({color:hex, side:THREE.BackSid
    linear base and is rewritten from it (never from its current value). */
 const GROUPS = {};
 function grp(name, mat){ (GROUPS[name] = GROUPS[name] || []).push(mat); return mat; }
+/* a glowing or shiny material (the nucleus) dims its emissive and specular
+   too, or it stays bright in a tissue that has been dimmed */
+const DIMMED = ['color', 'emissive', 'specular'];
 function captureBases(){
-  Object.values(GROUPS).forEach(list => list.forEach(m => { m.userData.base = m.color.clone(); }));
+  Object.values(GROUPS).forEach(list => list.forEach(m => {
+    m.userData.base = {};
+    DIMMED.forEach(p => { if(m[p]) m.userData.base[p] = m[p].clone(); });
+  }));
 }
 const DIM = 0.26;
 function setDims(f){
   Object.keys(GROUPS).forEach(g => {
-    const k = f[g] === undefined ? 1 : f[g];
-    GROUPS[g].forEach(m => { m.color.copy(m.userData.base).multiplyScalar(lerp(DIM, 1, k)); });
+    const k = lerp(DIM, 1, f[g] === undefined ? 1 : f[g]);
+    GROUPS[g].forEach(m => { DIMMED.forEach(p => { if(m.userData.base[p]) m[p].copy(m.userData.base[p]).multiplyScalar(k); }); });
   });
 }
 
@@ -998,6 +1010,52 @@ const [chlMesh] = solidInstanced(chlGeo, MAT.chl, MAT.chlCut, CHLS.length, WB);
   chlMesh.instanceMatrix.needsUpdate = true;
 })();
 
+/* ------------------------------------------------ vacuoles and nuclei */
+/* The middle of a palisade cell is its vacuole, a sac of cell sap that keeps
+   the chloroplasts out in a thin layer of cytoplasm against the wall (in a
+   real cell it is bigger still; here it has to clear the chloroplasts); the
+   nucleus sits in that cytoplasm, here at the foot of the cell under the
+   vacuole. Spongy cells have a vacuole too. As with the chloroplasts, only
+   cells a cut opens get them drawn. */
+const PAL_VAC = {r:0.55, foot:1.0, head:0.45};   // radius as a share of the cell's; gap below and above it (units)
+const PAL_NUC = {r:0.3, y:0.62};                 // radius, and how far its middle is above the foot of the cell
+const SPO_VAC = 0.58;                            // a spongy cell's vacuole, as a share of its body radius
+Object.assign(MAT, {
+  /* matte: a glossy vacuole reads as a glass bead, and its reflections do not dim with its tissue */
+  vac:      grp('pal', std(COL.vac, {roughness:0.8, envMapIntensity:0.15})),
+  vacCut:   grp('pal', cutMat(COL.vacCut)),
+  nuc:      grp('pal', Organelles.materials.nucleus.clone()),
+  nucCut:   grp('pal', cutMat(COL.nucCut)),
+  spoVacCut:grp('spo', cutMat(COL.vacCut))
+});
+const PAL_OPEN = PALS.filter(c => isCut(c.x, c.z, c.r + 0.15));
+const [palVacMesh] = solidInstanced(palGeo, MAT.vac, MAT.vacCut, PAL_OPEN.length, WB);
+const [palNucMesh] = solidInstanced(new THREE.SphereGeometry(1, 16, 12), MAT.nuc, MAT.nucCut, PAL_OPEN.length, WB);
+/* a spongy cell's vacuole is drawn as its far side only: a flat pale disc
+   behind the chloroplasts, as a section shows it, not a ball sitting in the cell */
+const SPO_OPEN = SPOS.filter(c => isCut(c.p.x, c.p.z, c.rb + 0.3));
+const spoVacMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 18, 12), MAT.spoVacCut, SPO_OPEN.length);
+spoVacMesh.frustumCulled = false; WB.add(spoVacMesh);
+(function(){
+  const m = new THREE.Matrix4(), up = new V3();
+  PAL_OPEN.forEach((c, i) => {
+    up.set(0, 1, 0).applyQuaternion(c.q);
+    const y0 = -c.h/2 + PAL_VAC.foot, y1 = c.h/2 - PAL_VAC.head;
+    c.vac = {r:PAL_VAC.r*c.r, y0, y1};               // along the cell's axis, from its middle
+    m.compose(new V3(c.x, c.y, c.z).addScaledVector(up, (y0 + y1)/2), c.q, new V3(c.vac.r, y1 - y0, c.vac.r));
+    palVacMesh.setMatrixAt(i, m);
+    c.nuc = new V3(c.x, c.y, c.z).addScaledVector(up, -c.h/2 + PAL_NUC.y);
+    m.compose(c.nuc, c.q, new V3(PAL_NUC.r, 0.88*PAL_NUC.r, PAL_NUC.r));
+    palNucMesh.setMatrixAt(i, m);
+  });
+  SPO_OPEN.forEach((c, i) => {
+    c.vac = SPO_VAC*c.rb;
+    m.makeScale(c.vac, c.vac, c.vac).setPosition(c.p);
+    spoVacMesh.setMatrixAt(i, m);
+  });
+  [palVacMesh, palNucMesh, spoVacMesh].forEach(x => { x.instanceMatrix.needsUpdate = true; });
+})();
+
 /* -------------------------------------------------------------- guard cells */
 /* One guard cell is a tube round half an ellipse; its partner is the same
    tube turned half round. The pore between them is STO.open wide (half
@@ -1408,7 +1466,11 @@ const RC = 2.14;                        // chloroplasts sit at this distance fro
 const CMAT = {
   wall: std(COL.wall, {roughness:0.5, envMapIntensity:0.35}), wallCut: cutMat(COL.wallCut),
   cyto: std(COL.cyto, {roughness:0.7}), cytoCut: cutMat(COL.cytoCut),
-  vac: std(COL.vac, {roughness:0.3, envMapIntensity:0.5}), vacCut: cutMat(COL.vacCut),
+  /* cell sap is clear: the story's chloroplast and the places glucose goes
+     are on the back wall, BEHIND the vacuole, and an opaque one hid them */
+  vac: std(COL.vac, {roughness:0.3, envMapIntensity:0.5}),
+  vacCut: new THREE.MeshBasicMaterial({color:0xc4e2f2, side:THREE.BackSide, transparent:true, opacity:0.34, depthWrite:false}),
+  tonoplast: new THREE.LineBasicMaterial({color:0x6fb2dc}),
   chlCut: cutMat(COL.chlCut), epi: std(COL.epi, {roughness:0.35}), epiCut: cutMat(COL.epiCut),
   starch: std(COL.starch, {roughness:0.4}), oil: std(COL.oil, {roughness:0.2, envMapIntensity:0.8}),
   protein: std(COL.protein, {roughness:0.45}),
@@ -1430,6 +1492,10 @@ function cellParts(cx, withOrganelles){
   const prof = columnProfile(60, CELL.p, CY.r + 0.015, CY.h);
   const mpts = prof.map(v => new V3(v.x, v.y, -0.01)).concat(prof.slice().reverse().map(v => new V3(-v.x, v.y, -0.01)));
   g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(mpts), CMAT.membrane));
+  /* and the vacuole's edge, so a clear vacuole still has an outline */
+  const vprof = columnProfile(60, CELL.p, VAC.r, VAC.h);
+  const vpts = vprof.map(v => new V3(v.x, v.y, -0.01)).concat(vprof.slice().reverse().map(v => new V3(-v.x, v.y, -0.01)));
+  g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(vpts), CMAT.tonoplast));
   WC.add(g);
   return g;
 }
@@ -1769,7 +1835,11 @@ const ANCH = (function(){
   const chlOfPal = CHLS.filter(c => c.cell === 'pal' && PALS[c.ci] === pc && c.p.z < BZ - 0.1).sort((a, b) => b.p.z - a.p.z)[0];
   const gw = guardShape(1);
   const xy = BUNDLE.xylem[1], ph = BUNDLE.phloem[1];
+  /* a palisade cell the front cut opens near its middle: its vacuole and nucleus show */
+  const pv = PAL_OPEN.filter(c => c.z < BZ - PAL_NUC.r - 0.02 && BZ - c.z < c.vac.r - 0.1)
+    .sort((a, b) => Math.abs(a.x + 3.5) - Math.abs(b.x + 3.5))[0];
   return {
+    palVac: B(pv.x, pv.y + 0.8, BZ - 0.03), palNuc: pv.nuc.clone().add(new V3(0, 0, PAL_NUC.r)).add(BLOCK_O),
     cuticle: B(-6, Y.cu1 - 0.05, BZ), upEpi: B(-8.5, (Y.pa1 + Y.ue1)/2, BZ), lowEpi: B(-2.5, Y.le1/2, BZ),
     pal: B(pc.x, pc.y + 1.5, BZ), palChl: chlOfPal ? chlOfPal.p.clone().add(BLOCK_O) : B(pc.x, pc.y, BZ),
     spo: B(sc.p.x, sc.p.y, BZ), air: airNear(-3.5, 4.8).add(BLOCK_O),
@@ -1816,6 +1886,7 @@ const KEYS = {
   no3:   '<div><span class="dot" style="background:'+hexCss(EL.N.col)+'"></span>nitrate ion</div>',
   wall:  '<div><span class="sq" style="background:'+hexCss(COL.wall)+'"></span>cell wall</div>',
   vac:   '<div><span class="sq" style="background:'+hexCss(COL.vac)+'"></span>vacuole</div>',
+  nuc:   '<div><span class="dot" style="background:'+hexCss(COL.nuc)+'"></span>nucleus</div>',
   cyto:  '<div><span class="sq" style="background:'+hexCss(COL.cyto)+'"></span>cytoplasm</div>',
   vein:  '<div><span class="sq" style="background:'+hexCss(COL.vein)+'"></span>vein</div>'
 };
@@ -1908,16 +1979,18 @@ const CH = [
     shots:[{world:'block', keys:[[0,'epi'],[0.6,'epi'],[4,'pal']]}],
     blk:{focus:focusOnly(['pal','chl']), light:t=>ss(2, 3, t)},
     title:'Palisade mesophyll: catching the light',
-    text:'Under the epidermis are the <b>palisade cells</b>: tall, column-shaped cells standing upright, side by side, packed closely together like the posts of a fence (a palisade).<br><br>They are at the top of the leaf, where the light is brightest, and they are packed with <b>chloroplasts</b>, which absorb light for photosynthesis. Most of a leaf\'s photosynthesis happens here. Standing upright packs the most cells — and so the most chloroplasts — under each bit of the leaf\'s surface.',
-    look:'The cut has opened some palisade cells, so you can see their chloroplasts lining the walls. Watch the light fade as it is absorbed on the way down.',
+    text:'Under the epidermis are the <b>palisade cells</b>: tall, column-shaped cells standing upright, side by side, packed closely together like the posts of a fence (a palisade).<br><br>They are at the top of the leaf, where the light is brightest, and they are packed with <b>chloroplasts</b>, which absorb light for photosynthesis. Most of a leaf\'s photosynthesis happens here. Standing upright packs the most cells — and so the most chloroplasts — under each bit of the leaf\'s surface.<br><br>Like every plant cell, each has a <b>nucleus</b> and a large <b>vacuole</b> full of cell sap. The vacuole takes up the middle of the cell, so the chloroplasts sit in a thin layer of cytoplasm round the edge.',
+    look:'The cut has opened some palisade cells, so you can see their chloroplasts lining the walls round the pale vacuole. Watch the light fade as it is absorbed on the way down.',
     scale:'In this model each palisade cell has about '+FIG.palChl+' chloroplasts and each spongy cell about '+FIG.spoChl+'. Real palisade cells often have more.',
     terms:[['Palisade mesophyll','a layer of tall cells near the top of the leaf, full of chloroplasts.'],
            ['Chloroplast','where photosynthesis happens; contains chlorophyll, which absorbs light.']],
-    key:['pal','chl','light'],
+    key:['pal','chl','vac','nuc','light'],
     labels:[
       {text:'Palisade cell', world:'block', at:()=>[ANCH.pal], dx:-110, dy:-40, t0:5},
       {text:'Chloroplasts', world:'block', at:()=>[ANCH.palChl], dx:-110, dy:50, t0:6.5},
-      {text:'Light fades as it is absorbed', cls:'lit', world:'block', at:()=>[B(-2.4, 13.5, BZ - 0.4)], dx:80, dy:-50, t0:8}
+      {text:'Light fades as it is absorbed', cls:'lit', world:'block', at:()=>[B(-2.4, 13.5, BZ - 0.4)], dx:80, dy:-50, t0:8, t1:10.6},
+      {text:'Vacuole', world:'block', at:()=>[ANCH.palVac], dx:110, dy:-30, t0:10.6},
+      {text:'Nucleus', world:'block', at:()=>[ANCH.palNuc], dx:110, dy:30, t0:11.4}
     ]
   },
   {
@@ -1993,7 +2066,7 @@ const CH = [
       {text:'Lower epidermis', world:'block', at:()=>[ANCH.lowEpi], dx:-140, dy:25, t0:8},
       {text:'Xylem', world:'block', at:()=>[ANCH.xyl], dx:90, dy:-30, t0:8.5},
       {text:'Phloem', world:'block', at:()=>[ANCH.phl], dx:90, dy:25, t0:9},
-      {text:'Guard cells', world:'block', at:()=>[ANCH.guardL, ANCH.guardR], dx:50, dy:55, t0:9.5}
+      {text:'Guard cells', world:'block', at:()=>[ANCH.guardL, ANCH.guardR], dx:120, dy:12, t0:9.5}
     ]
   },
   {

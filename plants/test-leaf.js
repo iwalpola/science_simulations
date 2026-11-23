@@ -153,7 +153,8 @@ function run(THREE, html){
     'lightLeft','LIGHT_FALL','stomaCycle','stomaCycleInt','SHUT','EQN','FORMULA','MOL','coef','CPATH','UPATH','NITRATE_PATH',
     'inCellCyto','CELL','CY','VAC','SITES','CELL_CHL','CELLS','rateOf','lightIntensity','tempFactor','LF','lfState','lfPhase',
     'lfChange','lfEls','ALL_LABELS','LAYOUT','SCOPE','STATE','toScreen','VW','VH','WL','WB','WC','MOLB','MOLC','LIGHTB',
-    'palMesh','chlMesh','gcMesh','searchPath','GRID','BLOCK_O','CELL_O','LEAF','LEAF_VEINS','leafHalfW','PIECE','EL','COL','KEYS'].join(',');
+    'palMesh','chlMesh','gcMesh','searchPath','GRID','BLOCK_O','CELL_O','LEAF','LEAF_VEINS','leafHalfW','PIECE','EL','COL','KEYS',
+    'PAL_OPEN','SPO_OPEN','PAL_VAC','PAL_NUC','SPO_VAC','CMAT','MAT','setDims'].join(',');
   const js = html.match(/<script>([\s\S]*?)<\/script>/)[1];
   const win = {addEventListener(){}, innerWidth:1280, innerHeight:720, devicePixelRatio:1};
   const ORGS = loadOrganelles(THREE, html);
@@ -255,6 +256,48 @@ function run(THREE, html){
       'the cells the front cut opens show their chloroplasts');
   chk(S.FIG.palChl > 2*S.FIG.spoChl, 'palisade cells have more chloroplasts (' + S.FIG.palChl + ') than spongy cells (' + S.FIG.spoChl + ')');
 
+  /* ------------------------------------------------ vacuoles and nuclei */
+  section('vacuoles and nuclei in the cells the cuts open');
+  const opened = S.PAL_OPEN;
+  chk(opened.length > 50 && opened.every(c => c.vac && c.nuc), opened.length + ' palisade cells opened by a cut, each with a vacuole and a nucleus');
+  /* a point in a palisade cell's own frame: distance from its axis, height from its middle */
+  const palLocal = (c, p) => { const d = p.clone().sub(new V3(c.x, c.y, c.z)).applyQuaternion(c.q.clone().invert()); return {rad:Math.hypot(d.x, d.z), y:d.y}; };
+  let vacOut = 0, nucOut = 0, nucInVac = 0, chlInVac = 0;
+  opened.forEach(c => {
+    /* the vacuole's bounding cylinder is inside the cell (the cell is convex) */
+    if(!S.inColumn(c.vac.r, c.vac.y0, c.r, c.h, S.PAL_P) || !S.inColumn(c.vac.r, c.vac.y1, c.r, c.h, S.PAL_P)) vacOut++;
+    const n = palLocal(c, c.nuc), rn = S.PAL_NUC.r;
+    if(!S.inColumn(n.rad + rn, n.y - rn, c.r, c.h, S.PAL_P)) nucOut++;
+    if(n.y + rn > c.vac.y0 - 0.02) nucInVac++;
+  });
+  S.CHLS.forEach(k => {
+    const c = k.cell === 'pal' ? S.PALS[k.ci] : null;
+    if(c && c.vac && palLocal(c, k.p).rad - k.s[2] < c.vac.r + 0.02) chlInVac++;
+  });
+  chk(vacOut === 0, 'every vacuole is inside its cell (' + vacOut + ' are not)');
+  chk(nucOut === 0, 'every nucleus is inside its cell (' + nucOut + ' are not)');
+  chk(nucInVac === 0, 'no nucleus runs into its vacuole (' + nucInVac + ')');
+  chk(chlInVac === 0, 'every chloroplast is out in the cytoplasm, clear of the vacuole (' + chlInVac + ' are not)');
+  const vacW = S.PAL_VAC.r, vacH = opened.reduce((s, c) => s + (c.vac.y1 - c.vac.y0)/c.h, 0)/opened.length;
+  chk(vacW >= 0.5 && vacH > 0.7, 'the vacuole takes up the middle of the cell: ' + Math.round(100*vacW) + '% of its width, ' + Math.round(100*vacH) + '% of its height');
+  /* the front row the camera looks at: some show a whole nucleus behind the cut, and a vacuole the cut goes through */
+  const front = opened.filter(c => c.z < S.BZ && S.BZ - c.z < c.r);
+  chk(front.filter(c => S.BZ - c.nuc.z > S.PAL_NUC.r && S.BZ - c.z < c.vac.r).length > 10, 'the front cut shows the vacuole and the whole nucleus of a row of cells');
+  let spoVacBad = 0, spoChlInVac = 0;
+  S.SPO_OPEN.forEach(c => { if(!(c.vac > 0.3 && c.vac < 0.8*c.rb)) spoVacBad++; });
+  S.CHLS.forEach(k => {
+    const c = k.cell === 'spo' ? S.SPOS[k.ci] : null;
+    if(c && c.vac && k.p.distanceTo(c.p) - k.s[2] < c.vac + 0.02) spoChlInVac++;
+  });
+  chk(S.SPO_OPEN.length > 40 && spoVacBad === 0, S.SPO_OPEN.length + ' spongy cells opened by a cut have a vacuole well inside the cell body');
+  chk(spoChlInVac === 0, 'every spongy chloroplast is clear of the vacuole (' + spoChlInVac + ')');
+  /* dimming a tissue dims its nucleus's glow as well as its colour */
+  const nm = S.MAT.nuc, e0 = nm.userData.base.emissive;
+  S.setDims({pal:0});
+  chk(nm.emissive.r < 0.5*e0.r + 1e-6 && nm.color.r < nm.userData.base.color.r, 'a dimmed tissue dims its nuclei, glow and all');
+  S.setDims({});
+  chk(nm.emissive.equals(e0), 'and undimmed restores them');
+
   /* ------------------------------------------------------------ stomata */
   section('stomata and guard cells');
   chk(S.STOMATA.length > 5, S.STOMATA.length + ' stomata');
@@ -353,6 +396,13 @@ function run(THREE, html){
     if(Math.abs(ax.y) < 0.85 || Math.abs(az.dot(rad)) < 0.85) lying++;
   }));
   chk(nChl > 60 && lying === 0, 'every chloroplast lies flat against the wall, long way up (' + lying + ' of ' + nChl + ' do not)');
+  /* the camera looks in from the front (+z) at the back half of the cell, so
+     anything the story uses that sits right behind the vacuole is seen
+     THROUGH it: then the vacuole must be see-through (cell sap is clear) */
+  const behind = Object.entries(S.SITES).filter(([k, p]) => p.z < -S.VAC.r && Math.abs(p.x) < S.VAC.r).map(([k]) => k);
+  const vm = S.CMAT.vacCut;
+  chk(!behind.length || (vm.transparent && vm.opacity <= 0.5 && vm.depthWrite === false),
+      'what sits behind the vacuole (' + behind.join(', ') + ') shows through it');
 
   /* ---------------------------------------------------- limiting factors */
   section('limiting factors');
@@ -447,8 +497,14 @@ function run(THREE, html){
         chk(!hit(box, NAV), name + ': clear of the buttons');
         if(C.key && C.key.length) chk(!hit(box, {l:KEY.l, r:KEY.r, t:C.eq ? 76 : 0, b:(C.eq ? 76 : 0) + 30 + 20*C.key.length}), name + ': clear of the key');
         if(C.eq) chk(!hit(box, EQB), name + ': clear of the equation bar');
-        if(S.SCOPE.r && C.blk && C.blk.scope && C.blk.scope(t) > 0.5)
+        if(S.SCOPE.r && C.blk && C.blk.scope && C.blk.scope(t) > 0.5){
           chk(pts.every(p => Math.hypot(p.x - S.SCOPE.cx, p.y - S.SCOPE.cy) < S.SCOPE.r - 4), name + ': anchors inside the microscope\'s field');
+          /* the scale bar and its "100 um" underneath (the text is drawn 22 px below the bar, 14 px type) */
+          const [a, b] = S.SCOPE.bar, cx = (a.x + b.x)/2;
+          const bar = {l:Math.min(a.x, b.x) - 4, r:Math.max(a.x, b.x) + 4, t:Math.min(a.y, b.y) - 4, b:Math.max(a.y, b.y) + 4};
+          const txt = {l:cx - 32, r:cx + 32, t:a.y + 9, b:a.y + 27};
+          chk(!hit(box, bar) && !hit(box, txt), name + ': clear of the scale bar');
+        }
         boxes.push(box);
       });
       for(let i=0;i<boxes.length;i++) for(let j=i+1;j<boxes.length;j++)
